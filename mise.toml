@@ -1,0 +1,17 @@
+[tools]
+deno = "latest"
+
+[tasks.test]
+run = "deno test --allow-read --allow-write"
+
+[tasks.check]
+run = "deno check packages/tools/mod.ts"
+
+[tasks.fmt]
+run = "deno fmt"
+
+[tasks.lint]
+run = "deno lint"
+
+[tasks.ci]
+run = "deno fmt --check && deno lint && deno check packages/tools/mod.ts && deno test --allow-read --allow-write"
