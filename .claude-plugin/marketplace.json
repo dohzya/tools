@@ -1,8 +1,40 @@
 {
   "name": "dz-skills",
-  "version": "1.0.0",
-  "description": "Markdown manipulation and productivity skills",
-  "author": "Etienne Vallette d'Osia",
-  "repository": "https://github.com/dohzya/dz-skills",
-  "license": "MIT"
+  "owner": {
+    "name": "Etienne Vallette d'Osia"
+  },
+  "metadata": {
+    "description": "Markdown manipulation and productivity skills",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "markdown-surgeon",
+      "source": "./skills/markdown-surgeon",
+      "description": "Manipulate Markdown files surgically by section",
+      "version": "1.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "obsidian-journal",
+      "source": "./skills/obsidian-journal",
+      "description": "Create journal entries in Obsidian",
+      "version": "1.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "rex-session",
+      "source": "./skills/rex-session",
+      "description": "Generate structured REX from technical conversations",
+      "version": "1.0.0",
+      "license": "MIT"
+    },
+    {
+      "name": "work-journal",
+      "source": "./skills/work-journal",
+      "description": "Maintain work documentation with WORKLOG.md and CHANGES.md",
+      "version": "1.0.0",
+      "license": "MIT"
+    }
+  ]
 }
