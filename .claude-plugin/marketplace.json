@@ -35,6 +35,13 @@
       "description": "Maintain work documentation with WORKLOG.md and CHANGES.md",
       "version": "1.0.0",
       "license": "MIT"
+    },
+    {
+      "name": "worktrack",
+      "source": "./skills/worktrack",
+      "description": "Track work progress with append-only worklog and on-demand checkpoints",
+      "version": "1.0.0",
+      "license": "MIT"
     }
   ]
 }

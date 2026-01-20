@@ -10,7 +10,10 @@
     "./markdown-surgeon/yaml": "./markdown-surgeon/yaml.ts",
     "./markdown-surgeon/magic": "./markdown-surgeon/magic.ts",
     "./markdown-surgeon/types": "./markdown-surgeon/types.ts",
-    "./markdown-surgeon/cli": "./markdown-surgeon/cli.ts"
+    "./markdown-surgeon/cli": "./markdown-surgeon/cli.ts",
+    "./worktrack": "./worktrack/mod.ts",
+    "./worktrack/types": "./worktrack/types.ts",
+    "./worktrack/cli": "./worktrack/cli.ts"
   },
   "imports": {
     "@std/yaml": "jsr:@std/yaml@^1.0.5"

@@ -2,3 +2,4 @@
 // Re-exports all submodules
 
 export * from "./markdown-surgeon/mod.ts";
+export * as worktrack from "./worktrack/mod.ts";

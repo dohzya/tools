@@ -1,0 +1,5 @@
+#!/usr/bin/env -S deno run --allow-read --allow-write
+
+import { main } from "jsr:@dohzya/tools@0.1/worktrack/cli";
+
+await main(Deno.args);
