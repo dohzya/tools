@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Markdown manipulation and productivity skills",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "dz-skills",
       "source": "./plugins/dz-skills",
       "description": "Markdown manipulation and productivity skills for Claude Code",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "license": "MIT"
     }
   ]

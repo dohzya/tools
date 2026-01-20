@@ -1,6 +1,6 @@
 {
   "name": "@dohzya/tools",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "exports": {
     ".": "./mod.ts",
@@ -11,9 +11,9 @@
     "./markdown-surgeon/magic": "./markdown-surgeon/magic.ts",
     "./markdown-surgeon/types": "./markdown-surgeon/types.ts",
     "./markdown-surgeon/cli": "./markdown-surgeon/cli.ts",
-    "./worktrack": "./worktrack/mod.ts",
-    "./worktrack/types": "./worktrack/types.ts",
-    "./worktrack/cli": "./worktrack/cli.ts"
+    "./worklog": "./worklog/mod.ts",
+    "./worklog/types": "./worklog/types.ts",
+    "./worklog/cli": "./worklog/cli.ts"
   },
   "imports": {
     "@std/yaml": "jsr:@std/yaml@^1.0.5"

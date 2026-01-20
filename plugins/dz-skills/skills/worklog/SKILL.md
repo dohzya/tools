@@ -1,9 +1,9 @@
 ---
-name: worktrack
-description: Track work progress during development sessions. Activates when .worktrack/ exists OR user says "track this", ">track", "let's track". Maintains a chronological worklog with on-demand consolidation via checkpoints.
+name: worklog
+description: Track work progress during development sessions. Activates when .worklog/ exists OR user says "track this", ">track", "let's track". Maintains a chronological worklog with on-demand consolidation via checkpoints.
 ---
 
-# Worktrack
+# Worklog
 
 Track work progress with append-only worklog and on-demand checkpoints.
 
@@ -11,19 +11,19 @@ Track work progress with append-only worklog and on-demand checkpoints.
 
 | Condition | Action |
 |-----------|--------|
-| `.worktrack/` exists | Tracking is active, use `wt list` to see current tasks |
-| User says "track this", ">track", "let's track" | Run `wt add --desc "..."` |
+| `.worklog/` exists | Tracking is active, use `wllist` to see current tasks |
+| User says "track this", ">track", "let's track" | Run `wladd --desc "..."` |
 
 ## Commands
 
 ```bash
-wt add [--desc "description"]     # Create task → outputs ID
-wt trace <id> "message"           # Log entry → "ok" or "checkpoint recommended"
-wt logs <id>                      # Get context (last checkpoint + recent entries)
-wt checkpoint <id> "changes" "learnings"   # Create checkpoint
-wt done <id> "changes" "learnings"         # Final checkpoint + close task
-wt list [--all]                   # List active tasks (--all includes done <30d)
-wt summary [--since YYYY-MM-DD]   # Aggregate all tasks
+wladd [--desc "description"]     # Create task → outputs ID
+wltrace <id> "message"           # Log entry → "ok" or "checkpoint recommended"
+wllogs <id>                      # Get context (last checkpoint + recent entries)
+wlcheckpoint <id> "changes" "learnings"   # Create checkpoint
+wldone <id> "changes" "learnings"         # Final checkpoint + close task
+wllist [--all]                   # List active tasks (--all includes done <30d)
+wlsummary [--since YYYY-MM-DD]   # Aggregate all tasks
 ```
 
 Add `--json` to any command for JSON output.
@@ -33,7 +33,7 @@ Add `--json` to any command for JSON output.
 ### Starting
 
 ```bash
-wt add --desc "Implement feature X"
+wladd --desc "Implement feature X"
 # → 250116a
 ```
 
@@ -44,10 +44,10 @@ Use the returned ID for all subsequent commands.
 Log notable events:
 
 ```bash
-wt trace 250116a "Goal: support multi-currency orders"
-wt trace 250116a "Tried adding currency field - breaks 12 tests"
-wt trace 250116a "Root cause: validator expects single total"
-wt trace 250116a "Pivot to CurrencyBucket approach - tests pass"
+wltrace 250116a "Goal: support multi-currency orders"
+wltrace 250116a "Tried adding currency field - breaks 12 tests"
+wltrace 250116a "Root cause: validator expects single total"
+wltrace 250116a "Pivot to CurrencyBucket approach - tests pass"
 ```
 
 **When to trace:**
@@ -63,21 +63,21 @@ Keep messages concise. Include "why" for failures and pivots.
 ### Checkpointing
 
 Create checkpoints when:
-- `wt trace` outputs `checkpoint recommended` (≥50 entries since last)
+- `wltrace` outputs `checkpoint recommended` (≥50 entries since last)
 - User asks for a summary of changes or learnings
 - Before a long break or context switch
 - You (the agent) judge it useful to consolidate
 
 **Process:**
-1. `wt logs <id>` — get current context
+1. `wllogs <id>` — get current context
 2. Synthesize entries into coherent changes and learnings
-3. `wt checkpoint <id> "<changes>" "<learnings>"`
+3. `wlcheckpoint <id> "<changes>" "<learnings>"`
 
 ```bash
-wt logs 250116a
+wllogs 250116a
 # [read output, generate consolidated summary]
 
-wt checkpoint 250116a \
+wlcheckpoint 250116a \
   "- Introduced CurrencyBucket for per-currency validation
 - New error MIXED_CURRENCY_ZERO_BALANCE
 - Single-currency orders unchanged" \
@@ -90,7 +90,7 @@ wt checkpoint 250116a \
 When task is done:
 
 ```bash
-wt done 250116a \
+wldone 250116a \
   "<final changes summary>" \
   "<final learnings>"
 ```
@@ -100,24 +100,24 @@ This creates a final checkpoint and marks the task done.
 ### Getting overview
 
 ```bash
-wt list              # Active tasks only
-wt list --all        # Include recently completed (<30 days)
-wt summary           # Full logs of all active tasks
-wt summary --since 2025-01-10   # Include done tasks since date
+wllist              # Active tasks only
+wllist --all        # Include recently completed (<30 days)
+wlsummary           # Full logs of all active tasks
+wlsummary --since 2025-01-10   # Include done tasks since date
 ```
 
-Use `wt summary` for end-of-worktree recaps.
+Use `wlsummary` for end-of-worktree recaps.
 
 ## Output formats
 
 Default output is human-readable text. Use `--json` for structured JSON.
 
-**`wt add`:**
+**`wladd`:**
 ```
 250116a
 ```
 
-**`wt trace`:**
+**`wltrace`:**
 ```
 ok
 ```
@@ -126,13 +126,13 @@ or
 checkpoint recommended (52 entries)
 ```
 
-**`wt list`:**
+**`wllist`:**
 ```
 250116a  active  "Multi-currency support"  2025-01-16 09:15
 250116b  active  "Fix login bug"  2025-01-16 14:30
 ```
 
-**`wt logs`:**
+**`wllogs`:**
 ```
 task: 250116a
 desc: Multi-currency support
@@ -149,7 +149,7 @@ entries since checkpoint: 2
   2025-01-16 11:45: Tests passing
 ```
 
-**`wt checkpoint` / `wt done`:**
+**`wlcheckpoint` / `wldone`:**
 ```
 checkpoint created
 ```
@@ -162,11 +162,11 @@ task completed
 You can have multiple active tasks. Always specify the task ID:
 
 ```bash
-wt trace 250116a "Working on currency bucket"
-wt trace 250116b "Fixed unrelated login bug"
+wltrace 250116a "Working on currency bucket"
+wltrace 250116b "Fixed unrelated login bug"
 ```
 
-Use `wt list` to see all active tasks if you lose track.
+Use `wllist` to see all active tasks if you lose track.
 
 ## Guidelines
 
@@ -185,8 +185,8 @@ Use `wt list` to see all active tasks if you lose track.
 ## File structure
 
 ```
-.worktrack/
-├── index.json           # Task list (for fast wt list)
+.worklog/
+├── index.json           # Task list (for fast wllist)
 └── tasks/
     └── 250116a.md       # Task file (frontmatter + entries + checkpoints)
 ```

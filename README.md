@@ -33,11 +33,11 @@ Generate structured REX (Retour d'EXpérience / Post-Mortem) from technical conv
 
 Automatically maintain work documentation during project tasks with WORKLOG.md and CHANGES.md.
 
-### worktrack
+### worklog
 
-Track work progress with append-only worklog and on-demand checkpoints. Activates when `.worktrack/` exists or user says "track this".
+Track work progress with append-only worklog and on-demand checkpoints. Activates when `.worklog/` exists or user says "track this".
 
-Commands: `wt init`, `wt add`, `wt trace`, `wt logs`, `wt checkpoint`, `wt done`, `wt list`, `wt summary`
+Commands: `wl init`, `wl add`, `wl trace`, `wl logs`, `wl checkpoint`, `wl done`, `wl list`, `wl summary`
 
 ## Library
 

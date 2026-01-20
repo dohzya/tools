@@ -26,9 +26,9 @@ import { parseFrontmatter, stringifyFrontmatter } from "../markdown-surgeon/yaml
 // Constants
 // ============================================================================
 
-const WORKTRACK_DIR = ".worktrack";
-const TASKS_DIR = `${WORKTRACK_DIR}/tasks`;
-const INDEX_FILE = `${WORKTRACK_DIR}/index.json`;
+const WORKLOG_DIR = ".worklog";
+const TASKS_DIR = `${WORKLOG_DIR}/tasks`;
+const INDEX_FILE = `${WORKLOG_DIR}/index.json`;
 const CHECKPOINT_THRESHOLD = 50;
 
 // Pre-computed section IDs for fixed section titles
@@ -727,10 +727,10 @@ async function cmdSummary(since: string | null): Promise<SummaryOutput> {
 // ============================================================================
 
 function printUsage(): void {
-  console.log(`Usage: wt <command> [options]
+  console.log(`Usage: wl <command> [options]
 
 Commands:
-  init                                  Initialize worktrack in current directory
+  init                                  Initialize worklog in current directory
   add [--desc "description"]            Create a new task
   trace <task-id> <message>             Log an entry to a task
   logs <task-id>                        Get task context for checkpoint
