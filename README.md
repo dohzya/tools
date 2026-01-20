@@ -14,30 +14,38 @@ claude mcp add-skill https://github.com/dohzya/dz-skills
 
 ### markdown-surgeon
 
-Manipulate Markdown files surgically by section without loading entire content. Useful for:
+Manipulate Markdown files surgically by section without loading entire content.
+Useful for:
+
 - Editing large .md files
 - Updating specific sections
 - Using Markdown as a lightweight database
 
-Commands: `outline`, `read`, `write`, `append`, `empty`, `remove`, `search`, `concat`, `meta`, `create`
+Commands: `outline`, `read`, `write`, `append`, `empty`, `remove`, `search`,
+`concat`, `meta`, `create`
 
 ### obsidian-journal
 
-Create journal entries in Obsidian. Use when storing, saving, or recording information for later reference.
+Create journal entries in Obsidian. Use when storing, saving, or recording
+information for later reference.
 
 ### rex-session
 
-Generate structured REX (Retour d'EXpérience / Post-Mortem) from technical conversations.
+Generate structured REX (Retour d'EXpérience / Post-Mortem) from technical
+conversations.
 
 ### work-journal
 
-Automatically maintain work documentation during project tasks with WORKLOG.md and CHANGES.md.
+Automatically maintain work documentation during project tasks with WORKLOG.md
+and CHANGES.md.
 
 ### worklog
 
-Track work progress with append-only worklog and on-demand checkpoints. Activates when `.worklog/` exists or user says "track this".
+Track work progress with append-only worklog and on-demand checkpoints.
+Activates when `.worklog/` exists or user says "track this".
 
-Commands: `wl init`, `wl add`, `wl trace`, `wl logs`, `wl checkpoint`, `wl done`, `wl list`, `wl summary`
+Commands: `wl init`, `wl add`, `wl trace`, `wl logs`, `wl checkpoint`,
+`wl done`, `wl list`, `wl summary`
 
 ## Library
 
