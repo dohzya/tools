@@ -23,26 +23,23 @@ mise run ci     # Run all checks (what CI runs)
 Or use Deno directly:
 
 ```bash
-deno test --allow-read --allow-write
-deno check packages/tools/mod.ts
-deno fmt
-deno lint
+deno task validate  # Run all checks (fmt + check + lint + test)
+deno task test      # Run tests only
+deno fmt            # Format code
+deno lint           # Lint code
+deno check          # Type check
 ```
 
 ## Pre-commit Checks
 
-**CRITICAL:** Before saying you're done with any code changes, ALWAYS run these
-commands:
+**CRITICAL:** Before saying you're done with any code changes, ALWAYS run:
 
 ```bash
-deno fmt        # Format all code
-deno lint       # Check for linting issues
-deno check packages/tools/mod.ts  # Type check
-deno test --allow-read --allow-write  # Run tests
+deno task validate  # Runs fmt + check + lint + test
 ```
 
-These checks are enforced by CI, so catch issues early by running them locally
-first.
+**Do not skip this step** - if any check fails, fix the issues before
+committing. These checks are enforced by CI.
 
 ## CHANGELOG.md
 

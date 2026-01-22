@@ -2,6 +2,7 @@
   "workspace": ["./packages/tools"],
   "tasks": {
     "test": "deno test --allow-read --allow-write --allow-env",
-    "check": "deno check packages/tools/mod.ts"
+    "check": "deno check packages/tools/mod.ts",
+    "validate": "deno fmt && deno check && deno lint && deno task test"
   }
 }
