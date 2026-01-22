@@ -92,21 +92,24 @@ brew install wl
 brew install md wl
 ```
 
-### Via mise (using ubi backend)
+### Via mise (using github backend)
 
-Add to your `.mise.toml`:
+Install directly:
+
+```bash
+mise use -g github:dohzya/dz-skills@md-v0.4.0
+mise use -g github:dohzya/dz-skills@wl-v0.4.0
+```
+
+Or add to your `.mise.toml`:
 
 ```toml
 [tools]
-"ubi:dohzya/dz-skills" = { exe = "md", matching = "md-*" }
-"ubi:dohzya/dz-skills#wl" = { exe = "wl", matching = "wl-*" }
+"github:dohzya/dz-skills@md-v0.4.0" = "latest"
+"github:dohzya/dz-skills@wl-v0.4.0" = "latest"
 ```
 
-Then run:
-
-```bash
-mise install
-```
+Then run `mise install`.
 
 ### Via Deno
 

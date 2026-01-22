@@ -5,13 +5,10 @@
 #   mise install
 
 [tools]
-# Install markdown-surgeon (md) from latest release
-# Uses ubi backend to download pre-compiled binaries
-"ubi:dohzya/dz-skills" = { exe = "md", matching = "md-*" }
+# Install markdown-surgeon (md) and worklog (wl) from GitHub releases
+# Uses github backend to download pre-compiled binaries
+"github:dohzya/dz-skills" = "md-v0.4.0"
+"github:dohzya/dz-skills" = "wl-v0.4.0"
 
-# Install worklog (wl) from latest release
-# "ubi:dohzya/dz-skills#wl" = { exe = "wl", matching = "wl-*" }
-
-# To pin to specific version:
-# "ubi:dohzya/dz-skills" = { version = "md-v0.3.0", exe = "md", matching = "md-*" }
-# "ubi:dohzya/dz-skills#wl" = { version = "wl-v0.3.0", exe = "wl", matching = "wl-*" }
+# Note: mise will automatically detect and download the correct binary
+# for your platform (darwin-arm64, linux-x86_64, etc.)

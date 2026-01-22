@@ -2,9 +2,9 @@
 
 This guide explains how to install `md` and `wl` using mise with the ubi backend.
 
-## What is ubi?
+## What is the github backend?
 
-ubi (Universal Binary Installer) is a mise backend that automatically downloads
+The github backend is a mise backend that automatically downloads
 pre-compiled binaries from GitHub Releases, detecting the correct platform and
 architecture automatically.
 
@@ -15,33 +15,26 @@ architecture automatically.
 
 ## Installation
 
-### Method 1: Global Configuration
+### Method 1: Direct Command (Recommended)
 
-Add to your global mise config (`~/.config/mise/config.toml`):
-
-```toml
-[tools]
-# Install md (markdown-surgeon)
-"ubi:dohzya/dz-skills" = { exe = "md", matching = "md-*" }
-
-# Install wl (worklog)
-"ubi:dohzya/dz-skills#wl" = { exe = "wl", matching = "wl-*" }
-```
-
-Then install:
+Install directly with version tag:
 
 ```bash
-mise install
+# Install md (markdown-surgeon)
+mise use -g github:dohzya/dz-skills@md-v0.4.0
+
+# Install wl (worklog)
+mise use -g github:dohzya/dz-skills@wl-v0.4.0
 ```
 
-### Method 2: Project-Local Configuration
+### Method 2: Project Configuration
 
 Add to your project's `.mise.toml`:
 
 ```toml
 [tools]
-"ubi:dohzya/dz-skills" = { exe = "md", matching = "md-*" }
-"ubi:dohzya/dz-skills#wl" = { exe = "wl", matching = "wl-*" }
+"github:dohzya/dz-skills@md-v0.4.0" = "latest"
+"github:dohzya/dz-skills@wl-v0.4.0" = "latest"
 ```
 
 Then run:
@@ -50,42 +43,43 @@ Then run:
 mise install
 ```
 
-### Method 3: Direct Command
+### Method 3: Global Configuration
 
-Install without configuration file:
+Add to your global mise config (`~/.config/mise/config.toml`):
+
+```toml
+[tools]
+"github:dohzya/dz-skills@md-v0.4.0" = "latest"
+"github:dohzya/dz-skills@wl-v0.4.0" = "latest"
+```
+
+Then install:
 
 ```bash
-# Install md
-mise use -g "ubi:dohzya/dz-skills@md-v0.4.0"
-
-# Install wl
-mise use -g "ubi:dohzya/dz-skills#wl@wl-v0.4.0"
+mise install
 ```
 
 ## How It Works
 
-The ubi backend:
+The github backend:
 
-1. Looks at GitHub releases for `dohzya/dz-skills`
-2. Finds releases matching the pattern (`md-*` or `wl-*`)
-3. Downloads the binary for your platform (e.g., `md-darwin-arm64` on macOS ARM)
-4. Installs it as `md` or `wl` in your mise bin directory
-5. Makes it available in your PATH
+1. Looks at the specified GitHub release tag (e.g., `md-v0.4.0`)
+2. Downloads the binary asset for your platform (e.g., `md-darwin-arm64` on macOS ARM)
+3. Installs it in your mise bin directory (`~/.local/share/mise/installs/...`)
+4. Makes it available in your PATH automatically
 
 ## Version Pinning
 
-Pin to specific versions:
+Versions are pinned in the tag name itself:
 
 ```toml
 [tools]
-# Pin md to v0.4.0
-"ubi:dohzya/dz-skills" = { version = "md-v0.4.0", exe = "md", matching = "md-*" }
-
-# Pin wl to v0.4.0
-"ubi:dohzya/dz-skills#wl" = { version = "wl-v0.4.0", exe = "wl", matching = "wl-*" }
+# Pin to specific versions using @ syntax
+"github:dohzya/dz-skills@md-v0.4.0" = "latest"
+"github:dohzya/dz-skills@wl-v0.4.0" = "latest"
 ```
 
-Without version pinning, mise uses the latest release matching the pattern.
+To upgrade to a newer version, change the tag (e.g., `md-v0.5.0`).
 
 ## Updating
 
@@ -119,10 +113,10 @@ mise current md
 mise current wl
 ```
 
-List available versions:
+Check GitHub releases for available versions:
 
 ```bash
-mise ls-remote "ubi:dohzya/dz-skills"
+gh release list -R dohzya/dz-skills
 ```
 
 ### Permission denied
@@ -131,8 +125,8 @@ Make sure binaries are executable (mise should handle this automatically).
 If needed, manually fix:
 
 ```bash
-chmod +x ~/.local/share/mise/installs/ubi-dohzya-dz-skills/*/bin/md
-chmod +x ~/.local/share/mise/installs/ubi-dohzya-dz-skills-wl/*/bin/wl
+chmod +x ~/.local/share/mise/installs/github-dohzya-dz-skills/*/md-*
+chmod +x ~/.local/share/mise/installs/github-dohzya-dz-skills/*/wl-*
 ```
 
 ## Uninstalling
