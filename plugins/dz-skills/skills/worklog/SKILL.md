@@ -17,23 +17,39 @@ Track work progress with append-only worklog and on-demand checkpoints.
 ## Commands
 
 ```bash
-wladd [--desc "description"]     # Create task → outputs ID
-wltrace <id> "message"           # Log entry → "ok" or "checkpoint recommended"
-wllogs <id>                      # Get context (last checkpoint + recent entries)
-wlcheckpoint <id> "changes" "learnings"   # Create checkpoint
-wldone <id> "changes" "learnings"         # Final checkpoint + close task
-wllist [--all]                   # List active tasks (--all includes done <30d)
-wlsummary [--since YYYY-MM-DD]   # Aggregate all tasks
+wl add [--desc "description"]                    # Create task → outputs ID
+wl trace <id> "message" [options]                # Log entry → "ok" or "checkpoint recommended"
+wl logs <id>                                     # Get context (last checkpoint + recent entries)
+wl checkpoint <id> "changes" "learnings"         # Create checkpoint
+wl done <id> "changes" "learnings"               # Final checkpoint + close task
+wl list [--all]                                  # List active tasks (--all includes done <30d)
+wl summary [--since YYYY-MM-DD]                  # Aggregate all tasks
 ```
 
 Add `--json` to any command for JSON output.
+
+**Timestamp option for `wl trace`:**
+
+Use `--timestamp TS` or `-t TS` with flexible format:
+`[YYYY-MM-DD]THH:mm[:SS][<tz>]`
+
+- If date is missing, today's date is used
+- If seconds are missing, `:00` is assumed
+- If timezone is missing, local timezone is used
+
+Examples:
+
+- `T11:15` → today at 11:15:00 (local timezone)
+- `T11:15:30` → today at 11:15:30 (local timezone)
+- `2024-12-15T11:15` → Dec 15, 2024 at 11:15:00 (local timezone)
+- `2024-12-15T11:15:30+01:00` → Dec 15, 2024 at 11:15:30 (UTC+1)
 
 ## Workflow
 
 ### Starting
 
 ```bash
-wladd --desc "Implement feature X"
+wl add --desc "Implement feature X"
 # → 250116a
 ```
 
@@ -44,10 +60,10 @@ Use the returned ID for all subsequent commands.
 Log notable events:
 
 ```bash
-wltrace 250116a "Goal: support multi-currency orders"
-wltrace 250116a "Tried adding currency field - breaks 12 tests"
-wltrace 250116a "Root cause: validator expects single total"
-wltrace 250116a "Pivot to CurrencyBucket approach - tests pass"
+wl trace 250116a "Goal: support multi-currency orders"
+wl trace 250116a "Tried adding currency field - breaks 12 tests"
+wl trace 250116a "Root cause: validator expects single total"
+wl trace 250116a "Pivot to CurrencyBucket approach - tests pass"
 ```
 
 **When to trace:**
@@ -60,6 +76,22 @@ wltrace 250116a "Pivot to CurrencyBucket approach - tests pass"
 - Something works/is validated
 
 Keep messages concise. Include "why" for failures and pivots.
+
+**Importing historical entries:**
+
+To preserve original timestamps when importing from other logs (e.g.,
+WORKLOG.md):
+
+```bash
+# Full ISO timestamp
+wl trace 250116a "Session resumed after break" --timestamp "2024-12-15T11:00:00+01:00"
+
+# Date + time without timezone (local TZ assumed)
+wl trace 250116a "Fixed validation bug" -t "2024-12-15T11:15"
+
+# Time only (today's date assumed)
+wl trace 250116a "Quick fix applied" -t T14:30
+```
 
 ### Checkpointing
 
@@ -77,10 +109,10 @@ Create checkpoints when:
 3. `wlcheckpoint <id> "<changes>" "<learnings>"`
 
 ```bash
-wllogs 250116a
+wl logs 250116a
 # [read output, generate consolidated summary]
 
-wlcheckpoint 250116a \
+wl checkpoint 250116a \
   "- Introduced CurrencyBucket for per-currency validation
 - New error MIXED_CURRENCY_ZERO_BALANCE
 - Single-currency orders unchanged" \
@@ -93,7 +125,7 @@ wlcheckpoint 250116a \
 When task is done:
 
 ```bash
-wldone 250116a \
+wl done 250116a \
   "<final changes summary>" \
   "<final learnings>"
 ```
@@ -103,10 +135,10 @@ This creates a final checkpoint and marks the task done.
 ### Getting overview
 
 ```bash
-wllist              # Active tasks only
-wllist --all        # Include recently completed (<30 days)
-wlsummary           # Full logs of all active tasks
-wlsummary --since 2025-01-10   # Include done tasks since date
+wl list              # Active tasks only
+wl list --all        # Include recently completed (<30 days)
+wl summary           # Full logs of all active tasks
+wl summary --since 2025-01-10   # Include done tasks since date
 ```
 
 Use `wlsummary` for end-of-worktree recaps.
@@ -173,8 +205,8 @@ task completed
 You can have multiple active tasks. Always specify the task ID:
 
 ```bash
-wltrace 250116a "Working on currency bucket"
-wltrace 250116b "Fixed unrelated login bug"
+wl trace 250116a "Working on currency bucket"
+wl trace 250116b "Fixed unrelated login bug"
 ```
 
 Use `wllist` to see all active tasks if you lose track.

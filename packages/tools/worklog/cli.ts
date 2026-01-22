@@ -73,8 +73,8 @@ function getLocalISOString(): string {
   return `${year}-${month}-${day}T${hour}:${minute}:${second}${sign}${hours}:${minutes}`;
 }
 
-function getShortDateTime(): string {
-  const now = new Date();
+function getShortDateTime(date?: Date): string {
+  const now = date || new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
@@ -99,6 +99,60 @@ function parseDate(dateStr: string): Date {
   }
   // Date only: "YYYY-MM-DD"
   return new Date(dateStr + "T00:00:00");
+}
+
+/**
+ * Parse flexible timestamp format: [YYYY-MM-DD]THH:mm[:SS][<tz>]
+ * - If date is missing, use today
+ * - If seconds are missing, use :00
+ * - If timezone is missing, DON'T add one (let new Date() handle it)
+ */
+function parseFlexibleTimestamp(input: string): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const todayDate = `${year}-${month}-${day}`;
+
+  // Pattern: [YYYY-MM-DD]THH:mm[:SS][+/-HH:MM]
+  // Examples: T11:15, 2024-12-15T11:15, T11:15:30+01:00
+
+  let result = input;
+
+  // If starts with T, prepend today's date
+  if (result.startsWith("T")) {
+    result = todayDate + result;
+  }
+
+  // Check if timezone is present
+  const tzRegex = /[+-]\d{2}:\d{2}$/;
+  const hasTZ = tzRegex.test(result);
+
+  // Check if seconds are present
+  const timePartMatch = result.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!timePartMatch) {
+    throw new Error("Invalid time format");
+  }
+
+  const hasSeconds = timePartMatch[3] !== undefined;
+
+  // Add seconds if missing
+  if (!hasSeconds) {
+    if (hasTZ) {
+      // Find where timezone starts (last + or -)
+      const tzStartPos = Math.max(
+        result.lastIndexOf("+"),
+        result.lastIndexOf("-"),
+      );
+      const beforeTZ = result.slice(0, tzStartPos);
+      const tz = result.slice(tzStartPos);
+      result = beforeTZ + ":00" + tz;
+    } else {
+      result = result + ":00";
+    }
+  }
+
+  return result;
 }
 
 // ============================================================================
@@ -533,7 +587,11 @@ last_checkpoint: null
   return { id };
 }
 
-async function cmdTrace(taskId: string, message: string): Promise<TraceOutput> {
+async function cmdTrace(
+  taskId: string,
+  message: string,
+  timestamp?: string,
+): Promise<TraceOutput> {
   await purge();
 
   const content = await loadTaskContent(taskId);
@@ -559,7 +617,27 @@ async function cmdTrace(taskId: string, message: string): Promise<TraceOutput> {
     ? checkpointsSection.line - 2 // Before blank line before # Checkpoints
     : getSectionEndLine(doc, entriesSection, true);
 
-  const nowShort = getShortDateTime();
+  // Use provided timestamp or current time
+  let entryDate: Date | undefined;
+  if (timestamp) {
+    try {
+      entryDate = new Date(timestamp);
+      if (isNaN(entryDate.getTime())) {
+        throw new WtError(
+          "invalid_args",
+          `Invalid timestamp format: ${timestamp}. Use ISO format (YYYY-MM-DDTHH:MM:SS+TZ) or short format (YYYY-MM-DD HH:MM)`,
+        );
+      }
+    } catch (e) {
+      if (e instanceof WtError) throw e;
+      throw new WtError(
+        "invalid_args",
+        `Invalid timestamp: ${timestamp}`,
+      );
+    }
+  }
+
+  const nowShort = getShortDateTime(entryDate);
   const entry = `\n## ${nowShort}\n${message}\n`;
   const entryLines = entry.split("\n");
 
@@ -756,7 +834,7 @@ function printUsage(): void {
 Commands:
   init                                  Initialize worklog in current directory
   add [--desc "description"]            Create a new task
-  trace <task-id> <message>             Log an entry to a task
+  trace <task-id> <message> [options]   Log an entry to a task
   logs <task-id>                        Get task context for checkpoint
   checkpoint <task-id> <changes> <learnings>   Create a checkpoint
   done <task-id> <changes> <learnings>         Complete task with final checkpoint
@@ -764,7 +842,8 @@ Commands:
   summary [--since YYYY-MM-DD]          Aggregate all tasks
 
 Options:
-  --json                                Output in JSON format`);
+  --json                                Output in JSON format
+  --timestamp, -t [DATE]THH:mm[:SS][TZ] Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)`);
 }
 
 function parseArgs(args: string[]): {
@@ -773,6 +852,7 @@ function parseArgs(args: string[]): {
     desc: string | null;
     all: boolean;
     since: string | null;
+    timestamp: string | null;
     json: boolean;
   };
   positional: string[];
@@ -781,6 +861,7 @@ function parseArgs(args: string[]): {
     desc: null as string | null,
     all: false,
     since: null as string | null,
+    timestamp: null as string | null,
     json: false,
   };
   const positional: string[] = [];
@@ -798,6 +879,10 @@ function parseArgs(args: string[]): {
       flags.since = args[++i];
     } else if (arg.startsWith("--since=")) {
       flags.since = arg.slice(8);
+    } else if ((arg === "--timestamp" || arg === "-t") && i + 1 < args.length) {
+      flags.timestamp = args[++i];
+    } else if (arg.startsWith("--timestamp=")) {
+      flags.timestamp = arg.slice(12);
     } else if (arg === "--json" || arg === "--format=json") {
       flags.json = true;
     } else if (!command) {
@@ -837,10 +922,28 @@ export async function main(args: string[]): Promise<void> {
         if (positional.length < 2) {
           throw new WtError(
             "invalid_args",
-            "Usage: wt trace <task-id> <message>",
+            "Usage: wt trace <task-id> <message> [--timestamp TS]",
           );
         }
-        const output = await cmdTrace(positional[0], positional[1]);
+
+        // Parse flexible timestamp format if provided
+        let timestampValue: string | undefined;
+        if (flags.timestamp) {
+          try {
+            timestampValue = parseFlexibleTimestamp(flags.timestamp);
+          } catch (_e) {
+            throw new WtError(
+              "invalid_args",
+              `Invalid timestamp format: ${flags.timestamp}. Use format [YYYY-MM-DD]THH:mm[:SS][<tz>]`,
+            );
+          }
+        }
+
+        const output = await cmdTrace(
+          positional[0],
+          positional[1],
+          timestampValue,
+        );
         console.log(flags.json ? JSON.stringify(output) : formatTrace(output));
         break;
       }
