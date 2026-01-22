@@ -716,16 +716,18 @@ async function cmdTrace(
     : getSectionEndLine(doc, entriesSection, true);
 
   // Use provided timestamp or current time
-  let entryDate: Date | undefined;
+  let nowShort: string;
   if (timestamp) {
     try {
-      entryDate = new Date(timestamp);
-      if (isNaN(entryDate.getTime())) {
+      const testDate = new Date(timestamp);
+      if (isNaN(testDate.getTime())) {
         throw new WtError(
           "invalid_args",
           `Invalid timestamp format: ${timestamp}. Use ISO format (YYYY-MM-DDTHH:MM:SS+TZ) or short format (YYYY-MM-DD HH:MM)`,
         );
       }
+      // Use formatShort to preserve timezone info from ISO string
+      nowShort = formatShort(timestamp);
     } catch (e) {
       if (e instanceof WtError) throw e;
       throw new WtError(
@@ -733,9 +735,9 @@ async function cmdTrace(
         `Invalid timestamp: ${timestamp}`,
       );
     }
+  } else {
+    nowShort = getShortDateTime();
   }
-
-  const nowShort = getShortDateTime(entryDate);
   const entry = `\n## ${nowShort}\n${message}\n`;
   const entryLines = entry.split("\n");
 
