@@ -1041,3 +1041,359 @@ Very old entry
     await Deno.remove(tempDirSource, { recursive: true });
   }
 });
+
+Deno.test("worklog trace - recommends checkpoint at 50 entries", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Add 49 entries - should not recommend
+    for (let i = 0; i < 49; i++) {
+      const output = await captureOutput(() =>
+        main(["trace", taskId, `Entry ${i + 1}`])
+      );
+      assertEquals(output.trim(), "ok");
+    }
+
+    // 50th entry should recommend checkpoint
+    const output = await captureOutput(() =>
+      main(["trace", taskId, "Entry 50"])
+    );
+    assertStringIncludes(output, "checkpoint recommended");
+    assertStringIncludes(output, "50 entries");
+
+    // Verify JSON output
+    const jsonOutput = await captureOutput(() =>
+      main(["trace", taskId, "Entry 51", "--json"])
+    );
+    const result = JSON.parse(jsonOutput);
+    assertEquals(result.status, "checkpoint_recommended");
+    assertEquals(result.entries_since_checkpoint, 51);
+
+    // After checkpoint, count resets
+    await main(["checkpoint", taskId, "Changes", "Learnings"]);
+    const afterCheckpoint = await captureOutput(() =>
+      main(["trace", taskId, "Entry after checkpoint"])
+    );
+    assertEquals(afterCheckpoint.trim(), "ok");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog purge - deletes tasks older than 30 days", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Old task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Mark as done with old timestamp
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 31); // 31 days ago
+    const oldISOString = oldDate.toISOString();
+
+    // Manually update task to be old
+    const taskPath = `.worklog/tasks/${taskId}.md`;
+    let content = await Deno.readTextFile(taskPath);
+    content = content.replace(/status: active/, "status: done");
+    content = content.replace(/done_at: null/, `done_at: "${oldISOString}"`);
+    await Deno.writeTextFile(taskPath, content);
+
+    // Update index
+    const indexContent = await Deno.readTextFile(".worklog/index.json");
+    const index = JSON.parse(indexContent);
+    index.tasks[taskId].status = "done";
+    index.tasks[taskId].done_at = oldISOString;
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(index, null, 2),
+    );
+
+    // Run any command that triggers purge
+    await main(["list"]);
+
+    // Task should be purged
+    const taskExists = await Deno.stat(taskPath).then(() => true, () => false);
+    assertEquals(taskExists, false, "Old task should be purged");
+
+    // Verify not in index
+    const finalIndex = JSON.parse(
+      await Deno.readTextFile(".worklog/index.json"),
+    );
+    assertEquals(finalIndex.tasks[taskId], undefined);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog purge - preserves tasks with uncheckpointed entries", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalError = console.error;
+  let errorOutput = "";
+
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Old task with changes"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Add entry and mark as done
+    await main(["done", taskId, "Done", "Learnings"]);
+
+    // Add post-completion entry with force
+    await main(["trace", taskId, "Post-completion change", "--force"]);
+
+    // Make it old
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 31);
+    const oldISOString = oldDate.toISOString();
+
+    const taskPath = `.worklog/tasks/${taskId}.md`;
+    let content = await Deno.readTextFile(taskPath);
+    content = content.replace(
+      /done_at: ".+"/,
+      `done_at: "${oldISOString}"`,
+    );
+    await Deno.writeTextFile(taskPath, content);
+
+    const indexContent = await Deno.readTextFile(".worklog/index.json");
+    const index = JSON.parse(indexContent);
+    index.tasks[taskId].done_at = oldISOString;
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(index, null, 2),
+    );
+
+    // Run command that triggers purge
+    await main(["list"]);
+
+    // Task should NOT be purged
+    const taskExists = await Deno.stat(taskPath).then(() => true, () => false);
+    assertEquals(
+      taskExists,
+      true,
+      "Task with uncheckpointed entries should be preserved",
+    );
+
+    // Should have warning
+    assertStringIncludes(errorOutput, "not purged");
+    assertStringIncludes(errorOutput, "uncheckpointed entries");
+  } finally {
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog - JSON output for list command", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Task 1"]);
+    await main(["add", "--desc", "Task 2"]);
+
+    const output = await captureOutput(() => main(["list", "--json"]));
+    const result = JSON.parse(output);
+
+    assertEquals(result.tasks.length, 2);
+    assertEquals(result.tasks[0].desc, "Task 1");
+    assertEquals(result.tasks[1].desc, "Task 2");
+    assertEquals(result.tasks[0].status, "active");
+    assert(result.tasks[0].id);
+    assert(result.tasks[0].created);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog - JSON output for logs command", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    await main(["trace", taskId, "Entry 1"]);
+    await main(["trace", taskId, "Entry 2"]);
+
+    const output = await captureOutput(() => main(["logs", taskId, "--json"]));
+    const result = JSON.parse(output);
+
+    assertEquals(result.task, taskId);
+    assertEquals(result.desc, "Test task");
+    assertEquals(result.status, "active");
+    assertEquals(result.last_checkpoint, null);
+    assertEquals(result.entries_since_checkpoint.length, 2);
+    assertEquals(result.entries_since_checkpoint[0].msg, "Entry 1");
+    assertEquals(result.entries_since_checkpoint[1].msg, "Entry 2");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog - handles missing index.json", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+
+    // Create .worklog directory but no index
+    await Deno.mkdir(".worklog");
+
+    // Try to add task
+    try {
+      await main(["add", "--desc", "Test"]);
+    } catch (_e) {
+      // Expected
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "not_initialized");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog - handles corrupted frontmatter gracefully", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Corrupt the frontmatter (but keep valid structure)
+    const taskPath = `.worklog/tasks/${taskId}.md`;
+    await Deno.writeTextFile(
+      taskPath,
+      `---
+this is not valid yaml: [broken
+---
+
+# Entries
+
+# Checkpoints
+`,
+    );
+
+    // Parser should handle gracefully and return empty frontmatter
+    // The task will be missing required fields, so trace should succeed
+    // (it will just have default/empty values)
+    await main(["trace", taskId, "Entry with bad frontmatter"]);
+
+    // Task file should now have the new entry
+    const content = await Deno.readTextFile(taskPath);
+    assertStringIncludes(content, "Entry with bad frontmatter");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog - handles malformed task file", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["add", "--desc", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Create malformed file (no frontmatter, no sections)
+    const taskPath = `.worklog/tasks/${taskId}.md`;
+    await Deno.writeTextFile(taskPath, "Just some random text\n");
+
+    // Try to trace
+    try {
+      await main(["trace", taskId, "Should fail"]);
+    } catch (_e) {
+      // Expected
+    }
+
+    // Should have exited with error
+    assertEquals(exitCode, 1);
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
