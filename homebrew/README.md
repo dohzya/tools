@@ -1,6 +1,7 @@
 # Homebrew Tap for dz-skills
 
-This directory contains Homebrew formulas for distributing `md` and `wl` CLI tools.
+This directory contains Homebrew formulas for distributing `md` and `wl` CLI
+tools.
 
 ## Setup
 
@@ -27,7 +28,8 @@ git push origin main
 
 ### 3. Update SHA256 Checksums
 
-After creating releases with binaries, update the SHA256 checksums in each formula:
+After creating releases with binaries, update the SHA256 checksums in each
+formula:
 
 ```bash
 # Download binaries from GitHub release

@@ -3,8 +3,8 @@ name: Release
 on:
   push:
     tags:
-      - 'md-v*'
-      - 'wl-v*'
+      - "md-v*"
+      - "wl-v*"
 
 jobs:
   build:

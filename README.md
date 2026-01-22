@@ -59,7 +59,8 @@ See [packages/tools/README.md](packages/tools/README.md) for API documentation.
 
 ## CLI Tools Installation
 
-The `md` (markdown-surgeon) and `wl` (worklog) tools can be installed as standalone CLI tools without cloning this repository.
+The `md` (markdown-surgeon) and `wl` (worklog) tools can be installed as
+standalone CLI tools without cloning this repository.
 
 ### Via Homebrew (macOS/Linux)
 
@@ -107,7 +108,8 @@ deno install -g --allow-read --allow-write --allow-run=git -n wl \
 
 ### Manual Installation
 
-Download pre-compiled binaries from [GitHub Releases](https://github.com/dohzya/dz-skills/releases):
+Download pre-compiled binaries from
+[GitHub Releases](https://github.com/dohzya/dz-skills/releases):
 
 1. Find the latest release for your tool (`md-v*` or `wl-v*`)
 2. Download the binary for your platform (e.g., `md-darwin-arm64` for macOS ARM)
