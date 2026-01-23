@@ -3,3 +3,4 @@
 # mise local state
 .mise.toml.trusted-configs
 .mise.local.toml
+/dist/
