@@ -1,4 +1,4 @@
-# Example mise configuration for installing dz-skills CLI tools
+# Example mise configuration for installing tools CLI
 #
 # Copy this to your project root or global config:
 #   cp .mise.toml.example .mise.toml

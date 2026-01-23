@@ -199,7 +199,7 @@ CLI commands: `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`,
 `summary`
 
 See the
-[worklog skill documentation](../../plugins/dz-skills/skills/worklog/SKILL.md)
+[worklog skill documentation](../../plugins/tools/skills/worklog/SKILL.md)
 for detailed usage.
 
 ## Publishing

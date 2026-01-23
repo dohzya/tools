@@ -11,7 +11,7 @@ architecture automatically.
 ## Prerequisites
 
 - [mise](https://mise.jdx.dev/) installed
-- GitHub releases with properly named binaries (already set up for dz-skills)
+- GitHub releases with properly named binaries (already set up for dohzya/tools)
 
 ## Installation
 
@@ -125,8 +125,8 @@ Make sure binaries are executable (mise should handle this automatically).
 If needed, manually fix:
 
 ```bash
-chmod +x ~/.local/share/mise/installs/github-dohzya-dz-skills/*/md-*
-chmod +x ~/.local/share/mise/installs/github-dohzya-dz-skills/*/wl-*
+chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/md-*
+chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/wl-*
 ```
 
 ## Uninstalling

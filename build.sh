@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build script for dz-skills CLI tools
+# Build script for tools CLI
 # Compiles md and wl for multiple platforms
 
 VERSION="${1:-0.3.0}"
 DIST_DIR="dist"
 
-echo "Building dz-skills CLIs version ${VERSION}..."
+echo "Building tools CLIs version ${VERSION}..."
 
 # Clean dist directory
 rm -rf "${DIST_DIR}"

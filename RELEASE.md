@@ -61,7 +61,7 @@ shasum -a 256 md-darwin-arm64
 
 ```bash
 # In homebrew-dz-tools repo
-cp ../dz-skills/homebrew/Formula/*.rb Formula/
+cp ../tools/homebrew/Formula/*.rb Formula/
 git add Formula/
 git commit -m "Update md and wl to v0.3.0"
 git push origin main

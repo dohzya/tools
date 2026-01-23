@@ -56,7 +56,7 @@ You can and should maintain `packages/tools/CHANGELOG.md` when making changes.
 3. When bumping version:
    - Update `packages/tools/deno.json`
    - Update `.claude-plugin/marketplace.json`
-   - Update `plugins/dz-skills/.claude-plugin/plugin.json`
+   - Update `plugins/tools/.claude-plugin/plugin.json`
    - Update CLI wrappers (`md`, `wl`, etc.)
    - Add new CHANGELOG entry
 

@@ -86,7 +86,7 @@ wl checkpoint <task-id> "Changes made" "Things learned"
 wl done <task-id> "Changes" "Learnings"
 ```
 
-See the [worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/dz-skills/skills/worklog)
+See the [worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/tools/skills/worklog)
 for complete usage.
 
 ## Updating

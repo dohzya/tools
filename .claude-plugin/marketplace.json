@@ -1,18 +1,18 @@
 {
-  "name": "dz-skills",
+  "name": "tools",
   "owner": {
     "name": "Etienne Vallette d'Osia"
   },
   "metadata": {
     "description": "Markdown manipulation and productivity skills",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "plugins": [
     {
-      "name": "dz-skills",
-      "source": "./plugins/dz-skills",
+      "name": "tools",
+      "source": "./plugins/tools",
       "description": "Markdown manipulation and productivity skills for Claude Code",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "license": "MIT"
     }
   ]
