@@ -12,7 +12,7 @@ wl trace <id> [options] "message"                # Log entry → "ok" or "checkp
 wl logs <id>                                     # Get context (last checkpoint + recent entries)
 wl checkpoint <id> "changes" "learnings"         # Create checkpoint
 wl done <id> "changes" "learnings"               # Final checkpoint + close task
-wl list [--all]                                  # List active tasks (--all includes done <30d)
+wl list [--all] [-p PATH]                        # List active tasks (--all includes done <30d)
 wl summary [--since YYYY-MM-DD]                  # Aggregate all tasks
 wl import [-p PATH | -b BRANCH] [--rm]           # Import from other worktree
 ```

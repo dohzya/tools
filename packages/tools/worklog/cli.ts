@@ -31,7 +31,7 @@ import {
 // Version
 // ============================================================================
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 // ============================================================================
 // Constants
@@ -918,10 +918,27 @@ async function cmdDone(
   return { status: "task_completed" };
 }
 
-async function cmdList(showAll: boolean): Promise<ListOutput> {
-  await purge();
+async function cmdList(showAll: boolean, baseDir?: string): Promise<ListOutput> {
+  // Only purge the local worklog, not remote ones
+  if (!baseDir) {
+    await purge();
+  }
 
-  const index = await loadIndex();
+  // Load index from custom path or default
+  let index: Index;
+  if (baseDir) {
+    const indexPath = `${baseDir}/index.json`;
+    if (!(await exists(indexPath))) {
+      throw new WtError(
+        "not_initialized",
+        `Worklog not found at: ${baseDir}`,
+      );
+    }
+    const content = await readFile(indexPath);
+    index = JSON.parse(content) as Index;
+  } else {
+    index = await loadIndex();
+  }
 
   const tasks = Object.entries(index.tasks)
     .filter(([_, t]) => showAll || t.status === "active")
@@ -1269,7 +1286,7 @@ Commands:
   logs <task-id>                        Get task context for checkpoint
   checkpoint <task-id> <changes> <learnings> [options]   Create a checkpoint
   done <task-id> <changes> <learnings>         Complete task with final checkpoint
-  list [--all]                          List tasks (--all includes completed)
+  list [--all] [-p PATH]                List tasks (--all includes completed)
   summary [--since YYYY-MM-DD]          Aggregate all tasks
   import [-p PATH | -b BRANCH] [--rm]   Import tasks from another worktree
 
@@ -1454,7 +1471,7 @@ export async function main(args: string[]): Promise<void> {
       }
 
       case "list": {
-        const output = await cmdList(flags.all);
+        const output = await cmdList(flags.all, flags.path ?? undefined);
         console.log(flags.json ? JSON.stringify(output) : formatList(output));
         break;
       }
