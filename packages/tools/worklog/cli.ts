@@ -1,12 +1,21 @@
 import {
   type AddOutput,
+  type AssignOutput,
   type Checkpoint,
+  type DiscoveredScope,
   type Entry,
   type ImportOutput,
   type ImportTaskResult,
   type Index,
   type ListOutput,
   type LogsOutput,
+  type MoveOutput,
+  type ScopeConfig,
+  type ScopeConfigChild,
+  type ScopeConfigParent,
+  type ScopeDetailOutput,
+  type ScopeEntry,
+  type ScopesOutput,
   type StatusOutput,
   type SummaryOutput,
   type TaskMeta,
@@ -40,7 +49,14 @@ const VERSION = "0.4.2";
 const WORKLOG_DIR = ".worklog";
 const TASKS_DIR = `${WORKLOG_DIR}/tasks`;
 const INDEX_FILE = `${WORKLOG_DIR}/index.json`;
+const SCOPE_FILE = `${WORKLOG_DIR}/scope.json`;
 const CHECKPOINT_THRESHOLD = 50;
+
+// Monorepo depth limit (configurable via env var)
+const WORKLOG_DEPTH_LIMIT = parseInt(
+  Deno.env.get("WORKLOG_DEPTH_LIMIT") || "5",
+  10,
+);
 
 // Pre-computed section IDs for fixed section titles
 let ENTRIES_ID: string | null = null;
@@ -315,6 +331,367 @@ async function resolveWorktreePath(branch: string): Promise<string> {
 }
 
 // ============================================================================
+// Git root & Scope discovery (monorepo)
+// ============================================================================
+
+async function findGitRoot(cwd: string): Promise<string | null> {
+  try {
+    const process = new Deno.Command("git", {
+      args: ["rev-parse", "--show-toplevel"],
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+    });
+
+    const { code, stdout } = await process.output();
+    if (code !== 0) {
+      return null;
+    }
+
+    const output = new TextDecoder().decode(stdout).trim();
+    return output;
+  } catch {
+    return null;
+  }
+}
+
+async function scanForWorklogs(
+  dir: string,
+  gitRoot: string,
+  currentDepth: number,
+  maxDepth: number,
+): Promise<string[]> {
+  if (currentDepth >= maxDepth) {
+    return [];
+  }
+
+  const results: string[] = [];
+
+  try {
+    for await (const entry of Deno.readDir(dir)) {
+      // Skip hidden dirs except .worklog
+      if (entry.name.startsWith(".") && entry.name !== WORKLOG_DIR) {
+        continue;
+      }
+
+      // Skip common ignore patterns
+      if (["node_modules", "dist", "build", "target"].includes(entry.name)) {
+        continue;
+      }
+
+      const fullPath = `${dir}/${entry.name}`;
+
+      if (entry.name === WORKLOG_DIR && entry.isDirectory) {
+        results.push(fullPath);
+      } else if (entry.isDirectory) {
+        const nested = await scanForWorklogs(
+          fullPath,
+          gitRoot,
+          currentDepth + 1,
+          maxDepth,
+        );
+        results.push(...nested);
+      }
+    }
+  } catch {
+    // Ignore permission errors
+  }
+
+  return results;
+}
+
+async function discoverScopes(
+  gitRoot: string,
+  depthLimit: number,
+): Promise<DiscoveredScope[]> {
+  const worklogPaths = await scanForWorklogs(gitRoot, gitRoot, 0, depthLimit);
+  const scopes: DiscoveredScope[] = [];
+
+  // Load custom IDs from root scope.json if it exists
+  const idMap = new Map<string, string>(); // path -> custom ID
+  const rootScopeJsonPath = `${gitRoot}/${WORKLOG_DIR}/scope.json`;
+  if (await exists(rootScopeJsonPath)) {
+    try {
+      const content = await readFile(rootScopeJsonPath);
+      const config = JSON.parse(content) as ScopeConfig;
+      if ("children" in config) {
+        for (const child of config.children) {
+          idMap.set(child.path, child.id);
+        }
+      }
+    } catch {
+      // Ignore errors, will use default IDs
+    }
+  }
+
+  for (const absolutePath of worklogPaths) {
+    const relativePath = absolutePath.slice(gitRoot.length + 1);
+    const isParent = relativePath === WORKLOG_DIR;
+    const scopePath = isParent
+      ? ""
+      : relativePath.slice(0, -WORKLOG_DIR.length - 1); // Remove /.worklog
+
+    // Use custom ID if available, otherwise use path
+    const defaultId = scopePath || "(root)";
+    const customId = idMap.get(scopePath);
+
+    scopes.push({
+      absolutePath,
+      relativePath: scopePath || ".",
+      id: customId ?? defaultId,
+      isParent,
+    });
+  }
+
+  return scopes;
+}
+
+// ============================================================================
+// Scope JSON management
+// ============================================================================
+
+async function loadOrCreateScopeJson(
+  worklogPath: string,
+  gitRoot: string,
+): Promise<ScopeConfig> {
+  const scopeJsonPath = `${worklogPath}/scope.json`;
+
+  if (await exists(scopeJsonPath)) {
+    try {
+      const content = await readFile(scopeJsonPath);
+      return JSON.parse(content) as ScopeConfig;
+    } catch {
+      // Corrupted, will recreate
+    }
+  }
+
+  // Create default structure
+  const relativePath = worklogPath.slice(gitRoot.length + 1);
+  const isRoot = relativePath === WORKLOG_DIR;
+
+  if (isRoot) {
+    return { children: [] };
+  } else {
+    // Find parent path
+    const scopeDir = worklogPath.slice(0, -WORKLOG_DIR.length - 1);
+    const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
+    const depth = relativeToGitRoot.split("/").length;
+    const parentPath = "../".repeat(depth);
+    return { parent: parentPath };
+  }
+}
+
+async function saveScopeJson(
+  worklogPath: string,
+  config: ScopeConfig,
+): Promise<void> {
+  const scopeJsonPath = `${worklogPath}/scope.json`;
+  await writeFile(scopeJsonPath, JSON.stringify(config, null, 2));
+}
+
+async function refreshScopeHierarchy(
+  gitRoot: string,
+  scopes: DiscoveredScope[],
+): Promise<void> {
+  // Build hierarchy
+  const rootScope = scopes.find((s) => s.isParent);
+  const childScopes = scopes.filter((s) => !s.isParent);
+
+  // Update root scope.json
+  if (rootScope) {
+    // Load existing config to preserve custom IDs
+    const existingConfig = await loadOrCreateScopeJson(
+      rootScope.absolutePath,
+      gitRoot,
+    );
+    const existingIds = new Map<string, string>(); // path -> id
+
+    if ("children" in existingConfig) {
+      for (const child of existingConfig.children) {
+        existingIds.set(child.path, child.id);
+      }
+    }
+
+    // Build new config preserving IDs when path matches
+    const children: ScopeEntry[] = childScopes.map((s) => {
+      const path = s.relativePath === "." ? "" : s.relativePath;
+      const defaultId = s.relativePath === "." ? "(root)" : s.relativePath;
+
+      // Check if this path existed before
+      const existingId = existingIds.get(path);
+
+      return {
+        path,
+        id: existingId ?? defaultId,
+      };
+    });
+
+    const rootConfig: ScopeConfigParent = { children };
+    await saveScopeJson(rootScope.absolutePath, rootConfig);
+  }
+
+  // Update child scope.json
+  for (const childScope of childScopes) {
+    const scopeDir = childScope.absolutePath.slice(0, -WORKLOG_DIR.length - 1);
+    const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
+    const depth = relativeToGitRoot.split("/").filter((p) => p).length;
+    const parentPath = "../".repeat(depth);
+
+    const childConfig: ScopeConfigChild = { parent: parentPath };
+    await saveScopeJson(childScope.absolutePath, childConfig);
+  }
+}
+
+// ============================================================================
+// Scope resolution
+// ============================================================================
+
+async function findNearestWorklog(
+  cwd: string,
+  stopAt: string | null,
+): Promise<string | null> {
+  let current = cwd;
+
+  while (true) {
+    const worklogPath = `${current}/${WORKLOG_DIR}`;
+    if (await exists(worklogPath)) {
+      return worklogPath;
+    }
+
+    // Stop at git root or filesystem root
+    if (stopAt && current === stopAt) {
+      break;
+    }
+
+    const parent = current.split("/").slice(0, -1).join("/");
+    if (!parent || parent === current) {
+      break;
+    }
+
+    current = parent;
+  }
+
+  return null;
+}
+
+async function resolveScopeIdentifier(
+  identifier: string,
+  gitRoot: string,
+  cwd: string,
+): Promise<string> {
+  // Handle special aliases
+  if (identifier === "/") {
+    // Root scope
+    return `${gitRoot}/${WORKLOG_DIR}`;
+  }
+
+  if (identifier === ".") {
+    // Current active scope
+    return await resolveActiveScope(cwd, null, gitRoot);
+  }
+
+  const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+
+  // Try exact path match first
+  const byPath = scopes.find((s) => s.relativePath === identifier);
+  if (byPath) {
+    return byPath.absolutePath;
+  }
+
+  // Try custom ID match
+  const rootConfig = await loadOrCreateScopeJson(
+    `${gitRoot}/${WORKLOG_DIR}`,
+    gitRoot,
+  );
+
+  if ("children" in rootConfig) {
+    const matches = rootConfig.children.filter((c) => c.id === identifier);
+
+    if (matches.length === 0) {
+      throw new WtError("scope_not_found", `Scope not found: ${identifier}`);
+    }
+
+    if (matches.length > 1) {
+      const paths = matches.map((m) => m.path).join(", ");
+      throw new WtError(
+        "scope_ambiguous",
+        `Multiple scopes match '${identifier}': ${paths}. Use full path.`,
+      );
+    }
+
+    return `${gitRoot}/${matches[0].path}/${WORKLOG_DIR}`;
+  }
+
+  throw new WtError("scope_not_found", `Scope not found: ${identifier}`);
+}
+
+async function resolveActiveScope(
+  cwd: string,
+  flagScope: string | null,
+  gitRoot: string | null,
+): Promise<string> {
+  // Priority 1: --scope flag
+  if (flagScope && gitRoot) {
+    return await resolveScopeIdentifier(flagScope, gitRoot, cwd);
+  }
+
+  // Priority 2: nearest .worklog
+  const nearest = await findNearestWorklog(cwd, gitRoot);
+  if (nearest) {
+    return nearest;
+  }
+
+  // Priority 3: git root .worklog
+  if (gitRoot) {
+    const rootWorklog = `${gitRoot}/${WORKLOG_DIR}`;
+    if (await exists(rootWorklog)) {
+      return rootWorklog;
+    }
+  }
+
+  // Priority 4: current dir .worklog (non-git mode)
+  return `${cwd}/${WORKLOG_DIR}`;
+}
+
+function getRelativeScopePath(worklogPath: string, gitRoot: string): string {
+  const relativePath = worklogPath.slice(gitRoot.length + 1);
+  if (relativePath === WORKLOG_DIR) {
+    return ".";
+  }
+  return relativePath.slice(0, -WORKLOG_DIR.length - 1);
+}
+
+async function getScopeId(
+  worklogPath: string,
+  gitRoot: string,
+): Promise<string> {
+  const relativePath = getRelativeScopePath(worklogPath, gitRoot);
+  if (relativePath === ".") {
+    return "(root)";
+  }
+
+  // Try to get custom ID from root config
+  const rootConfigPath = `${gitRoot}/${WORKLOG_DIR}/scope.json`;
+  if (await exists(rootConfigPath)) {
+    try {
+      const content = await readFile(rootConfigPath);
+      const rootConfig = JSON.parse(content) as ScopeConfig;
+
+      if ("children" in rootConfig) {
+        const child = rootConfig.children.find((c) => c.path === relativePath);
+        if (child) {
+          return child.id;
+        }
+      }
+    } catch {
+      // Fallback to path
+    }
+  }
+
+  return relativePath;
+}
+
+// ============================================================================
 // Task file management
 // ============================================================================
 
@@ -565,9 +942,54 @@ function formatList(output: ListOutput): string {
   if (output.tasks.length === 0) {
     return "no tasks";
   }
+
   return output.tasks
-    .map((t) => `${t.id}  ${t.status}  "${t.desc}"  ${t.created}`)
+    .map((t) => {
+      const prefix = t.scopePrefix ? `[${t.scopePrefix}]  ` : "";
+      return `${prefix}${t.id}  ${t.status}  "${t.desc}"  ${t.created}`;
+    })
     .join("\n");
+}
+
+function formatScopes(output: ScopesOutput): string {
+  if (output.scopes.length === 0) {
+    return "no scopes found";
+  }
+
+  const lines: string[] = ["Scopes:"];
+
+  for (const scope of output.scopes) {
+    const active = scope.isActive ? "  [active]" : "";
+    const id = scope.id.padEnd(15);
+    lines.push(`  ${id} ${scope.path}${active}`);
+  }
+
+  return lines.join("\n");
+}
+
+function formatMove(output: MoveOutput): string {
+  return `moved ${output.moved} task(s) to ${output.target}`;
+}
+
+function formatScopeDetail(output: ScopeDetailOutput): string {
+  return `Scope: ${output.id}
+Path: ${output.path}
+Tasks: ${output.taskCount}`;
+}
+
+function formatAssign(output: AssignOutput): string {
+  const lines: string[] = [];
+  lines.push(`Assigned: ${output.assigned}`);
+  lines.push(`Merged: ${output.merged}`);
+
+  if (output.errors.length > 0) {
+    lines.push("\nErrors:");
+    for (const err of output.errors) {
+      lines.push(`  ${err.taskId}: ${err.error}`);
+    }
+  }
+
+  return lines.join("\n");
 }
 
 function formatSummary(output: SummaryOutput): string {
@@ -921,37 +1343,162 @@ async function cmdDone(
 async function cmdList(
   showAll: boolean,
   baseDir?: string,
+  scopeIdentifier?: string,
+  allScopes?: boolean,
+  gitRoot?: string | null,
+  currentScope?: string,
+  cwd?: string,
 ): Promise<ListOutput> {
   // Only purge the local worklog, not remote ones
   if (!baseDir) {
     await purge();
   }
 
-  // Load index from custom path or default
-  let index: Index;
-  if (baseDir) {
-    const indexPath = `${baseDir}/index.json`;
+  const tasks: ListOutput["tasks"] = [];
+
+  // Determine which scopes to list
+  if (allScopes && gitRoot) {
+    // List all scopes
+    const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+
+    for (const scope of scopes) {
+      const indexPath = `${scope.absolutePath}/index.json`;
+      if (!(await exists(indexPath))) {
+        continue;
+      }
+
+      const content = await readFile(indexPath);
+      const index = JSON.parse(content) as Index;
+      const scopeId = await getScopeId(scope.absolutePath, gitRoot);
+
+      const scopeTasks = Object.entries(index.tasks)
+        .filter(([_, t]) => showAll || t.status === "active")
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([id, t]) => ({
+          id,
+          desc: t.desc,
+          status: t.status,
+          created: formatShort(t.created),
+          scopePrefix: scopeId,
+        }));
+
+      tasks.push(...scopeTasks);
+    }
+  } else if (scopeIdentifier && gitRoot && cwd) {
+    // List specific scope only
+    const worklogPath = await resolveScopeIdentifier(scopeIdentifier, gitRoot, cwd);
+    const indexPath = `${worklogPath}/index.json`;
+
     if (!(await exists(indexPath))) {
       throw new WtError(
         "not_initialized",
-        `Worklog not found at: ${baseDir}`,
+        `Worklog not found at: ${worklogPath}`,
       );
     }
-    const content = await readFile(indexPath);
-    index = JSON.parse(content) as Index;
-  } else {
-    index = await loadIndex();
-  }
 
-  const tasks = Object.entries(index.tasks)
-    .filter(([_, t]) => showAll || t.status === "active")
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([id, t]) => ({
-      id,
-      desc: t.desc,
-      status: t.status,
-      created: formatShort(t.created),
-    }));
+    const content = await readFile(indexPath);
+    const index = JSON.parse(content) as Index;
+
+    const scopeTasks = Object.entries(index.tasks)
+      .filter(([_, t]) => showAll || t.status === "active")
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, t]) => ({
+        id,
+        desc: t.desc,
+        status: t.status,
+        created: formatShort(t.created),
+      }));
+
+    tasks.push(...scopeTasks);
+  } else if (gitRoot && currentScope) {
+    // Default: current scope + children (children get prefixes)
+    const currentScopeId = await getScopeId(currentScope, gitRoot);
+
+    // Load current scope tasks (no prefix)
+    const currentIndexPath = `${currentScope}/index.json`;
+    if (await exists(currentIndexPath)) {
+      const content = await readFile(currentIndexPath);
+      const index = JSON.parse(content) as Index;
+
+      const currentTasks = Object.entries(index.tasks)
+        .filter(([_, t]) => showAll || t.status === "active")
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([id, t]) => ({
+          id,
+          desc: t.desc,
+          status: t.status,
+          created: formatShort(t.created),
+        }));
+
+      tasks.push(...currentTasks);
+    }
+
+    // Load children tasks (with prefix)
+    const scopeConfigPath = `${currentScope}/scope.json`;
+    if (await exists(scopeConfigPath)) {
+      try {
+        const configContent = await readFile(scopeConfigPath);
+        const config = JSON.parse(configContent) as ScopeConfig;
+
+        if ("children" in config) {
+          for (const child of config.children) {
+            const childWorklogPath = `${gitRoot}/${child.path}/${WORKLOG_DIR}`;
+            const childIndexPath = `${childWorklogPath}/index.json`;
+
+            if (!(await exists(childIndexPath))) {
+              continue;
+            }
+
+            const content = await readFile(childIndexPath);
+            const index = JSON.parse(content) as Index;
+
+            const childTasks = Object.entries(index.tasks)
+              .filter(([_, t]) => showAll || t.status === "active")
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([id, t]) => ({
+                id,
+                desc: t.desc,
+                status: t.status,
+                created: formatShort(t.created),
+                scopePrefix: child.id,
+              }));
+
+            tasks.push(...childTasks);
+          }
+        }
+      } catch {
+        // No scope.json or parse error, skip children
+      }
+    }
+  } else {
+    // Fallback: single worklog mode (backward compatibility)
+    let index: Index;
+    if (baseDir) {
+      const indexPath = `${baseDir}/index.json`;
+      if (!(await exists(indexPath))) {
+        throw new WtError(
+          "not_initialized",
+          `Worklog not found at: ${baseDir}`,
+        );
+      }
+      const content = await readFile(indexPath);
+      index = JSON.parse(content) as Index;
+    } else {
+      index = await loadIndex();
+    }
+
+    const singleTasks = Object.entries(index.tasks)
+      .filter(([_, t]) => showAll || t.status === "active")
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, t]) => ({
+        id,
+        desc: t.desc,
+        status: t.status,
+        created: formatShort(t.created),
+      }));
+
+    tasks.push(...singleTasks);
+  }
 
   return { tasks };
 }
@@ -1275,6 +1822,436 @@ async function cmdImport(
   };
 }
 
+async function cmdScopes(refresh: boolean, cwd: string): Promise<ScopesOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Monorepo features require git.",
+    );
+  }
+
+  let scopes: DiscoveredScope[];
+
+  // Check if any scope.json is missing or if refresh is requested
+  const needsRefresh = refresh ||
+    !(await exists(`${gitRoot}/${WORKLOG_DIR}/scope.json`));
+
+  if (needsRefresh) {
+    scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+    await refreshScopeHierarchy(gitRoot, scopes);
+  } else {
+    // Load from existing scope.json
+    scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+  }
+
+  // Determine active scope
+  const activeScope = await resolveActiveScope(cwd, null, gitRoot);
+
+  const result: ScopesOutput = {
+    scopes: scopes.map((s) => ({
+      id: s.id,
+      path: s.relativePath === "." ? WORKLOG_DIR + "/" : s.relativePath + "/" + WORKLOG_DIR + "/",
+      isActive: s.absolutePath === activeScope,
+    })),
+  };
+
+  return result;
+}
+
+async function cmdScopesList(
+  cwd: string,
+  refresh: boolean,
+  scopeId?: string,
+): Promise<ScopesOutput | ScopeDetailOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Monorepo features require git.",
+    );
+  }
+
+  if (scopeId) {
+    // Show details of a specific scope
+    const worklogPath = await resolveScopeIdentifier(scopeId, gitRoot, cwd);
+    const index = await loadIndexFrom(worklogPath);
+    const taskCount = Object.keys(index.tasks).length;
+
+    // Get the actual path relative to git root
+    const relativePath = worklogPath.slice(gitRoot.length + 1);
+    const path = relativePath.slice(0, -WORKLOG_DIR.length - 1) || ".";
+
+    return {
+      id: scopeId,
+      path,
+      taskCount,
+    };
+  } else {
+    // List all scopes (reuse existing cmdScopes logic)
+    return await cmdScopes(refresh, cwd);
+  }
+}
+
+async function cmdScopesInit(
+  scopeId: string,
+  path: string | undefined,
+  cwd: string,
+): Promise<StatusOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Scopes require git.",
+    );
+  }
+
+  // Determine effective path (default to scopeId if not provided)
+  const effectivePath = path ?? scopeId;
+
+  // Create .worklog directory
+  const targetDir = `${gitRoot}/${effectivePath}`;
+  const worklogPath = `${targetDir}/${WORKLOG_DIR}`;
+
+  // Check if already exists
+  if (await exists(worklogPath)) {
+    throw new WtError(
+      "already_initialized",
+      `Scope already exists at: ${effectivePath}`,
+    );
+  }
+
+  // Create directory structure
+  await Deno.mkdir(`${worklogPath}/tasks`, { recursive: true });
+  await writeFile(
+    `${worklogPath}/index.json`,
+    JSON.stringify({ tasks: {} }, null, 2),
+  );
+
+  // Refresh hierarchy to update parent scope.json
+  const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+  await refreshScopeHierarchy(gitRoot, scopes);
+
+  // If scopeId !== path, update custom ID in parent scope.json
+  if (scopeId !== effectivePath) {
+    const rootConfig = await loadOrCreateScopeJson(
+      `${gitRoot}/${WORKLOG_DIR}`,
+      gitRoot,
+    );
+    if ("children" in rootConfig) {
+      const child = rootConfig.children.find((c) => c.path === effectivePath);
+      if (child) {
+        child.id = scopeId;
+        await saveScopeJson(`${gitRoot}/${WORKLOG_DIR}`, rootConfig);
+      }
+    }
+  }
+
+  return { status: "scope_created" };
+}
+
+async function cmdScopesRename(
+  scopeId: string,
+  newId: string,
+  cwd: string,
+): Promise<StatusOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Scopes require git.",
+    );
+  }
+
+  // Load root scope.json
+  const rootConfig = await loadOrCreateScopeJson(
+    `${gitRoot}/${WORKLOG_DIR}`,
+    gitRoot,
+  );
+
+  if (!("children" in rootConfig)) {
+    throw new WtError(
+      "scope_not_found",
+      "Root configuration corrupted or no child scopes found.",
+    );
+  }
+
+  // Find the child with matching scopeId (by ID or path)
+  const child = rootConfig.children.find((c) =>
+    c.id === scopeId || c.path === scopeId
+  );
+
+  if (!child) {
+    throw new WtError("scope_not_found", `Scope not found: ${scopeId}`);
+  }
+
+  // Update the ID
+  child.id = newId;
+
+  // Save updated config
+  await saveScopeJson(`${gitRoot}/${WORKLOG_DIR}`, rootConfig);
+
+  return { status: "scope_renamed" };
+}
+
+async function cmdScopesDelete(
+  scopeId: string,
+  moveTo: string | undefined,
+  deleteTasks: boolean,
+  cwd: string,
+): Promise<StatusOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Scopes require git.",
+    );
+  }
+
+  // Resolve scope to delete
+  const worklogPath = await resolveScopeIdentifier(scopeId, gitRoot, cwd);
+
+  // Load index to check for tasks
+  const index = await loadIndexFrom(worklogPath);
+  const taskIds = Object.keys(index.tasks);
+  const taskCount = taskIds.length;
+
+  // Handle tasks if they exist
+  if (taskCount > 0) {
+    if (moveTo) {
+      // Move all tasks to target scope before deleting
+      const assignResult = await cmdScopesAssign(moveTo, taskIds, cwd);
+      // Check if all tasks were moved successfully
+      if (assignResult.errors.length > 0) {
+        throw new WtError(
+          "io_error",
+          `Failed to move some tasks: ${assignResult.errors.map((e) => e.taskId).join(", ")}`,
+        );
+      }
+    } else if (!deleteTasks) {
+      throw new WtError(
+        "scope_has_tasks",
+        `Scope has ${taskCount} task(s). Use --move-to <scope-id> or --delete-tasks`,
+      );
+    }
+    // else: deleteTasks=true, proceed with deletion
+  }
+
+  // Delete .worklog directory
+  await Deno.remove(worklogPath, { recursive: true });
+
+  // Refresh hierarchy to update parent scope.json
+  const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+  await refreshScopeHierarchy(gitRoot, scopes);
+
+  return { status: "scope_deleted" };
+}
+
+async function cmdScopesAssign(
+  targetScopeId: string,
+  taskIds: string[],
+  cwd: string,
+): Promise<AssignOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Scopes require git.",
+    );
+  }
+
+  // Resolve target scope
+  const targetWorklog = await resolveScopeIdentifier(targetScopeId, gitRoot, cwd);
+  const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+
+  let assigned = 0;
+  let merged = 0;
+  const errors: Array<{ taskId: string; error: string }> = [];
+
+  for (const taskId of taskIds) {
+    try {
+      // Find task in any scope
+      const sourceWorklog = await findTaskInScopes(taskId, scopes);
+
+      if (!sourceWorklog) {
+        errors.push({ taskId, error: "Task not found in any scope" });
+        continue;
+      }
+
+      // If already in target scope, skip
+      if (sourceWorklog === targetWorklog) {
+        continue;
+      }
+
+      // Load task from source
+      const sourceTaskPath = `${sourceWorklog}/tasks/${taskId}.md`;
+      const taskContent = await Deno.readTextFile(sourceTaskPath);
+      const { meta: sourceMeta } = await parseTaskFile(taskContent);
+
+      // Load target index
+      const targetIndexPath = `${targetWorklog}/index.json`;
+      const targetIndex = await loadIndexFrom(targetWorklog);
+
+      // Check if task with same UID exists in target
+      let existingTaskId: string | undefined;
+      for (const id of Object.keys(targetIndex.tasks)) {
+        const destTaskPath = `${targetWorklog}/tasks/${id}.md`;
+        const destContent = await Deno.readTextFile(destTaskPath);
+        const { meta: destMeta } = await parseTaskFile(destContent);
+
+        if (destMeta.uid === sourceMeta.uid) {
+          existingTaskId = id;
+          break;
+        }
+      }
+
+      if (existingTaskId) {
+        // Task already exists by UID - would need merge logic here
+        // For now, we'll skip merging and just count it
+        merged++;
+
+        // Remove from source anyway
+        await Deno.remove(sourceTaskPath);
+        const sourceIndex = await loadIndexFrom(sourceWorklog);
+        delete sourceIndex.tasks[taskId];
+        await writeFile(
+          `${sourceWorklog}/index.json`,
+          JSON.stringify(sourceIndex, null, 2),
+        );
+      } else {
+        // Import as new task
+        const targetTaskPath = `${targetWorklog}/tasks/${taskId}.md`;
+        await Deno.writeTextFile(targetTaskPath, taskContent);
+
+        targetIndex.tasks[taskId] = {
+          desc: sourceMeta.desc,
+          status: sourceMeta.status,
+          created: sourceMeta.created,
+          done_at: sourceMeta.done_at,
+        };
+
+        // Save target index
+        await writeFile(
+          targetIndexPath,
+          JSON.stringify(targetIndex, null, 2),
+        );
+
+        assigned++;
+
+        // Remove from source
+        await Deno.remove(sourceTaskPath);
+        const sourceIndex = await loadIndexFrom(sourceWorklog);
+        delete sourceIndex.tasks[taskId];
+        await writeFile(
+          `${sourceWorklog}/index.json`,
+          JSON.stringify(sourceIndex, null, 2),
+        );
+      }
+    } catch (error) {
+      errors.push({
+        taskId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { assigned, merged, errors };
+}
+
+async function cmdMove(
+  sourceIdentifier: string,
+  targetPath: string,
+  cwd: string,
+): Promise<MoveOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Move command requires git.",
+    );
+  }
+
+  // Resolve source scope
+  const sourceWorklog = await resolveScopeIdentifier(sourceIdentifier, gitRoot, cwd);
+
+  // Compute target worklog path and directory
+  const targetDir = `${gitRoot}/${targetPath}`;
+  const targetWorklog = `${targetDir}/${WORKLOG_DIR}`;
+
+  // Create target if it doesn't exist (auto-init)
+  if (!(await exists(targetWorklog))) {
+    await Deno.mkdir(`${targetWorklog}/tasks`, { recursive: true });
+    await writeFile(
+      `${targetWorklog}/index.json`,
+      JSON.stringify({ tasks: {} }, null, 2),
+    );
+  }
+
+  // Save current directory
+  const originalCwd = Deno.cwd();
+
+  try {
+    // Change to target directory so cmdImport imports into target .worklog
+    Deno.chdir(targetDir);
+
+    // Use cmdImport to move tasks
+    const importResult = await cmdImport(sourceWorklog, true);
+
+    // Refresh scope hierarchy
+    const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+    await refreshScopeHierarchy(gitRoot, scopes);
+
+    return {
+      moved: importResult.imported + importResult.merged,
+      target: targetPath,
+    };
+  } finally {
+    // Restore original directory
+    Deno.chdir(originalCwd);
+  }
+}
+
+// ============================================================================
+// Helper functions for scope operations
+// ============================================================================
+
+async function loadIndexFrom(worklogPath: string): Promise<Index> {
+  const indexPath = `${worklogPath}/index.json`;
+  if (!(await exists(indexPath))) {
+    throw new WtError("not_initialized", `No worklog at: ${worklogPath}`);
+  }
+  const content = await readFile(indexPath);
+  return JSON.parse(content) as Index;
+}
+
+async function findTaskInScopes(
+  taskId: string,
+  scopes: DiscoveredScope[],
+): Promise<string | null> {
+  for (const scope of scopes) {
+    const indexPath = `${scope.absolutePath}/index.json`;
+    if (await exists(indexPath)) {
+      try {
+        const index = await loadIndexFrom(scope.absolutePath);
+        if (index.tasks[taskId]) {
+          return scope.absolutePath;
+        }
+      } catch {
+        // Skip scopes that can't be loaded
+        continue;
+      }
+    }
+  }
+  return null;
+}
+
 // ============================================================================
 // CLI
 // ============================================================================
@@ -1289,9 +2266,22 @@ Commands:
   logs <task-id>                        Get task context for checkpoint
   checkpoint <task-id> <changes> <learnings> [options]   Create a checkpoint
   done <task-id> <changes> <learnings>         Complete task with final checkpoint
-  list [--all] [-p PATH]                List tasks (--all includes completed)
+  list [--all] [options]                List tasks (--all includes completed)
   summary [--since YYYY-MM-DD]          Aggregate all tasks
   import [-p PATH | -b BRANCH] [--rm]   Import tasks from another worktree
+
+Scope management:
+  scopes [--refresh]                    List all scopes
+  scopes list [--refresh]               List all scopes
+  scopes list <scope-id>                Show scope details
+  scopes init <scope-id> [<path>]       Create new scope (path=scope-id if omitted)
+  scopes rename <scope-id> <new-id>     Rename scope ID
+  scopes delete <scope-id> [options]    Delete scope
+  scopes assign <scope-id> <task-id>... Assign task(s) to scope
+
+Scope aliases:
+  "/"   Always refers to root scope
+  "."   Refers to current active scope (depends on cwd)
 
 Options:
   --json                                Output in JSON format
@@ -1299,11 +2289,17 @@ Options:
   --force, -f                           Force trace/checkpoint on completed tasks
   --path, -p PATH                       Path to source .worklog directory
   --branch, -b BRANCH                   Resolve worktree path from branch name
-  --rm                                  Remove imported tasks from source`);
+  --rm                                  Remove imported tasks from source
+  --scope <path|id>                     Target specific scope
+  --all-scopes                          Show all scopes (for list)
+  --refresh                             Force rescan (for scopes)
+  --move-to <scope-id>                  Move tasks before delete (for scopes delete)
+  --delete-tasks                        Force delete with tasks (for scopes delete)`);
 }
 
 function parseArgs(args: string[]): {
   command: string;
+  subcommand: string | null;
   flags: {
     desc: string | null;
     all: boolean;
@@ -1314,6 +2310,12 @@ function parseArgs(args: string[]): {
     path: string | null;
     branch: string | null;
     rm: boolean;
+    scope: string | null;
+    allScopes: boolean;
+    refresh: boolean;
+    to: string | null;
+    moveTo: string | null;
+    deleteTasks: boolean;
   };
   positional: string[];
 } {
@@ -1327,6 +2329,12 @@ function parseArgs(args: string[]): {
     path: null as string | null,
     branch: null as string | null,
     rm: false,
+    scope: null as string | null,
+    allScopes: false,
+    refresh: false,
+    to: null as string | null,
+    moveTo: null as string | null,
+    deleteTasks: false,
   };
   const positional: string[] = [];
   let command = "";
@@ -1361,6 +2369,24 @@ function parseArgs(args: string[]): {
       flags.rm = true;
     } else if (arg === "--json" || arg === "--format=json") {
       flags.json = true;
+    } else if (arg === "--scope" && i + 1 < args.length) {
+      flags.scope = args[++i];
+    } else if (arg.startsWith("--scope=")) {
+      flags.scope = arg.slice(8);
+    } else if (arg === "--all-scopes") {
+      flags.allScopes = true;
+    } else if (arg === "--refresh") {
+      flags.refresh = true;
+    } else if (arg === "--to" && i + 1 < args.length) {
+      flags.to = args[++i];
+    } else if (arg.startsWith("--to=")) {
+      flags.to = arg.slice(5);
+    } else if (arg === "--move-to" && i + 1 < args.length) {
+      flags.moveTo = args[++i];
+    } else if (arg.startsWith("--move-to=")) {
+      flags.moveTo = arg.slice(10);
+    } else if (arg === "--delete-tasks") {
+      flags.deleteTasks = true;
     } else if (!command) {
       command = arg;
     } else {
@@ -1368,7 +2394,18 @@ function parseArgs(args: string[]): {
     }
   }
 
-  return { command, flags, positional };
+  // Extract subcommand for "scopes" command
+  let subcommand: string | null = null;
+  const validSubcommands = ["list", "init", "rename", "delete", "assign"];
+
+  if (command === "scopes" && positional.length > 0) {
+    if (validSubcommands.includes(positional[0])) {
+      subcommand = positional[0];
+      positional.shift();
+    }
+  }
+
+  return { command, subcommand, flags, positional };
 }
 
 export async function main(args: string[]): Promise<void> {
@@ -1383,7 +2420,27 @@ export async function main(args: string[]): Promise<void> {
     Deno.exit(0);
   }
 
-  const { command, flags, positional } = parseArgs(args);
+  const { command, subcommand, flags, positional } = parseArgs(args);
+
+  const cwd = Deno.cwd();
+  const gitRoot = await findGitRoot(cwd);
+
+  // Commands that need scope resolution
+  const needsScopeResolution = ["add", "trace", "logs", "checkpoint", "done"].includes(
+    command,
+  );
+
+  if (needsScopeResolution) {
+    try {
+      const activeScope = await resolveActiveScope(cwd, flags.scope, gitRoot);
+      const scopeDir = activeScope.slice(0, -WORKLOG_DIR.length - 1);
+      if (scopeDir && scopeDir !== cwd) {
+        Deno.chdir(scopeDir);
+      }
+    } catch {
+      // If scope resolution fails, continue with current directory (backward compat)
+    }
+  }
 
   try {
     switch (command) {
@@ -1474,8 +2531,127 @@ export async function main(args: string[]): Promise<void> {
       }
 
       case "list": {
-        const output = await cmdList(flags.all, flags.path ?? undefined);
+        let currentScope: string | undefined;
+
+        // Determine current scope for prefix logic (if not using --scope or --all-scopes)
+        if (!flags.scope && !flags.allScopes && gitRoot) {
+          try {
+            currentScope = await resolveActiveScope(cwd, null, gitRoot);
+          } catch {
+            // No scope found, single worklog mode
+          }
+        }
+
+        const output = await cmdList(
+          flags.all,
+          flags.path ?? undefined,
+          flags.scope ?? undefined,
+          flags.allScopes,
+          gitRoot,
+          currentScope,
+          cwd,
+        );
         console.log(flags.json ? JSON.stringify(output) : formatList(output));
+        break;
+      }
+
+      case "scopes": {
+        // Dispatch to subcommands
+        switch (subcommand || "list") {
+          case "list": {
+            const scopeId = positional.length > 0 ? positional[0] : undefined;
+            const output = await cmdScopesList(cwd, flags.refresh, scopeId);
+
+            if ("taskCount" in output) {
+              // ScopeDetailOutput
+              console.log(
+                flags.json ? JSON.stringify(output) : formatScopeDetail(output),
+              );
+            } else {
+              // ScopesOutput
+              console.log(
+                flags.json ? JSON.stringify(output) : formatScopes(output),
+              );
+            }
+            break;
+          }
+
+          case "init": {
+            if (positional.length < 1) {
+              throw new WtError(
+                "invalid_args",
+                "Usage: wl scopes init <scope-id> [<path>]",
+              );
+            }
+            const scopeId = positional[0];
+            const path = positional.length > 1 ? positional[1] : undefined;
+            const output = await cmdScopesInit(scopeId, path, cwd);
+            console.log(
+              flags.json ? JSON.stringify(output) : formatStatus(output),
+            );
+            break;
+          }
+
+          case "rename": {
+            if (positional.length < 2) {
+              throw new WtError(
+                "invalid_args",
+                "Usage: wl scopes rename <scope-id> <new-id>",
+              );
+            }
+            const output = await cmdScopesRename(
+              positional[0],
+              positional[1],
+              cwd,
+            );
+            console.log(
+              flags.json ? JSON.stringify(output) : formatStatus(output),
+            );
+            break;
+          }
+
+          case "delete": {
+            if (positional.length < 1) {
+              throw new WtError(
+                "invalid_args",
+                "Usage: wl scopes delete <scope-id> [--move-to <scope>] [--delete-tasks]",
+              );
+            }
+            const output = await cmdScopesDelete(
+              positional[0],
+              flags.moveTo ?? undefined,
+              flags.deleteTasks,
+              cwd,
+            );
+            console.log(
+              flags.json ? JSON.stringify(output) : formatStatus(output),
+            );
+            break;
+          }
+
+          case "assign": {
+            if (positional.length < 2) {
+              throw new WtError(
+                "invalid_args",
+                "Usage: wl scopes assign <scope-id> <task-id> [<task-id>...]",
+              );
+            }
+            const targetScope = positional[0];
+            const taskIds = positional.slice(1);
+            const output = await cmdScopesAssign(targetScope, taskIds, cwd);
+            console.log(
+              flags.json ? JSON.stringify(output) : formatAssign(output),
+            );
+            break;
+          }
+
+          default: {
+            throw new WtError(
+              "invalid_args",
+              `Unknown subcommand: scopes ${subcommand}`,
+            );
+          }
+        }
         break;
       }
 

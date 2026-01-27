@@ -58,6 +58,7 @@ export interface ListTaskItem {
   desc: string;
   status: TaskStatus;
   created: string;
+  scopePrefix?: string;
 }
 
 export interface ListOutput {
@@ -93,6 +94,54 @@ export interface ImportOutput {
   tasks: ImportTaskResult[];
 }
 
+// Scope management (monorepo)
+export interface ScopeEntry {
+  path: string; // Relative to git root
+  id: string; // Display ID (defaults to path)
+}
+
+export interface ScopeConfigParent {
+  children: ScopeEntry[];
+}
+
+export interface ScopeConfigChild {
+  parent: string;
+}
+
+export type ScopeConfig = ScopeConfigParent | ScopeConfigChild;
+
+export interface DiscoveredScope {
+  absolutePath: string;
+  relativePath: string;
+  id: string;
+  isParent: boolean;
+}
+
+export interface ScopesOutput {
+  scopes: Array<{
+    id: string;
+    path: string;
+    isActive: boolean;
+  }>;
+}
+
+export interface MoveOutput {
+  moved: number;
+  target: string;
+}
+
+export interface ScopeDetailOutput {
+  id: string;
+  path: string;
+  taskCount: number;
+}
+
+export interface AssignOutput {
+  assigned: number;
+  merged: number;
+  errors: Array<{ taskId: string; error: string }>;
+}
+
 // Error handling
 export type WtErrorCode =
   | "not_initialized"
@@ -103,7 +152,14 @@ export type WtErrorCode =
   | "invalid_args"
   | "io_error"
   | "worktree_not_found"
-  | "import_source_not_found";
+  | "import_source_not_found"
+  | "not_in_git_repo"
+  | "scope_not_found"
+  | "scope_ambiguous"
+  | "scope_has_tasks"
+  | "scope_deleted"
+  | "scope_created"
+  | "scope_renamed";
 
 export class WtError extends Error {
   constructor(
