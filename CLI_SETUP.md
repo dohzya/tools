@@ -26,7 +26,7 @@ Install directly:
 
 ```bash
 mise use -g github:dohzya/tools@md-v0.4.0
-mise use -g github:dohzya/tools@wl-v0.4.2
+mise use -g github:dohzya/tools@wl-v0.4.3
 ```
 
 Or add to your `.mise.toml`:
@@ -34,7 +34,7 @@ Or add to your `.mise.toml`:
 ```toml
 [tools]
 "github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.2" = "latest"
+"github:dohzya/tools@wl-v0.4.3" = "latest"
 ```
 
 Then run `mise install`.

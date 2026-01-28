@@ -24,7 +24,7 @@ Install directly with version tag:
 mise use -g github:dohzya/tools@md-v0.4.0
 
 # Install wl (worklog)
-mise use -g github:dohzya/tools@wl-v0.4.2
+mise use -g github:dohzya/tools@wl-v0.4.3
 ```
 
 ### Method 2: Project Configuration
@@ -34,7 +34,7 @@ Add to your project's `.mise.toml`:
 ```toml
 [tools]
 "github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.2" = "latest"
+"github:dohzya/tools@wl-v0.4.3" = "latest"
 ```
 
 Then run:
@@ -50,7 +50,7 @@ Add to your global mise config (`~/.config/mise/config.toml`):
 ```toml
 [tools]
 "github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.2" = "latest"
+"github:dohzya/tools@wl-v0.4.3" = "latest"
 ```
 
 Then install:
@@ -76,7 +76,7 @@ Versions are pinned in the tag name itself:
 [tools]
 # Pin to specific versions using @ syntax
 "github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.2" = "latest"
+"github:dohzya/tools@wl-v0.4.3" = "latest"
 ```
 
 To upgrade to a newer version, change the tag (e.g., `md-v0.5.0`).
