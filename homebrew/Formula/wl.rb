@@ -7,20 +7,20 @@ class Wl < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/dohzya/tools/releases/download/wl-v0.4.3/wl-darwin-arm64"
-      sha256 "0fde2b6488a19d4553d758c3eed25da82055fb29cf7c6a65a628a81cfe5b33e0"
+      sha256 "c3e3fb67145b7e0db2ae494da82245f0aa8ad071b91b754ba99d1f44197a6f66"
     elsif Hardware::CPU.intel?
       url "https://github.com/dohzya/tools/releases/download/wl-v0.4.3/wl-darwin-x86_64"
-      sha256 "dc777a0254ac03554362b700d6a4e66e31a94bd040a872fb559fc4a001ff95a2"
+      sha256 "8bd0077c969a0663f5da8631adcd82c997c865848ca4b0f81d384753910b28bf"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/dohzya/tools/releases/download/wl-v0.4.3/wl-linux-arm64"
-      sha256 "fab9eb2fe4f9876879e1742496d21d6bc74f45ec607f1ce57619de60291d7c26"
+      sha256 "ffa808bc4228216053b358c4d611c16ae811fb92347dc20b81e935672068a729"
     elsif Hardware::CPU.intel?
       url "https://github.com/dohzya/tools/releases/download/wl-v0.4.3/wl-linux-x86_64"
-      sha256 "61c1803324f50ab29401ed1dd280a7d0027d9344b0e88c9a1aa666605cbcd2c9"
+      sha256 "c466517006975ba4c981fa506c87bf4cd6414e07e68b503688fd2745c798e940"
     end
   end
 
