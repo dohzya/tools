@@ -86,7 +86,8 @@ wl checkpoint <task-id> "Changes made" "Things learned"
 wl done <task-id> "Changes" "Learnings"
 ```
 
-See the [worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/tools/skills/worklog)
+See the
+[worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/tools/skills/worklog)
 for complete usage.
 
 ## Updating
@@ -158,8 +159,8 @@ chmod +x $(which wl)
 
 ## Alternative Installation Methods
 
-If Homebrew doesn't work for you, see the [main
-README](https://github.com/dohzya/tools#cli-tools-installation) for other
+If Homebrew doesn't work for you, see the
+[main README](https://github.com/dohzya/tools#cli-tools-installation) for other
 installation options:
 
 - mise (with github backend)

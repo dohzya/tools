@@ -32,7 +32,8 @@ committing. These checks are enforced by CI.
 
 ## Creating Releases
 
-When it's time to create a new release, refer to [RELEASE.md](RELEASE.md) for the complete release process, including:
+When it's time to create a new release, refer to [RELEASE.md](RELEASE.md) for
+the complete release process, including:
 
 - Automated scripts (`task bump`, `task build`, `task update-tap`)
 - Manual step-by-step instructions

@@ -1,12 +1,13 @@
 # mise Installation Guide
 
-This guide explains how to install `md` and `wl` using mise with the ubi backend.
+This guide explains how to install `md` and `wl` using mise with the ubi
+backend.
 
 ## What is the github backend?
 
-The github backend is a mise backend that automatically downloads
-pre-compiled binaries from GitHub Releases, detecting the correct platform and
-architecture automatically.
+The github backend is a mise backend that automatically downloads pre-compiled
+binaries from GitHub Releases, detecting the correct platform and architecture
+automatically.
 
 ## Prerequisites
 
@@ -64,7 +65,8 @@ mise install
 The github backend:
 
 1. Looks at the specified GitHub release tag (e.g., `md-v0.4.0`)
-2. Downloads the binary asset for your platform (e.g., `md-darwin-arm64` on macOS ARM)
+2. Downloads the binary asset for your platform (e.g., `md-darwin-arm64` on
+   macOS ARM)
 3. Installs it in your mise bin directory (`~/.local/share/mise/installs/...`)
 4. Makes it available in your PATH automatically
 
@@ -101,8 +103,11 @@ mise upgrade wl
 ### Binary not found
 
 Check that releases exist with the expected naming pattern:
-- md releases: `md-v*` tags with assets like `md-darwin-arm64`, `md-linux-x86_64`
-- wl releases: `wl-v*` tags with assets like `wl-darwin-arm64`, `wl-linux-x86_64`
+
+- md releases: `md-v*` tags with assets like `md-darwin-arm64`,
+  `md-linux-x86_64`
+- wl releases: `wl-v*` tags with assets like `wl-darwin-arm64`,
+  `wl-linux-x86_64`
 
 ### Wrong version installed
 
@@ -121,8 +126,8 @@ gh release list -R dohzya/tools
 
 ### Permission denied
 
-Make sure binaries are executable (mise should handle this automatically).
-If needed, manually fix:
+Make sure binaries are executable (mise should handle this automatically). If
+needed, manually fix:
 
 ```bash
 chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/md-*

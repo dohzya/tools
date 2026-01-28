@@ -1,20 +1,21 @@
 # Worklog Monorepo Support - Specification
 
-**Version:** Draft 1.0
-**Date:** 2026-01-26
+**Version:** Draft 1.0 **Date:** 2026-01-26
 
 ## Objectif
 
-Permettre à `wl` de gérer plusieurs `.worklog` dans un monorepo, en liant des tâches à des workspaces spécifiques tout en minimisant les tokens nécessaires pour claude-code.
+Permettre à `wl` de gérer plusieurs `.worklog` dans un monorepo, en liant des
+tâches à des workspaces spécifiques tout en minimisant les tokens nécessaires
+pour claude-code.
 
 ## Concepts
 
-| Terme | Définition |
-|-------|------------|
-| **Scope** | Un `.worklog` identifié par son chemin relatif depuis la racine git |
-| **Scope ID** | Identifiant affiché (par défaut = path, customisable) |
-| **Parent** | Le `.worklog` à la racine git |
-| **Enfant** | Un `.worklog` dans un sous-dossier |
+| Terme        | Définition                                                          |
+| ------------ | ------------------------------------------------------------------- |
+| **Scope**    | Un `.worklog` identifié par son chemin relatif depuis la racine git |
+| **Scope ID** | Identifiant affiché (par défaut = path, customisable)               |
+| **Parent**   | Le `.worklog` à la racine git                                       |
+| **Enfant**   | Un `.worklog` dans un sous-dossier                                  |
 
 ## Structure
 
@@ -73,14 +74,15 @@ monorepo/                      # racine git
 ### Déclenchement
 
 Le scan et la mise à jour de `scope.json` se produisent :
+
 - Si `scope.json` n'existe pas
 - Via `wl scopes --refresh`
 
 ### Variable d'environnement
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `WORKLOG_DEPTH_LIMIT` | 5 | Profondeur maximale de scan |
+| Variable              | Défaut | Description                 |
+| --------------------- | ------ | --------------------------- |
+| `WORKLOG_DEPTH_LIMIT` | 5      | Profondeur maximale de scan |
 
 ## Résolution du scope actif
 
@@ -91,6 +93,7 @@ Ordre de priorité :
 3. `.worklog` à la racine git (si aucun trouvé en remontant)
 
 Le `--scope` accepte :
+
 - Le path complet (`packages/api`)
 - L'id custom (`ui` si configuré)
 - Priorité au path en cas d'ambiguïté
@@ -105,11 +108,12 @@ Liste les scopes découverts.
 wl scopes [--refresh]
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag        | Description                              |
+| ----------- | ---------------------------------------- |
 | `--refresh` | Force le rescan et met à jour scope.json |
 
 **Sortie exemple :**
+
 ```
 Scopes:
   (root)        .worklog/
@@ -123,21 +127,22 @@ Scopes:
 wl list [--all] [--scope=<scope>] [--all-scopes]
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--scope=X` | Filtre sur un scope spécifique |
-| `--all-scopes` | Affiche tous les scopes |
+| Flag           | Description                    |
+| -------------- | ------------------------------ |
+| `--scope=X`    | Filtre sur un scope spécifique |
+| `--all-scopes` | Affiche tous les scopes        |
 
 ### Comportement d'affichage
 
-| CWD | Commande | Tâches affichées | Préfixes |
-|-----|----------|------------------|----------|
-| `monorepo/` | `wl list` | root + enfants | `[api]`, `[ui]` (pas root) |
-| `monorepo/` | `wl list --scope=packages/api` | packages/api | aucun |
-| `packages/api/` | `wl list` | packages/api | aucun |
-| `packages/api/` | `wl list --all-scopes` | tous | tous y compris `[packages/api]` |
+| CWD             | Commande                       | Tâches affichées | Préfixes                        |
+| --------------- | ------------------------------ | ---------------- | ------------------------------- |
+| `monorepo/`     | `wl list`                      | root + enfants   | `[api]`, `[ui]` (pas root)      |
+| `monorepo/`     | `wl list --scope=packages/api` | packages/api     | aucun                           |
+| `packages/api/` | `wl list`                      | packages/api     | aucun                           |
+| `packages/api/` | `wl list --all-scopes`         | tous             | tous y compris `[packages/api]` |
 
 **Règle des préfixes :**
+
 - Scope courant : pas de préfixe
 - `--scope=X` : pas de préfixe (on sait déjà quel scope)
 - `--all-scopes` : tous les préfixes
@@ -151,31 +156,34 @@ Déplace toutes les tâches d'un scope vers un autre.
 wl move --scope <scope> --to <path>
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--scope` | Scope source (obligatoire) |
-| `--to` | Chemin cible (crée le .worklog si besoin) |
+| Flag      | Description                               |
+| --------- | ----------------------------------------- |
+| `--scope` | Scope source (obligatoire)                |
+| `--to`    | Chemin cible (crée le .worklog si besoin) |
 
 **Comportement :**
+
 - Déplace toutes les tâches du scope source
 - Utilise le mécanisme d'import existant (gestion UUID, collisions)
 - Met à jour les `scope.json` après déplacement
 - Supprime le `.worklog` source s'il est vide
 
 **Cas d'usage :**
+
 - Réorganiser après création d'un nouveau package
 - Consolider des tâches dispersées vers la racine
 - Créer un nouveau scope enfant à partir de tâches existantes
 
 ### Autres commandes
 
-Les commandes existantes (`add`, `trace`, `logs`, `checkpoint`, `done`) opèrent sur le scope actif (résolu selon les règles ci-dessus).
+Les commandes existantes (`add`, `trace`, `logs`, `checkpoint`, `done`) opèrent
+sur le scope actif (résolu selon les règles ci-dessus).
 
-| Commande | Scope utilisé |
-|----------|---------------|
-| `wl add --desc "..."` | Scope actif |
+| Commande              | Scope utilisé                 |
+| --------------------- | ----------------------------- |
+| `wl add --desc "..."` | Scope actif                   |
 | `wl trace <id> <msg>` | Déduit de l'ID ou scope actif |
-| `wl logs <id>` | Déduit de l'ID |
+| `wl logs <id>`        | Déduit de l'ID                |
 
 ## Format de sortie
 
@@ -210,26 +218,29 @@ Note : la dernière tâche (root) n'a pas de préfixe car c'est le scope courant
 
 ```typescript
 // Découverte
-function findGitRoot(cwd: string): string | null
-function discoverScopes(gitRoot: string, depthLimit: number): ScopeEntry[]
-function loadOrCreateScopeJson(worklogPath: string): ScopeConfig
-function saveScopeJson(worklogPath: string, config: ScopeConfig): void
+function findGitRoot(cwd: string): string | null;
+function discoverScopes(gitRoot: string, depthLimit: number): ScopeEntry[];
+function loadOrCreateScopeJson(worklogPath: string): ScopeConfig;
+function saveScopeJson(worklogPath: string, config: ScopeConfig): void;
 
 // Résolution
-function resolveActiveScope(cwd: string, flagScope?: string): string
-function resolveScopeFromId(id: string, parentConfig: ScopeConfig): string | null
+function resolveActiveScope(cwd: string, flagScope?: string): string;
+function resolveScopeFromId(
+  id: string,
+  parentConfig: ScopeConfig,
+): string | null;
 
 // Commandes
-function cmdScopes(refresh: boolean): void
-function cmdMove(sourceScope: string, targetPath: string): void
+function cmdScopes(refresh: boolean): void;
+function cmdMove(sourceScope: string, targetPath: string): void;
 ```
 
 ### Types
 
 ```typescript
 interface ScopeEntry {
-  path: string;  // chemin relatif depuis git root
-  id: string;    // identifiant affiché
+  path: string; // chemin relatif depuis git root
+  id: string; // identifiant affiché
 }
 
 interface ScopeConfigParent {
@@ -237,7 +248,7 @@ interface ScopeConfigParent {
 }
 
 interface ScopeConfigChild {
-  parent: string;  // chemin relatif vers le parent
+  parent: string; // chemin relatif vers le parent
 }
 
 type ScopeConfig = ScopeConfigParent | ScopeConfigChild;
@@ -248,6 +259,7 @@ type ScopeConfig = ScopeConfigParent | ScopeConfigChild;
 ### Pas de racine git
 
 Si aucune racine git n'est trouvée :
+
 - Comportement actuel (single .worklog)
 - Pas de support monorepo
 - Warning si `--all-scopes` ou `--scope` utilisé
@@ -260,6 +272,7 @@ Si aucune racine git n'est trouvée :
 ### Tâche avec ID ambigu
 
 Si le même ID existe dans plusieurs scopes :
+
 - Erreur avec liste des scopes possibles
 - Demander de préciser via `--scope`
 

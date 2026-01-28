@@ -5,14 +5,35 @@ This document describes how to create new releases for `md` and `wl` CLI tools.
 ## Prerequisites
 
 1. Code is tested and ready for release
-2. All tests pass: `task test`
+2. All checks pass: `task validate` (format, lint, type check, tests)
 3. You have JSR publish access
+4. `act` is installed for local CI testing: `mise use act` (project-local
+   installation)
+
+## Local CI Testing with act
+
+Before pushing changes, test the CI locally to catch issues early:
+
+```bash
+# Install act (if not already installed)
+mise use act
+mise install
+
+# Test CI locally (first run will prompt for Docker image size - choose Medium)
+mise exec -- act push --container-architecture linux/amd64
+```
+
+**Note:** On first run, `act` will ask you to choose a Docker image size. Choose
+"Medium" (~500MB) for best compatibility.
 
 ## Quick Release (Using Scripts)
 
 The fastest way to create a release is using the provided automation scripts:
 
 ```bash
+# 0. Validate code (format, lint, type check, tests)
+task validate
+
 # 1. Bump version in all files
 task bump TOOL=wl VERSION=0.4.3
 
@@ -23,26 +44,31 @@ git diff
 git add -A
 git commit -m "chore(wl): bump to v0.4.3"
 
-# 4. Publish to JSR (CRITICAL: do this BEFORE building binaries!)
+# 4. Test CI locally (IMPORTANT: validate before pushing!)
+mise exec -- act push --container-architecture linux/amd64
+# If CI passes locally, proceed. If it fails, fix issues and amend commit.
+
+# 5. Publish to JSR (CRITICAL: do this BEFORE building binaries!)
+# NOTE: This requires interactive authentication - Claude Code cannot do this
 cd packages/tools
 deno publish
 cd ../..
 
-# 5. Build binaries (will download from JSR)
+# 6. Build binaries (will download from JSR)
 task build VERSION=0.4.3
 
-# 6. Test binary version
+# 7. Test binary version
 ./dist/wl-darwin-arm64 --version  # Should output: 0.4.3
 
-# 7. Push commit and tag
+# 8. Push commit and tag
 git push origin main
 git tag wl-v0.4.3
 git push origin wl-v0.4.3
 
-# 8. Wait for GitHub Actions to create release (~2-3 minutes)
+# 9. Wait for GitHub Actions to create release (~2-3 minutes)
 #    Watch: https://github.com/dohzya/tools/actions
 
-# 9. Update homebrew tap (downloads binaries and calculates checksums)
+# 10. Update homebrew tap (downloads binaries and calculates checksums)
 task update-tap TOOL=wl VERSION=0.4.3
 ```
 
@@ -57,6 +83,7 @@ If you need to do it manually, follow these steps carefully.
 Update version in ALL of these files (or use `./scripts/bump-version.sh`):
 
 For `wl`:
+
 - [ ] `packages/tools/deno.json` - version field
 - [ ] `packages/tools/worklog/cli.ts` - VERSION constant (line ~34)
 - [ ] `plugins/tools/skills/worklog/wl` - import path with version
@@ -66,6 +93,7 @@ For `wl`:
 - [ ] `plugins/tools/.claude-plugin/plugin.json` - version field
 
 For `md`:
+
 - [ ] `packages/tools/deno.json` - version field
 - [ ] `packages/tools/markdown-surgeon/cli.ts` - VERSION constant (line ~34)
 - [ ] `plugins/tools/skills/markdown-surgeon/md` - import path with version
@@ -75,8 +103,10 @@ For `md`:
 - [ ] `plugins/tools/.claude-plugin/plugin.json` - version field
 
 **Critical Notes:**
+
 - The VERSION constant in cli.ts MUST match deno.json version
-- JSR does NOT allow republishing the same version - if you mess up, bump version again
+- JSR does NOT allow republishing the same version - if you mess up, bump
+  version again
 
 ### Step 2: Commit Changes
 
@@ -85,13 +115,32 @@ git add -A
 git commit -m "chore(wl): bump to v0.4.3"
 ```
 
-**DO NOT push yet!** Publish to JSR first.
+**DO NOT push yet!** Test CI locally first, then publish to JSR.
 
-### Step 3: Publish to JSR
+### Step 3: Test CI Locally
+
+**IMPORTANT: Always test CI locally before pushing to catch issues early.**
+
+```bash
+mise exec -- act push --container-architecture linux/amd64
+```
+
+If CI fails locally:
+
+- Fix the issues
+- Stage changes: `git add -A`
+- Amend commit: `git commit --amend --no-edit`
+- Test again with `act`
+
+### Step 4: Publish to JSR
 
 **CRITICAL: You MUST publish to JSR BEFORE building binaries!**
 
-The build process downloads code from JSR, so the version must exist there first.
+The build process downloads code from JSR, so the version must exist there
+first.
+
+**NOTE:** This requires interactive authentication. Claude Code cannot execute
+`deno publish` - you must run it manually in your terminal.
 
 ```bash
 cd packages/tools
@@ -100,11 +149,12 @@ cd ../..
 ```
 
 If this fails:
+
 - Check you have JSR access
 - Verify deno.json version is correct
 - Remember: you cannot republish the same version
 
-### Step 4: Build Binaries
+### Step 5: Build Binaries
 
 Now that JSR has the new version, build binaries:
 
@@ -113,11 +163,12 @@ task build VERSION=0.4.3
 ```
 
 This will:
+
 1. Download the code from `jsr:@dohzya/tools@0.4.3`
 2. Compile for all platforms (macOS, Linux, Windows)
 3. Place binaries in `dist/`
 
-### Step 5: Verify Binary Version
+### Step 6: Verify Binary Version
 
 **Critical check before releasing:**
 
@@ -127,9 +178,10 @@ This will:
 
 Should output: `0.4.3`
 
-If it shows the wrong version, you published to JSR without updating the VERSION constant. You'll need to bump version and republish.
+If it shows the wrong version, you published to JSR without updating the VERSION
+constant. You'll need to bump version and republish.
 
-### Step 6: Calculate Checksums
+### Step 7: Calculate Checksums
 
 ```bash
 shasum -a 256 dist/wl-darwin-arm64 dist/wl-darwin-x86_64 dist/wl-linux-arm64 dist/wl-linux-x86_64
@@ -137,14 +189,14 @@ shasum -a 256 dist/wl-darwin-arm64 dist/wl-darwin-x86_64 dist/wl-linux-arm64 dis
 
 Update `homebrew/Formula/wl.rb` with the new SHA256 checksums.
 
-### Step 7: Amend Commit
+### Step 8: Amend Commit
 
 ```bash
 git add homebrew/Formula/wl.rb
 git commit --amend --no-edit
 ```
 
-### Step 8: Push and Tag
+### Step 9: Push and Tag
 
 ```bash
 git push origin main
@@ -152,7 +204,7 @@ git tag wl-v0.4.3
 git push origin wl-v0.4.3
 ```
 
-### Step 9: GitHub Actions
+### Step 10: GitHub Actions
 
 The release workflow (`.github/workflows/release.yml`) will automatically:
 
@@ -163,7 +215,7 @@ The release workflow (`.github/workflows/release.yml`) will automatically:
 
 Monitor: https://github.com/dohzya/tools/actions
 
-### Step 10: Update Homebrew Tap
+### Step 11: Update Homebrew Tap
 
 After GitHub Actions completes:
 
@@ -188,7 +240,7 @@ git commit -m "chore(wl): bump to v0.4.3"
 git push origin main
 ```
 
-### Step 11: Verify Installation
+### Step 12: Verify Installation
 
 ```bash
 brew update
@@ -202,26 +254,41 @@ This is the EXACT order you must follow:
 
 1. ✅ Update all version files
 2. ✅ Commit (but don't push yet)
-3. ✅ **Publish to JSR** ← MUST be before build!
-4. ✅ Build binaries (downloads from JSR)
-5. ✅ Verify binary version output
-6. ✅ Calculate checksums
-7. ✅ Update homebrew formula checksums
-8. ✅ Amend commit with updated checksums
-9. ✅ Push commit
-10. ✅ Create and push tag
-11. ✅ Wait for GitHub Actions
-12. ✅ Update homebrew tap
+3. ✅ **Test CI locally with act** ← Catch issues before pushing!
+4. ✅ **Publish to JSR** ← MUST be before build!
+5. ✅ Build binaries (downloads from JSR)
+6. ✅ Verify binary version output
+7. ✅ Calculate checksums
+8. ✅ Update homebrew formula checksums
+9. ✅ Amend commit with updated checksums
+10. ✅ Push commit
+11. ✅ Create and push tag
+12. ✅ Wait for GitHub Actions
+13. ✅ Update homebrew tap
 
-**If you skip step 3 or do it after step 4, the binaries will have the wrong version!**
+**Critical notes:**
+
+- If you skip step 3, you may push broken code to remote
+- If you skip step 4 or do it after step 5, the binaries will have the wrong
+  version!
 
 ## Common Pitfalls
 
+### ❌ Not testing CI locally before pushing
+
+You push changes and discover CI failures on GitHub, wasting time and creating
+failed builds in history.
+
+**Fix:** Always run `mise exec -- act push` before pushing. Fix issues and amend
+the commit.
+
 ### ❌ Publishing to JSR after building binaries
 
-The binaries will download the old version from JSR and have the wrong version number.
+The binaries will download the old version from JSR and have the wrong version
+number.
 
-**Fix:** Bump version again (e.g., 0.4.3 → 0.4.4), publish to JSR first, then rebuild.
+**Fix:** Bump version again (e.g., 0.4.3 → 0.4.4), publish to JSR first, then
+rebuild.
 
 ### ❌ Forgetting to update VERSION constant in cli.ts
 
@@ -239,13 +306,15 @@ JSR will reject it with an error.
 
 Users will get a checksum mismatch error when installing.
 
-**Fix:** Download the binaries from GitHub release and recalculate checksums, then update the tap.
+**Fix:** Download the binaries from GitHub release and recalculate checksums,
+then update the tap.
 
 ### ❌ Forgetting to update the homebrew tap
 
 Users won't see the new version when running `brew upgrade`.
 
-**Fix:** Run `./scripts/update-homebrew-tap.sh` or manually copy the formula and push.
+**Fix:** Run `./scripts/update-homebrew-tap.sh` or manually copy the formula and
+push.
 
 ## Troubleshooting
 
@@ -255,15 +324,18 @@ The version doesn't exist on JSR yet. Publish to JSR first.
 
 ### Binary shows wrong version
 
-You built before publishing to JSR, or you forgot to update the VERSION constant. Bump version and start over.
+You built before publishing to JSR, or you forgot to update the VERSION
+constant. Bump version and start over.
 
 ### Homebrew install fails with checksum error
 
-Checksums in `homebrew/Formula/*.rb` don't match the actual binaries. Recalculate and update.
+Checksums in `homebrew/Formula/*.rb` don't match the actual binaries.
+Recalculate and update.
 
 ### GitHub Actions fails
 
 Check the workflow logs. Usually it's because:
+
 - Tag format is wrong (must be `<tool>-v<version>`)
 - JSR version doesn't exist
 - Permissions issue

@@ -24,10 +24,11 @@ wl import [-p PATH | -b BRANCH] [--rm]           # Import from other worktree
 
 ### Trace options
 
-**IMPORTANT:** Always place options BETWEEN the task ID and the message content. This ensures options remain visible in truncated UI displays.
+**IMPORTANT:** Always place options BETWEEN the task ID and the message content.
+This ensures options remain visible in truncated UI displays.
 
-✅ **Correct:** `wl trace 250116a -t T11:35 "message"`
-❌ **Incorrect:** `wl trace 250116a "message" -t T11:35`
+✅ **Correct:** `wl trace 250116a -t T11:35 "message"` ❌ **Incorrect:**
+`wl trace 250116a "message" -t T11:35`
 
 Available options:
 
@@ -40,6 +41,7 @@ Use `--timestamp TS` or `-t TS` with flexible format:
 `[YYYY-MM-DD]THH:mm[:SS][<tz>]`
 
 Rules:
+
 - **Date optional:** If missing, today's date is used
 - **Seconds optional:** If missing, `:00` is assumed
 - **Timezone optional:** If missing, local timezone is used
@@ -61,11 +63,13 @@ wl trace 250116a -t 2024-12-15T11:15 "Session resumed"
 wl trace 250116a -t "2024-12-15T11:15:30+01:00" "Fixed validation"
 ```
 
-**Use case:** Importing historical entries from other logs (e.g., WORKLOG.md) while preserving original timestamps.
+**Use case:** Importing historical entries from other logs (e.g., WORKLOG.md)
+while preserving original timestamps.
 
 ## Modifying completed tasks
 
-By default, completed tasks cannot be modified. Use `--force` (or `-f`) to add entries or checkpoints after completion:
+By default, completed tasks cannot be modified. Use `--force` (or `-f`) to add
+entries or checkpoints after completion:
 
 ```bash
 # Add post-completion entry
@@ -82,11 +86,14 @@ wl checkpoint 250116a -f "Hotfix applied" "Edge case documented"
 - Documenting production learnings
 - Appending missed context
 
-**Purge protection:** Tasks with uncheckpointed entries (flag `has_uncheckpointed_entries: true`) are not auto-purged. Create a checkpoint to clear this flag and allow eventual cleanup.
+**Purge protection:** Tasks with uncheckpointed entries (flag
+`has_uncheckpointed_entries: true`) are not auto-purged. Create a checkpoint to
+clear this flag and allow eventual cleanup.
 
 ## Importing from other worktrees
 
-When working across multiple worktrees, import tasks before deleting the worktree to preserve work history:
+When working across multiple worktrees, import tasks before deleting the
+worktree to preserve work history:
 
 ```bash
 # Import by worktree path
@@ -102,11 +109,13 @@ wl import -b feature-x --rm
 ### Import behavior
 
 **Same task (matching UID):** Merges new entries and checkpoints
+
 - Skips duplicate entries (same timestamp)
 - Warns if entry older than last checkpoint (skipped)
 - Updates `has_uncheckpointed_entries` if new entries added
 
 **Different task (ID collision):** Renames imported task
+
 - Example: `260122a` → `260122c` if `260122a` and `260122b` exist
 
 **New task:** Imports as-is
@@ -211,7 +220,8 @@ Use `wl list` to see all active tasks if you lose track.
     └── 250116a.md       # Task file (frontmatter + entries + checkpoints)
 ```
 
-Task files are Markdown with YAML frontmatter. Old completed tasks (>30 days) are auto-purged.
+Task files are Markdown with YAML frontmatter. Old completed tasks (>30 days)
+are auto-purged.
 
 ## JSON output format
 

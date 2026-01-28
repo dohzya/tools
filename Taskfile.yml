@@ -5,15 +5,15 @@ tasks:
     desc: "Format the code"
     dir: packages/tools
     cmds:
-      - deno fmt
+      - deno task fmt
 
   test:
     desc: "Run all tests"
     dir: packages/tools
     cmds:
-      - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot {{.CLI_ARGS}}
+      - deno task test -- {{.CLI_ARGS}}
   test:pretty:
-    desc: "Run all tests"
+    desc: "Run all tests with pretty output"
     dir: packages/tools
     cmds:
       - deno test --allow-read --allow-write --allow-env --allow-run {{.CLI_ARGS}}
@@ -22,18 +22,15 @@ tasks:
     desc: "Check the code (format & type & lint)"
     dir: packages/tools
     cmds:
-      - deno fmt --check
-      - deno check mod.ts
-      - deno lint
+      - deno task fmt:check
+      - deno task check
+      - deno task lint
 
   validate:
     desc: "Run all checks (fmt, lint, check, test)"
     dir: packages/tools
     cmds:
-      - deno fmt
-      - deno lint
-      - deno check mod.ts
-      - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot
+      - deno task validate
 
   publish:
     desc: "Publish package to JSR"

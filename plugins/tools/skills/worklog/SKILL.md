@@ -9,8 +9,8 @@ Track work progress with append-only worklog and on-demand checkpoints.
 
 ## Activation
 
-| Condition                                       | Action                                                |
-| ----------------------------------------------- | ----------------------------------------------------- |
+| Condition                                       | Action                                                 |
+| ----------------------------------------------- | ------------------------------------------------------ |
 | `.worklog/` exists                              | Tracking is active, use `wl list` to see current tasks |
 | User says "track this", ">track", "let's track" | Run `wl add --desc "..."`                              |
 
@@ -26,11 +26,13 @@ wl list [--all]                                  # List active tasks (--all incl
 ```
 
 **Common options:**
+
 - Add `-t TS` to `trace` for custom timestamp (e.g., `-t T11:35`)
 - Add `-f` to `trace` or `checkpoint` to modify completed tasks
 - Add `--json` to any command for JSON output
 
-See `reference.md` for complete documentation (imports, advanced features, output formats).
+See `reference.md` for complete documentation (imports, advanced features,
+output formats).
 
 ## Quick workflow
 
@@ -45,7 +47,8 @@ Use the returned ID for all subsequent commands.
 
 ### Log progress
 
-**IMPORTANT:** Always place options (like `-t`) BETWEEN the task ID and the message content.
+**IMPORTANT:** Always place options (like `-t`) BETWEEN the task ID and the
+message content.
 
 ```bash
 wl trace 250116a "Goal: support multi-currency orders"
@@ -55,6 +58,7 @@ wl trace 250116a -t T11:35 "Pivot to CurrencyBucket approach - tests pass"
 ```
 
 **When to trace:**
+
 - Starting something (goal, objective)
 - Trying an approach
 - Hitting an error or blocker
@@ -67,6 +71,7 @@ Keep messages concise. Include "why" for failures and pivots.
 ### Checkpointing
 
 Create checkpoints when:
+
 - `wl trace` outputs `checkpoint recommended` (≥50 entries since last)
 - User asks for a summary
 - Before a long break or context switch
@@ -100,14 +105,20 @@ This creates a final checkpoint and marks the task done.
 
 ## Guidelines
 
-**Trace often, checkpoint occasionally.** Traces are cheap (append-only). Checkpoints require synthesis.
+**Trace often, checkpoint occasionally.** Traces are cheap (append-only).
+Checkpoints require synthesis.
 
-**Be specific in traces.** "Tried X - failed because Y" is better than "Tried X".
+**Be specific in traces.** "Tried X - failed because Y" is better than "Tried
+X".
 
-**Options go between ID and message.** Always use `wl trace <id> -t T11:35 "message"`, never `wl trace <id> "message" -t T11:35`. This keeps options visible in truncated UI displays.
+**Options go between ID and message.** Always use
+`wl trace <id> -t T11:35 "message"`, never `wl trace <id> "message" -t T11:35`.
+This keeps options visible in truncated UI displays.
 
-**Learnings are reusable insights.** Not just "what we did" but "what we learned that applies elsewhere".
+**Learnings are reusable insights.** Not just "what we did" but "what we learned
+that applies elsewhere".
 
-**Suggest checkpoints to user.** When you see `checkpoint recommended` or before a natural break, offer to create one.
+**Suggest checkpoints to user.** When you see `checkpoint recommended` or before
+a natural break, offer to create one.
 
 **Language.** Adapt to user's working language for traces and checkpoints.

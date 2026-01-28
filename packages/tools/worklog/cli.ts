@@ -49,7 +49,7 @@ const VERSION = "0.4.3";
 const WORKLOG_DIR = ".worklog";
 const TASKS_DIR = `${WORKLOG_DIR}/tasks`;
 const INDEX_FILE = `${WORKLOG_DIR}/index.json`;
-const SCOPE_FILE = `${WORKLOG_DIR}/scope.json`;
+const _SCOPE_FILE = `${WORKLOG_DIR}/scope.json`;
 const CHECKPOINT_THRESHOLD = 50;
 
 // Monorepo depth limit (configurable via env var)
@@ -971,7 +971,7 @@ function formatScopes(output: ScopesOutput): string {
   return lines.join("\n");
 }
 
-function formatMove(output: MoveOutput): string {
+function _formatMove(output: MoveOutput): string {
   return `moved ${output.moved} task(s) to ${output.target}`;
 }
 
@@ -1390,7 +1390,11 @@ async function cmdList(
     }
   } else if (scopeIdentifier && gitRoot && cwd) {
     // List specific scope only
-    const worklogPath = await resolveScopeIdentifier(scopeIdentifier, gitRoot, cwd);
+    const worklogPath = await resolveScopeIdentifier(
+      scopeIdentifier,
+      gitRoot,
+      cwd,
+    );
     const indexPath = `${worklogPath}/index.json`;
 
     if (!(await exists(indexPath))) {
@@ -1416,7 +1420,7 @@ async function cmdList(
     tasks.push(...scopeTasks);
   } else if (gitRoot && currentScope) {
     // Default: current scope + children (children get prefixes)
-    const currentScopeId = await getScopeId(currentScope, gitRoot);
+    const _currentScopeId = await getScopeId(currentScope, gitRoot);
 
     // Load current scope tasks (no prefix)
     const currentIndexPath = `${currentScope}/index.json`;
@@ -1856,7 +1860,9 @@ async function cmdScopes(refresh: boolean, cwd: string): Promise<ScopesOutput> {
   const result: ScopesOutput = {
     scopes: scopes.map((s) => ({
       id: s.id,
-      path: s.relativePath === "." ? WORKLOG_DIR + "/" : s.relativePath + "/" + WORKLOG_DIR + "/",
+      path: s.relativePath === "."
+        ? WORKLOG_DIR + "/"
+        : s.relativePath + "/" + WORKLOG_DIR + "/",
       isActive: s.absolutePath === activeScope,
     })),
   };
@@ -2034,7 +2040,9 @@ async function cmdScopesDelete(
       if (assignResult.errors.length > 0) {
         throw new WtError(
           "io_error",
-          `Failed to move some tasks: ${assignResult.errors.map((e) => e.taskId).join(", ")}`,
+          `Failed to move some tasks: ${
+            assignResult.errors.map((e) => e.taskId).join(", ")
+          }`,
         );
       }
     } else if (!deleteTasks) {
@@ -2071,7 +2079,11 @@ async function cmdScopesAssign(
   }
 
   // Resolve target scope
-  const targetWorklog = await resolveScopeIdentifier(targetScopeId, gitRoot, cwd);
+  const targetWorklog = await resolveScopeIdentifier(
+    targetScopeId,
+    gitRoot,
+    cwd,
+  );
   const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
 
   let assigned = 0;
@@ -2168,7 +2180,7 @@ async function cmdScopesAssign(
   return { assigned, merged, errors };
 }
 
-async function cmdMove(
+async function _cmdMove(
   sourceIdentifier: string,
   targetPath: string,
   cwd: string,
@@ -2183,7 +2195,11 @@ async function cmdMove(
   }
 
   // Resolve source scope
-  const sourceWorklog = await resolveScopeIdentifier(sourceIdentifier, gitRoot, cwd);
+  const sourceWorklog = await resolveScopeIdentifier(
+    sourceIdentifier,
+    gitRoot,
+    cwd,
+  );
 
   // Compute target worklog path and directory
   const targetDir = `${gitRoot}/${targetPath}`;
@@ -2430,9 +2446,10 @@ export async function main(args: string[]): Promise<void> {
   const gitRoot = await findGitRoot(cwd);
 
   // Commands that need scope resolution
-  const needsScopeResolution = ["add", "trace", "logs", "checkpoint", "done"].includes(
-    command,
-  );
+  const needsScopeResolution = ["add", "trace", "logs", "checkpoint", "done"]
+    .includes(
+      command,
+    );
 
   if (needsScopeResolution) {
     try {
