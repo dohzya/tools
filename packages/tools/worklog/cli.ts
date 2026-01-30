@@ -334,6 +334,91 @@ async function resolveWorktreePath(branch: string): Promise<string> {
   );
 }
 
+interface WorktreeInfo {
+  path: string;
+  branch: string | null; // null for detached HEAD
+  isMainWorktree: boolean;
+}
+
+async function listAllWorktrees(cwd: string): Promise<WorktreeInfo[]> {
+  const process = new Deno.Command("git", {
+    args: ["worktree", "list", "--porcelain"],
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+  });
+
+  const { code, stdout, stderr } = await process.output();
+
+  if (code !== 0) {
+    const error = new TextDecoder().decode(stderr);
+    throw new WtError("io_error", `Failed to list worktrees: ${error}`);
+  }
+
+  const output = new TextDecoder().decode(stdout);
+  const lines = output.trim().split("\n");
+
+  const worktrees: WorktreeInfo[] = [];
+  let current: Partial<WorktreeInfo> = {};
+  let isFirst = true;
+
+  for (const line of lines) {
+    if (line.startsWith("worktree ")) {
+      if (current.path) {
+        worktrees.push({
+          path: current.path,
+          branch: current.branch ?? null,
+          isMainWorktree: current.isMainWorktree ?? false,
+        });
+      }
+      current = {
+        path: line.slice(9),
+        isMainWorktree: isFirst,
+      };
+      isFirst = false;
+    } else if (line.startsWith("branch ")) {
+      // Extract branch name from refs/heads/xxx
+      const branchRef = line.slice(7);
+      current.branch = branchRef.startsWith("refs/heads/")
+        ? branchRef.slice(11)
+        : branchRef;
+    } else if (line === "detached") {
+      current.branch = null;
+    }
+  }
+
+  // Push the last worktree
+  if (current.path) {
+    worktrees.push({
+      path: current.path,
+      branch: current.branch ?? null,
+      isMainWorktree: current.isMainWorktree ?? false,
+    });
+  }
+
+  return worktrees;
+}
+
+/**
+ * Get the current git branch name
+ */
+async function getCurrentBranch(cwd: string): Promise<string | null> {
+  const process = new Deno.Command("git", {
+    args: ["rev-parse", "--abbrev-ref", "HEAD"],
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+  });
+
+  const { code, stdout } = await process.output();
+  if (code !== 0) {
+    return null;
+  }
+
+  const branch = new TextDecoder().decode(stdout).trim();
+  return branch === "HEAD" ? null : branch; // HEAD means detached
+}
+
 // ============================================================================
 // Git root & Scope discovery (monorepo)
 // ============================================================================
@@ -1987,7 +2072,9 @@ async function cmdScopesList(
 
 async function cmdScopesAdd(
   scopeId: string,
-  path: string | undefined,
+  pathFlag: string | undefined,
+  worktreeFlag: boolean,
+  refFlag: string | undefined,
   cwd: string,
 ): Promise<StatusOutput> {
   const gitRoot = await findGitRoot(cwd);
@@ -1999,11 +2086,64 @@ async function cmdScopesAdd(
     );
   }
 
-  // Determine effective path (default to scopeId if not provided)
-  const effectivePath = path ?? scopeId;
+  // Validate mutually exclusive flags
+  if (pathFlag && worktreeFlag) {
+    throw new WtError(
+      "invalid_args",
+      "Cannot use --path and --worktree together. Choose one.",
+    );
+  }
 
-  // Target directory and worklog path
-  const targetDir = `${gitRoot}/${effectivePath}`;
+  let targetDir: string;
+  let effectivePath: string;
+  let gitRef: string | undefined;
+  let scopeType: "path" | "worktree" = "path";
+
+  if (worktreeFlag) {
+    // Worktree mode
+    scopeType = "worktree";
+    gitRef = refFlag ?? scopeId;
+
+    // Try to find the worktree path
+    const worktrees = await listAllWorktrees(cwd);
+    const worktree = worktrees.find((wt) => wt.branch === gitRef);
+
+    if (worktree) {
+      targetDir = worktree.path;
+    } else {
+      // Maybe we're inside the worktree already - check current branch
+      const currentBranch = await getCurrentBranch(cwd);
+      if (currentBranch === gitRef) {
+        // We're in the worktree, use cwd's git root
+        targetDir = gitRoot;
+      } else {
+        throw new WtError(
+          "worktree_not_found",
+          `No worktree found for ref: ${gitRef}. Create the worktree first with 'git worktree add'.`,
+        );
+      }
+    }
+
+    // For worktrees, use relative path from main repo root if inside, otherwise absolute
+    const mainWorktree = worktrees.find((wt) => wt.isMainWorktree);
+    if (mainWorktree && targetDir.startsWith(mainWorktree.path)) {
+      effectivePath = targetDir.slice(mainWorktree.path.length + 1) || ".";
+    } else {
+      // Worktree is outside the main repo - use absolute path
+      effectivePath = targetDir;
+    }
+  } else {
+    // Path mode (default)
+    effectivePath = pathFlag ?? scopeId;
+
+    // Resolve relative to git root
+    if (effectivePath.startsWith("/")) {
+      targetDir = effectivePath;
+    } else {
+      targetDir = `${gitRoot}/${effectivePath}`;
+    }
+  }
+
   const worklogPath = `${targetDir}/${WORKLOG_DIR}`;
 
   // Check if worklog already exists
@@ -2060,13 +2200,22 @@ async function cmdScopesAdd(
       (c) => c.path === effectivePath,
     );
     if (!existingChild) {
-      rootConfig.children.push({
+      const newEntry: ScopeEntry = {
         path: effectivePath,
         id: scopeId,
-      });
+      };
+      if (scopeType === "worktree") {
+        newEntry.type = "worktree";
+        newEntry.gitRef = gitRef;
+      }
+      rootConfig.children.push(newEntry);
     } else {
-      // Update ID if different
+      // Update existing entry
       existingChild.id = scopeId;
+      if (scopeType === "worktree") {
+        existingChild.type = "worktree";
+        existingChild.gitRef = gitRef;
+      }
     }
   } else {
     // Root is configured as a child? This shouldn't happen for git root
@@ -2322,6 +2471,137 @@ async function cmdScopesDelete(
   return { status: "scope_deleted" };
 }
 
+interface SyncWorktreesOutput {
+  added: string[];
+  removed: string[];
+  warnings: string[];
+}
+
+async function cmdScopesSyncWorktrees(
+  cwd: string,
+  dryRun: boolean,
+): Promise<SyncWorktreesOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Scopes require git.",
+    );
+  }
+
+  const rootWorklogPath = `${gitRoot}/${WORKLOG_DIR}`;
+  if (!(await exists(rootWorklogPath))) {
+    throw new WtError(
+      "not_initialized",
+      "No worklog found at git root. Run 'wl init' first.",
+    );
+  }
+
+  const rootConfig = await loadOrCreateScopeJson(rootWorklogPath, gitRoot);
+  if (!("children" in rootConfig)) {
+    throw new WtError(
+      "invalid_state",
+      "Root worklog is configured as a child scope. This is invalid.",
+    );
+  }
+
+  const worktrees = await listAllWorktrees(cwd);
+  const mainWorktree = worktrees.find((wt) => wt.isMainWorktree);
+
+  const added: string[] = [];
+  const removed: string[] = [];
+  const warnings: string[] = [];
+
+  // Find existing worktree scopes
+  const existingWorktreeScopes = rootConfig.children.filter(
+    (c) => c.type === "worktree",
+  );
+
+  // Check for stale worktree scopes (worktree no longer exists)
+  for (const scope of existingWorktreeScopes) {
+    const worktree = worktrees.find((wt) => wt.branch === scope.gitRef);
+    if (!worktree) {
+      // Worktree is gone
+      warnings.push(
+        `Worktree for '${scope.gitRef}' no longer exists. ` +
+          `Tasks and traces in this scope have been lost. ` +
+          `Consider running 'wl scopes delete ${scope.id}' before removing worktrees.`,
+      );
+      removed.push(scope.id);
+
+      if (!dryRun) {
+        // Remove from children list
+        const index = rootConfig.children.indexOf(scope);
+        if (index !== -1) {
+          rootConfig.children.splice(index, 1);
+        }
+      }
+    }
+  }
+
+  // Find worktrees that are not yet registered as scopes
+  for (const worktree of worktrees) {
+    // Skip main worktree and detached HEAD worktrees
+    if (worktree.isMainWorktree || !worktree.branch) {
+      continue;
+    }
+
+    // Check if already registered
+    const existingScope = rootConfig.children.find(
+      (c) => c.type === "worktree" && c.gitRef === worktree.branch,
+    );
+
+    if (!existingScope) {
+      // New worktree to add
+      const scopeId = worktree.branch; // Keep slashes in branch names as-is
+
+      // Calculate path relative to main worktree or use absolute
+      let effectivePath: string;
+      if (mainWorktree && worktree.path.startsWith(mainWorktree.path)) {
+        effectivePath = worktree.path.slice(mainWorktree.path.length + 1) ||
+          ".";
+      } else {
+        effectivePath = worktree.path;
+      }
+
+      added.push(scopeId);
+
+      if (!dryRun) {
+        const worklogPath = `${worktree.path}/${WORKLOG_DIR}`;
+
+        // Create worklog if it doesn't exist
+        if (!(await exists(worklogPath))) {
+          await Deno.mkdir(`${worklogPath}/tasks`, { recursive: true });
+          await writeFile(
+            `${worklogPath}/index.json`,
+            JSON.stringify({ tasks: {} }, null, 2),
+          );
+        }
+
+        // Configure parent path for the child
+        const relPath = calculateRelativePath(worktree.path, gitRoot);
+        const childConfig: ScopeConfigChild = { parent: relPath };
+        await saveScopeJson(worklogPath, childConfig);
+
+        // Add to parent's children
+        rootConfig.children.push({
+          path: effectivePath,
+          id: scopeId,
+          type: "worktree",
+          gitRef: worktree.branch,
+        });
+      }
+    }
+  }
+
+  if (!dryRun && (added.length > 0 || removed.length > 0)) {
+    await saveScopeJson(rootWorklogPath, rootConfig);
+  }
+
+  return { added, removed, warnings };
+}
+
 async function cmdScopesAssign(
   targetScopeId: string,
   taskIds: string[],
@@ -2552,11 +2832,14 @@ Scope management:
   scopes [--refresh]                    List all scopes
   scopes list [--refresh]               List all scopes
   scopes list <scope-id>                Show scope details
-  scopes add <scope-id> [<path>]        Add scope (creates or links existing .worklog)
+  scopes add <id> [<path>]              Add scope (creates or links existing .worklog)
+  scopes add <id> --path <path>         Add scope at specific path
+  scopes add <id> --worktree [--ref <ref>]  Add git worktree as scope
   scopes add-parent [--id <id>] <path>  Configure parent for current scope
   scopes rename <scope-id> <new-id>     Rename scope ID
   scopes delete <scope-id> [options]    Delete scope
   scopes assign <scope-id> <task-id>... Assign task(s) to scope
+  scopes sync-worktrees [--dry-run]     Sync worktree scopes (add missing, remove stale)
 
 Scope aliases:
   "/"   Always refers to root scope
@@ -2573,7 +2856,10 @@ Options:
   --all-scopes                          Show all scopes (for list)
   --refresh                             Force rescan (for scopes)
   --move-to <scope-id>                  Move tasks before delete (for scopes delete)
-  --delete-tasks                        Force delete with tasks (for scopes delete)`);
+  --delete-tasks                        Force delete with tasks (for scopes delete)
+  --worktree                            Treat scope as git worktree (for scopes add)
+  --ref <ref>                           Git ref for worktree (for scopes add --worktree)
+  --dry-run                             Preview changes without applying (for sync-worktrees)`);
 }
 
 function parseArgs(args: string[]): {
@@ -2596,6 +2882,9 @@ function parseArgs(args: string[]): {
     moveTo: string | null;
     deleteTasks: boolean;
     id: string | null;
+    worktree: boolean;
+    ref: string | null;
+    dryRun: boolean;
   };
   positional: string[];
 } {
@@ -2616,6 +2905,9 @@ function parseArgs(args: string[]): {
     moveTo: null as string | null,
     deleteTasks: false,
     id: null as string | null,
+    worktree: false,
+    ref: null as string | null,
+    dryRun: false,
   };
   const positional: string[] = [];
   let command = "";
@@ -2672,6 +2964,14 @@ function parseArgs(args: string[]): {
       flags.id = args[++i];
     } else if (arg.startsWith("--id=")) {
       flags.id = arg.slice(5);
+    } else if (arg === "--worktree") {
+      flags.worktree = true;
+    } else if (arg === "--ref" && i + 1 < args.length) {
+      flags.ref = args[++i];
+    } else if (arg.startsWith("--ref=")) {
+      flags.ref = arg.slice(6);
+    } else if (arg === "--dry-run") {
+      flags.dryRun = true;
     } else if (!command) {
       command = arg;
     } else {
@@ -2688,6 +2988,7 @@ function parseArgs(args: string[]): {
     "rename",
     "delete",
     "assign",
+    "sync-worktrees",
   ];
 
   if (command === "scopes" && positional.length > 0) {
@@ -2873,12 +3174,28 @@ export async function main(args: string[]): Promise<void> {
             if (positional.length < 1) {
               throw new WtError(
                 "invalid_args",
-                "Usage: wl scopes add <scope-id> [<path>]",
+                "Usage: wl scopes add <id> [<path>] [--path <path>] [--worktree [--ref <ref>]]",
+              );
+            }
+            // Support both old syntax (positional path) and new syntax (--path flag)
+            const pathArg = positional.length > 1 ? positional[1] : undefined;
+            const effectivePath = flags.path ?? pathArg;
+
+            // Validate mutually exclusive flags
+            if (effectivePath && flags.worktree) {
+              throw new WtError(
+                "invalid_args",
+                "Cannot use path and --worktree together. Choose one.",
               );
             }
             const scopeId = positional[0];
-            const path = positional.length > 1 ? positional[1] : undefined;
-            const output = await cmdScopesAdd(scopeId, path, cwd);
+            const output = await cmdScopesAdd(
+              scopeId,
+              effectivePath,
+              flags.worktree,
+              flags.ref ?? undefined,
+              cwd,
+            );
             console.log(
               flags.json ? JSON.stringify(output) : formatStatus(output),
             );
@@ -2954,6 +3271,36 @@ export async function main(args: string[]): Promise<void> {
             console.log(
               flags.json ? JSON.stringify(output) : formatAssign(output),
             );
+            break;
+          }
+
+          case "sync-worktrees": {
+            const output = await cmdScopesSyncWorktrees(cwd, flags.dryRun);
+            if (flags.json) {
+              console.log(JSON.stringify(output));
+            } else {
+              // Print warnings first
+              for (const warning of output.warnings) {
+                console.error(`Warning: ${warning}`);
+              }
+              // Print summary
+              if (output.added.length > 0) {
+                console.log(`Added: ${output.added.join(", ")}`);
+              }
+              if (output.removed.length > 0) {
+                console.log(`Removed: ${output.removed.join(", ")}`);
+              }
+              if (
+                output.added.length === 0 &&
+                output.removed.length === 0 &&
+                output.warnings.length === 0
+              ) {
+                console.log("All worktrees are in sync.");
+              }
+              if (flags.dryRun) {
+                console.log("(dry-run mode, no changes made)");
+              }
+            }
             break;
           }
 

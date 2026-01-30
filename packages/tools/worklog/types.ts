@@ -95,9 +95,13 @@ export interface ImportOutput {
 }
 
 // Scope management (monorepo)
+export type ScopeType = "path" | "worktree";
+
 export interface ScopeEntry {
-  path: string; // Relative to git root
-  id: string; // Display ID (defaults to path)
+  path: string; // Relative to git root (or absolute for worktrees outside repo)
+  id: string; // Display ID (defaults to path or git ref)
+  type?: ScopeType; // "path" (default) or "worktree"
+  gitRef?: string; // Git ref for worktree scopes (e.g., "feature/xyz")
 }
 
 export interface ScopeConfigParent {

@@ -922,3 +922,255 @@ Deno.test("wl: scopes list '/' shows root details", async () => {
     Deno.removeSync(workspace, { recursive: true });
   }
 });
+
+// Helper to create a git workspace with a worktree
+function createGitWorkspaceWithWorktree(): {
+  main: string;
+  worktree: string;
+  branch: string;
+} {
+  const tmpDir = Deno.makeTempDirSync();
+  const mainDir = join(tmpDir, "main");
+  const worktreeDir = join(tmpDir, "feature-branch");
+  const branch = "feature/test";
+
+  Deno.mkdirSync(mainDir);
+
+  // Initialize git repo with initial commit
+  new Deno.Command("git", {
+    args: ["init"],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
+  new Deno.Command("git", {
+    args: ["config", "user.email", "test@test.com"],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
+  new Deno.Command("git", {
+    args: ["config", "user.name", "Test"],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
+  // Create initial commit (required for worktrees)
+  Deno.writeTextFileSync(join(mainDir, "README.md"), "# Test");
+  new Deno.Command("git", {
+    args: ["add", "."],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
+  new Deno.Command("git", {
+    args: ["commit", "-m", "Initial commit"],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
+  // Create worktree
+  new Deno.Command("git", {
+    args: ["worktree", "add", "-b", branch, worktreeDir],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
+  return { main: mainDir, worktree: worktreeDir, branch };
+}
+
+function cleanupWorktreeWorkspace(mainDir: string): void {
+  // Get parent directory (tmpDir)
+  const tmpDir = join(mainDir, "..");
+  Deno.removeSync(tmpDir, { recursive: true });
+}
+
+Deno.test("wl: scopes add --worktree creates worktree scope", async () => {
+  const { main, worktree, branch } = createGitWorkspaceWithWorktree();
+  try {
+    await runCli(["init"], main);
+
+    // Add worktree scope from main
+    const result = await runCli(
+      ["scopes", "add", branch, "--worktree"],
+      main,
+    );
+    assertEquals(result.code, 0);
+
+    // Verify worklog was created in worktree
+    const worklogDir = join(worktree, ".worklog");
+    const stat = await Deno.stat(worklogDir);
+    assertEquals(stat.isDirectory, true);
+
+    // Verify scope.json has worktree type
+    const scopeJson = JSON.parse(
+      Deno.readTextFileSync(join(main, ".worklog", "scope.json")),
+    );
+    const child = scopeJson.children.find(
+      (c: { gitRef?: string }) => c.gitRef === branch,
+    );
+    assertEquals(child?.type, "worktree");
+    assertEquals(child?.id, branch);
+  } finally {
+    cleanupWorktreeWorkspace(main);
+  }
+});
+
+Deno.test("wl: scopes add --worktree --ref with different id", async () => {
+  const { main, worktree, branch } = createGitWorkspaceWithWorktree();
+  try {
+    await runCli(["init"], main);
+
+    // Add worktree scope with custom id
+    const result = await runCli(
+      ["scopes", "add", "my-feature", "--worktree", "--ref", branch],
+      main,
+    );
+    assertEquals(result.code, 0);
+
+    // Verify scope.json has correct id and ref
+    const scopeJson = JSON.parse(
+      Deno.readTextFileSync(join(main, ".worklog", "scope.json")),
+    );
+    const child = scopeJson.children.find(
+      (c: { gitRef?: string }) => c.gitRef === branch,
+    );
+    assertEquals(child?.type, "worktree");
+    assertEquals(child?.id, "my-feature");
+    assertEquals(child?.gitRef, branch);
+
+    // Verify worklog was created
+    const worklogDir = join(worktree, ".worklog");
+    const stat = await Deno.stat(worklogDir);
+    assertEquals(stat.isDirectory, true);
+  } finally {
+    cleanupWorktreeWorkspace(main);
+  }
+});
+
+Deno.test("wl: scopes sync-worktrees adds missing worktrees", async () => {
+  const { main, worktree, branch } = createGitWorkspaceWithWorktree();
+  try {
+    await runCli(["init"], main);
+
+    // Sync worktrees
+    const result = await runCli(["scopes", "sync-worktrees"], main);
+    assertEquals(result.code, 0);
+    assertStringIncludes(result.stdout, "Added:");
+    assertStringIncludes(result.stdout, branch);
+
+    // Verify worklog was created in worktree
+    const worklogDir = join(worktree, ".worklog");
+    const stat = await Deno.stat(worklogDir);
+    assertEquals(stat.isDirectory, true);
+
+    // Verify scope.json has worktree entry
+    const scopeJson = JSON.parse(
+      Deno.readTextFileSync(join(main, ".worklog", "scope.json")),
+    );
+    const child = scopeJson.children.find(
+      (c: { gitRef?: string }) => c.gitRef === branch,
+    );
+    assertEquals(child?.type, "worktree");
+  } finally {
+    cleanupWorktreeWorkspace(main);
+  }
+});
+
+Deno.test("wl: scopes sync-worktrees --dry-run doesn't modify", async () => {
+  const { main, worktree, branch } = createGitWorkspaceWithWorktree();
+  try {
+    await runCli(["init"], main);
+
+    // Sync with dry-run
+    const result = await runCli(
+      ["scopes", "sync-worktrees", "--dry-run"],
+      main,
+    );
+    assertEquals(result.code, 0);
+    assertStringIncludes(result.stdout, "Added:");
+    assertStringIncludes(result.stdout, branch);
+    assertStringIncludes(result.stdout, "dry-run");
+
+    // Verify worklog was NOT created in worktree
+    try {
+      await Deno.stat(join(worktree, ".worklog"));
+      throw new Error("Worklog should not exist in dry-run mode");
+    } catch (e) {
+      if (!(e instanceof Deno.errors.NotFound)) {
+        throw e;
+      }
+      // Expected: NotFound
+    }
+
+    // Verify scope.json doesn't exist (not created in dry-run)
+    try {
+      await Deno.stat(join(main, ".worklog", "scope.json"));
+      throw new Error("scope.json should not exist in dry-run mode");
+    } catch (e) {
+      if (!(e instanceof Deno.errors.NotFound)) {
+        throw e;
+      }
+      // Expected: NotFound
+    }
+  } finally {
+    cleanupWorktreeWorkspace(main);
+  }
+});
+
+Deno.test("wl: scopes sync-worktrees removes stale worktree entries", async () => {
+  const { main, worktree, branch } = createGitWorkspaceWithWorktree();
+  try {
+    await runCli(["init"], main);
+
+    // First sync to add the worktree
+    await runCli(["scopes", "sync-worktrees"], main);
+
+    // Remove the worktree (--force needed because .worklog has untracked files)
+    new Deno.Command("git", {
+      args: ["worktree", "remove", "--force", worktree],
+      cwd: main,
+      stdout: "null",
+      stderr: "null",
+    }).outputSync();
+
+    // Sync again - should remove stale entry
+    const result = await runCli(["scopes", "sync-worktrees"], main);
+    assertEquals(result.code, 0);
+    assertStringIncludes(result.stdout, "Removed:");
+    assertStringIncludes(result.stdout, branch);
+
+    // Verify scope.json no longer has the worktree entry
+    const scopeJson = JSON.parse(
+      Deno.readTextFileSync(join(main, ".worklog", "scope.json")),
+    );
+    const child = scopeJson.children.find(
+      (c: { gitRef?: string }) => c.gitRef === branch,
+    );
+    assertEquals(child, undefined);
+  } finally {
+    cleanupWorktreeWorkspace(main);
+  }
+});
+
+Deno.test("wl: scopes add rejects --path and --worktree together", async () => {
+  const workspace = createGitWorkspace();
+  try {
+    await runCli(["init"], workspace);
+
+    const result = await runCli(
+      ["scopes", "add", "test", "--path", "foo", "--worktree"],
+      workspace,
+    );
+    assertEquals(result.code, 1);
+    assertStringIncludes(result.stderr, "Cannot use");
+  } finally {
+    Deno.removeSync(workspace, { recursive: true });
+  }
+});
