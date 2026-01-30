@@ -366,8 +366,9 @@ backend. They use tags like `v0.5.0` (without tool prefix).
 
 ```bash
 # 1. CRITICAL: Verify which versions will be included BEFORE pushing the tag
-gh release list -R dohzya/tools | awk '$3 ~ /^wl-v/ {print $3}' | head -1
-gh release list -R dohzya/tools | awk '$3 ~ /^md-v/ {print $3}' | head -1
+# Note: gh release list is tab-separated, use -F'\t' to parse correctly
+gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^wl-v/ {print $3; exit}'
+gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^md-v/ {print $3; exit}'
 
 # 2. If correct, create and push the tag
 git tag v0.5.0

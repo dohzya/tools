@@ -45,8 +45,9 @@ the complete release process, including:
 included BEFORE pushing the tag:
 
 ```bash
-gh release list -R dohzya/tools | awk '$3 ~ /^wl-v/ {print $3}' | head -1
-gh release list -R dohzya/tools | awk '$3 ~ /^md-v/ {print $3}' | head -1
+# Note: gh release list is tab-separated
+gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^wl-v/ {print $3; exit}'
+gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^md-v/ {print $3; exit}'
 ```
 
 ## CHANGELOG.md
