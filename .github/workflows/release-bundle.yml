@@ -31,8 +31,8 @@ jobs:
         run: |
           # Read bundle versions from commit message or tag annotation
           # For now, use latest releases of each tool
-          WL_VERSION=$(gh release list -R dohzya/tools | grep '^wl-v' | head -1 | awk '{print $1}' | sed 's/^wl-v//')
-          MD_VERSION=$(gh release list -R dohzya/tools | grep '^md-v' | head -1 | awk '{print $1}' | sed 's/^md-v//')
+          WL_VERSION=$(gh release list -R dohzya/tools | awk '$3 ~ /^wl-v/ {print $3}' | head -1 | sed 's/^wl-v//')
+          MD_VERSION=$(gh release list -R dohzya/tools | awk '$3 ~ /^md-v/ {print $3}' | head -1 | sed 's/^md-v//')
 
           echo "wl_version=$WL_VERSION" >> $GITHUB_OUTPUT
           echo "md_version=$MD_VERSION" >> $GITHUB_OUTPUT
