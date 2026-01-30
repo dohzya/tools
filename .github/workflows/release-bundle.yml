@@ -1,0 +1,110 @@
+name: Release Bundle
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v*-*"  # Exclude tags with hyphens (wl-v*, md-v*)
+
+jobs:
+  bundle:
+    name: Create Bundle Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: tag
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Creating bundle $TAG"
+
+      - name: Parse bundle version
+        id: versions
+        run: |
+          # Read bundle versions from commit message or tag annotation
+          # For now, use latest releases of each tool
+          WL_VERSION=$(gh release list -R dohzya/tools | grep '^wl-v' | head -1 | awk '{print $1}' | sed 's/^wl-v//')
+          MD_VERSION=$(gh release list -R dohzya/tools | grep '^md-v' | head -1 | awk '{print $1}' | sed 's/^md-v//')
+
+          echo "wl_version=$WL_VERSION" >> $GITHUB_OUTPUT
+          echo "md_version=$MD_VERSION" >> $GITHUB_OUTPUT
+          echo "Bundle will contain: wl-$WL_VERSION + md-$MD_VERSION"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download binaries
+        run: |
+          mkdir -p dist
+
+          WL_VERSION=${{ steps.versions.outputs.wl_version }}
+          MD_VERSION=${{ steps.versions.outputs.md_version }}
+
+          # Download wl binaries
+          for platform in darwin-arm64 darwin-x86_64 linux-arm64 linux-x86_64 windows-x86_64; do
+            ext=""
+            if [[ "$platform" == windows-* ]]; then
+              ext=".exe"
+            fi
+
+            echo "Downloading wl-${platform}${ext}..."
+            gh release download "wl-v${WL_VERSION}" \
+              -p "wl-${platform}${ext}" \
+              -D dist \
+              -R dohzya/tools
+          done
+
+          # Download md binaries
+          for platform in darwin-arm64 darwin-x86_64 linux-arm64 linux-x86_64 windows-x86_64; do
+            ext=""
+            if [[ "$platform" == windows-* ]]; then
+              ext=".exe"
+            fi
+
+            echo "Downloading md-${platform}${ext}..."
+            gh release download "md-v${MD_VERSION}" \
+              -p "md-${platform}${ext}" \
+              -D dist \
+              -R dohzya/tools
+          done
+
+          ls -lh dist/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Bundle ${{ steps.tag.outputs.tag }}
+          body: |
+            # Tools Bundle ${{ steps.tag.outputs.version }}
+
+            This bundle release contains:
+            - **wl** `${{ steps.versions.outputs.wl_version }}` - Worklog tool
+            - **md** `${{ steps.versions.outputs.md_version }}` - Markdown-surgeon tool
+
+            ## Installation
+
+            ### mise
+            ```bash
+            mise use https://github.com/dohzya/mise-tools@${{ steps.tag.outputs.tag }}
+            ```
+
+            ### homebrew (individual tools)
+            ```bash
+            brew install dohzya/tools/wl
+            brew install dohzya/tools/md
+            ```
+          draft: false
+          prerelease: false
+          files: |
+            dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
