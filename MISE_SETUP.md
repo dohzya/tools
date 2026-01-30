@@ -1,13 +1,14 @@
 # mise Installation Guide
 
-This guide explains how to install `md` and `wl` using mise with the ubi
+This guide explains how to install `md` and `wl` using mise with a custom
 backend.
 
-## What is the github backend?
+## What is the custom backend?
 
-The github backend is a mise backend that automatically downloads pre-compiled
-binaries from GitHub Releases, detecting the correct platform and architecture
-automatically.
+The custom mise backend automatically downloads pre-compiled binaries from
+GitHub Releases, detecting the correct platform and architecture automatically.
+It supports installing both tools together (bundle) or using homebrew for
+individual installations.
 
 ## Prerequisites
 
@@ -16,112 +17,109 @@ automatically.
 
 ## Installation
 
-### Method 1: Direct Command (Recommended)
+### Bundle Installation (Recommended)
 
-Install directly with version tag:
+Install both tools together using the bundle release:
+
+**Direct Command:**
 
 ```bash
-# Install md (markdown-surgeon)
-mise use -g github:dohzya/tools@md-v0.4.0
-
-# Install wl (worklog)
-mise use -g github:dohzya/tools@wl-v0.4.3
+mise use -g https://github.com/dohzya/mise-tools@v0.5.0
 ```
 
-### Method 2: Project Configuration
-
-Add to your project's `.mise.toml`:
+**Project Configuration (`.mise.toml`):**
 
 ```toml
 [tools]
-"github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.3" = "latest"
+"https://github.com/dohzya/mise-tools" = "0.5.0"  # Installs md + wl
 ```
 
-Then run:
-
-```bash
-mise install
-```
-
-### Method 3: Global Configuration
-
-Add to your global mise config (`~/.config/mise/config.toml`):
+**Global Configuration (`~/.config/mise/config.toml`):**
 
 ```toml
 [tools]
-"github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.3" = "latest"
+"https://github.com/dohzya/mise-tools" = "latest"  # Latest bundle
 ```
 
-Then install:
+Then run `mise install`.
+
+### Individual Installation
+
+For installing tools separately or using different versions, use homebrew:
 
 ```bash
-mise install
+brew install dohzya/tools/wl
+brew install dohzya/tools/md
 ```
 
 ## How It Works
 
-The github backend:
+The custom mise backend:
 
-1. Looks at the specified GitHub release tag (e.g., `md-v0.4.0`)
-2. Downloads the binary asset for your platform (e.g., `md-darwin-arm64` on
-   macOS ARM)
-3. Installs it in your mise bin directory (`~/.local/share/mise/installs/...`)
-4. Makes it available in your PATH automatically
+1. Looks at the specified GitHub release tag (e.g., `v0.5.0`)
+2. Downloads both binary assets for your platform (e.g., `wl-darwin-arm64` and
+   `md-darwin-arm64` on macOS ARM)
+3. Installs them in your mise bin directory (`~/.local/share/mise/installs/...`)
+4. Makes both tools available in your PATH automatically
+
+## Bundle Versions
+
+Bundle releases (e.g., `v0.5.0`) contain specific versions of both tools:
+
+- `v0.5.0` = `wl-0.4.4` + `md-0.4.0`
+
+To see what versions are in a bundle, check the release notes at:
+https://github.com/dohzya/tools/releases
 
 ## Version Pinning
 
-Versions are pinned in the tag name itself:
+Pin to specific bundle versions:
 
 ```toml
 [tools]
-# Pin to specific versions using @ syntax
-"github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.3" = "latest"
+"https://github.com/dohzya/mise-tools" = "0.5.0"  # Specific bundle
+"https://github.com/dohzya/mise-tools" = "latest" # Latest bundle
 ```
 
-To upgrade to a newer version, change the tag (e.g., `md-v0.5.0`).
+To upgrade, update the version and run `mise install`.
 
 ## Updating
 
-Update to latest versions:
+Update to the latest bundle:
 
 ```bash
-mise upgrade
+mise upgrade github-dohzya-tools
 ```
 
-Or update specific tools:
+Or update your `.mise.toml` version and run:
 
 ```bash
-mise upgrade md
-mise upgrade wl
+mise install
 ```
 
 ## Troubleshooting
 
 ### Binary not found
 
-Check that releases exist with the expected naming pattern:
+Check that bundle releases exist with the expected naming pattern:
 
-- md releases: `md-v*` tags with assets like `md-darwin-arm64`,
-  `md-linux-x86_64`
-- wl releases: `wl-v*` tags with assets like `wl-darwin-arm64`,
-  `wl-linux-x86_64`
+- Bundle releases: `v*` tags (e.g., `v0.5.0`) with assets like
+  `wl-darwin-arm64`, `md-darwin-arm64`, etc.
 
 ### Wrong version installed
 
 Check which version is active:
 
 ```bash
-mise current md
-mise current wl
+mise current github-dohzya-tools
+wl --version
+md --version
 ```
 
-Check GitHub releases for available versions:
+Check GitHub releases for available bundles:
 
 ```bash
-gh release list -R dohzya/tools
+gh release list -R dohzya/tools | grep -v "wl-v\|md-v"
 ```
 
 ### Permission denied
@@ -130,8 +128,16 @@ Make sure binaries are executable (mise should handle this automatically). If
 needed, manually fix:
 
 ```bash
-chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/md-*
-chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/wl-*
+chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/bin/*
+```
+
+### Need different versions of md and wl
+
+The bundle installs fixed versions. For flexibility, use homebrew instead:
+
+```bash
+brew install dohzya/tools/wl
+brew install dohzya/tools/md
 ```
 
 ## Uninstalling
@@ -139,6 +145,5 @@ chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/wl-*
 Remove from configuration and uninstall:
 
 ```bash
-mise uninstall md
-mise uninstall wl
+mise uninstall github-dohzya-tools
 ```

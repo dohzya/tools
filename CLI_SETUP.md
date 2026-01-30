@@ -21,21 +21,19 @@ brew install md wl
 
 See [HOMEBREW_SETUP.md](HOMEBREW_SETUP.md) for detailed Homebrew usage.
 
-### Via mise (using github backend)
+### Via mise (using custom backend)
 
-Install directly:
+Install both tools as a bundle:
 
 ```bash
-mise use -g github:dohzya/tools@md-v0.4.0
-mise use -g github:dohzya/tools@wl-v0.4.3
+mise use https://github.com/dohzya/mise-tools@v0.5.0
 ```
 
 Or add to your `.mise.toml`:
 
 ```toml
 [tools]
-"github:dohzya/tools@md-v0.4.0" = "latest"
-"github:dohzya/tools@wl-v0.4.3" = "latest"
+"https://github.com/dohzya/mise-tools" = "0.5.0"  # Installs md + wl
 ```
 
 Then run `mise install`.
@@ -61,7 +59,7 @@ deno install -g --allow-read --allow-write --allow-run=git -n wl \
 Download pre-compiled binaries from
 [GitHub Releases](https://github.com/dohzya/tools/releases):
 
-1. Find the latest release for your tool (`md-v*` or `wl-v*`)
+1. Find the latest release for your tool (`md-v*` or `wl-v0.4.4*`)
 2. Download the binary for your platform (e.g., `md-darwin-arm64` for macOS ARM)
 3. Make it executable: `chmod +x md-darwin-arm64`
 4. Move to your PATH: `mv md-darwin-arm64 ~/.local/bin/md`
@@ -122,7 +120,7 @@ brew upgrade md wl
 ### mise
 
 ```bash
-mise upgrade md wl
+mise upgrade https-github-com-dohzya-mise-tools
 ```
 
 ### Deno
@@ -146,7 +144,7 @@ brew untap dohzya/tools
 ### mise
 
 ```bash
-mise uninstall md wl
+mise uninstall https-github-com-dohzya-mise-tools
 ```
 
 ### Deno
