@@ -67,7 +67,31 @@ You can and should maintain `packages/tools/CHANGELOG.md` when making changes.
    - Or follow manual checklist in [RELEASE.md](RELEASE.md)
    - Add new CHANGELOG entry
 
-## .worklog/
+## Worklog Usage
+
+**IMPORTANT:** For any work session, you must systematically:
+
+1. **Create a worklog task** if one doesn't exist:
+   ```bash
+   wl add --desc "Description of the work to be done"
+   ```
+   This returns a task ID (e.g., `260202n`)
+
+2. **Trace each significant action** as you work:
+   ```bash
+   wl trace <task-id> "Description of the action taken"
+   ```
+   Trace reading files, making changes, running tests, etc.
+
+3. **Mark the task as done** when work is complete:
+   ```bash
+   wl done <task-id> "Summary of changes" "What was learned"
+   ```
+
+This helps maintain a clear record of all work done and supports effective
+collaboration and progress tracking.
+
+### .worklog/ Directory
 
 The `.worklog/` directory is a local working directory and should never be
 committed to git.
