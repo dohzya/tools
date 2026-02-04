@@ -10,6 +10,11 @@ and this project adheres to
 
 ### Added
 
+- **both:** Migrated CLI argument parsing to Cliffy (@cliffy/command)
+  - Auto-generated help for all commands
+  - Type-safe option parsing
+  - Shell completions support (bash, zsh, fish)
+  - Better error messages for invalid arguments
 - **worklog:** UUID base36 ID system with git-style prefix resolution
   - Replace date-based IDs with UUID base36 (25 chars, case-insensitive)
   - Display short IDs (5+ chars minimum)
@@ -42,6 +47,10 @@ and this project adheres to
 ### Changed
 
 - **worklog:** Updated `deno.json` test task to include `--allow-env` permission
+- **BREAKING (markdown-surgeon):** `md concat --shift` now requires an explicit
+  value
+  - Before: `md concat --shift file1.md file2.md` (implicit value 1)
+  - After: `md concat --shift 1 file1.md file2.md` (explicit value required)
 
 ## [0.3.0] - 2026-01-20
 

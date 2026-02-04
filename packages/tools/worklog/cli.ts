@@ -1,3 +1,4 @@
+import { Command } from "@cliffy/command";
 import {
   type AddOutput,
   type AssignOutput,
@@ -3569,266 +3570,37 @@ async function findTaskInScopes(
 }
 
 // ============================================================================
-// CLI
+// CLI with Cliffy
 // ============================================================================
 
-function printUsage(): void {
-  console.log(`Usage: wl <command> [options]
-
-Commands:
-  init                                  Initialize worklog in current directory
-  add [--desc "description"] [--todo "text"]...   Create a new task
-  trace <task-id> <message> [options]   Log an entry to a task
-  logs <task-id>                        Get task context for checkpoint
-  checkpoint <task-id> <changes> <learnings> [options]   Create a checkpoint
-  done <task-id> <changes> <learnings> [options]         Complete task with final checkpoint
-  list [--all] [options]                List tasks (--all includes completed)
-
-Todo management:
-  todo list [<task-id>]                 List todos (all active tasks or specific task)
-  todo add <task-id> <text>             Add a todo to a task
-  todo set key=value <todo-id>          Update todo (e.g., status=done)
-  todo next [<task-id>]                 Show next available todo
-  summary [--since YYYY-MM-DD]          Aggregate all tasks
-  import [-p PATH | -b BRANCH] [--rm]   Import tasks from another worktree
-
-Scope management:
-  scopes [--refresh]                    List all scopes
-  scopes list [--refresh]               List all scopes
-  scopes list <scope-id>                Show scope details
-  scopes add <id> [<path>]              Add scope (creates or links existing .worklog)
-  scopes add <id> --path <path>         Add scope at specific path
-  scopes add <id> --worktree [--ref <ref>]  Add git worktree as scope
-  scopes add-parent [--id <id>] <path>  Configure parent for current scope
-  scopes rename <scope-id> <new-id>     Rename scope ID
-  scopes delete <scope-id> [options]    Delete scope
-  scopes assign <scope-id> <task-id>... Assign task(s) to scope
-  scopes sync-worktrees [--dry-run]     Sync worktree scopes (add missing, remove stale)
-
-Scope aliases:
-  "/"   Always refers to root scope
-  "."   Refers to current active scope (depends on cwd)
-
-Options:
-  --json                                Output in JSON format
-  --timestamp, -t [DATE]THH:mm[:SS][TZ] Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)
-  --force, -f                           Force trace/checkpoint on completed tasks
-  --path, -p PATH                       Path to source .worklog directory
-  --branch, -b BRANCH                   Resolve worktree path from branch name
-  --rm                                  Remove imported tasks from source
-  --scope <path|id>                     Target specific scope
-  --all-scopes                          Show all scopes (for list)
-  --refresh                             Force rescan (for scopes)
-  --move-to <scope-id>                  Move tasks before delete (for scopes delete)
-  --delete-tasks                        Force delete with tasks (for scopes delete)
-  --worktree                            Treat scope as git worktree (for scopes add)
-  --ref <ref>                           Git ref for worktree (for scopes add --worktree)
-  --dry-run                             Preview changes without applying (for sync-worktrees)`);
-}
-
-function parseArgs(args: string[]): {
-  command: string;
-  subcommand: string | null;
-  flags: {
-    desc: string | null;
-    todo: string[];
-    meta: Record<string, string>;
-    delete: string | null;
-    all: boolean;
-    since: string | null;
-    timestamp: string | null;
-    force: boolean;
-    json: boolean;
-    path: string | null;
-    branch: string | null;
-    rm: boolean;
-    scope: string | null;
-    allScopes: boolean;
-    refresh: boolean;
-    to: string | null;
-    moveTo: string | null;
-    deleteTasks: boolean;
-    id: string | null;
-    worktree: boolean;
-    ref: string | null;
-    dryRun: boolean;
-  };
-  positional: string[];
-} {
-  const flags = {
-    desc: null as string | null,
-    todo: [] as string[],
-    meta: {} as Record<string, string>,
-    delete: null as string | null,
-    all: false,
-    since: null as string | null,
-    timestamp: null as string | null,
-    force: false,
-    json: false,
-    path: null as string | null,
-    branch: null as string | null,
-    rm: false,
-    scope: null as string | null,
-    allScopes: false,
-    refresh: false,
-    to: null as string | null,
-    moveTo: null as string | null,
-    deleteTasks: false,
-    id: null as string | null,
-    worktree: false,
-    ref: null as string | null,
-    dryRun: false,
-  };
-  const positional: string[] = [];
-  let command = "";
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--desc" && i + 1 < args.length) {
-      flags.desc = args[++i];
-    } else if (arg.startsWith("--desc=")) {
-      flags.desc = arg.slice(7);
-    } else if (arg === "--todo" && i + 1 < args.length) {
-      flags.todo.push(args[++i]);
-    } else if (arg.startsWith("--todo=")) {
-      flags.todo.push(arg.slice(7));
-    } else if (arg === "--meta" && i + 1 < args.length) {
-      const metaValue = args[++i];
-      const eqIndex = metaValue.indexOf("=");
-      if (eqIndex > 0) {
-        const key = metaValue.slice(0, eqIndex);
-        const value = metaValue.slice(eqIndex + 1);
-        flags.meta[key] = value;
-      }
-    } else if (arg.startsWith("--meta=")) {
-      const metaValue = arg.slice(7);
-      const eqIndex = metaValue.indexOf("=");
-      if (eqIndex > 0) {
-        const key = metaValue.slice(0, eqIndex);
-        const value = metaValue.slice(eqIndex + 1);
-        flags.meta[key] = value;
-      }
-    } else if (arg === "--delete" && i + 1 < args.length) {
-      flags.delete = args[++i];
-    } else if (arg.startsWith("--delete=")) {
-      flags.delete = arg.slice(9);
-    } else if (arg === "--all") {
-      flags.all = true;
-    } else if (arg === "--since" && i + 1 < args.length) {
-      flags.since = args[++i];
-    } else if (arg.startsWith("--since=")) {
-      flags.since = arg.slice(8);
-    } else if ((arg === "--timestamp" || arg === "-t") && i + 1 < args.length) {
-      flags.timestamp = args[++i];
-    } else if (arg.startsWith("--timestamp=")) {
-      flags.timestamp = arg.slice(12);
-    } else if (arg === "--force" || arg === "-f") {
-      flags.force = true;
-    } else if ((arg === "--path" || arg === "-p") && i + 1 < args.length) {
-      flags.path = args[++i];
-    } else if (arg.startsWith("--path=")) {
-      flags.path = arg.slice(7);
-    } else if ((arg === "--branch" || arg === "-b") && i + 1 < args.length) {
-      flags.branch = args[++i];
-    } else if (arg.startsWith("--branch=")) {
-      flags.branch = arg.slice(9);
-    } else if (arg === "--rm") {
-      flags.rm = true;
-    } else if (arg === "--json" || arg === "--format=json") {
-      flags.json = true;
-    } else if (arg === "--scope" && i + 1 < args.length) {
-      flags.scope = args[++i];
-    } else if (arg.startsWith("--scope=")) {
-      flags.scope = arg.slice(8);
-    } else if (arg === "--all-scopes") {
-      flags.allScopes = true;
-    } else if (arg === "--refresh") {
-      flags.refresh = true;
-    } else if (arg === "--to" && i + 1 < args.length) {
-      flags.to = args[++i];
-    } else if (arg.startsWith("--to=")) {
-      flags.to = arg.slice(5);
-    } else if (arg === "--move-to" && i + 1 < args.length) {
-      flags.moveTo = args[++i];
-    } else if (arg.startsWith("--move-to=")) {
-      flags.moveTo = arg.slice(10);
-    } else if (arg === "--delete-tasks") {
-      flags.deleteTasks = true;
-    } else if (arg === "--id" && i + 1 < args.length) {
-      flags.id = args[++i];
-    } else if (arg.startsWith("--id=")) {
-      flags.id = arg.slice(5);
-    } else if (arg === "--worktree") {
-      flags.worktree = true;
-    } else if (arg === "--ref" && i + 1 < args.length) {
-      flags.ref = args[++i];
-    } else if (arg.startsWith("--ref=")) {
-      flags.ref = arg.slice(6);
-    } else if (arg === "--dry-run") {
-      flags.dryRun = true;
-    } else if (!command) {
-      command = arg;
+function handleError(e: unknown, json: boolean): never {
+  if (e instanceof WtError) {
+    if (json) {
+      console.error(JSON.stringify(e.toJSON()));
     } else {
-      positional.push(arg);
+      console.error(formatError(e));
     }
+    Deno.exit(1);
   }
-
-  // Extract subcommand for "scopes" command
-  let subcommand: string | null = null;
-  const validSubcommands = [
-    "list",
-    "add",
-    "add-parent",
-    "rename",
-    "delete",
-    "assign",
-    "sync-worktrees",
-  ];
-
-  if (command === "scopes" && positional.length > 0) {
-    if (validSubcommands.includes(positional[0])) {
-      subcommand = positional[0];
-      positional.shift();
-    }
-  }
-
-  return { command, subcommand, flags, positional };
+  throw e;
 }
 
-export async function main(args: string[]): Promise<void> {
-  // Handle version flag
-  if (args.length === 1 && (args[0] === "-v" || args[0] === "--version")) {
-    console.log(VERSION);
-    Deno.exit(0);
-  }
-
-  if (args.length === 0) {
-    printUsage();
-    Deno.exit(0);
-  }
-
-  const { command, subcommand, flags, positional } = parseArgs(args);
-
+/**
+ * Resolve scope and change to scope directory if needed
+ */
+async function resolveScopeContext(
+  scopeFlag: string | undefined,
+): Promise<{ cwd: string; gitRoot: string | null }> {
   const cwd = Deno.cwd();
   const gitRoot = await findGitRoot(cwd);
 
-  // Commands that need scope resolution
-  const needsScopeResolution = [
-    "add",
-    "trace",
-    "logs",
-    "checkpoint",
-    "done",
-    "meta",
-    "todo",
-  ]
-    .includes(
-      command,
-    );
-
-  if (needsScopeResolution) {
+  if (scopeFlag || gitRoot) {
     try {
-      const activeScope = await resolveActiveScope(cwd, flags.scope, gitRoot);
+      const activeScope = await resolveActiveScope(
+        cwd,
+        scopeFlag ?? null,
+        gitRoot,
+      );
       const scopeDir = activeScope.slice(0, -WORKLOG_DIR.length - 1);
       if (scopeDir && scopeDir !== cwd) {
         Deno.chdir(scopeDir);
@@ -3838,454 +3610,588 @@ export async function main(args: string[]): Promise<void> {
     }
   }
 
-  try {
-    switch (command) {
-      case "init": {
-        const output = await cmdInit();
-        console.log(flags.json ? JSON.stringify(output) : formatStatus(output));
-        break;
-      }
+  return { cwd, gitRoot };
+}
 
-      case "add": {
-        let desc = flags.desc ?? positional[0] ?? "";
-        const todos = flags.todo;
-
-        // If no desc but todos provided, use first todo as desc
-        if (!desc && todos.length > 0) {
-          desc = todos[0];
-        }
-
-        const metadata = Object.keys(flags.meta).length > 0
-          ? flags.meta
-          : undefined;
-        const output = await cmdAdd(desc, todos, metadata);
-        console.log(flags.json ? JSON.stringify(output) : formatAdd(output));
-        break;
-      }
-
-      case "trace": {
-        if (positional.length < 2) {
-          throw new WtError(
-            "invalid_args",
-            "Usage: wt trace <task-id> <message> [--timestamp TS] [--meta key=value]...",
-          );
-        }
-
-        // Parse flexible timestamp format if provided
-        let timestampValue: string | undefined;
-        if (flags.timestamp) {
-          try {
-            timestampValue = parseFlexibleTimestamp(flags.timestamp);
-          } catch (_e) {
-            throw new WtError(
-              "invalid_args",
-              `Invalid timestamp format: ${flags.timestamp}. Use format [YYYY-MM-DD]THH:mm[:SS][<tz>]`,
-            );
-          }
-        }
-
-        const output = await cmdTrace(
-          positional[0],
-          positional[1],
-          timestampValue,
-          flags.force,
-          Object.keys(flags.meta).length > 0 ? flags.meta : undefined,
-        );
-        console.log(flags.json ? JSON.stringify(output) : formatTrace(output));
-        break;
-      }
-
-      case "logs": {
-        if (positional.length < 1) {
-          throw new WtError("invalid_args", "Usage: wt logs <task-id>");
-        }
-        const output = await cmdLogs(positional[0]);
-        console.log(flags.json ? JSON.stringify(output) : formatLogs(output));
-        break;
-      }
-
-      case "checkpoint": {
-        if (positional.length < 3) {
-          throw new WtError(
-            "invalid_args",
-            "Usage: wt checkpoint <task-id> <changes> <learnings>",
-          );
-        }
-        const output = await cmdCheckpoint(
-          positional[0],
-          positional[1],
-          positional[2],
-          flags.force,
-        );
-        console.log(flags.json ? JSON.stringify(output) : formatStatus(output));
-        break;
-      }
-
-      case "done": {
-        if (positional.length < 3) {
-          throw new WtError(
-            "invalid_args",
-            "Usage: wt done <task-id> <changes> <learnings> [--force] [--meta key=value]...",
-          );
-        }
-        const output = await cmdDone(
-          positional[0],
-          positional[1],
-          positional[2],
-          flags.force,
-          Object.keys(flags.meta).length > 0 ? flags.meta : undefined,
-        );
-        console.log(flags.json ? JSON.stringify(output) : formatStatus(output));
-        break;
-      }
-
-      case "meta": {
-        if (positional.length < 1) {
-          throw new WtError(
-            "invalid_args",
-            "Usage: wl meta <task-id> [<key> <value>] [--delete <key>]",
-          );
-        }
-        const taskId = positional[0];
-        const key = positional[1];
-        const value = positional[2];
-        const output = await cmdMeta(
-          taskId,
-          key,
-          value,
-          flags.delete ?? undefined,
-        );
-        console.log(flags.json ? JSON.stringify(output) : formatMeta(output));
-        break;
-      }
-
-      case "todo": {
-        const subcommand = positional[0];
-
-        switch (subcommand) {
-          case "list": {
-            const taskId = positional[1] || undefined;
-            const output = await cmdTodoList(taskId);
-            console.log(
-              flags.json ? JSON.stringify(output) : formatTodoList(output),
-            );
-            break;
-          }
-
-          case "add": {
-            if (positional.length < 3) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl todo add <task-id> <text>",
-              );
-            }
-            const taskId = positional[1];
-            const text = positional.slice(2).join(" ");
-            const output = await cmdTodoAdd(taskId, text);
-            console.log(
-              flags.json ? JSON.stringify(output) : formatTodoAdd(output),
-            );
-            break;
-          }
-
-          case "set": {
-            if (positional.length < 3) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl todo set key=value <todo-id>",
-              );
-            }
-
-            // Parse key=value pairs
-            const updates: Record<string, string> = {};
-            let todoId = "";
-
-            for (let i = 1; i < positional.length; i++) {
-              const arg = positional[i];
-              const eqIndex = arg.indexOf("=");
-              if (eqIndex > 0) {
-                const key = arg.substring(0, eqIndex);
-                const value = arg.substring(eqIndex + 1);
-                updates[key] = value;
-              } else {
-                todoId = arg;
-              }
-            }
-
-            if (!todoId) {
-              throw new WtError(
-                "invalid_args",
-                "Missing todo-id in: wl todo set key=value <todo-id>",
-              );
-            }
-
-            const output = await cmdTodoSet(todoId, updates);
-            console.log(
-              flags.json ? JSON.stringify(output) : formatStatus(output),
-            );
-            break;
-          }
-
-          case "next": {
-            const taskId = positional[1] || undefined;
-            const todo = await cmdTodoNext(taskId);
-            console.log(
-              flags.json ? JSON.stringify(todo) : formatTodoNext(todo),
-            );
-            break;
-          }
-
-          default: {
-            throw new WtError(
-              "invalid_args",
-              `Unknown todo subcommand: ${subcommand}. Use: list, add, set, next`,
-            );
-          }
-        }
-        break;
-      }
-
-      case "list": {
-        let currentScope: string | undefined;
-
-        // Determine current scope for prefix logic (if not using --scope or --all-scopes)
-        if (!flags.scope && !flags.allScopes && gitRoot) {
-          try {
-            currentScope = await resolveActiveScope(cwd, null, gitRoot);
-          } catch {
-            // No scope found, single worklog mode
-          }
-        }
-
-        const output = await cmdList(
-          flags.all,
-          flags.path ?? undefined,
-          flags.scope ?? undefined,
-          flags.allScopes,
-          gitRoot,
-          currentScope,
-          cwd,
-        );
-        console.log(flags.json ? JSON.stringify(output) : formatList(output));
-        break;
-      }
-
-      case "scopes": {
-        // Dispatch to subcommands
-        switch (subcommand || "list") {
-          case "list": {
-            const scopeId = positional.length > 0 ? positional[0] : undefined;
-            const output = await cmdScopesList(cwd, flags.refresh, scopeId);
-
-            if ("taskCount" in output) {
-              // ScopeDetailOutput
-              console.log(
-                flags.json ? JSON.stringify(output) : formatScopeDetail(output),
-              );
-            } else {
-              // ScopesOutput
-              console.log(
-                flags.json ? JSON.stringify(output) : formatScopes(output),
-              );
-            }
-            break;
-          }
-
-          case "add": {
-            if (positional.length < 1) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl scopes add <id> [<path>] [--path <path>] [--worktree [--ref <ref>]]",
-              );
-            }
-            // Support both old syntax (positional path) and new syntax (--path flag)
-            const pathArg = positional.length > 1 ? positional[1] : undefined;
-            const effectivePath = flags.path ?? pathArg;
-
-            // Validate mutually exclusive flags
-            if (effectivePath && flags.worktree) {
-              throw new WtError(
-                "invalid_args",
-                "Cannot use path and --worktree together. Choose one.",
-              );
-            }
-            const scopeId = positional[0];
-            const output = await cmdScopesAdd(
-              scopeId,
-              effectivePath,
-              flags.worktree,
-              flags.ref ?? undefined,
-              cwd,
-            );
-            console.log(
-              flags.json ? JSON.stringify(output) : formatStatus(output),
-            );
-            break;
-          }
-
-          case "add-parent": {
-            if (positional.length < 1) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl scopes add-parent [--id <id>] <path>",
-              );
-            }
-            const parentPath = positional[0];
-            const output = await cmdScopesAddParent(
-              parentPath,
-              flags.id ?? undefined,
-              cwd,
-            );
-            console.log(
-              flags.json ? JSON.stringify(output) : formatStatus(output),
-            );
-            break;
-          }
-
-          case "rename": {
-            if (positional.length < 2) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl scopes rename <scope-id> <new-id>",
-              );
-            }
-            const output = await cmdScopesRename(
-              positional[0],
-              positional[1],
-              cwd,
-            );
-            console.log(
-              flags.json ? JSON.stringify(output) : formatStatus(output),
-            );
-            break;
-          }
-
-          case "delete": {
-            if (positional.length < 1) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl scopes delete <scope-id> [--move-to <scope>] [--delete-tasks]",
-              );
-            }
-            const output = await cmdScopesDelete(
-              positional[0],
-              flags.moveTo ?? undefined,
-              flags.deleteTasks,
-              cwd,
-            );
-            console.log(
-              flags.json ? JSON.stringify(output) : formatStatus(output),
-            );
-            break;
-          }
-
-          case "assign": {
-            if (positional.length < 2) {
-              throw new WtError(
-                "invalid_args",
-                "Usage: wl scopes assign <scope-id> <task-id> [<task-id>...]",
-              );
-            }
-            const targetScope = positional[0];
-            const taskIds = positional.slice(1);
-            const output = await cmdScopesAssign(targetScope, taskIds, cwd);
-            console.log(
-              flags.json ? JSON.stringify(output) : formatAssign(output),
-            );
-            break;
-          }
-
-          case "sync-worktrees": {
-            const output = await cmdScopesSyncWorktrees(cwd, flags.dryRun);
-            if (flags.json) {
-              console.log(JSON.stringify(output));
-            } else {
-              // Print warnings first
-              for (const warning of output.warnings) {
-                console.error(`Warning: ${warning}`);
-              }
-              // Print summary
-              if (output.added.length > 0) {
-                console.log(`Added: ${output.added.join(", ")}`);
-              }
-              if (output.removed.length > 0) {
-                console.log(`Removed: ${output.removed.join(", ")}`);
-              }
-              if (
-                output.added.length === 0 &&
-                output.removed.length === 0 &&
-                output.warnings.length === 0
-              ) {
-                console.log("All worktrees are in sync.");
-              }
-              if (flags.dryRun) {
-                console.log("(dry-run mode, no changes made)");
-              }
-            }
-            break;
-          }
-
-          default: {
-            throw new WtError(
-              "invalid_args",
-              `Unknown subcommand: scopes ${subcommand}`,
-            );
-          }
-        }
-        break;
-      }
-
-      case "summary": {
-        const output = await cmdSummary(flags.since);
-        console.log(
-          flags.json ? JSON.stringify(output) : formatSummary(output),
-        );
-        break;
-      }
-
-      case "import": {
-        let sourcePath: string;
-
-        if (flags.path && flags.branch) {
-          throw new WtError(
-            "invalid_args",
-            "Cannot specify both --path and --branch",
-          );
-        }
-
-        if (!flags.path && !flags.branch) {
-          throw new WtError(
-            "invalid_args",
-            "Must specify either --path or --branch",
-          );
-        }
-
-        if (flags.branch) {
-          sourcePath = await resolveWorktreePath(flags.branch);
-        } else {
-          sourcePath = flags.path!;
-        }
-
-        const output = await cmdImport(sourcePath, flags.rm);
-        console.log(flags.json ? JSON.stringify(output) : formatImport(output));
-        break;
-      }
-
-      default:
-        printUsage();
-        Deno.exit(1);
+/**
+ * Parse --meta key=value into record
+ */
+function parseMetaOption(
+  values: string[] | undefined,
+): Record<string, string> | undefined {
+  if (!values || values.length === 0) return undefined;
+  const meta: Record<string, string> = {};
+  for (const kv of values) {
+    const eqIndex = kv.indexOf("=");
+    if (eqIndex > 0) {
+      meta[kv.slice(0, eqIndex)] = kv.slice(eqIndex + 1);
     }
-  } catch (e) {
-    if (e instanceof WtError) {
-      if (flags.json) {
-        console.error(JSON.stringify(e.toJSON()));
-      } else {
-        console.error(formatError(e));
-      }
-      Deno.exit(1);
-    }
-    throw e;
   }
+  return Object.keys(meta).length > 0 ? meta : undefined;
+}
+
+// ============================================================================
+// Cliffy Commands - Todo subcommands
+// ============================================================================
+
+const todoListCmd = new Command()
+  .description("List todos (all active tasks or specific task)")
+  .arguments("[taskId:string]")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdTodoList(taskId);
+      console.log(
+        options.json ? JSON.stringify(output) : formatTodoList(output),
+      );
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const todoAddCmd = new Command()
+  .description("Add a todo to a task")
+  .arguments("<taskId:string> <text...:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId, ...textParts) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const text = textParts.join(" ");
+      const output = await cmdTodoAdd(taskId, text);
+      console.log(
+        options.json ? JSON.stringify(output) : formatTodoAdd(output),
+      );
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const todoSetCmd = new Command()
+  .description("Update todo (e.g., status=done)")
+  .arguments("<args...:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, ...args) => {
+    try {
+      await resolveScopeContext(options.scope);
+      // Parse key=value pairs and todo-id
+      const updates: Record<string, string> = {};
+      let todoId = "";
+      for (const arg of args) {
+        const eqIndex = arg.indexOf("=");
+        if (eqIndex > 0) {
+          updates[arg.substring(0, eqIndex)] = arg.substring(eqIndex + 1);
+        } else {
+          todoId = arg;
+        }
+      }
+      if (!todoId) {
+        throw new WtError(
+          "invalid_args",
+          "Missing todo-id in: wl todo set key=value <todo-id>",
+        );
+      }
+      const output = await cmdTodoSet(todoId, updates);
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const todoNextCmd = new Command()
+  .description("Show next available todo")
+  .arguments("[taskId:string]")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const todo = await cmdTodoNext(taskId);
+      console.log(options.json ? JSON.stringify(todo) : formatTodoNext(todo));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const todoCmd = new Command()
+  .description("Todo management")
+  .action(function () {
+    this.showHelp();
+  })
+  .command("list", todoListCmd)
+  .command("add", todoAddCmd)
+  .command("set", todoSetCmd)
+  .command("next", todoNextCmd);
+
+// ============================================================================
+// Cliffy Commands - Scopes subcommands
+// ============================================================================
+
+const scopesListCmd = new Command()
+  .description("List all scopes or show scope details")
+  .arguments("[scopeId:string]")
+  .option("--json", "Output as JSON")
+  .option("--refresh", "Force rescan of scopes")
+  .action(async (options, scopeId) => {
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesList(
+        cwd,
+        options.refresh ?? false,
+        scopeId,
+      );
+      if ("taskCount" in output) {
+        console.log(
+          options.json ? JSON.stringify(output) : formatScopeDetail(output),
+        );
+      } else {
+        console.log(
+          options.json ? JSON.stringify(output) : formatScopes(output),
+        );
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesAddCmd = new Command()
+  .description("Add scope (creates or links existing .worklog)")
+  .arguments("<scopeId:string> [path:string]")
+  .option("--json", "Output as JSON")
+  .option("-p, --path <path:string>", "Path to scope directory")
+  .option("--worktree", "Treat scope as git worktree")
+  .option("--ref <ref:string>", "Git ref for worktree")
+  .action(async (options, scopeId, pathArg) => {
+    try {
+      const cwd = Deno.cwd();
+      const effectivePath = options.path ?? pathArg;
+      if (effectivePath && options.worktree) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot use path and --worktree together. Choose one.",
+        );
+      }
+      const output = await cmdScopesAdd(
+        scopeId,
+        effectivePath,
+        options.worktree ?? false,
+        options.ref,
+        cwd,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesAddParentCmd = new Command()
+  .description("Configure parent for current scope")
+  .arguments("<path:string>")
+  .option("--json", "Output as JSON")
+  .option("--id <id:string>", "Scope ID for this scope")
+  .action(async (options, parentPath) => {
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesAddParent(parentPath, options.id, cwd);
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesRenameCmd = new Command()
+  .description("Rename scope ID")
+  .arguments("<scopeId:string> <newId:string>")
+  .option("--json", "Output as JSON")
+  .action(async (options, scopeId, newId) => {
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesRename(scopeId, newId, cwd);
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesDeleteCmd = new Command()
+  .description("Delete scope")
+  .arguments("<scopeId:string>")
+  .option("--json", "Output as JSON")
+  .option(
+    "--move-to <scope:string>",
+    "Move tasks to another scope before delete",
+  )
+  .option("--delete-tasks", "Force delete with tasks")
+  .action(async (options, scopeId) => {
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesDelete(
+        scopeId,
+        options.moveTo,
+        options.deleteTasks ?? false,
+        cwd,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesAssignCmd = new Command()
+  .description("Assign task(s) to scope")
+  .arguments("<scopeId:string> <taskIds...:string>")
+  .option("--json", "Output as JSON")
+  .action(async (options, scopeId, ...taskIds) => {
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesAssign(scopeId, taskIds, cwd);
+      console.log(options.json ? JSON.stringify(output) : formatAssign(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesSyncWorktreesCmd = new Command()
+  .description("Sync worktree scopes (add missing, remove stale)")
+  .option("--json", "Output as JSON")
+  .option("--dry-run", "Preview changes without applying")
+  .action(async (options) => {
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesSyncWorktrees(cwd, options.dryRun ?? false);
+      if (options.json) {
+        console.log(JSON.stringify(output));
+      } else {
+        for (const warning of output.warnings) {
+          console.error(`Warning: ${warning}`);
+        }
+        if (output.added.length > 0) {
+          console.log(`Added: ${output.added.join(", ")}`);
+        }
+        if (output.removed.length > 0) {
+          console.log(`Removed: ${output.removed.join(", ")}`);
+        }
+        if (
+          output.added.length === 0 && output.removed.length === 0 &&
+          output.warnings.length === 0
+        ) {
+          console.log("All worktrees are in sync.");
+        }
+        if (options.dryRun) {
+          console.log("(dry-run mode, no changes made)");
+        }
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const scopesCmd = new Command()
+  .description("Scope management")
+  .option("--json", "Output as JSON")
+  .option("--refresh", "Force rescan of scopes")
+  .action(async function (options) {
+    // Default action: list scopes
+    try {
+      const cwd = Deno.cwd();
+      const output = await cmdScopesList(cwd, false, undefined);
+      if ("taskCount" in output) {
+        console.log(
+          options.json ? JSON.stringify(output) : formatScopeDetail(output),
+        );
+      } else {
+        console.log(
+          options.json ? JSON.stringify(output) : formatScopes(output),
+        );
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  })
+  .command("list", scopesListCmd)
+  .command("add", scopesAddCmd)
+  .command("add-parent", scopesAddParentCmd)
+  .command("rename", scopesRenameCmd)
+  .command("delete", scopesDeleteCmd)
+  .command("assign", scopesAssignCmd)
+  .command("sync-worktrees", scopesSyncWorktreesCmd);
+
+// ============================================================================
+// Cliffy Commands - Main commands
+// ============================================================================
+
+const initCmd = new Command()
+  .description("Initialize worklog in current directory")
+  .option("--json", "Output as JSON")
+  .action(async (options) => {
+    try {
+      const output = await cmdInit();
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const addCmd = new Command()
+  .description("Create a new task")
+  .arguments("[desc:string]")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("-d, --desc <desc:string>", "Task description")
+  .option("--todo <text:string>", "Add a todo item (repeatable)", {
+    collect: true,
+  })
+  .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
+    collect: true,
+  })
+  .action(async (options, descArg) => {
+    try {
+      await resolveScopeContext(options.scope);
+      let desc = options.desc ?? descArg ?? "";
+      const todos = options.todo ?? [];
+      if (!desc && todos.length > 0) {
+        desc = todos[0];
+      }
+      const metadata = parseMetaOption(options.meta);
+      const output = await cmdAdd(desc, todos, metadata);
+      console.log(options.json ? JSON.stringify(output) : formatAdd(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const traceCmd = new Command()
+  .description("Log an entry to a task")
+  .arguments("<taskId:string> <message:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option(
+    "-t, --timestamp <ts:string>",
+    "Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)",
+  )
+  .option("-f, --force", "Force trace on completed tasks")
+  .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
+    collect: true,
+  })
+  .action(async (options, taskId, message) => {
+    try {
+      await resolveScopeContext(options.scope);
+      let timestampValue: string | undefined;
+      if (options.timestamp) {
+        try {
+          timestampValue = parseFlexibleTimestamp(options.timestamp);
+        } catch {
+          throw new WtError(
+            "invalid_args",
+            `Invalid timestamp format: ${options.timestamp}. Use format [YYYY-MM-DD]THH:mm[:SS][<tz>]`,
+          );
+        }
+      }
+      const metadata = parseMetaOption(options.meta);
+      const output = await cmdTrace(
+        taskId,
+        message,
+        timestampValue,
+        options.force ?? false,
+        metadata,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatTrace(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const logsCmd = new Command()
+  .description("Get task context for checkpoint")
+  .arguments("<taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdLogs(taskId);
+      console.log(options.json ? JSON.stringify(output) : formatLogs(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const checkpointCmd = new Command()
+  .description("Create a checkpoint")
+  .arguments("<taskId:string> <changes:string> <learnings:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("-f, --force", "Force checkpoint on completed tasks")
+  .option("-t, --timestamp <ts:string>", "Timestamp (currently ignored)")
+  .action(async (options, taskId, changes, learnings) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdCheckpoint(
+        taskId,
+        changes,
+        learnings,
+        options.force ?? false,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const doneCmd = new Command()
+  .description("Complete task with final checkpoint")
+  .arguments("<taskId:string> <changes:string> <learnings:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("-f, --force", "Force completion")
+  .option("-t, --timestamp <ts:string>", "Timestamp (currently ignored)")
+  .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
+    collect: true,
+  })
+  .action(async (options, taskId, changes, learnings) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const metadata = parseMetaOption(options.meta);
+      const output = await cmdDone(
+        taskId,
+        changes,
+        learnings,
+        options.force ?? false,
+        metadata,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const metaCmd = new Command()
+  .description("Get or set task metadata")
+  .arguments("<taskId:string> [key:string] [value:string]")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("--delete <key:string>", "Delete a metadata key")
+  .action(async (options, taskId, key, value) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdMeta(taskId, key, value, options.delete);
+      console.log(options.json ? JSON.stringify(output) : formatMeta(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const listCmd = new Command()
+  .description("List tasks")
+  .option("--json", "Output as JSON")
+  .option("--all", "Include completed tasks")
+  .option("-p, --path <path:string>", "Path to .worklog directory")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("--all-scopes", "Show all scopes")
+  .action(async (options) => {
+    try {
+      const cwd = Deno.cwd();
+      const gitRoot = await findGitRoot(cwd);
+      let currentScope: string | undefined;
+      if (!options.scope && !options.allScopes && gitRoot) {
+        try {
+          currentScope = await resolveActiveScope(cwd, null, gitRoot);
+        } catch {
+          // No scope found
+        }
+      }
+      const output = await cmdList(
+        options.all ?? false,
+        options.path,
+        options.scope,
+        options.allScopes ?? false,
+        gitRoot,
+        currentScope,
+        cwd,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatList(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const summaryCmd = new Command()
+  .description("Aggregate all tasks")
+  .option("--json", "Output as JSON")
+  .option("--since <date:string>", "Filter by date (YYYY-MM-DD)")
+  .action(async (options) => {
+    try {
+      const output = await cmdSummary(options.since ?? null);
+      console.log(
+        options.json ? JSON.stringify(output) : formatSummary(output),
+      );
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const importCmd = new Command()
+  .description("Import tasks from another worktree")
+  .option("--json", "Output as JSON")
+  .option("-p, --path <path:string>", "Path to source .worklog directory")
+  .option(
+    "-b, --branch <branch:string>",
+    "Resolve worktree path from branch name",
+  )
+  .option("--rm", "Remove imported tasks from source")
+  .action(async (options) => {
+    try {
+      if (options.path && options.branch) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --path and --branch",
+        );
+      }
+      if (!options.path && !options.branch) {
+        throw new WtError(
+          "invalid_args",
+          "Must specify either --path or --branch",
+        );
+      }
+      let sourcePath: string;
+      if (options.branch) {
+        sourcePath = await resolveWorktreePath(options.branch);
+      } else {
+        sourcePath = options.path!;
+      }
+      const output = await cmdImport(sourcePath, options.rm ?? false);
+      console.log(options.json ? JSON.stringify(output) : formatImport(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+// ============================================================================
+// Main CLI
+// ============================================================================
+
+const cli = new Command()
+  .name("wl")
+  .version(VERSION)
+  .description("Worklog - Track work progress during development sessions")
+  .command("init", initCmd)
+  .command("add", addCmd)
+  .command("trace", traceCmd)
+  .command("logs", logsCmd)
+  .command("checkpoint", checkpointCmd)
+  .command("done", doneCmd)
+  .command("meta", metaCmd)
+  .command("list", listCmd)
+  .command("summary", summaryCmd)
+  .command("import", importCmd)
+  .command("todo", todoCmd)
+  .command("scopes", scopesCmd);
+
+export async function main(args: string[]): Promise<void> {
+  await cli.parse(args);
 }
 
 // Run if executed directly

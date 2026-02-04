@@ -1,3 +1,4 @@
+import { Command } from "@cliffy/command";
 import {
   type Document,
   MdError,
@@ -746,322 +747,256 @@ async function cmdConcat(files: string[], shift: number): Promise<string> {
 }
 
 // ============================================================================
-// CLI
+// CLI with Cliffy
 // ============================================================================
 
-function printUsage(): void {
-  console.log(`Usage: md <command> [options]
-
-Commands:
-  outline <file> [--after ID] [--last] [--count]  List sections
-  read [--deep] <file> <id>              Read section content
-  write [--deep] <file> <id> [content]   Update section content
-  append [--deep] [--before] <file> <id> [content]  Append to section
-  empty [--deep] <file> <id>             Empty section
-  remove <file> <id>                     Remove section + subsections
-  search [--summary] <file> <pattern>    Search in file
-  concat [--shift[=N]] <files...>        Concatenate files
-  meta <file> [key]                      Show frontmatter or get key
-  meta <file> --set <key> <value>        Set frontmatter key
-  meta <file> --del <key>                Delete frontmatter key
-  create <file> [--title T] [--meta k=v] Create new file`);
-}
-
-function parseArgs(args: string[]): {
-  command: string;
-  flags: {
-    deep: boolean;
-    before: boolean;
-    summary: boolean;
-    shift: number;
-    set: boolean;
-    del: boolean;
-    title: string | null;
-    meta: Array<[string, string]>;
-    force: boolean;
-    after: string | null;
-    last: boolean;
-    count: boolean;
-    h1: boolean;
-    json: boolean;
-  };
-  positional: string[];
-} {
-  const flags = {
-    deep: false,
-    before: false,
-    summary: false,
-    shift: 0,
-    set: false,
-    del: false,
-    title: null as string | null,
-    meta: [] as Array<[string, string]>,
-    force: false,
-    after: null as string | null,
-    last: false,
-    count: false,
-    h1: false,
-    json: false,
-  };
-  const positional: string[] = [];
-  let command = "";
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--deep") {
-      flags.deep = true;
-    } else if (arg === "--before") {
-      flags.before = true;
-    } else if (arg === "--summary") {
-      flags.summary = true;
-    } else if (arg === "--shift") {
-      flags.shift = 1;
-    } else if (arg.startsWith("--shift=")) {
-      flags.shift = parseInt(arg.slice(8), 10) || 1;
-    } else if (arg === "--set") {
-      flags.set = true;
-    } else if (arg === "--del" || arg === "--delete") {
-      flags.del = true;
-    } else if (arg === "--title" && i + 1 < args.length) {
-      flags.title = args[++i];
-    } else if (arg.startsWith("--title=")) {
-      flags.title = arg.slice(8);
-    } else if (arg === "--meta" && i + 1 < args.length) {
-      const kv = args[++i];
-      const eqIdx = kv.indexOf("=");
-      if (eqIdx > 0) {
-        flags.meta.push([kv.slice(0, eqIdx), kv.slice(eqIdx + 1)]);
-      }
-    } else if (arg.startsWith("--meta=")) {
-      const kv = arg.slice(7);
-      const eqIdx = kv.indexOf("=");
-      if (eqIdx > 0) {
-        flags.meta.push([kv.slice(0, eqIdx), kv.slice(eqIdx + 1)]);
-      }
-    } else if (arg === "--force") {
-      flags.force = true;
-    } else if (arg === "--after" && i + 1 < args.length) {
-      flags.after = args[++i];
-    } else if (arg.startsWith("--after=")) {
-      flags.after = arg.slice(8);
-    } else if (arg === "--last") {
-      flags.last = true;
-    } else if (arg === "--count") {
-      flags.count = true;
-    } else if (arg === "--h1") {
-      flags.h1 = true;
-    } else if (arg === "--format=json" || arg === "--json") {
-      flags.json = true;
-    } else if (!command) {
-      command = arg;
-    } else {
-      positional.push(arg);
-    }
+function handleError(e: unknown): never {
+  if (e instanceof MdError) {
+    console.error(e.format());
+    Deno.exit(1);
   }
-
-  return { command, flags, positional };
+  throw e;
 }
+
+/**
+ * Parse --meta key=value into tuple
+ */
+function parseMetaOption(value: string): [string, string] {
+  const eqIdx = value.indexOf("=");
+  if (eqIdx <= 0) {
+    throw new Error(`Invalid --meta format: ${value}. Expected key=value`);
+  }
+  return [value.slice(0, eqIdx), value.slice(eqIdx + 1)];
+}
+
+const outlineCmd = new Command()
+  .description("List sections in a Markdown file")
+  .arguments("<file:string>")
+  .option("--after <id:string>", "Show only subsections after this section ID")
+  .option("--last", "Show only the last subsection")
+  .option("--count", "Show count only")
+  .option("--json", "Output as JSON")
+  .action(async (options, file) => {
+    try {
+      const output = await cmdOutline(
+        file,
+        options.after ?? null,
+        options.last ?? false,
+        options.count ?? false,
+        options.json ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const readCmd = new Command()
+  .description("Read section content")
+  .arguments("<file:string> <id:string>")
+  .option("--deep", "Include subsections")
+  .option("--json", "Output as JSON")
+  .action(async (options, file, id) => {
+    try {
+      const output = await cmdRead(
+        file,
+        id,
+        options.deep ?? false,
+        options.json ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const writeCmd = new Command()
+  .description("Update section content")
+  .arguments("<file:string> <id:string> [content:string]")
+  .option("--deep", "Replace including subsections")
+  .option("--json", "Output as JSON")
+  .action(async (options, file, id, content) => {
+    try {
+      const actualContent = content ?? await readStdin();
+      const output = await cmdWrite(
+        file,
+        id,
+        actualContent,
+        options.deep ?? false,
+        options.json ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const appendCmd = new Command()
+  .description("Append content to a section")
+  .arguments("<file:string> [idOrContent:string] [content:string]")
+  .option("--deep", "Append after subsections")
+  .option("--before", "Insert before section instead of after")
+  .option("--json", "Output as JSON")
+  .action(async (options, file, idOrContent, content) => {
+    try {
+      // Check if idOrContent is an ID (8 hex chars) or content
+      const hasId = idOrContent !== undefined && isValidId(idOrContent);
+      const id = hasId ? idOrContent : null;
+      const actualContent = hasId
+        ? (content ?? await readStdin())
+        : (idOrContent ?? await readStdin());
+      const output = await cmdAppend(
+        file,
+        id,
+        actualContent,
+        options.deep ?? false,
+        options.before ?? false,
+        options.json ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const emptyCmd = new Command()
+  .description("Empty a section (keep header)")
+  .arguments("<file:string> <id:string>")
+  .option("--deep", "Also empty subsections")
+  .option("--json", "Output as JSON")
+  .action(async (options, file, id) => {
+    try {
+      const output = await cmdEmpty(
+        file,
+        id,
+        options.deep ?? false,
+        options.json ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const removeCmd = new Command()
+  .description("Remove a section and its subsections")
+  .arguments("<file:string> <id:string>")
+  .option("--json", "Output as JSON")
+  .action(async (options, file, id) => {
+    try {
+      const output = await cmdRemove(file, id, options.json ?? false);
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const searchCmd = new Command()
+  .description("Search for a pattern in a file")
+  .arguments("<file:string> <pattern:string>")
+  .option("--summary", "Group results by section")
+  .option("--json", "Output as JSON")
+  .action(async (options, file, pattern) => {
+    try {
+      const output = await cmdSearch(
+        file,
+        pattern,
+        options.summary ?? false,
+        options.json ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const concatCmd = new Command()
+  .description("Concatenate multiple Markdown files")
+  .arguments("<files...:string>")
+  .option("-s, --shift <n:number>", "Shift header levels by N", { default: 0 })
+  .action(async (options, ...files) => {
+    try {
+      const output = await cmdConcat(files, options.shift);
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const metaCmd = new Command()
+  .description("Manage YAML frontmatter")
+  .arguments("<file:string> [key:string] [value:string]")
+  .option("--set", "Set a key (requires key and value)")
+  .option("--del", "Delete a key")
+  .option("--h1", "Get the H1 title instead of frontmatter")
+  .action(async (options, file, key, value) => {
+    try {
+      const actualValue = options.set ? (value ?? null) : null;
+      if (options.set && !key) {
+        throw new MdError(
+          "parse_error",
+          "Usage: md meta <file> --set <key> <value>",
+        );
+      }
+      if (options.del && !key) {
+        throw new MdError("parse_error", "Usage: md meta <file> --del <key>");
+      }
+      const output = await cmdMeta(
+        file,
+        key ?? null,
+        actualValue,
+        options.del ?? false,
+        options.h1 ?? false,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const createCmd = new Command()
+  .description("Create a new Markdown file")
+  .arguments("<file:string> [content:string]")
+  .option("--title <title:string>", "Set the H1 title")
+  .option("--meta <kv:string>", "Set frontmatter key=value (repeatable)", {
+    collect: true,
+  })
+  .option("--force", "Overwrite existing file")
+  .action(async (options, file, content) => {
+    try {
+      const metaEntries: Array<[string, string]> = (options.meta ?? []).map(
+        parseMetaOption,
+      );
+      const output = await cmdCreate(
+        file,
+        options.title ?? null,
+        metaEntries,
+        options.force ?? false,
+        content ?? null,
+      );
+      if (output) console.log(output);
+    } catch (e) {
+      handleError(e);
+    }
+  });
+
+const cli = new Command()
+  .name("md")
+  .version(VERSION)
+  .description("Manipulate Markdown files by section")
+  .command("outline", outlineCmd)
+  .command("read", readCmd)
+  .command("write", writeCmd)
+  .command("append", appendCmd)
+  .command("empty", emptyCmd)
+  .command("remove", removeCmd)
+  .command("search", searchCmd)
+  .command("concat", concatCmd)
+  .command("meta", metaCmd)
+  .command("create", createCmd);
 
 export async function main(args: string[]): Promise<void> {
-  // Handle version flag
-  if (args.length === 1 && (args[0] === "-v" || args[0] === "--version")) {
-    console.log(VERSION);
-    Deno.exit(0);
-  }
-
-  if (args.length === 0) {
-    printUsage();
-    Deno.exit(0);
-  }
-
-  const { command, flags, positional } = parseArgs(args);
-
-  try {
-    let output: string;
-
-    switch (command) {
-      case "outline": {
-        if (positional.length < 1) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md outline <file> [--after ID] [--last] [--count]",
-          );
-        }
-        output = await cmdOutline(
-          positional[0],
-          flags.after,
-          flags.last,
-          flags.count,
-          flags.json,
-        );
-        break;
-      }
-
-      case "read": {
-        if (positional.length < 2) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md read [--deep] <file> <id>",
-          );
-        }
-        output = await cmdRead(
-          positional[0],
-          positional[1],
-          flags.deep,
-          flags.json,
-        );
-        break;
-      }
-
-      case "write": {
-        if (positional.length < 2) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md write [--deep] <file> <id> [content]",
-          );
-        }
-        const content = positional[2] ?? await readStdin();
-        output = await cmdWrite(
-          positional[0],
-          positional[1],
-          content,
-          flags.deep,
-          flags.json,
-        );
-        break;
-      }
-
-      case "append": {
-        if (positional.length < 1) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md append [--deep] [--before] <file> [id] [content]",
-          );
-        }
-        // Check if second positional is an ID (8 hex chars) or content
-        const hasId = positional.length >= 2 && isValidId(positional[1]);
-        const id = hasId ? positional[1] : null;
-        const content = hasId
-          ? (positional[2] ?? await readStdin())
-          : (positional[1] ?? await readStdin());
-        output = await cmdAppend(
-          positional[0],
-          id,
-          content,
-          flags.deep,
-          flags.before,
-          flags.json,
-        );
-        break;
-      }
-
-      case "empty": {
-        if (positional.length < 2) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md empty [--deep] <file> <id>",
-          );
-        }
-        output = await cmdEmpty(
-          positional[0],
-          positional[1],
-          flags.deep,
-          flags.json,
-        );
-        break;
-      }
-
-      case "remove": {
-        if (positional.length < 2) {
-          throw new MdError("parse_error", "Usage: md remove <file> <id>");
-        }
-        output = await cmdRemove(positional[0], positional[1], flags.json);
-        break;
-      }
-
-      case "search": {
-        if (positional.length < 2) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md search [--summary] <file> <pattern>",
-          );
-        }
-        output = await cmdSearch(
-          positional[0],
-          positional[1],
-          flags.summary,
-          flags.json,
-        );
-        break;
-      }
-
-      case "concat": {
-        if (positional.length < 1) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md concat [--shift[=N]] <files...>",
-          );
-        }
-        output = await cmdConcat(positional, flags.shift);
-        break;
-      }
-
-      case "meta": {
-        if (positional.length < 1) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md meta <file> [key] or md meta <file> --set <key> <value>",
-          );
-        }
-        const file = positional[0];
-        const key = positional[1] ?? null;
-        const value = flags.set ? (positional[2] ?? null) : null;
-        if (flags.set && !key) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md meta <file> --set <key> <value>",
-          );
-        }
-        if (flags.del && !key) {
-          throw new MdError("parse_error", "Usage: md meta <file> --del <key>");
-        }
-        output = await cmdMeta(file, key, value, flags.del, flags.h1);
-        break;
-      }
-
-      case "create": {
-        if (positional.length < 1) {
-          throw new MdError(
-            "parse_error",
-            "Usage: md create <file> [--title T] [--meta k=v] [content]",
-          );
-        }
-        const content = positional[1] ?? null;
-        output = await cmdCreate(
-          positional[0],
-          flags.title,
-          flags.meta,
-          flags.force,
-          content,
-        );
-        break;
-      }
-
-      default:
-        printUsage();
-        Deno.exit(1);
-    }
-
-    if (output) {
-      console.log(output);
-    }
-  } catch (e) {
-    if (e instanceof MdError) {
-      console.error(e.format());
-      Deno.exit(1);
-    }
-    throw e;
-  }
+  await cli.parse(args);
 }
 
 // Run if executed directly

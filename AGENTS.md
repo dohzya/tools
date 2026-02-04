@@ -30,6 +30,20 @@ task validate  # Runs fmt + check + lint + test
 **Do not skip this step** - if any check fails, fix the issues before
 committing. These checks are enforced by CI.
 
+## Testing CLI Changes
+
+When modifying CLI code (`markdown-surgeon/cli.ts` or `worklog/cli.ts`), you
+should test your changes using the unit tests:
+
+```bash
+task test:md   # Test markdown-surgeon CLI
+task test:wl   # Test worklog CLI
+task test      # Run all tests (including compatibility tests)
+```
+
+The CLI tests call `main()` directly and use `captureOutput()` to verify output.
+For integration tests that spawn subprocesses, see `compat-tests/` directory.
+
 ## TypeScript Best Practices
 
 ### Type Safety and Validation

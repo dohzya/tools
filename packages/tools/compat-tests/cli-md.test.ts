@@ -455,7 +455,8 @@ Deno.test("md: concat --shift increases header levels", async () => {
   const file1 = createTempFile(`# Header\nContent`);
   const file2 = createTempFile(`# Header 2\nContent 2`);
   try {
-    const result = await runCli(["concat", "--shift", file1, file2]);
+    // --shift now requires a value (e.g., --shift 1)
+    const result = await runCli(["concat", "--shift", "1", file1, file2]);
     assertEquals(result.code, 0);
     assertStringIncludes(result.stdout, "## Header");
     assertStringIncludes(result.stdout, "## Header 2");

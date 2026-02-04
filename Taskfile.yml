@@ -17,6 +17,16 @@ tasks:
     dir: packages/tools
     cmds:
       - deno test --allow-read --allow-write --allow-env --allow-run {{.CLI_ARGS}}
+  test:md:
+    desc: "Run markdown-surgeon CLI tests"
+    dir: packages/tools
+    cmds:
+      - deno test --allow-read --allow-write --reporter=dot markdown-surgeon/cli.test.ts {{.CLI_ARGS}}
+  test:wl:
+    desc: "Run worklog CLI tests"
+    dir: packages/tools
+    cmds:
+      - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot worklog/cli.test.ts {{.CLI_ARGS}}
 
   check:
     desc: "Check the code (format & type & lint)"

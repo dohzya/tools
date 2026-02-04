@@ -19,7 +19,8 @@
     "@std/assert": "jsr:@std/assert@^1.0.0",
     "@std/path": "jsr:@std/path@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
-    "@zod/zod": "jsr:@zod/zod@^4.3.6"
+    "@zod/zod": "jsr:@zod/zod@^4.3.6",
+    "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8"
   },
   "tasks": {
     "fmt": "deno fmt",
