@@ -27,13 +27,11 @@ task validate  # Run all checks (fmt + check + lint + test)
 task validate  # Runs fmt + check + lint + test
 ```
 
-**Do not skip this step** - if any check fails, fix the issues before
-committing. These checks are enforced by CI.
+**Do not skip this step** - if any check fails, fix the issues before committing. These checks are enforced by CI.
 
 ## Testing CLI Changes
 
-When modifying CLI code (`markdown-surgeon/cli.ts` or `worklog/cli.ts`), you
-should test your changes using the unit tests:
+When modifying CLI code (`markdown-surgeon/cli.ts` or `worklog/cli.ts`), you should test your changes using the unit tests:
 
 ```bash
 task test:md   # Test markdown-surgeon CLI
@@ -41,8 +39,7 @@ task test:wl   # Test worklog CLI
 task test      # Run all tests (including compatibility tests)
 ```
 
-The CLI tests call `main()` directly and use `captureOutput()` to verify output.
-For integration tests that spawn subprocesses, see `compat-tests/` directory.
+The CLI tests call `main()` directly and use `captureOutput()` to verify output. For integration tests that spawn subprocesses, see `compat-tests/` directory.
 
 ### Writing Tests - Best Practices
 
@@ -52,10 +49,12 @@ For integration tests that spawn subprocesses, see `compat-tests/` directory.
    ```typescript
    const file = await createTempFile(`---\ntags: [foo]\n---\n# Test`);
    try {
-     const output = await captureOutput(() => main(["meta", "--aggregate", "tags", file]));
+     const output = await captureOutput(() =>
+       main(["meta", "--aggregate", "tags", file])
+     );
      assertEquals(output.trim(), "foo");
    } finally {
-     await Deno.remove(file);  // Automatic cleanup
+     await Deno.remove(file); // Automatic cleanup
    }
    ```
 
@@ -77,7 +76,9 @@ For integration tests that spawn subprocesses, see `compat-tests/` directory.
    try {
      await Deno.writeTextFile(`${tmpDir}/a.md`, `---\ntags: [foo]\n---\n# A`);
      await Deno.writeTextFile(`${tmpDir}/b.md`, `---\ntags: [bar]\n---\n# B`);
-     const output = await captureOutput(() => main(["meta", "--aggregate", "tags", `${tmpDir}/*.md`]));
+     const output = await captureOutput(() =>
+       main(["meta", "--aggregate", "tags", `${tmpDir}/*.md`])
+     );
      // Test output
    } finally {
      await Deno.remove(tmpDir, { recursive: true });
@@ -113,8 +114,7 @@ For integration tests that spawn subprocesses, see `compat-tests/` directory.
 
 ## Creating Releases
 
-When it's time to create a new release, refer to [RELEASE.md](RELEASE.md) for
-the complete release process, including:
+When it's time to create a new release, refer to [RELEASE.md](RELEASE.md) for the complete release process, including:
 
 - Automated scripts (`task bump`, `task build`, `task update-tap`)
 - Manual step-by-step instructions
@@ -122,8 +122,7 @@ the complete release process, including:
 - Bundle releases (combining wl + md for mise backend)
 - Common pitfalls and troubleshooting
 
-**Important:** For bundle releases, always verify which tool versions will be
-included BEFORE pushing the tag:
+**Important:** For bundle releases, always verify which tool versions will be included BEFORE pushing the tag:
 
 ```bash
 # Note: gh release list is tab-separated
@@ -169,12 +168,10 @@ You can and should maintain `packages/tools/CHANGELOG.md` when making changes.
    wl done <worktask-id> "Summary of changes" "What was learned"
    ```
 
-This helps maintain a clear record of all work done and supports effective
-collaboration and progress tracking.
+This helps maintain a clear record of all work done and supports effective collaboration and progress tracking.
 
 ### .worklog/ Directory
 
-The `.worklog/` directory is a local working directory and should never be
-committed to git.
+The `.worklog/` directory is a local working directory and should never be committed to git.
 
 It is already in `.gitignore`.

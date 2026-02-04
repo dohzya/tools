@@ -5,16 +5,13 @@ description: Generate a structured REX (Retour d'EXpérience / Post-Mortem) from
 
 # REX Session Generator
 
-Generate concise, actionable REX (Retour d'EXpérience) documents from technical
-conversations, focusing on learnings and decision-making processes.
+Generate concise, actionable REX (Retour d'EXpérience) documents from technical conversations, focusing on learnings and decision-making processes.
 
 ## Purpose
 
 Extract and structure the essential insights from a technical conversation.
 
-**If a `WORKLOG.md` exists in the project**, use it as a primary source
-alongside the conversation — it contains the chronological trace of attempts,
-errors, and iterations.
+**If a `WORKLOG.md` exists in the project**, use it as a primary source alongside the conversation — it contains the chronological trace of attempts, errors, and iterations.
 
 Key insights to extract:
 
@@ -26,8 +23,7 @@ Key insights to extract:
 
 ## Output Format
 
-Generate markdown output directly in the chat (unless the user requests
-otherwise) with the following structure:
+Generate markdown output directly in the chat (unless the user requests otherwise) with the following structure:
 
 ```markdown
 # REX: [Brief Title]
@@ -71,20 +67,14 @@ otherwise) with the following structure:
 
 ## Guidelines
 
-**Conciseness**: Keep it actionable. Skip obvious steps or standard procedures.
-Focus on non-trivial insights.
+**Conciseness**: Keep it actionable. Skip obvious steps or standard procedures. Focus on non-trivial insights.
 
-**Technical depth**: Include enough detail for someone (including future you) to
-understand WHY decisions were made, not just WHAT was done.
+**Technical depth**: Include enough detail for someone (including future you) to understand WHY decisions were made, not just WHAT was done.
 
-**Problem focus**: Emphasize what went wrong and why - these are the
-highest-value learnings.
+**Problem focus**: Emphasize what went wrong and why - these are the highest-value learnings.
 
-**Iteration clarity**: When multiple approaches were tested, explain what made
-each one fail or succeed.
+**Iteration clarity**: When multiple approaches were tested, explain what made each one fail or succeed.
 
-**Flexibility**: Adapt the structure to the conversation. Not every REX needs
-all sections. Some technical deep-dives might need additional custom sections.
+**Flexibility**: Adapt the structure to the conversation. Not every REX needs all sections. Some technical deep-dives might need additional custom sections.
 
-**Default output**: Generate directly in chat as markdown. If the user wants to
-save it, they can ask to store it.
+**Default output**: Generate directly in chat as markdown. If the user wants to save it, they can ask to store it.

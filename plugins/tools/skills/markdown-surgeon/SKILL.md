@@ -6,8 +6,7 @@ user-invocable: false
 
 # Markdown Surgeon
 
-CLI `md` to manipulate Markdown by section. Each section has an 8-char hex ID
-based on level + title + occurrence.
+CLI `md` to manipulate Markdown by section. Each section has an 8-char hex ID based on level + title + occurrence.
 
 ```bash
 ~/.claude/skills/markdown-surgeon/md <command> [options]
@@ -72,5 +71,4 @@ md meta doc.md --set updated "{dt:short}"   # 2025-01-16 09:15
 md create log.md --title "Log {date}"
 ```
 
-See [reference.md](reference.md) for edge cases. For API/tool development, see
-[reference-api.md](reference-api.md).
+See [reference.md](reference.md) for edge cases. For API/tool development, see [reference-api.md](reference-api.md).

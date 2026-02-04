@@ -34,11 +34,9 @@ wl todo next [<task-id>]                         # Show next available todo
 
 ### Trace options
 
-**IMPORTANT:** Always place options BETWEEN the task ID and the message content.
-This ensures options remain visible in truncated UI displays.
+**IMPORTANT:** Always place options BETWEEN the task ID and the message content. This ensures options remain visible in truncated UI displays.
 
-✅ **Correct:** `wl trace 250116a -t T11:35 "message"` ❌ **Incorrect:**
-`wl trace 250116a "message" -t T11:35`
+✅ **Correct:** `wl trace 250116a -t T11:35 "message"` ❌ **Incorrect:** `wl trace 250116a "message" -t T11:35`
 
 Available options:
 
@@ -47,8 +45,7 @@ Available options:
 
 ## Timestamp format
 
-Use `--timestamp TS` or `-t TS` with flexible format:
-`[YYYY-MM-DD]THH:mm[:SS][<tz>]`
+Use `--timestamp TS` or `-t TS` with flexible format: `[YYYY-MM-DD]THH:mm[:SS][<tz>]`
 
 Rules:
 
@@ -73,13 +70,11 @@ wl trace 250116a -t 2024-12-15T11:15 "Session resumed"
 wl trace 250116a -t "2024-12-15T11:15:30+01:00" "Fixed validation"
 ```
 
-**Use case:** Importing historical entries from other logs (e.g., WORKLOG.md)
-while preserving original timestamps.
+**Use case:** Importing historical entries from other logs (e.g., WORKLOG.md) while preserving original timestamps.
 
 ## Modifying completed tasks
 
-By default, completed tasks cannot be modified. Use `--force` (or `-f`) to add
-entries or checkpoints after completion:
+By default, completed tasks cannot be modified. Use `--force` (or `-f`) to add entries or checkpoints after completion:
 
 ```bash
 # Add post-completion entry
@@ -96,14 +91,11 @@ wl checkpoint 250116a -f "Hotfix applied" "Edge case documented"
 - Documenting production learnings
 - Appending missed context
 
-**Purge protection:** Tasks with uncheckpointed entries (flag
-`has_uncheckpointed_entries: true`) are not auto-purged. Create a checkpoint to
-clear this flag and allow eventual cleanup.
+**Purge protection:** Tasks with uncheckpointed entries (flag `has_uncheckpointed_entries: true`) are not auto-purged. Create a checkpoint to clear this flag and allow eventual cleanup.
 
 ## Importing from other worktrees
 
-When working across multiple worktrees, import tasks before deleting the
-worktree to preserve work history:
+When working across multiple worktrees, import tasks before deleting the worktree to preserve work history:
 
 ```bash
 # Import by worktree path
@@ -297,13 +289,13 @@ wl todo next <task-id>
 
 ### TODO Statuses
 
-| Status | Symbol | Description |
-| -------- | ------ | ----------------------------- |
-| todo | `[ ]` | Pending, ready to start |
-| wip | `[/]` | Work in progress |
-| blocked | `[>]` | Blocked, waiting on dependency |
-| cancelled | `[-]` | Cancelled, not needed |
-| done | `[x]` | Completed |
+| Status    | Symbol | Description                    |
+| --------- | ------ | ------------------------------ |
+| todo      | `[ ]`  | Pending, ready to start        |
+| wip       | `[/]`  | Work in progress               |
+| blocked   | `[>]`  | Blocked, waiting on dependency |
+| cancelled | `[-]`  | Cancelled, not needed          |
+| done      | `[x]`  | Completed                      |
 
 ### Task completion with TODOs
 
@@ -324,12 +316,13 @@ TODOs are stored in the task markdown file under `# TODO` section:
 ```markdown
 # TODO
 
-- [ ] Analyze existing code  [id:: abc1234] ^abc1234
-- [>] Write tests  [id:: def5678] [dependsOn:: abc1234] ^def5678
-- [x] Setup environment  [id:: ghi9012] [due:: 2026-02-10] ^ghi9012
+- [ ] Analyze existing code [id:: abc1234] ^abc1234
+- [>] Write tests [id:: def5678] [dependsOn:: abc1234] ^def5678
+- [x] Setup environment [id:: ghi9012] [due:: 2026-02-10] ^ghi9012
 ```
 
 Each TODO has:
+
 - **Unique ID** (7-char base62): Shown in listings, used for `wl todo set`
 - **Status checkbox**: `[ ]`, `[/]`, `[>]`, `[-]`, or `[x]`
 - **Text**: The TODO description
@@ -338,8 +331,7 @@ Each TODO has:
 
 ## Task IDs
 
-Task IDs use UUID base36 encoding to eliminate collision risks in parallel
-execution and multi-worktree scenarios.
+Task IDs use UUID base36 encoding to eliminate collision risks in parallel execution and multi-worktree scenarios.
 
 ### ID Generation
 
@@ -375,8 +367,7 @@ Old date-based IDs (e.g., `250116a`) are still supported and resolved correctly.
 
 ## Task Metadata
 
-Tasks can have custom metadata for traceability (commit SHA, PR number, author,
-etc.).
+Tasks can have custom metadata for traceability (commit SHA, PR number, author, etc.).
 
 ### Viewing metadata
 
@@ -433,8 +424,7 @@ Metadata is stored in the task's YAML frontmatter and preserved across imports.
     └── 250116a.md       # Task file (frontmatter + entries + checkpoints)
 ```
 
-Task files are Markdown with YAML frontmatter. Old completed tasks (>30 days)
-are auto-purged.
+Task files are Markdown with YAML frontmatter. Old completed tasks (>30 days) are auto-purged.
 
 ## JSON output format
 

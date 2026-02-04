@@ -1,13 +1,10 @@
 # @dohzya/tools
 
-A collection of CLI tools and Claude Code skills for markdown manipulation and
-productivity.
+A collection of CLI tools and Claude Code skills for markdown manipulation and productivity.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![JSR](https://jsr.io/badges/@dohzya/tools)](https://jsr.io/@dohzya/tools)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![JSR](https://jsr.io/badges/@dohzya/tools)](https://jsr.io/@dohzya/tools)
 
-**Quick Links:** [Claude Code Setup](CLAUDE_SETUP.md) ·
-[CLI Tools Setup](CLI_SETUP.md) · [Library API](packages/tools/README.md)
+**Quick Links:** [Claude Code Setup](CLAUDE_SETUP.md) · [CLI Tools Setup](CLI_SETUP.md) · [Library API](packages/tools/README.md)
 
 ## What's in this repo?
 
@@ -63,8 +60,7 @@ const doc = parseDocument(markdown);
 - Updating specific sections without full file rewrites
 - Using Markdown as a lightweight database
 
-**Commands:** `outline`, `read`, `write`, `append`, `empty`, `remove`, `search`,
-`concat`, `meta`, `create`
+**Commands:** `outline`, `read`, `write`, `append`, `empty`, `remove`, `search`, `concat`, `meta`, `create`
 
 ### worklog
 
@@ -84,11 +80,9 @@ wl logs
 - Creating checkpoints at milestones
 - Generating summaries for reports or PRs
 
-**Commands:** `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`,
-`summary`
+**Commands:** `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`, `summary`
 
-**Activates automatically** in Claude Code when `.worklog/` exists or user says
-"track this".
+**Activates automatically** in Claude Code when `.worklog/` exists or user says "track this".
 
 ### obsidian-journal
 
@@ -98,11 +92,9 @@ Claude Code skill for creating timestamped journal entries in Obsidian.
 
 ### rex-session
 
-Claude Code skill for generating structured REX (Retour d'EXpérience /
-Post-Mortem) documents from technical conversations.
+Claude Code skill for generating structured REX (Retour d'EXpérience / Post-Mortem) documents from technical conversations.
 
-**Use when:** documenting incidents, project retrospectives, or technical
-decisions.
+**Use when:** documenting incidents, project retrospectives, or technical decisions.
 
 ## Library Usage
 
@@ -116,8 +108,7 @@ const doc = parseDocument(markdown);
 console.log(doc.sections);
 ```
 
-See [packages/tools/README.md](packages/tools/README.md) for complete API
-documentation.
+See [packages/tools/README.md](packages/tools/README.md) for complete API documentation.
 
 ## Development
 

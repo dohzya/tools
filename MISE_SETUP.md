@@ -1,14 +1,10 @@
 # mise Installation Guide
 
-This guide explains how to install `md` and `wl` using mise with a custom
-backend.
+This guide explains how to install `md` and `wl` using mise with a custom backend.
 
 ## What is the custom backend?
 
-The custom mise backend automatically downloads pre-compiled binaries from
-GitHub Releases, detecting the correct platform and architecture automatically.
-It supports installing both tools together (bundle) or using homebrew for
-individual installations.
+The custom mise backend automatically downloads pre-compiled binaries from GitHub Releases, detecting the correct platform and architecture automatically. It supports installing both tools together (bundle) or using homebrew for individual installations.
 
 ## Prerequisites
 
@@ -57,8 +53,7 @@ brew install dohzya/tools/md
 The custom mise backend:
 
 1. Looks at the specified GitHub release tag (e.g., `v0.5.0`)
-2. Downloads both binary assets for your platform (e.g., `wl-darwin-arm64` and
-   `md-darwin-arm64` on macOS ARM)
+2. Downloads both binary assets for your platform (e.g., `wl-darwin-arm64` and `md-darwin-arm64` on macOS ARM)
 3. Installs them in your mise bin directory (`~/.local/share/mise/installs/...`)
 4. Makes both tools available in your PATH automatically
 
@@ -68,8 +63,7 @@ Bundle releases (e.g., `v0.5.0`) contain specific versions of both tools:
 
 - `v0.6.0` = `wl-0.5.0` + `md-0.4.0`
 
-To see what versions are in a bundle, check the release notes at:
-https://github.com/dohzya/tools/releases
+To see what versions are in a bundle, check the release notes at: https://github.com/dohzya/tools/releases
 
 ## Version Pinning
 
@@ -103,8 +97,7 @@ mise install
 
 Check that bundle releases exist with the expected naming pattern:
 
-- Bundle releases: `v*` tags (e.g., `v0.5.0`) with assets like
-  `wl-darwin-arm64`, `md-darwin-arm64`, etc.
+- Bundle releases: `v*` tags (e.g., `v0.5.0`) with assets like `wl-darwin-arm64`, `md-darwin-arm64`, etc.
 
 ### Wrong version installed
 
@@ -124,8 +117,7 @@ gh release list -R dohzya/tools | grep -v "wl-v0.6.0\|md-v0.5.1"
 
 ### Permission denied
 
-Make sure binaries are executable (mise should handle this automatically). If
-needed, manually fix:
+Make sure binaries are executable (mise should handle this automatically). If needed, manually fix:
 
 ```bash
 chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/bin/*

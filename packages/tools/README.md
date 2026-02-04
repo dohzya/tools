@@ -127,8 +127,7 @@ await main(["outline", "doc.md"]);
 
 ### worklog
 
-Append-only work logging with checkpoint snapshots for tracking development
-progress.
+Append-only work logging with checkpoint snapshots for tracking development progress.
 
 #### Core API (`@dohzya/tools/worklog`)
 
@@ -195,12 +194,9 @@ await main([
 ]);
 ```
 
-CLI commands: `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`,
-`summary`
+CLI commands: `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`, `summary`
 
-See the
-[worklog skill documentation](../../plugins/tools/skills/worklog/SKILL.md) for
-detailed usage.
+See the [worklog skill documentation](../../plugins/tools/skills/worklog/SKILL.md) for detailed usage.
 
 ## Publishing
 

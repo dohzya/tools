@@ -4,9 +4,7 @@
 
 ## Objectif
 
-Permettre à `wl` de gérer plusieurs `.worklog` dans un monorepo, en liant des
-tâches à des workspaces spécifiques tout en minimisant les tokens nécessaires
-pour claude-code.
+Permettre à `wl` de gérer plusieurs `.worklog` dans un monorepo, en liant des tâches à des workspaces spécifiques tout en minimisant les tokens nécessaires pour claude-code.
 
 ## Concepts
 
@@ -176,8 +174,7 @@ wl move --scope <scope> --to <path>
 
 ### Autres commandes
 
-Les commandes existantes (`add`, `trace`, `logs`, `checkpoint`, `done`) opèrent
-sur le scope actif (résolu selon les règles ci-dessus).
+Les commandes existantes (`add`, `trace`, `logs`, `checkpoint`, `done`) opèrent sur le scope actif (résolu selon les règles ci-dessus).
 
 | Commande              | Scope utilisé                 |
 | --------------------- | ----------------------------- |

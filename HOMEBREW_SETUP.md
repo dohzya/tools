@@ -1,7 +1,6 @@
 # Installing md and wl via Homebrew
 
-This guide explains how to install the `md` (markdown-surgeon) and `wl`
-(worklog) CLI tools using Homebrew.
+This guide explains how to install the `md` (markdown-surgeon) and `wl` (worklog) CLI tools using Homebrew.
 
 ## Prerequisites
 
@@ -59,8 +58,7 @@ md read README.md installation
 md write README.md installation "New installation instructions"
 ```
 
-See the [main repository](https://github.com/dohzya/tools) for complete
-documentation.
+See the [main repository](https://github.com/dohzya/tools) for complete documentation.
 
 ### Worklog (wl)
 
@@ -86,9 +84,7 @@ wl checkpoint <task-id> "Changes made" "Things learned"
 wl done <task-id> "Changes" "Learnings"
 ```
 
-See the
-[worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/tools/skills/worklog)
-for complete usage.
+See the [worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/tools/skills/worklog) for complete usage.
 
 ## Updating
 
@@ -159,9 +155,7 @@ chmod +x $(which wl)
 
 ## Alternative Installation Methods
 
-If Homebrew doesn't work for you, see the
-[main README](https://github.com/dohzya/tools#cli-tools-installation) for other
-installation options:
+If Homebrew doesn't work for you, see the [main README](https://github.com/dohzya/tools#cli-tools-installation) for other installation options:
 
 - mise (with github backend)
 - Deno install

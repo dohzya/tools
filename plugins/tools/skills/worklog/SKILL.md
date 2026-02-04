@@ -32,8 +32,7 @@ wl list [--all]                                  # List active tasks (--all incl
 - Add `--meta key=value` to `trace` or `done` to attach metadata (commit SHA, PR number, author, session ID)
 - Add `--json` to any command for JSON output
 
-See `reference.md` for complete documentation (imports, advanced features,
-output formats).
+See `reference.md` for complete documentation (imports, advanced features, output formats).
 
 ## TODO Management
 
@@ -80,13 +79,13 @@ wl todo next <task-id>
 
 ### TODO Statuses
 
-| Status | Symbol | Description |
-| -------- | ------ | ----------------------------- |
-| todo | `[ ]` | Pending, ready to start |
-| wip | `[/]` | Work in progress |
-| blocked | `[>]` | Blocked, waiting on dependency |
-| cancelled | `[-]` | Cancelled, not needed |
-| done | `[x]` | Completed |
+| Status    | Symbol | Description                    |
+| --------- | ------ | ------------------------------ |
+| todo      | `[ ]`  | Pending, ready to start        |
+| wip       | `[/]`  | Work in progress               |
+| blocked   | `[>]`  | Blocked, waiting on dependency |
+| cancelled | `[-]`  | Cancelled, not needed          |
+| done      | `[x]`  | Completed                      |
 
 ### Task completion with TODOs
 
@@ -107,12 +106,13 @@ TODOs are stored in the task markdown file under `# TODO` section:
 ```markdown
 # TODO
 
-- [ ] Analyze existing code  [id:: abc1234] ^abc1234
-- [>] Write tests  [id:: def5678] [dependsOn:: abc1234] ^def5678
-- [x] Setup environment  [id:: ghi9012] [due:: 2026-02-10] ^ghi9012
+- [ ] Analyze existing code [id:: abc1234] ^abc1234
+- [>] Write tests [id:: def5678] [dependsOn:: abc1234] ^def5678
+- [x] Setup environment [id:: ghi9012] [due:: 2026-02-10] ^ghi9012
 ```
 
 Each TODO has:
+
 - **Unique ID** (7-char base62): Shown in listings, used for `wl todo set`
 - **Status checkbox**: `[ ]`, `[/]`, `[>]`, `[-]`, or `[x]`
 - **Text**: The TODO description
@@ -146,8 +146,7 @@ Use the returned ID for all subsequent commands.
 
 ### Log progress
 
-**IMPORTANT:** Always place options (like `-t`) BETWEEN the task ID and the
-message content.
+**IMPORTANT:** Always place options (like `-t`) BETWEEN the task ID and the message content.
 
 ```bash
 wl trace 250116a "Goal: support multi-currency orders"
@@ -201,8 +200,7 @@ wl trace 260202a -t T15:15 "Found root cause in validator"
 wl trace 260202a -t T15:45 "Applied fix + tests pass"
 ```
 
-This keeps the worklog chronologically accurate when recreating a work session
-from memory or notes.
+This keeps the worklog chronologically accurate when recreating a work session from memory or notes.
 
 ### Checkpointing
 
@@ -242,20 +240,24 @@ wl done 250116a \
 **IMPORTANT:** The `changes` and `learnings` passed to `wl done` must be a **synthesis of ALL significant traces**, not just a final status update. Review `wl logs <id>` to structure your summary.
 
 **Format recommendations:**
+
 - Use **bullet-lists** instead of dense paragraphs (much more readable)
 - Start with a **one-line summary** of what was achieved
 - Use **sections** (Actions, Résultat, etc.) to organize information
 - **Numbered lists** for learnings make them easy to reference later
 
 **First argument (changes)** should contain:
+
 1. **One-line summary**: Brief description of what was accomplished
 2. **Actions**: Bullet-list of what was concretely done (implementations, fixes, refactors, pivots)
 3. **Résultat**: Bullet-list of final outcomes (what works, what was validated, metrics)
 
 **Second argument (learnings)** should contain:
+
 - **Numbered insights**: Reusable lessons for future work (what approach worked/failed and why, patterns discovered, things to remember)
 
 **Good example:**
+
 ```bash
 wl done 250116a \
   "Multi-currency validation implemented via CurrencyBucket pattern (12 tests passing)
@@ -278,6 +280,7 @@ Résultat:
 ```
 
 **Bad example (avoid):**
+
 ```bash
 wl done 250116a "Task completed" "All tests pass"
 # ❌ Missing: what was implemented, what approaches failed, why pivots happened
@@ -286,6 +289,7 @@ wl done 250116a "Task completed" "All tests pass"
 **Git workflow (versioned projects):**
 
 For version-controlled projects, follow this order:
+
 1. **Create the commit first** (with all changes)
 2. **Then mark worktask as done** with commit reference
 
@@ -311,20 +315,14 @@ This creates a final checkpoint and marks the task done.
 
 ## Guidelines
 
-**Trace often, checkpoint occasionally.** Traces are cheap (append-only).
-Checkpoints require synthesis.
+**Trace often, checkpoint occasionally.** Traces are cheap (append-only). Checkpoints require synthesis.
 
-**Be specific in traces.** "Tried X - failed because Y" is better than "Tried
-X".
+**Be specific in traces.** "Tried X - failed because Y" is better than "Tried X".
 
-**Options go between ID and message.** Always use
-`wl trace <id> -t T11:35 "message"`, never `wl trace <id> "message" -t T11:35`.
-This keeps options visible in truncated UI displays.
+**Options go between ID and message.** Always use `wl trace <id> -t T11:35 "message"`, never `wl trace <id> "message" -t T11:35`. This keeps options visible in truncated UI displays.
 
-**Learnings are reusable insights.** Not just "what we did" but "what we learned
-that applies elsewhere".
+**Learnings are reusable insights.** Not just "what we did" but "what we learned that applies elsewhere".
 
-**Suggest checkpoints to user.** When you see `checkpoint recommended` or before
-a natural break, offer to create one.
+**Suggest checkpoints to user.** When you see `checkpoint recommended` or before a natural break, offer to create one.
 
 **Language.** Adapt to user's working language for traces and checkpoints.

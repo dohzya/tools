@@ -23,5 +23,4 @@
 
 stderr: `error: <code>\n<message>`
 
-Codes: `file_not_found`, `section_not_found`, `parse_error`, `invalid_id`,
-`io_error`
+Codes: `file_not_found`, `section_not_found`, `parse_error`, `invalid_id`, `io_error`

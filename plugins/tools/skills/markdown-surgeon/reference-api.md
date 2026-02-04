@@ -109,8 +109,7 @@ updated ^7b2e4a1c L5-L12 (+3, -5)
 md append <file> [id] [content] [--deep] [--before] [--json]
 ```
 
-Appends content to a section. If no ID, appends to file (start with `--before`,
-end otherwise).
+Appends content to a section. If no ID, appends to file (start with `--before`, end otherwise).
 
 **Output (text):**
 
