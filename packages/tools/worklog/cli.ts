@@ -1539,13 +1539,14 @@ async function cmdAdd(
   desc: string,
   todos: string[] = [],
   metadata?: Record<string, string>,
+  timestamp?: string,
 ): Promise<AddOutput> {
   await autoInit();
   await purge();
 
   const id = generateTaskIdBase62();
   const uid = crypto.randomUUID();
-  const now = getLocalISOString();
+  const now = timestamp ?? getLocalISOString();
 
   // Build TODO section if todos are provided
   let todoSection = "";
@@ -3977,6 +3978,10 @@ const addCmd = new Command()
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("-d, --desc <desc:string>", "Task description")
+  .option(
+    "-t, --timestamp <ts:string>",
+    "Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)",
+  )
   .option("--todo <text:string>", "Add a todo item (repeatable)", {
     collect: true,
   })
@@ -3991,8 +3996,32 @@ const addCmd = new Command()
       if (!desc && todos.length > 0) {
         desc = todos[0];
       }
+      let timestampValue: string | undefined;
+      if (options.timestamp) {
+        try {
+          timestampValue = parseFlexibleTimestamp(options.timestamp);
+          // Ensure timezone is present, add local timezone if missing
+          const tzRegex = /[+-]\d{2}:\d{2}$/;
+          if (!tzRegex.test(timestampValue)) {
+            const now = new Date();
+            const tzOffset = -now.getTimezoneOffset();
+            const sign = tzOffset >= 0 ? "+" : "-";
+            const hours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(
+              2,
+              "0",
+            );
+            const minutes = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+            timestampValue += `${sign}${hours}:${minutes}`;
+          }
+        } catch {
+          throw new WtError(
+            "invalid_args",
+            `Invalid timestamp format: ${options.timestamp}. Use format [YYYY-MM-DD]THH:mm[:SS][<tz>]`,
+          );
+        }
+      }
       const metadata = parseMetaOption(options.meta);
-      const output = await cmdAdd(desc, todos, metadata);
+      const output = await cmdAdd(desc, todos, metadata, timestampValue);
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
     } catch (e) {
       handleError(e, options.json ?? false);

@@ -1399,3 +1399,178 @@ Deno.test("worklog - handles malformed task file", async () => {
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+// Integration tests for wl add with timestamp
+Deno.test("worklog add - accepts custom timestamp in ISO format", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+
+    // Create task with custom timestamp
+    const customTimestamp = "2024-12-15T14:30:00+01:00";
+    await main([
+      "add",
+      "--desc",
+      "Historical task",
+      "--timestamp",
+      customTimestamp,
+    ]);
+
+    // Get task ID
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Read task file to verify custom timestamp is used in created field
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+
+    // Should contain the custom timestamp in the created field
+    assertStringIncludes(taskContent, 'created: "2024-12-15T14:30:00+01:00"');
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog add - accepts -t as alias for --timestamp", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+
+    // Create task with -t flag
+    const customTimestamp = "2024-11-20T09:00:00+01:00";
+    await main(["add", "--desc", "Task with -t", "-t", customTimestamp]);
+
+    // Get task ID
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Read task file to verify timestamp
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+
+    assertStringIncludes(taskContent, 'created: "2024-11-20T09:00:00+01:00"');
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog add - accepts flexible timestamp T format", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+
+    // Create task with flexible timestamp (T16:45 format)
+    await main(["add", "--desc", "Task with T format", "-t", "T16:45"]);
+
+    // Get task ID
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Read task file to verify timestamp has today's date and the specified time
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+
+    // Should contain today's date at 16:45
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const expectedPrefix = `created: "${year}-${month}-${day}T16:45:00`;
+
+    assertStringIncludes(taskContent, expectedPrefix);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog add - adds local timezone when missing", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+
+    // Create task with timestamp without timezone
+    await main([
+      "add",
+      "--desc",
+      "Task without tz",
+      "-t",
+      "2024-12-15T10:45",
+    ]);
+
+    // Get task ID
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Read task file
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+
+    // Should contain the date/time with a timezone appended
+    assertStringIncludes(taskContent, 'created: "2024-12-15T10:45:00');
+    // Should have a timezone (+ or - followed by HH:MM)
+    assert(
+      /created: "2024-12-15T10:45:00[+-]\d{2}:\d{2}"/.test(taskContent),
+      "Timestamp should have timezone",
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog add - rejects invalid timestamp format", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  let exitCode = 0;
+  let errorOutput = "";
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+
+  try {
+    Deno.chdir(tempDir);
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+
+    // Try to create task with invalid timestamp
+    try {
+      await main([
+        "add",
+        "--desc",
+        "Task with bad timestamp",
+        "--timestamp",
+        "not-a-valid-timestamp",
+      ]);
+    } catch (_e) {
+      // Expected
+    }
+
+    // Error message should mention invalid timestamp
+    assertStringIncludes(errorOutput, "Invalid timestamp");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});

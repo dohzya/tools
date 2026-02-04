@@ -185,7 +185,11 @@ import { main } from "@dohzya/tools/worklog/cli";
 
 // Run CLI with arguments
 await main(["add", "--desc", "Fix bug in parser"]);
+// With custom timestamp (flexible format: T11:15, 2024-12-15T11:15, etc.)
+await main(["add", "--desc", "Historical task", "-t", "2024-12-15T14:30+01:00"]);
 await main(["trace", "260120a", "Found root cause"]);
+// Trace with custom timestamp
+await main(["trace", "260120a", "Earlier finding", "-t", "T10:30"]);
 await main([
   "checkpoint",
   "260120a",
@@ -195,6 +199,11 @@ await main([
 ```
 
 CLI commands: `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`, `summary`
+
+Both `add` and `trace` support `-t, --timestamp` for flexible timestamp input:
+- `T11:15` - Today at 11:15 (local timezone added)
+- `2024-12-15T14:30` - Specific date/time (local timezone added)
+- `2024-12-15T14:30+01:00` - Full ISO format with timezone
 
 See the [worklog skill documentation](../../plugins/tools/skills/worklog/SKILL.md) for detailed usage.
 
