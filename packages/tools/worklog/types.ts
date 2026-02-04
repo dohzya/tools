@@ -2,13 +2,19 @@
 
 export type TaskStatus = "active" | "done";
 
+export const TASK_STATUSES = ["active", "done"] as const;
+
+export function isValidTaskStatus(value: string): value is TaskStatus {
+  return TASK_STATUSES.includes(value as TaskStatus);
+}
+
 export interface TaskMeta {
   id: string;
   uid: string; // UUID for cross-worktree identity
   desc: string;
   status: TaskStatus;
   created: string; // ISO 8601
-  done_at: string | null;
+  done_at?: string | null;
   last_checkpoint: string | null; // ISO 8601 timestamp
   has_uncheckpointed_entries: boolean;
   metadata?: Record<string, string>; // Custom attributes like commit_id, pr_url, etc.
@@ -18,7 +24,7 @@ export interface IndexEntry {
   desc: string;
   status: TaskStatus;
   created: string;
-  done_at: string | null;
+  done_at?: string | null;
 }
 
 export interface Index {

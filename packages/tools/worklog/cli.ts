@@ -8,6 +8,7 @@ import {
   type ImportOutput,
   type ImportTaskResult,
   type Index,
+  isValidTaskStatus,
   type ListOutput,
   type LogsOutput,
   type MoveOutput,
@@ -20,6 +21,7 @@ import {
   type StatusOutput,
   type SummaryOutput,
   type TaskMeta,
+  TASK_STATUSES,
   type Todo,
   type TodoAddOutput,
   type TodoListOutput,
@@ -81,9 +83,9 @@ const TaskMetaSchema = z.object({
   id: z.string(),
   uid: z.string(),
   desc: z.string(),
-  status: z.enum(["active", "done"]),
+  status: z.enum(TASK_STATUSES),
   created: z.string(),
-  done_at: z.nullable(z.string()),
+  done_at: z.optional(z.nullable(z.string())),
   last_checkpoint: z.nullable(z.string()),
   has_uncheckpointed_entries: z.boolean(),
   metadata: z.optional(z.record(z.string(), z.string())),
@@ -1913,7 +1915,25 @@ async function cmdMeta(
 
   // Set/update key-value if provided
   if (key && value !== undefined) {
-    frontmatter.metadata[key] = value;
+    // Handle special top-level fields
+    if (key === "status") {
+      if (!isValidTaskStatus(value)) {
+        throw new WtError(
+          "invalid_args",
+          `Invalid status: ${value}. Must be one of: ${TASK_STATUSES.join(", ")}`,
+        );
+      }
+      frontmatter.status = value;
+      // Update done_at field based on status
+      if (value === "done" && !frontmatter.done_at) {
+        frontmatter.done_at = new Date().toISOString();
+      } else if (value === "active") {
+        frontmatter.done_at = null;
+      }
+    } else {
+      // Regular metadata field
+      frontmatter.metadata[key] = value;
+    }
   }
 
   // Save changes
@@ -1922,6 +1942,20 @@ async function cmdMeta(
     stringifyFrontmatter(frontmatter as unknown as Record<string, unknown>),
   );
   await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index if status was changed
+  if (key === "status") {
+    const index = await loadIndex();
+    if (index.tasks[taskId]) {
+      index.tasks[taskId].status = frontmatter.status;
+      if (frontmatter.status === "active") {
+        delete index.tasks[taskId].done_at;
+      } else if (frontmatter.status === "done" && frontmatter.done_at) {
+        index.tasks[taskId].done_at = frontmatter.done_at;
+      }
+      await saveIndex(index);
+    }
+  }
 
   return { metadata: frontmatter.metadata };
 }
@@ -4069,7 +4103,9 @@ const doneCmd = new Command()
   });
 
 const metaCmd = new Command()
-  .description("Get or set task metadata")
+  .description(
+    "Get or set task metadata (e.g., 'wl meta <id> status active' to reopen a completed task)",
+  )
   .arguments("<taskId:string> [key:string] [value:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
