@@ -10,6 +10,13 @@ and this project adheres to
 
 ### Added
 
+- **markdown-surgeon:** Multi-file metadata aggregation via `md meta` command
+  - Aggregate metadata from multiple files with `--list` (with duplicates) or `--aggregate` (unique values)
+  - Multi-field support: `md meta --aggregate tags,categories file1.md file2.md`
+  - Glob pattern support: `md meta --aggregate tags vault/**/*.md`
+  - JSON output: `md meta --aggregate tags *.md --json`
+  - Nested field access: `md meta --aggregate meta.tags file1.md file2.md`
+  - Primary use case: list all unique tags from an Obsidian vault
 - **both:** Migrated CLI argument parsing to Cliffy (@cliffy/command)
   - Auto-generated help for all commands
   - Type-safe option parsing

@@ -1,4 +1,5 @@
 import { Command } from "@cliffy/command";
+import { expandGlob } from "@std/fs";
 import {
   type Document,
   MdError,
@@ -165,6 +166,113 @@ async function readStdin(): Promise<string> {
     offset += chunk.length;
   }
   return decoder.decode(combined);
+}
+
+/**
+ * Expand file patterns (globs or explicit paths) into list of file paths
+ */
+async function expandFilePatterns(patterns: string[]): Promise<string[]> {
+  const files: string[] = [];
+
+  for (const pattern of patterns) {
+    // Check if contains glob characters
+    if (
+      pattern.includes("*") || pattern.includes("?") || pattern.includes("[")
+    ) {
+      // Use Deno's expandGlob
+      for await (
+        const entry of expandGlob(pattern, {
+          extended: true,
+          globstar: true,
+          includeDirs: false,
+        })
+      ) {
+        if (entry.isFile && entry.name.endsWith(".md")) {
+          files.push(entry.path);
+        }
+      }
+    } else {
+      // Regular file path
+      try {
+        const stat = await Deno.stat(pattern);
+        if (stat.isFile) {
+          files.push(pattern);
+        }
+      } catch (e) {
+        if (e instanceof Deno.errors.NotFound) {
+          throw new MdError(
+            "file_not_found",
+            `File not found: ${pattern}`,
+            pattern,
+          );
+        }
+        throw e;
+      }
+    }
+  }
+
+  if (files.length === 0) {
+    throw new MdError(
+      "file_not_found",
+      "No markdown files found matching patterns",
+    );
+  }
+
+  return [...new Set(files)]; // deduplicate
+}
+
+/**
+ * Aggregate metadata values from multiple files
+ * @param mode "list" = concat with duplicates, "set" = unique values only
+ */
+async function aggregateMetadata(
+  files: string[],
+  fields: string[],
+  mode: "list" | "set",
+): Promise<unknown[]> {
+  const allValues: unknown[] = [];
+
+  for (const file of files) {
+    try {
+      const content = await readFile(file);
+      const doc = await parseDocument(content);
+      const yamlContent = getFrontmatterContent(doc);
+      const meta = parseFrontmatter(yamlContent);
+
+      // Extract values for each field
+      for (const field of fields) {
+        const value = getNestedValue(meta, field);
+
+        if (value === undefined || value === null) {
+          continue;
+        }
+
+        // Flatten arrays, or treat single values as single-item arrays
+        if (Array.isArray(value)) {
+          allValues.push(...value);
+        } else {
+          allValues.push(value);
+        }
+      }
+    } catch {
+      // Skip files with errors, continue processing others
+      continue;
+    }
+  }
+
+  // Deduplicate if mode is "set"
+  if (mode === "set") {
+    // Use Set with JSON serialization for complex types
+    const seen = new Set<string>();
+    return allValues.filter((v) => {
+      const key = typeof v === "object" ? JSON.stringify(v) : String(v);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  return allValues;
 }
 
 // ============================================================================
@@ -575,12 +683,52 @@ async function cmdSearch(
 }
 
 async function cmdMeta(
-  file: string,
+  file: string | string[],
   key: string | null,
   value: string | null,
   del: boolean,
   getH1: boolean,
+  list: string | null,
+  set: string | null,
+  json: boolean,
 ): Promise<string> {
+  // Multi-file aggregation mode
+  const aggregateField = list ?? set;
+  if (aggregateField !== null) {
+    const files = Array.isArray(file) ? file : [file];
+    const fields = aggregateField.split(",").map((f) => f.trim());
+    const mode = list !== null ? "list" : "set";
+
+    // Error checks
+    if (del || value !== null) {
+      throw new MdError(
+        "parse_error",
+        "Cannot use --set/--del with --list/--set aggregation",
+      );
+    }
+
+    // Expand file patterns
+    const expandedFiles = await expandFilePatterns(files);
+
+    // Aggregate metadata
+    const values = await aggregateMetadata(expandedFiles, fields, mode);
+
+    // Format output
+    if (json) {
+      return JSON.stringify(values);
+    } else {
+      return values.map((v) => formatValue(v)).join("\n");
+    }
+  }
+
+  // Single-file mode (existing logic)
+  if (Array.isArray(file)) {
+    throw new MdError(
+      "parse_error",
+      "Multiple files require --list or --set flag",
+    );
+  }
+
   const fileContent = await readFile(file);
   const doc = await parseDocument(fileContent);
 
@@ -925,28 +1073,43 @@ const concatCmd = new Command()
 
 const metaCmd = new Command()
   .description("Manage YAML frontmatter")
-  .arguments("<file:string> [key:string] [value:string]")
-  .option("--set", "Set a key (requires key and value)")
-  .option("--del", "Delete a key")
-  .option("--h1", "Get the H1 title instead of frontmatter")
-  .action(async (options, file, key, value) => {
+  .arguments("<fileOrKey:string> [args...:string]")
+  .option("--list <fields:string>", "List metadata from multiple files (concat with duplicates)")
+  .option("--aggregate <fields:string>", "List unique metadata from multiple files (deduplicated)")
+  .option("--set", "Set a key (single file only)")
+  .option("--del", "Delete a key (single file only)")
+  .option("--h1", "Get the H1 title (single file only)")
+  .option("--json", "Output as JSON")
+  .action(async (options, fileOrKey, ...args) => {
     try {
-      const actualValue = options.set ? (value ?? null) : null;
-      if (options.set && !key) {
-        throw new MdError(
-          "parse_error",
-          "Usage: md meta <file> --set <key> <value>",
-        );
+      let file: string | string[];
+      let key: string | null = null;
+      let value: string | null = null;
+
+      if (options.list || options.aggregate) {
+        // Aggregation mode: all args are files
+        file = [fileOrKey, ...args];
+      } else {
+        // Single file mode
+        file = fileOrKey;
+        key = args[0] ?? null;
+        value = args[1] ?? null;
+
+        // In single-file set mode, value comes from args[1]
+        if (options.set && key !== null) {
+          value = value ?? null;
+        }
       }
-      if (options.del && !key) {
-        throw new MdError("parse_error", "Usage: md meta <file> --del <key>");
-      }
+
       const output = await cmdMeta(
         file,
-        key ?? null,
-        actualValue,
+        key,
+        options.set ? (value ?? null) : value,
         options.del ?? false,
         options.h1 ?? false,
+        options.list ?? null,
+        options.aggregate ?? null,
+        options.json ?? false,
       );
       if (output) console.log(output);
     } catch (e) {

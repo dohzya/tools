@@ -44,6 +44,48 @@ task test      # Run all tests (including compatibility tests)
 The CLI tests call `main()` directly and use `captureOutput()` to verify output.
 For integration tests that spawn subprocesses, see `compat-tests/` directory.
 
+### Writing Tests - Best Practices
+
+**DO NOT create temporary files/directories manually** for testing (e.g., `/tmp/test-vault`). Instead:
+
+1. **Write tests directly in `cli.test.ts`** using the existing `createTempFile()` helper:
+   ```typescript
+   const file = await createTempFile(`---\ntags: [foo]\n---\n# Test`);
+   try {
+     const output = await captureOutput(() => main(["meta", "--aggregate", "tags", file]));
+     assertEquals(output.trim(), "foo");
+   } finally {
+     await Deno.remove(file);  // Automatic cleanup
+   }
+   ```
+
+2. **For multiple files**, create them in the test:
+   ```typescript
+   const file1 = await createTempFile(`---\ntags: [foo]\n---\n# File 1`);
+   const file2 = await createTempFile(`---\ntags: [bar]\n---\n# File 2`);
+   try {
+     // Test with both files
+   } finally {
+     await Deno.remove(file1);
+     await Deno.remove(file2);
+   }
+   ```
+
+3. **For glob patterns**, use `Deno.makeTempDir()`:
+   ```typescript
+   const tmpDir = await Deno.makeTempDir();
+   try {
+     await Deno.writeTextFile(`${tmpDir}/a.md`, `---\ntags: [foo]\n---\n# A`);
+     await Deno.writeTextFile(`${tmpDir}/b.md`, `---\ntags: [bar]\n---\n# B`);
+     const output = await captureOutput(() => main(["meta", "--aggregate", "tags", `${tmpDir}/*.md`]));
+     // Test output
+   } finally {
+     await Deno.remove(tmpDir, { recursive: true });
+   }
+   ```
+
+**Why:** Tests are self-contained, automatically cleaned up, and run in isolation. Manual temp files can interfere with tests and leave clutter.
+
 ## TypeScript Best Practices
 
 ### Type Safety and Validation
