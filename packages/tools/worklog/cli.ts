@@ -4419,12 +4419,12 @@ const cli = new Command()
   .description(
     "Worklog - Track work progress with traces and checkpoints\n\n" +
       "Core workflow:\n" +
-      '  1. wl add "task"              # Create worktask (returns ID)\n' +
+      '  1. wl task create "task"      # Create worktask (returns ID)\n' +
       '  2. wl trace <id> "msg"        # Log with causes/pistes + timestamps\n' +
       "  3. wl checkpoint <id> ...      # Consolidate traces into narrative\n" +
       "  4. wl done <id> ...            # Final REX (after git commit!)\n\n" +
       "Key principles:\n" +
-      "  - Always work within a worktask (create with 'wl add' first)\n" +
+      "  - Always work within a worktask (create with 'wl task create' first)\n" +
       "  - Traces need context: causes (why failed) + pistes (what next)\n" +
       "  - Checkpoints consolidate traces (not conclusions)\n" +
       "  - Done = final consolidation + REX with critical distance\n" +

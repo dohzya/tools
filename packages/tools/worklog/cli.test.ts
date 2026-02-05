@@ -39,7 +39,7 @@ import { main } from "./cli.ts";
 Deno.test("worklog - shows help when no arguments provided", async () => {
   const output = await captureOutput(() => main([]));
   assertStringIncludes(output, "Core workflow:");
-  assertStringIncludes(output, "wl add");
+  assertStringIncludes(output, "wl task create");
   assertStringIncludes(output, "wl trace");
   assertStringIncludes(output, "Key principles:");
 });

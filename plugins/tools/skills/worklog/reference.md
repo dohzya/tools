@@ -7,7 +7,7 @@ Complete reference for the worklog skill.
 ### Core commands
 
 ```bash
-wl add [--desc "description"] [--todo "text"]... # Create task → outputs ID
+wl task create [--desc "description"] [--todo "text"]... # Create task → outputs ID
 wl trace <id> [options] "message"                # Log entry → "ok" or "checkpoint recommended"
 wl logs <id>                                     # Get context (last checkpoint + recent entries)
 wl checkpoint <id> "changes" "learnings"         # Create checkpoint
@@ -168,7 +168,7 @@ wl import -b feature-x --rm
 ```bash
 # In feature worktree
 cd ~/project-feature-x
-wl add --desc "Implement feature X"
+wl task create --desc "Implement feature X"
 wl trace 260122a "Working on feature..."
 # ... work ...
 
@@ -184,7 +184,7 @@ git worktree remove ~/project-feature-x
 
 Default output is human-readable text. Use `--json` for structured JSON.
 
-### `wl add`
+### `wl task create`
 
 ```
 250116a
@@ -287,10 +287,10 @@ TODOs allow tracking discrete action items within a task.
 
 ```bash
 # Create task with initial TODOs
-wl add "Feature X" --todo "Analyze code" --todo "Write tests" --todo "Implement"
+wl task create "Feature X" --todo "Analyze code" --todo "Write tests" --todo "Implement"
 
 # Shortcut: use first TODO as task description
-wl add --todo "Fix authentication bug"
+wl task create --todo "Fix authentication bug"
 ```
 
 ### Managing TODOs

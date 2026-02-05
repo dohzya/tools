@@ -8,10 +8,10 @@ Track action items within tasks using the TODO system. TODOs have statuses, depe
 
 ```bash
 # Create task with initial TODOs
-wl add "Feature X" --todo "Analyze code" --todo "Write tests" --todo "Implement"
+wl task create "Feature X" --todo "Analyze code" --todo "Write tests" --todo "Implement"
 
 # Shortcut: use first TODO as task description
-wl add --todo "Fix authentication bug"
+wl task create --todo "Fix authentication bug"
 ```
 
 ### Managing TODOs

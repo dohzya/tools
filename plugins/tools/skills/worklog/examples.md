@@ -186,7 +186,7 @@ Résultat:
 
 ```bash
 # Create task with TODOs
-wl add "Implement email notification system" \
+wl task create "Implement email notification system" \
   --todo "Design email templates" \
   --todo "Setup SMTP configuration" \
   --todo "Implement sender service" \

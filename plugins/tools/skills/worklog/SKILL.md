@@ -33,10 +33,10 @@ Track work progress with traces and checkpoints. **Always work within a worktask
 wl list
 
 # Create worktask if needed (returns ID like 250116a)
-wl add --desc "Implement feature X"
+wl task create --desc "Implement feature X"
 
 # Optional: Add TODOs for multi-step tasks
-wl add "Feature X" --todo "Analyze code" --todo "Implement" --todo "Test"
+wl task create "Feature X" --todo "Analyze code" --todo "Implement" --todo "Test"
 ```
 
 **Critical:** Never work without an active worktask. Create one first.
@@ -139,7 +139,7 @@ Résultat:
 ## Quick Reference
 
 ```bash
-wl add "description"              # Create worktask
+wl task create "description"              # Create worktask
 wl trace <id> "msg"               # Log with context (causes/pistes)
 wl trace <id> -t T14:30 "msg"     # With timestamp
 wl show <id>                      # Review traces + TODOs (before checkpoint/done!)
@@ -149,7 +149,7 @@ wl cancel <id> [reason]           # Abandon task (marks as cancelled)
 wl list                           # See active worktasks
 
 # TODO management
-wl add "Task" --todo "Step 1" --todo "Step 2"
+wl task create "Task" --todo "Step 1" --todo "Step 2"
 wl todo list                      # All TODOs
 wl todo set status=done <id>      # Mark done
 ```

@@ -4,7 +4,7 @@
 
 ```bash
 # 1. Créer une worktask AVANT de commencer
-wl add --desc "Description du travail"
+wl task create "Description du travail"
 
 # 2. Tracer les actions significatives
 wl trace <id> "Action effectuée"
@@ -30,7 +30,7 @@ wl done <id> "Changes" "Learnings"
 
 | Étape | Action | Commande |
 |-------|--------|----------|
-| 1 | Créer worktask | `wl add --desc "..."` |
+| 1 | Créer worktask | `wl task create "..."` |
 | 2 | Travailler + tracer | `wl trace <id> "..."` |
 | 3 | Tester localement | `deno -A packages/tools/<tool>/cli.ts ...` |
 | 4 | Valider | `task validate` |
@@ -49,7 +49,7 @@ wl done <id> "Changes" "Learnings"
 ### 1. Créer une worktask au début
 
 ```bash
-wl add --desc "Description du travail à faire"
+wl task create "Description du travail à faire"
 # Retourne un ID (ex: 260202n)
 ```
 
