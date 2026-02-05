@@ -1447,9 +1447,9 @@ function formatTraces(output: TracesOutput): string {
   return lines.join("\n");
 }
 
-function formatList(output: ListOutput): string {
+function formatList(output: ListOutput, showAll = false): string {
   if (output.tasks.length === 0) {
-    return "no tasks";
+    return showAll ? "no tasks" : "no active tasks";
   }
 
   // Sort tasks by creation date (newest first)
@@ -4350,7 +4350,9 @@ const listCmd = new Command()
         currentScope,
         cwd,
       );
-      console.log(options.json ? JSON.stringify(output) : formatList(output));
+      console.log(
+        options.json ? JSON.stringify(output) : formatList(output, options.all),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
