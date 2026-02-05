@@ -1,8 +1,8 @@
 // Worktrack types
 
-export type TaskStatus = "active" | "done";
+export type TaskStatus = "active" | "done" | "cancelled";
 
-export const TASK_STATUSES = ["active", "done"] as const;
+export const TASK_STATUSES = ["active", "done", "cancelled"] as const;
 
 export function isValidTaskStatus(value: string): value is TaskStatus {
   return TASK_STATUSES.includes(value as TaskStatus);
@@ -25,6 +25,7 @@ export interface IndexEntry {
   status: TaskStatus;
   created: string;
   done_at?: string | null;
+  cancelled_at?: string | null;
 }
 
 export interface Index {

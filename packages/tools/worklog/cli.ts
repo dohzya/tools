@@ -87,6 +87,7 @@ const TaskMetaSchema = z.object({
   status: z.enum(TASK_STATUSES),
   created: z.string(),
   done_at: z.optional(z.nullable(z.string())),
+  cancelled_at: z.optional(z.nullable(z.string())),
   last_checkpoint: z.nullable(z.string()),
   has_uncheckpointed_entries: z.boolean(),
   metadata: z.optional(z.record(z.string(), z.string())),
@@ -1967,6 +1968,52 @@ async function cmdDone(
   return { status: "task_completed" };
 }
 
+async function cmdCancel(
+  taskId: string,
+  reason?: string,
+): Promise<StatusOutput> {
+  await purge();
+
+  // Resolve task ID prefix
+  taskId = await resolveTaskId(taskId);
+
+  // Load and update task
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const now = getLocalISOString();
+
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+  frontmatter.status = "cancelled";
+  frontmatter.cancelled_at = now;
+
+  // Add cancellation reason as metadata if provided
+  if (reason) {
+    if (!frontmatter.metadata) {
+      frontmatter.metadata = {};
+    }
+    (frontmatter.metadata as Record<string, string>).cancellation_reason =
+      reason;
+  }
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "cancelled";
+    index.tasks[taskId].cancelled_at = now;
+    await saveIndex(index);
+  }
+
+  return { status: "task_cancelled" };
+}
+
 async function cmdMeta(
   taskId: string,
   key?: string,
@@ -2006,11 +2053,14 @@ async function cmdMeta(
         );
       }
       frontmatter.status = value;
-      // Update done_at field based on status
+      // Update timestamp fields based on status
       if (value === "done" && !frontmatter.done_at) {
         frontmatter.done_at = new Date().toISOString();
+      } else if (value === "cancelled" && !frontmatter.cancelled_at) {
+        frontmatter.cancelled_at = new Date().toISOString();
       } else if (value === "active") {
         frontmatter.done_at = null;
+        frontmatter.cancelled_at = null;
       }
     } else {
       // Regular metadata field
@@ -4239,6 +4289,21 @@ const doneCmd = new Command()
     }
   });
 
+const cancelCmd = new Command()
+  .description("Cancel/abandon a task (marks as cancelled)")
+  .arguments("<taskId:string> [reason:string]")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId, reason) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdCancel(taskId, reason);
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
 const metaCmd = new Command()
   .description(
     "Get or set task metadata (e.g., 'wl meta <id> status active' to reopen a completed task)",
@@ -4371,6 +4436,7 @@ const cli = new Command()
   .command("show", showCmd)
   .command("checkpoint", checkpointCmd)
   .command("done", doneCmd)
+  .command("cancel", cancelCmd)
   .command("meta", metaCmd)
   .command("list", listCmd)
   .command("summary", summaryCmd)
