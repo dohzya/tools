@@ -145,6 +145,7 @@ wl trace <id> -t T14:30 "msg"     # With timestamp
 wl show <id>                      # Review traces + TODOs (before checkpoint/done!)
 wl checkpoint <id> "changes" "rx" # Consolidate traces
 wl done <id> "changes" "rx"       # After commit + wl show!
+wl cancel <id> [reason]           # Abandon task (marks as cancelled)
 wl list                           # See active worktasks
 
 # TODO management

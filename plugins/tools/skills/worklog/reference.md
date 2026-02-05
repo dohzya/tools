@@ -12,6 +12,7 @@ wl trace <id> [options] "message"                # Log entry → "ok" or "checkp
 wl logs <id>                                     # Get context (last checkpoint + recent entries)
 wl checkpoint <id> "changes" "learnings"         # Create checkpoint
 wl done <id> "changes" "learnings"               # Final checkpoint + close task
+wl cancel <id> [reason]                          # Cancel/abandon task (marks as cancelled)
 wl list [--all] [-p PATH]                        # List active tasks (--all includes done <30d)
 wl meta <id> [<key> <value>]                     # View or set task metadata
 wl summary [--since YYYY-MM-DD]                  # Aggregate all tasks
@@ -92,6 +93,40 @@ wl checkpoint 250116a -f "Hotfix applied" "Edge case documented"
 - Appending missed context
 
 **Purge protection:** Tasks with uncheckpointed entries (flag `has_uncheckpointed_entries: true`) are not auto-purged. Create a checkpoint to clear this flag and allow eventual cleanup.
+
+## Cancelling tasks
+
+Use `wl cancel` to abandon a task without completing it. This marks the task as `cancelled` instead of `done`.
+
+```bash
+# Cancel a task without reason
+wl cancel 250116a
+
+# Cancel with a reason (stored in metadata)
+wl cancel 250116a "Requirements changed, no longer needed"
+```
+
+**When to cancel:**
+
+- Requirements or priorities changed
+- Task is no longer relevant
+- Work superseded by another approach
+- Abandoned due to blockers
+
+**What happens:**
+
+- Task status set to `cancelled`
+- `cancelled_at` timestamp recorded
+- Optional reason stored in `metadata.cancellation_reason`
+- No checkpoint required (unlike `done`)
+- TODOs not verified (can cancel with pending TODOs)
+
+**Difference from done:**
+
+- `done` = task completed successfully (requires changes + learnings)
+- `cancel` = task abandoned (optional reason)
+
+Cancelled tasks appear in `wl list --all` but not in default `wl list` (which shows only active tasks).
 
 ## Importing from other worktrees
 
