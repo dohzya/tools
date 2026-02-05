@@ -1,10 +1,13 @@
 # Git Worktree Integration
 
-This document explains how to integrate `wl` (worklog) with git worktrees for tracking work across multiple branches simultaneously.
+This document explains how to integrate `wl` (worklog) with git worktrees for
+tracking work across multiple branches simultaneously.
 
 ## Overview
 
-When working with git worktrees, each worktree can have its own `.worklog` directory to track tasks and progress independently. The `wl scopes` commands allow you to manage these worktree-based scopes.
+When working with git worktrees, each worktree can have its own `.worklog`
+directory to track tasks and progress independently. The `wl scopes` commands
+allow you to manage these worktree-based scopes.
 
 ## Commands
 
@@ -44,7 +47,8 @@ wl scopes sync-worktrees
 
 ### Removing a worktree scope
 
-**Before deleting a git worktree**, clean up the worklog scope to preserve or migrate tasks:
+**Before deleting a git worktree**, clean up the worklog scope to preserve or
+migrate tasks:
 
 ```bash
 # Move tasks to another scope, then delete
@@ -81,7 +85,8 @@ git worktree remove ../my-feature
 
 ### With worktrunk (automated)
 
-If you use [worktrunk](https://github.com/your-repo/worktrunk) for worktree management, you can configure hooks in `.config/wt.toml`:
+If you use [worktrunk](https://github.com/your-repo/worktrunk) for worktree
+management, you can configure hooks in `.config/wt.toml`:
 
 ```toml
 [hooks]

@@ -10,7 +10,6 @@ import {
   type Index,
   isValidTaskStatus,
   type ListOutput,
-  type LogsOutput,
   type MoveOutput,
   type ScopeConfig,
   type ScopeConfigChild,
@@ -18,6 +17,7 @@ import {
   type ScopeDetailOutput,
   type ScopeEntry,
   type ScopesOutput,
+  type ShowOutput,
   type StatusOutput,
   type SummaryOutput,
   TASK_STATUSES,
@@ -27,6 +27,7 @@ import {
   type TodoListOutput,
   type TodoStatus,
   type TraceOutput,
+  type TracesOutput,
   WtError,
 } from "./types.ts";
 import {
@@ -1362,7 +1363,7 @@ function formatMeta(output: { metadata: Record<string, string> }): string {
   return lines.join("\n");
 }
 
-function formatLogs(output: LogsOutput): string {
+function formatShow(output: ShowOutput): string {
   const lines: string[] = [];
   lines.push(`task: ${output.task}`);
   lines.push(`desc: ${output.desc}`);
@@ -1387,6 +1388,57 @@ function formatLogs(output: LogsOutput): string {
       `entries since checkpoint: ${output.entries_since_checkpoint.length}`,
     );
     for (const entry of output.entries_since_checkpoint) {
+      lines.push(`  ${entry.ts}: ${entry.msg}`);
+    }
+  }
+
+  if (output.todos.length > 0) {
+    lines.push("");
+    lines.push(`todos: ${output.todos.length}`);
+
+    const statusChars: Record<TodoStatus, string> = {
+      "todo": " ",
+      "wip": "/",
+      "blocked": ">",
+      "cancelled": "-",
+      "done": "x",
+    };
+
+    const allTodoIds = output.todos.map((t) => t.id);
+
+    for (const todo of output.todos) {
+      const statusChar = statusChars[todo.status];
+      const shortTodoId = getShortId(todo.id, allTodoIds);
+      let line = `  ${shortTodoId} [${statusChar}] ${todo.text}`;
+
+      // Add metadata
+      const metadata = Object.entries(todo.metadata)
+        .map(([k, v]) => `[${k}:: ${v}]`)
+        .join(" ");
+
+      if (metadata) {
+        line += `  ${metadata}`;
+      }
+
+      lines.push(line);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function formatTraces(output: TracesOutput): string {
+  const lines: string[] = [];
+  lines.push(`task: ${output.task}`);
+  lines.push(`desc: ${output.desc}`);
+
+  if (output.entries.length === 0) {
+    lines.push("");
+    lines.push("no traces");
+  } else {
+    lines.push("");
+    lines.push(`traces: ${output.entries.length}`);
+    for (const entry of output.entries) {
       lines.push(`  ${entry.ts}: ${entry.msg}`);
     }
   }
@@ -1710,14 +1762,17 @@ async function cmdTrace(
   return { status: "ok" };
 }
 
-async function cmdLogs(taskId: string): Promise<LogsOutput> {
+async function cmdShow(
+  taskId: string,
+  activeOnly: boolean = false,
+): Promise<ShowOutput> {
   await purge();
 
   // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
   const content = await loadTaskContent(taskId);
-  const { meta, entries, checkpoints } = await parseTaskFile(content);
+  const { meta, entries, checkpoints, todos } = await parseTaskFile(content);
 
   const lastCheckpoint = getLastCheckpoint(checkpoints);
   const entriesSinceCheckpoint = getEntriesAfterCheckpoint(
@@ -1725,12 +1780,36 @@ async function cmdLogs(taskId: string): Promise<LogsOutput> {
     meta.last_checkpoint,
   );
 
+  // Filter todos if activeOnly is true
+  const filteredTodos = activeOnly
+    ? todos.filter((todo) =>
+      todo.status !== "done" && todo.status !== "cancelled"
+    )
+    : todos;
+
   return {
     task: taskId,
     desc: meta.desc,
     status: meta.status,
     last_checkpoint: lastCheckpoint,
     entries_since_checkpoint: entriesSinceCheckpoint,
+    todos: filteredTodos,
+  };
+}
+
+async function cmdTraces(taskId: string): Promise<TracesOutput> {
+  await purge();
+
+  // Resolve task ID prefix
+  taskId = await resolveTaskId(taskId);
+
+  const content = await loadTaskContent(taskId);
+  const { meta, entries } = await parseTaskFile(content);
+
+  return {
+    task: taskId,
+    desc: meta.desc,
+    entries,
   };
 }
 
@@ -3972,12 +4051,11 @@ const initCmd = new Command()
     }
   });
 
-const addCmd = new Command()
+const taskCreateCmd = new Command()
   .description("Create a new task")
-  .arguments("[desc:string]")
+  .arguments("<desc:string>")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
-  .option("-d, --desc <desc:string>", "Task description")
   .option(
     "-t, --timestamp <ts:string>",
     "Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)",
@@ -3988,14 +4066,10 @@ const addCmd = new Command()
   .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
     collect: true,
   })
-  .action(async (options, descArg) => {
+  .action(async (options, desc) => {
     try {
       await resolveScopeContext(options.scope);
-      let desc = options.desc ?? descArg ?? "";
       const todos = options.todo ?? [];
-      if (!desc && todos.length > 0) {
-        desc = todos[0];
-      }
       let timestampValue: string | undefined;
       if (options.timestamp) {
         try {
@@ -4027,6 +4101,13 @@ const addCmd = new Command()
       handleError(e, options.json ?? false);
     }
   });
+
+const taskCmd = new Command()
+  .description("Task management")
+  .action(function () {
+    this.showHelp();
+  })
+  .command("create", taskCreateCmd);
 
 const traceCmd = new Command()
   .description("Log an entry to a task")
@@ -4069,16 +4150,32 @@ const traceCmd = new Command()
     }
   });
 
-const logsCmd = new Command()
-  .description("Get task context for checkpoint")
+const showCmd = new Command()
+  .description("Show task context for checkpoint")
+  .arguments("<taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("--active", "Show only active todos (exclude done/cancelled)")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdShow(taskId, options.active ?? false);
+      console.log(options.json ? JSON.stringify(output) : formatShow(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const tracesCmd = new Command()
+  .description("List all traces for a task")
   .arguments("<taskId:string>")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId) => {
     try {
       await resolveScopeContext(options.scope);
-      const output = await cmdLogs(taskId);
-      console.log(options.json ? JSON.stringify(output) : formatLogs(output));
+      const output = await cmdTraces(taskId);
+      console.log(options.json ? JSON.stringify(output) : formatTraces(output));
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4245,9 +4342,10 @@ const cli = new Command()
   .version(VERSION)
   .description("Worklog - Track work progress during development sessions")
   .command("init", initCmd)
-  .command("add", addCmd)
+  .command("task", taskCmd)
   .command("trace", traceCmd)
-  .command("logs", logsCmd)
+  .command("traces", tracesCmd)
+  .command("show", showCmd)
   .command("checkpoint", checkpointCmd)
   .command("done", doneCmd)
   .command("meta", metaCmd)

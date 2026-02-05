@@ -39,13 +39,14 @@ import type {
   IndexEntry,
   ListOutput,
   ListTaskItem,
-  LogsOutput,
+  ShowOutput,
   StatusOutput,
   SummaryOutput,
   SummaryTaskItem,
   TaskMeta,
   TaskStatus,
   TraceOutput,
+  TracesOutput,
   WtErrorCode,
 } from "../worklog/types.ts";
 import { main as wlMain, WtError } from "../worklog/mod.ts";
@@ -282,19 +283,33 @@ Deno.test("worklog: TraceOutput type structure", () => {
   assertEquals(output2.entries_since_checkpoint, 10);
 });
 
-Deno.test("worklog: LogsOutput type structure", () => {
-  const output: LogsOutput = {
+Deno.test("worklog: ShowOutput type structure", () => {
+  const output: ShowOutput = {
     task: "260123a",
     desc: "Test task",
     status: "active",
     last_checkpoint: null,
     entries_since_checkpoint: [],
+    todos: [],
   };
   assertEquals(output.task, "260123a");
   assertEquals(output.desc, "Test task");
   assertEquals(output.status, "active");
   assertEquals(output.last_checkpoint, null);
   assertEquals(output.entries_since_checkpoint.length, 0);
+  assertEquals(output.todos.length, 0);
+});
+
+Deno.test("worklog: TracesOutput type structure", () => {
+  const output: TracesOutput = {
+    task: "260123a",
+    desc: "Test task",
+    entries: [{ ts: "2026-01-23 10:00", msg: "Test entry" }],
+  };
+  assertEquals(output.task, "260123a");
+  assertEquals(output.desc, "Test task");
+  assertEquals(output.entries.length, 1);
+  assertEquals(output.entries[0].ts, "2026-01-23 10:00");
 });
 
 Deno.test("worklog: ListTaskItem type structure", () => {

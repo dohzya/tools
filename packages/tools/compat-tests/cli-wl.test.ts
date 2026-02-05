@@ -68,12 +68,12 @@ Deno.test("wl: init --json outputs valid JSON", async () => {
   }
 });
 
-Deno.test("wl: add command creates task", async () => {
+Deno.test("wl: task create command creates task", async () => {
   const workspace = createTestWorkspace();
   try {
     await runCli(["init"], workspace);
 
-    const result = await runCli(["add", "--desc", "Test task"], workspace);
+    const result = await runCli(["task", "create", "Test task"], workspace);
     assertEquals(result.code, 0);
     assertEquals(/^[a-z0-9]{5,}$/i.test(result.stdout.trim()), true);
   } finally {
@@ -81,13 +81,13 @@ Deno.test("wl: add command creates task", async () => {
   }
 });
 
-Deno.test("wl: add --json outputs task ID", async () => {
+Deno.test("wl: task create --json outputs task ID", async () => {
   const workspace = createTestWorkspace();
   try {
     await runCli(["init"], workspace);
 
     const result = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     assertEquals(result.code, 0);
@@ -105,7 +105,7 @@ Deno.test("wl: trace command logs entry", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -123,7 +123,7 @@ Deno.test("wl: trace --json outputs status", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -147,7 +147,7 @@ Deno.test("wl: trace --timestamp accepts custom timestamp", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -168,7 +168,7 @@ Deno.test("wl: trace --force works on completed tasks", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -185,20 +185,20 @@ Deno.test("wl: trace --force works on completed tasks", async () => {
   }
 });
 
-Deno.test("wl: logs command shows task context", async () => {
+Deno.test("wl: show command shows task context", async () => {
   const workspace = createTestWorkspace();
   try {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
 
     await runCli(["trace", id, "Entry 1"], workspace);
 
-    const result = await runCli(["logs", id], workspace);
+    const result = await runCli(["show", id], workspace);
     assertEquals(result.code, 0);
     assertStringIncludes(result.stdout, "Test task");
     assertStringIncludes(result.stdout, "Entry 1");
@@ -207,20 +207,20 @@ Deno.test("wl: logs command shows task context", async () => {
   }
 });
 
-Deno.test("wl: logs --json outputs valid JSON", async () => {
+Deno.test("wl: show --json outputs valid JSON", async () => {
   const workspace = createTestWorkspace();
   try {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
 
     await runCli(["trace", id, "Entry"], workspace);
 
-    const result = await runCli(["logs", id, "--json"], workspace);
+    const result = await runCli(["show", id, "--json"], workspace);
     assertEquals(result.code, 0);
     const json = JSON.parse(result.stdout);
     assertEquals(json.task.startsWith(id), true);
@@ -238,7 +238,7 @@ Deno.test("wl: checkpoint command creates checkpoint", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -261,7 +261,7 @@ Deno.test("wl: checkpoint --json outputs valid JSON", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -286,7 +286,7 @@ Deno.test("wl: checkpoint --force works on completed tasks", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -311,7 +311,7 @@ Deno.test("wl: checkpoint --timestamp accepts custom timestamp", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -334,7 +334,7 @@ Deno.test("wl: done command completes task", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -357,7 +357,7 @@ Deno.test("wl: done --json outputs valid JSON", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -382,7 +382,7 @@ Deno.test("wl: done --timestamp accepts custom timestamp", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -404,8 +404,8 @@ Deno.test("wl: list command shows active tasks", async () => {
   try {
     await runCli(["init"], workspace);
 
-    await runCli(["add", "--desc", "Task 1"], workspace);
-    await runCli(["add", "--desc", "Task 2"], workspace);
+    await runCli(["task", "create", "Task 1"], workspace);
+    await runCli(["task", "create", "Task 2"], workspace);
 
     const result = await runCli(["list"], workspace);
     assertEquals(result.code, 0);
@@ -422,7 +422,7 @@ Deno.test("wl: list --all includes completed tasks", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -443,7 +443,7 @@ Deno.test("wl: list --json outputs valid JSON", async () => {
   try {
     await runCli(["init"], workspace);
 
-    await runCli(["add", "--desc", "Task"], workspace);
+    await runCli(["task", "create", "Task"], workspace);
 
     const result = await runCli(["list", "--json"], workspace);
     assertEquals(result.code, 0);
@@ -466,7 +466,7 @@ Deno.test("wl: summary command aggregates tasks", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -489,7 +489,7 @@ Deno.test("wl: summary --since filters by date", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -512,7 +512,7 @@ Deno.test("wl: summary --json outputs valid JSON", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -541,7 +541,7 @@ Deno.test("wl: import -p PATH imports from path", async () => {
   const workspace2 = createTestWorkspace();
   try {
     await runCli(["init"], workspace1);
-    await runCli(["add", "--desc", "Task"], workspace1);
+    await runCli(["task", "create", "Task"], workspace1);
 
     await runCli(["init"], workspace2);
 
@@ -559,7 +559,7 @@ Deno.test("wl: import --json outputs valid JSON", async () => {
   const workspace2 = createTestWorkspace();
   try {
     await runCli(["init"], workspace1);
-    await runCli(["add", "--desc", "Task"], workspace1);
+    await runCli(["task", "create", "Task"], workspace1);
 
     await runCli(["init"], workspace2);
 
@@ -586,7 +586,7 @@ Deno.test("wl: import --rm removes imported tasks", async () => {
   try {
     await runCli(["init"], workspace1);
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace1,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -643,7 +643,7 @@ Deno.test("wl: error on task_already_done without force", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -669,7 +669,7 @@ Deno.test("wl: meta displays task metadata", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task with metadata", "--json"],
+      ["task", "create", "Task with metadata", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -696,7 +696,7 @@ Deno.test("wl: meta sets task metadata", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -719,7 +719,7 @@ Deno.test("wl: meta --delete removes metadata key", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -744,7 +744,7 @@ Deno.test("wl: meta --json outputs valid JSON", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Task", "--json"],
+      ["task", "create", "Task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -771,7 +771,7 @@ Deno.test("wl: resolves unambiguous task ID prefix", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -782,7 +782,7 @@ Deno.test("wl: resolves unambiguous task ID prefix", async () => {
     assertEquals(result.code, 0);
 
     // Verify entry was added
-    const logsResult = await runCli(["logs", prefix], workspace);
+    const logsResult = await runCli(["show", prefix], workspace);
     assertStringIncludes(logsResult.stdout, "Testing prefix");
   } finally {
     Deno.removeSync(workspace, { recursive: true });
@@ -798,13 +798,13 @@ Deno.test("wl: errors on ambiguous task ID prefix", async () => {
     // ambiguous prefix behavior. Since we can't control UUID generation,
     // this test verifies the error handling exists even if rarely triggered.
     const result1 = await runCli(
-      ["add", "--desc", "Task 1", "--json"],
+      ["task", "create", "Task 1", "--json"],
       workspace,
     );
     const { id: id1 } = JSON.parse(result1.stdout);
 
     const result2 = await runCli(
-      ["add", "--desc", "Task 2", "--json"],
+      ["task", "create", "Task 2", "--json"],
       workspace,
     );
     const { id: id2 } = JSON.parse(result2.stdout);
@@ -837,14 +837,14 @@ Deno.test("wl: errors on ambiguous task ID prefix", async () => {
 // TODO management tests
 // ============================================================================
 
-Deno.test("wl: add --todo creates task with TODOs", async () => {
+Deno.test("wl: task create --todo creates task with TODOs", async () => {
   const workspace = createTestWorkspace();
   try {
     await runCli(["init"], workspace);
 
     const result = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Feature X",
       "--todo",
       "Analyze code",
@@ -872,16 +872,16 @@ Deno.test("wl: todo list shows all TODOs", async () => {
     await runCli(["init"], workspace);
 
     await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task 1",
       "--todo",
       "First todo",
     ], workspace);
 
     await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task 2",
       "--todo",
       "Second todo",
@@ -904,8 +904,8 @@ Deno.test("wl: todo list <task-id> shows task TODOs", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "My task",
       "--todo",
       "Todo 1",
@@ -930,8 +930,8 @@ Deno.test("wl: todo add adds a TODO to task", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--json",
     ], workspace);
@@ -959,8 +959,8 @@ Deno.test("wl: todo set updates TODO status", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--todo",
       "Test todo",
@@ -996,8 +996,8 @@ Deno.test("wl: todo next shows next available TODO", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--todo",
       "First",
@@ -1021,8 +1021,8 @@ Deno.test("wl: done fails if pending TODOs exist", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--todo",
       "Pending todo",
@@ -1051,8 +1051,8 @@ Deno.test("wl: done --force completes task with pending TODOs", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--todo",
       "Pending todo",
@@ -1081,8 +1081,8 @@ Deno.test("wl: todo list --json outputs valid JSON", async () => {
     await runCli(["init"], workspace);
 
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--todo",
       "Todo 1",
@@ -1221,7 +1221,7 @@ Deno.test("wl: scopes assign moves task between scopes", async () => {
 
     // Create task in root
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -1245,7 +1245,7 @@ Deno.test("wl: scopes assign --json outputs valid JSON", async () => {
     await runCli(["scopes", "add", "lib", "packages/tools"], workspace);
 
     const addResult = await runCli(
-      ["add", "--desc", "Test task", "--json"],
+      ["task", "create", "Test task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -1292,7 +1292,7 @@ Deno.test("wl: scopes delete fails without flags if scope has tasks", async () =
     await runCli(["scopes", "add", "lib"], workspace);
 
     // Create task in lib scope
-    await runCli(["add", "--desc", "Task", "--scope", "lib"], workspace);
+    await runCli(["task", "create", "Task", "--scope", "lib"], workspace);
 
     const deleteResult = await runCli(["scopes", "delete", "lib"], workspace);
     assertEquals(deleteResult.code !== 0, true);
@@ -1314,7 +1314,7 @@ Deno.test("wl: alias '/' refers to root scope", async () => {
 
     // Create task in root
     const addResult = await runCli(
-      ["add", "--desc", "Root task", "--json"],
+      ["task", "create", "Root task", "--json"],
       workspace,
     );
     const { id } = JSON.parse(addResult.stdout);
@@ -1335,8 +1335,8 @@ Deno.test("wl: alias '.' refers to current scope", async () => {
 
     // Create task using '.' from root
     const addResult = await runCli([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task",
       "--scope",
       ".",

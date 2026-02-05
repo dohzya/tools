@@ -41,6 +41,20 @@ task test      # Run all tests (including compatibility tests)
 
 The CLI tests call `main()` directly and use `captureOutput()` to verify output. For integration tests that spawn subprocesses, see `compat-tests/` directory.
 
+### Manual Testing During Development
+
+During development, use Deno directly instead of the installed binary:
+
+```bash
+# For worklog (wl)
+deno -A packages/tools/worklog/cli.ts <command> [args]
+
+# For markdown-surgeon (md)
+deno -A packages/tools/markdown-surgeon/cli.ts <command> [args]
+```
+
+This ensures you test the latest code changes without needing to rebuild the binaries.
+
 ### Writing Tests - Best Practices
 
 **DO NOT create temporary files/directories manually** for testing (e.g., `/tmp/test-vault`). Instead:
@@ -153,7 +167,7 @@ You can and should maintain `packages/tools/CHANGELOG.md` when making changes.
 
 1. **Create a worktask** (worklog's unit of tracked work) if one doesn't exist:
    ```bash
-   wl add --desc "Description of the work to be done"
+   wl task create "Description of the work to be done"
    ```
    This returns a worktask ID (e.g., `260202n`)
 
@@ -163,7 +177,13 @@ You can and should maintain `packages/tools/CHANGELOG.md` when making changes.
    ```
    Trace reading files, making changes, running tests, etc.
 
-3. **Mark the worktask as done** when work is complete:
+3. **View task context and traces:**
+   ```bash
+   wl show <worktask-id>   # Show task info + entries since last checkpoint
+   wl traces <worktask-id> # List all traces for the task
+   ```
+
+4. **Mark the worktask as done** when work is complete:
    ```bash
    wl done <worktask-id> "Summary of changes" "What was learned"
    ```

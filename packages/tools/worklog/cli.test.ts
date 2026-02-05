@@ -44,7 +44,7 @@ Deno.test("worklog trace - uses current timestamp by default", async () => {
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID from list
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -80,7 +80,7 @@ Deno.test("worklog trace - accepts custom timestamp in ISO format", async () => 
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -117,7 +117,7 @@ Deno.test("worklog trace - accepts timestamp without timezone", async () => {
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -169,7 +169,7 @@ Deno.test("worklog trace - rejects invalid timestamp format", async () => {
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -209,7 +209,7 @@ Deno.test("worklog trace - accepts full ISO format with --timestamp", async () =
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -245,7 +245,7 @@ Deno.test("worklog trace - accepts date+time without seconds", async () => {
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -280,7 +280,7 @@ Deno.test("worklog trace - accepts T prefix for time-only (today)", async () => 
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -315,7 +315,7 @@ Deno.test("worklog trace - accepts T prefix with seconds", async () => {
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -356,7 +356,7 @@ Deno.test("worklog trace - accepts -t as alias for --timestamp", async () => {
 
     // Initialize and create a task
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -406,7 +406,7 @@ Deno.test("worklog trace - sets has_uncheckpointed_entries flag", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -445,7 +445,7 @@ Deno.test("worklog trace - rejects completed task without --force", async () => 
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -478,7 +478,7 @@ Deno.test("worklog trace - allows completed task with --force", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -506,7 +506,7 @@ Deno.test("worklog checkpoint - clears has_uncheckpointed_entries", async () => 
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -549,7 +549,7 @@ Deno.test("worklog checkpoint - rejects if no uncheckpointed entries", async () 
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -579,7 +579,7 @@ Deno.test("worklog checkpoint - allows force on completed task", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -622,7 +622,7 @@ Deno.test("worklog import - imports new task from source", async () => {
     // Setup source with a task
     Deno.chdir(tempDirSource);
     await main(["init"]);
-    await main(["add", "--desc", "Source task"]);
+    await main(["task", "create", "Source task"]);
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
     const sourceTaskId = tasks[0].id;
@@ -667,7 +667,7 @@ Deno.test("worklog import - merges entries for same uid", async () => {
     // Create task in destination
     Deno.chdir(tempDirDest);
     await main(["init"]);
-    await main(["add", "--desc", "Shared task"]);
+    await main(["task", "create", "Shared task"]);
     const listDest = await captureOutput(() => main(["list", "--json"]));
     const { tasks: destTasks } = JSON.parse(listDest);
     const taskId = destTasks[0].id;
@@ -756,7 +756,7 @@ Deno.test("worklog import - renames task on id collision", async () => {
     // Create task in destination
     Deno.chdir(tempDirDest);
     await main(["init"]);
-    await main(["add", "--desc", "Dest task"]);
+    await main(["task", "create", "Dest task"]);
     const listDest = await captureOutput(() => main(["list", "--json"]));
     const { tasks: destTasks } = JSON.parse(listDest);
     const taskId = destTasks[0].id; // e.g., 260122a
@@ -848,7 +848,7 @@ Deno.test("worklog import - removes source tasks with --rm", async () => {
     // Setup source with a task
     Deno.chdir(tempDirSource);
     await main(["init"]);
-    await main(["add", "--desc", "Task to remove"]);
+    await main(["task", "create", "Task to remove"]);
 
     // Import with --rm
     Deno.chdir(tempDirDest);
@@ -955,7 +955,7 @@ Deno.test("worklog import - warns when entry older than checkpoint", async () =>
     // Create task with checkpoint in destination
     Deno.chdir(tempDirDest);
     await main(["init"]);
-    await main(["add", "--desc", "Task with checkpoint"]);
+    await main(["task", "create", "Task with checkpoint"]);
     const listDest = await captureOutput(() => main(["list", "--json"]));
     const { tasks: destTasks } = JSON.parse(listDest);
     const taskId = destTasks[0].id;
@@ -1049,7 +1049,7 @@ Deno.test("worklog trace - recommends checkpoint at 50 entries", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -1097,7 +1097,7 @@ Deno.test("worklog purge - deletes tasks older than 30 days", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Old task"]);
+    await main(["task", "create", "Old task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -1157,7 +1157,7 @@ Deno.test("worklog purge - preserves tasks with uncheckpointed entries", async (
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Old task with changes"]);
+    await main(["task", "create", "Old task with changes"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -1218,8 +1218,8 @@ Deno.test("worklog - JSON output for list command", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Task 1"]);
-    await main(["add", "--desc", "Task 2"]);
+    await main(["task", "create", "Task 1"]);
+    await main(["task", "create", "Task 2"]);
 
     const output = await captureOutput(() => main(["list", "--json"]));
     const result = JSON.parse(output);
@@ -1238,14 +1238,14 @@ Deno.test("worklog - JSON output for list command", async () => {
   }
 });
 
-Deno.test("worklog - JSON output for logs command", async () => {
+Deno.test("worklog - JSON output for show command", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   try {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -1254,7 +1254,7 @@ Deno.test("worklog - JSON output for logs command", async () => {
     await main(["trace", taskId, "Entry 1"]);
     await main(["trace", taskId, "Entry 2"]);
 
-    const output = await captureOutput(() => main(["logs", taskId, "--json"]));
+    const output = await captureOutput(() => main(["show", taskId, "--json"]));
     const result = JSON.parse(output);
 
     assertEquals(result.task, taskId);
@@ -1295,7 +1295,7 @@ Deno.test("worklog - handles missing index.json", async () => {
 
     // Try to add task
     try {
-      await main(["add", "--desc", "Test"]);
+      await main(["task", "create", "Test"]);
     } catch (_e) {
       // Expected
     }
@@ -1318,7 +1318,7 @@ Deno.test("worklog - handles corrupted frontmatter gracefully", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -1373,7 +1373,7 @@ Deno.test("worklog - handles malformed task file", async () => {
     Deno.chdir(tempDir);
 
     await main(["init"]);
-    await main(["add", "--desc", "Test task"]);
+    await main(["task", "create", "Test task"]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -1400,8 +1400,8 @@ Deno.test("worklog - handles malformed task file", async () => {
   }
 });
 
-// Integration tests for wl add with timestamp
-Deno.test("worklog add - accepts custom timestamp in ISO format", async () => {
+// Integration tests for wl task create with timestamp
+Deno.test("worklog task create - accepts custom timestamp in ISO format", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   try {
@@ -1412,8 +1412,8 @@ Deno.test("worklog add - accepts custom timestamp in ISO format", async () => {
     // Create task with custom timestamp
     const customTimestamp = "2024-12-15T14:30:00+01:00";
     await main([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Historical task",
       "--timestamp",
       customTimestamp,
@@ -1435,7 +1435,7 @@ Deno.test("worklog add - accepts custom timestamp in ISO format", async () => {
   }
 });
 
-Deno.test("worklog add - accepts -t as alias for --timestamp", async () => {
+Deno.test("worklog task create - accepts -t as alias for --timestamp", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   try {
@@ -1445,7 +1445,7 @@ Deno.test("worklog add - accepts -t as alias for --timestamp", async () => {
 
     // Create task with -t flag
     const customTimestamp = "2024-11-20T09:00:00+01:00";
-    await main(["add", "--desc", "Task with -t", "-t", customTimestamp]);
+    await main(["task", "create", "Task with -t", "-t", customTimestamp]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -1462,7 +1462,7 @@ Deno.test("worklog add - accepts -t as alias for --timestamp", async () => {
   }
 });
 
-Deno.test("worklog add - accepts flexible timestamp T format", async () => {
+Deno.test("worklog task create - accepts flexible timestamp T format", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   try {
@@ -1471,7 +1471,7 @@ Deno.test("worklog add - accepts flexible timestamp T format", async () => {
     await main(["init"]);
 
     // Create task with flexible timestamp (T16:45 format)
-    await main(["add", "--desc", "Task with T format", "-t", "T16:45"]);
+    await main(["task", "create", "Task with T format", "-t", "T16:45"]);
 
     // Get task ID
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -1495,7 +1495,7 @@ Deno.test("worklog add - accepts flexible timestamp T format", async () => {
   }
 });
 
-Deno.test("worklog add - adds local timezone when missing", async () => {
+Deno.test("worklog task create - adds local timezone when missing", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   try {
@@ -1505,8 +1505,8 @@ Deno.test("worklog add - adds local timezone when missing", async () => {
 
     // Create task with timestamp without timezone
     await main([
-      "add",
-      "--desc",
+      "task",
+      "create",
       "Task without tz",
       "-t",
       "2024-12-15T10:45",
@@ -1533,10 +1533,10 @@ Deno.test("worklog add - adds local timezone when missing", async () => {
   }
 });
 
-Deno.test("worklog add - rejects invalid timestamp format", async () => {
+Deno.test("worklog task create - rejects invalid timestamp format", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
-  let exitCode = 0;
+  let _exitCode = 0;
   let errorOutput = "";
   const originalExit = Deno.exit;
   const originalError = console.error;
@@ -1544,7 +1544,7 @@ Deno.test("worklog add - rejects invalid timestamp format", async () => {
   try {
     Deno.chdir(tempDir);
     Deno.exit = ((code: number) => {
-      exitCode = code;
+      _exitCode = code;
     }) as typeof Deno.exit;
     console.error = (msg: string) => {
       errorOutput += msg;
@@ -1555,8 +1555,8 @@ Deno.test("worklog add - rejects invalid timestamp format", async () => {
     // Try to create task with invalid timestamp
     try {
       await main([
-        "add",
-        "--desc",
+        "task",
+        "create",
         "Task with bad timestamp",
         "--timestamp",
         "not-a-valid-timestamp",

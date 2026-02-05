@@ -61,12 +61,19 @@ export interface TraceOutput {
   entries_since_checkpoint?: number;
 }
 
-export interface LogsOutput {
+export interface TracesOutput {
+  task: string;
+  desc: string;
+  entries: Entry[];
+}
+
+export interface ShowOutput {
   task: string;
   desc: string;
   status: TaskStatus;
   last_checkpoint: Checkpoint | null;
   entries_since_checkpoint: Entry[];
+  todos: Todo[];
 }
 
 export interface ListTaskItem {
