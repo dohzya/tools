@@ -1,8 +1,8 @@
 // Worktrack types
 
-export type TaskStatus = "active" | "done" | "cancelled";
+export type TaskStatus = "created" | "ready" | "started" | "done" | "cancelled";
 
-export const TASK_STATUSES = ["active", "done", "cancelled"] as const;
+export const TASK_STATUSES = ["created", "ready", "started", "done", "cancelled"] as const;
 
 export function isValidTaskStatus(value: string): value is TaskStatus {
   return TASK_STATUSES.includes(value as TaskStatus);
@@ -11,24 +11,31 @@ export function isValidTaskStatus(value: string): value is TaskStatus {
 export interface TaskMeta {
   id: string;
   uid: string; // UUID for cross-worktree identity
+  name: string; // Short name for display in list
   desc: string;
   status: TaskStatus;
-  created: string; // ISO 8601
+  created_at: string; // ISO 8601 (renamed from 'created')
+  ready_at?: string | null; // ISO 8601 - when task became ready
+  started_at?: string | null; // ISO 8601 - when task was started
   done_at?: string | null;
+  cancelled_at?: string | null;
   last_checkpoint: string | null; // ISO 8601 timestamp
   has_uncheckpointed_entries: boolean;
   metadata?: Record<string, string>; // Custom attributes like commit_id, pr_url, etc.
 }
 
 export interface IndexEntry {
+  name: string; // Short name for display in list
   desc: string;
   status: TaskStatus;
-  created: string;
+  created: string; // Task creation date (no _at suffix in index)
+  status_updated_at: string; // ISO 8601 - last status change
   done_at?: string | null;
   cancelled_at?: string | null;
 }
 
 export interface Index {
+  version?: number; // Index format version (2 = current)
   tasks: Record<string, IndexEntry>;
 }
 
@@ -69,9 +76,14 @@ export interface TracesOutput {
 }
 
 export interface ShowOutput {
-  task: string;
+  task: string; // short ID
+  fullId: string; // full ID
+  name: string; // short name
   desc: string;
   status: TaskStatus;
+  created: string; // formatted date (from created_at)
+  ready: string | null; // formatted date (from ready_at)
+  started: string | null; // formatted date (from started_at)
   last_checkpoint: Checkpoint | null;
   entries_since_checkpoint: Entry[];
   todos: Todo[];
@@ -79,6 +91,7 @@ export interface ShowOutput {
 
 export interface ListTaskItem {
   id: string;
+  name: string;
   desc: string;
   status: TaskStatus;
   created: string;

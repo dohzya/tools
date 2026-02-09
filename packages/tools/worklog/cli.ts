@@ -22,6 +22,7 @@ import {
   type SummaryOutput,
   TASK_STATUSES,
   type TaskMeta,
+  type TaskStatus,
   type Todo,
   type TodoAddOutput,
   type TodoListOutput,
@@ -83,9 +84,12 @@ let TODOS_ID: string | null = null;
 const TaskMetaSchema = z.object({
   id: z.string(),
   uid: z.string(),
+  name: z.string(),
   desc: z.string(),
   status: z.enum(TASK_STATUSES),
-  created: z.string(),
+  created_at: z.string(),
+  ready_at: z.optional(z.nullable(z.string())),
+  started_at: z.optional(z.nullable(z.string())),
   done_at: z.optional(z.nullable(z.string())),
   cancelled_at: z.optional(z.nullable(z.string())),
   last_checkpoint: z.nullable(z.string()),
@@ -276,11 +280,90 @@ async function loadIndex(): Promise<Index> {
     );
   }
   const content = await readFile(INDEX_FILE);
-  return JSON.parse(content) as Index;
+  const index = JSON.parse(content) as Index;
+
+  // Run migration if needed
+  if (!index.version || index.version < 2) {
+    await migrateIndexToV2();
+    // Reload index after migration
+    const newContent = await readFile(INDEX_FILE);
+    return JSON.parse(newContent) as Index;
+  }
+
+  return index;
 }
 
 async function saveIndex(index: Index): Promise<void> {
   await writeFile(INDEX_FILE, JSON.stringify(index, null, 2));
+}
+
+async function migrateIndexToV2(): Promise<void> {
+  // Load index directly without triggering migration
+  const content = await readFile(INDEX_FILE);
+  const index = JSON.parse(content) as Index;
+
+  // Check if migration is needed
+  if (index.version === 2) {
+    return; // Already migrated
+  }
+
+  console.error("Migrating worklog to v2...");
+
+  // Get all task IDs
+  const taskIds = Object.keys(index.tasks);
+
+  // Migrate each task
+  for (const taskId of taskIds) {
+    const indexEntry = index.tasks[taskId];
+
+    // Load task file
+    const content = await loadTaskContent(taskId);
+    const doc = await parseDocument(content);
+    const yamlContent = getFrontmatterContent(doc);
+    const frontmatter = parseFrontmatter(yamlContent) as Record<string, unknown>;
+
+    // 1. Convert active status to created (NOT started)
+    if (frontmatter.status === "active") {
+      frontmatter.status = "created";
+      indexEntry.status = "created";
+    }
+
+    // 2. Rename 'created' to 'created_at' in frontmatter
+    if (frontmatter.created) {
+      frontmatter.created_at = frontmatter.created;
+      delete frontmatter.created;
+    }
+
+    // 3. Initialize new timestamp fields
+    frontmatter.ready_at = null;
+    frontmatter.started_at = null;
+
+    // 4. Extract name from desc (first line)
+    const desc = String(frontmatter.desc || "");
+    const descLines = desc.split("\n");
+    const name = descLines[0].trim();
+    frontmatter.name = name;
+    // Keep full desc unchanged
+
+    // 5. Update index entry
+    indexEntry.name = name;
+    indexEntry.status_updated_at = String(frontmatter.created_at || "");
+
+    // Ensure index has created field (no _at suffix)
+    if (!indexEntry.created && frontmatter.created_at) {
+      indexEntry.created = String(frontmatter.created_at);
+    }
+
+    // Save updated task file
+    setFrontmatter(doc, stringifyFrontmatter(frontmatter));
+    await saveTaskContent(taskId, serializeDocument(doc));
+  }
+
+  // Set version to 2
+  index.version = 2;
+  await saveIndex(index);
+
+  console.error(`Migration complete. ${taskIds.length} tasks updated.`);
 }
 
 // ============================================================================
@@ -1366,33 +1449,59 @@ function formatMeta(output: { metadata: Record<string, string> }): string {
 
 function formatShow(output: ShowOutput): string {
   const lines: string[] = [];
-  lines.push(`task: ${output.task}`);
-  lines.push(`desc: ${output.desc}`);
+
+  // Header
+  lines.push(`id: ${output.task}`);
+  lines.push(`full id: ${output.fullId}`);
+  lines.push(`name: ${output.name}`);
   lines.push(`status: ${output.status}`);
 
+  // History
+  lines.push("history:");
+  lines.push(`  created: ${output.created}`);
+  if (output.ready) {
+    lines.push(`  ready: ${output.ready}`);
+  }
+  if (output.started) {
+    lines.push(`  started: ${output.started}`);
+  }
+
+  // Description (multiline with 2-space indent)
+  lines.push("");
+  lines.push("desc:");
+  for (const line of output.desc.split("\n")) {
+    lines.push(`  ${line}`);
+  }
+
+  // Last checkpoint
   if (output.last_checkpoint) {
     lines.push("");
     lines.push(`last checkpoint: ${output.last_checkpoint.ts}`);
-    lines.push("changes:");
+    lines.push("  CHANGES");
     for (const line of output.last_checkpoint.changes.split("\n")) {
-      lines.push(`  ${line}`);
+      lines.push(`    ${line}`);
     }
-    lines.push("learnings:");
+    lines.push("  LEARNINGS");
     for (const line of output.last_checkpoint.learnings.split("\n")) {
-      lines.push(`  ${line}`);
+      lines.push(`    ${line}`);
     }
   }
 
+  // Entries since checkpoint
   if (output.entries_since_checkpoint.length > 0) {
     lines.push("");
     lines.push(
       `entries since checkpoint: ${output.entries_since_checkpoint.length}`,
     );
     for (const entry of output.entries_since_checkpoint) {
-      lines.push(`  ${entry.ts}: ${entry.msg}`);
+      lines.push(`  ${entry.ts}`);
+      for (const line of entry.msg.split("\n")) {
+        lines.push(`    ${line}`);
+      }
     }
   }
 
+  // Todos
   if (output.todos.length > 0) {
     lines.push("");
     lines.push(`todos: ${output.todos.length}`);
@@ -1464,7 +1573,7 @@ function formatList(output: ListOutput, showAll = false): string {
     .map((t) => {
       const shortId = getShortId(t.id, allIds);
       const prefix = t.scopePrefix ? `[${t.scopePrefix}]  ` : "";
-      return `${prefix}${shortId}  ${t.status}  "${t.desc}"  ${t.created}`;
+      return `${prefix}${shortId}  ${t.status}  "${t.name}"  ${t.created}`;
     })
     .join("\n");
 }
@@ -1589,7 +1698,9 @@ async function cmdInit(): Promise<StatusOutput> {
 }
 
 async function cmdAdd(
-  desc: string,
+  name: string,
+  desc?: string,
+  initialStatus?: TaskStatus,
   todos: string[] = [],
   metadata?: Record<string, string>,
   timestamp?: string,
@@ -1600,6 +1711,9 @@ async function cmdAdd(
   const id = generateTaskIdBase62();
   const uid = crypto.randomUUID();
   const now = timestamp ?? getLocalISOString();
+
+  const taskDesc = desc ?? "";
+  const status = initialStatus ?? "created";
 
   // Build TODO section if todos are provided
   let todoSection = "";
@@ -1625,12 +1739,24 @@ async function cmdAdd(
     }
   }
 
+  // Set timestamps based on initial status
+  let readyAt = "null";
+  let startedAt = "null";
+  if (status === "ready") {
+    readyAt = `"${now}"`;
+  } else if (status === "started") {
+    startedAt = `"${now}"`;
+  }
+
   const content = `---
 id: ${id}
 uid: ${uid}
-desc: "${desc.replace(/"/g, '\\"')}"
-status: active
-created: "${now}"
+name: "${name.replace(/"/g, '\\"')}"
+desc: "${taskDesc.replace(/"/g, '\\"')}"
+status: ${status}
+created_at: "${now}"
+ready_at: ${readyAt}
+started_at: ${startedAt}
 done_at: null
 last_checkpoint: null
 has_uncheckpointed_entries: false${metadataYaml}
@@ -1645,9 +1771,11 @@ has_uncheckpointed_entries: false${metadataYaml}
 
   const index = await loadIndex();
   index.tasks[id] = {
-    desc,
-    status: "active",
+    name,
+    desc: taskDesc,
+    status,
     created: now,
+    status_updated_at: now,
     done_at: null,
   };
   await saveIndex(index);
@@ -1674,9 +1802,17 @@ async function cmdTrace(
   const content = await loadTaskContent(taskId);
   const { meta } = await parseTaskFile(content);
 
-  // Only check if task is active if not forcing
-  if (!force) {
-    assertActive(meta);
+  // Check status: reject done unless --force, warn if not started
+  if (meta.status === "done" && !force) {
+    throw new WtError(
+      "task_already_done",
+      `Task ${meta.id} is completed. Use --force to add post-completion traces.`,
+    );
+  }
+  if (meta.status !== "started") {
+    console.error(
+      `Warning: Task is not started. Trace recorded. Run 'wl start ${taskId}' to start working.`,
+    );
   }
 
   const doc = await parseDocument(content);
@@ -1788,10 +1924,20 @@ async function cmdShow(
     )
     : todos;
 
+  // Compute short ID for display
+  const index = await loadIndex();
+  const allIds = Object.keys(index.tasks);
+  const shortId = getShortId(taskId, allIds);
+
   return {
-    task: taskId,
+    task: shortId,
+    fullId: taskId,
+    name: meta.name,
     desc: meta.desc,
     status: meta.status,
+    created: formatShort(meta.created_at),
+    ready: meta.ready_at ? formatShort(meta.ready_at) : null,
+    started: meta.started_at ? formatShort(meta.started_at) : null,
     last_checkpoint: lastCheckpoint,
     entries_since_checkpoint: entriesSinceCheckpoint,
     todos: filteredTodos,
@@ -1902,8 +2048,8 @@ ${learnings}
 
 async function cmdDone(
   taskId: string,
-  changes: string,
-  learnings: string,
+  changes?: string,
+  learnings?: string,
   force?: boolean,
   metadata?: Record<string, string>,
 ): Promise<StatusOutput> {
@@ -1915,7 +2061,7 @@ async function cmdDone(
   // Check for pending todos (unless force is enabled)
   if (!force) {
     const content = await loadTaskContent(taskId);
-    const { todos } = await parseTaskFile(content);
+    const { meta, todos } = await parseTaskFile(content);
 
     const pendingTodos = todos.filter(
       (t) => t.status !== "done" && t.status !== "cancelled",
@@ -1927,10 +2073,22 @@ async function cmdDone(
         `Task has ${pendingTodos.length} pending todo(s). Use --force to complete anyway.`,
       );
     }
+
+    // If no changes/learnings provided, check if there are uncheckpointed entries
+    if (!changes && !learnings) {
+      if (meta.has_uncheckpointed_entries) {
+        throw new WtError(
+          "no_uncheckpointed_entries",
+          "Cannot mark done: uncheckpointed entries exist. Provide changes and learnings.",
+        );
+      }
+    }
   }
 
-  // First create the final checkpoint (always force since this is the final one)
-  await cmdCheckpoint(taskId, changes, learnings, true);
+  // Create final checkpoint only if changes/learnings provided
+  if (changes || learnings) {
+    await cmdCheckpoint(taskId, changes ?? "", learnings ?? "", true);
+  }
 
   // Then mark as done
   const content = await loadTaskContent(taskId);
@@ -1966,6 +2124,131 @@ async function cmdDone(
   }
 
   return { status: "task_completed" };
+}
+
+async function cmdReady(taskId: string): Promise<StatusOutput> {
+  await purge();
+  taskId = await resolveTaskId(taskId);
+
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+
+  // Validate: allow created, started; reject done, cancelled
+  if (!["created", "started"].includes(frontmatter.status as string)) {
+    throw new WtError(
+      "invalid_state",
+      `Cannot transition from '${frontmatter.status}' to 'ready'`,
+    );
+  }
+
+  const now = getLocalISOString();
+  frontmatter.status = "ready";
+  frontmatter.ready_at = now;
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "ready";
+    index.tasks[taskId].status_updated_at = now;
+    await saveIndex(index);
+  }
+
+  return { status: "task_ready" };
+}
+
+async function cmdStart(taskId: string): Promise<StatusOutput> {
+  await purge();
+  taskId = await resolveTaskId(taskId);
+
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+
+  // Allow: created, ready, done; reject: cancelled
+  if (frontmatter.status === "cancelled") {
+    throw new WtError(
+      "invalid_state",
+      `Cannot transition from 'cancelled' to 'started'`,
+    );
+  }
+  if (frontmatter.status === "started") {
+    return { status: "task_already_started" };
+  }
+
+  const now = getLocalISOString();
+  frontmatter.status = "started";
+  frontmatter.started_at = now;
+
+  // Clear done_at if reopening
+  if (frontmatter.done_at) {
+    frontmatter.done_at = null;
+  }
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "started";
+    index.tasks[taskId].status_updated_at = now;
+    delete index.tasks[taskId].done_at;
+    await saveIndex(index);
+  }
+
+  return { status: "task_started" };
+}
+
+async function cmdUpdate(
+  taskId: string,
+  name?: string,
+  desc?: string,
+): Promise<StatusOutput> {
+  if (!name && desc === undefined) {
+    throw new WtError(
+      "invalid_args",
+      "Must provide at least one of --name or --desc",
+    );
+  }
+
+  await purge();
+  taskId = await resolveTaskId(taskId);
+
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+
+  if (name) frontmatter.name = name;
+  if (desc !== undefined) frontmatter.desc = desc;
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    if (name) index.tasks[taskId].name = name;
+    if (desc !== undefined) index.tasks[taskId].desc = desc;
+    await saveIndex(index);
+  }
+
+  return { status: "task_updated" };
 }
 
 async function cmdCancel(
@@ -2054,11 +2337,21 @@ async function cmdMeta(
       }
       frontmatter.status = value;
       // Update timestamp fields based on status
+      const now = new Date().toISOString();
       if (value === "done" && !frontmatter.done_at) {
-        frontmatter.done_at = new Date().toISOString();
+        frontmatter.done_at = now;
       } else if (value === "cancelled" && !frontmatter.cancelled_at) {
-        frontmatter.cancelled_at = new Date().toISOString();
-      } else if (value === "active") {
+        frontmatter.cancelled_at = now;
+      } else if (value === "started" && !frontmatter.started_at) {
+        frontmatter.started_at = now;
+        frontmatter.done_at = null;
+        frontmatter.cancelled_at = null;
+      } else if (value === "ready" && !frontmatter.ready_at) {
+        frontmatter.ready_at = now;
+      } else if (value === "created") {
+        // Reset all status timestamps
+        frontmatter.ready_at = null;
+        frontmatter.started_at = null;
         frontmatter.done_at = null;
         frontmatter.cancelled_at = null;
       }
@@ -2080,7 +2373,8 @@ async function cmdMeta(
     const index = await loadIndex();
     if (index.tasks[taskId]) {
       index.tasks[taskId].status = frontmatter.status;
-      if (frontmatter.status === "active") {
+      index.tasks[taskId].status_updated_at = getLocalISOString();
+      if (["created", "ready", "started"].includes(frontmatter.status as string)) {
         delete index.tasks[taskId].done_at;
       } else if (frontmatter.status === "done" && frontmatter.done_at) {
         index.tasks[taskId].done_at = frontmatter.done_at;
@@ -2333,11 +2627,18 @@ async function cmdList(
   gitRoot?: string | null,
   currentScope?: string,
   cwd?: string,
+  statusFilters?: TaskStatus[],
 ): Promise<ListOutput> {
   // Only purge the local worklog, not remote ones
   if (!baseDir) {
     await purge();
   }
+
+  // Determine which statuses to show
+  const defaultStatuses: TaskStatus[] = ["created", "ready", "started"];
+  const allowedStatuses = statusFilters ?? defaultStatuses;
+  const matchStatus = (status: string) =>
+    showAll || allowedStatuses.includes(status as TaskStatus);
 
   const tasks: ListOutput["tasks"] = [];
 
@@ -2357,10 +2658,11 @@ async function cmdList(
       const scopeId = await getScopeId(scope.absolutePath, gitRoot);
 
       const scopeTasks = Object.entries(index.tasks)
-        .filter(([_, t]) => showAll || t.status === "active")
+        .filter(([_, t]) => matchStatus(t.status))
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
+          name: t.name ?? t.desc,
           desc: t.desc,
           status: t.status,
           created: formatShort(t.created),
@@ -2389,10 +2691,11 @@ async function cmdList(
     const index = JSON.parse(content) as Index;
 
     const scopeTasks = Object.entries(index.tasks)
-      .filter(([_, t]) => showAll || t.status === "active")
+      .filter(([_, t]) => matchStatus(t.status))
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, t]) => ({
         id,
+        name: t.name ?? t.desc,
         desc: t.desc,
         status: t.status,
         created: formatShort(t.created),
@@ -2410,10 +2713,11 @@ async function cmdList(
       const index = JSON.parse(content) as Index;
 
       const currentTasks = Object.entries(index.tasks)
-        .filter(([_, t]) => showAll || t.status === "active")
+        .filter(([_, t]) => matchStatus(t.status))
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
+          name: t.name ?? t.desc,
           desc: t.desc,
           status: t.status,
           created: formatShort(t.created),
@@ -2442,10 +2746,11 @@ async function cmdList(
             const index = JSON.parse(content) as Index;
 
             const childTasks = Object.entries(index.tasks)
-              .filter(([_, t]) => showAll || t.status === "active")
+              .filter(([_, t]) => matchStatus(t.status))
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([id, t]) => ({
                 id,
+                name: t.name ?? t.desc,
                 desc: t.desc,
                 status: t.status,
                 created: formatShort(t.created),
@@ -2477,10 +2782,11 @@ async function cmdList(
     }
 
     const singleTasks = Object.entries(index.tasks)
-      .filter(([_, t]) => showAll || t.status === "active")
+      .filter(([_, t]) => matchStatus(t.status))
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, t]) => ({
         id,
+        name: t.name ?? t.desc,
         desc: t.desc,
         status: t.status,
         created: formatShort(t.created),
@@ -2501,7 +2807,7 @@ async function cmdSummary(since: string | null): Promise<SummaryOutput> {
   const result: SummaryOutput["tasks"] = [];
 
   for (const [id, info] of Object.entries(index.tasks)) {
-    const include = info.status === "active" ||
+    const include = ["created", "ready", "started"].includes(info.status) ||
       (sinceDate && info.done_at && parseDate(info.done_at) >= sinceDate);
 
     if (!include) continue;
@@ -2763,9 +3069,11 @@ async function cmdImport(
       await saveTaskContent(targetId, taskContent);
 
       destIndex.tasks[targetId] = {
+        name: sourceInfo.name,
         desc: sourceInfo.desc,
         status: sourceInfo.status,
         created: sourceInfo.created,
+        status_updated_at: sourceInfo.status_updated_at,
         done_at: sourceInfo.done_at,
       };
 
@@ -3585,9 +3893,11 @@ async function cmdScopesAssign(
         await Deno.writeTextFile(targetTaskPath, taskContent);
 
         targetIndex.tasks[taskId] = {
+          name: sourceMeta.name,
           desc: sourceMeta.desc,
           status: sourceMeta.status,
-          created: sourceMeta.created,
+          created: sourceMeta.created_at,
+          status_updated_at: sourceMeta.created_at,
           done_at: sourceMeta.done_at,
         };
 
@@ -4148,7 +4458,82 @@ const taskCreateCmd = new Command()
         }
       }
       const metadata = parseMetaOption(options.meta);
-      const output = await cmdAdd(desc, todos, metadata, timestampValue);
+      // For backward compat, `wl task create` creates started tasks
+      const name = desc.split("\n")[0].trim();
+      const output = await cmdAdd(name, desc, "started", todos, metadata, timestampValue);
+      console.log(options.json ? JSON.stringify(output) : formatAdd(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const createCmd = new Command()
+  .description(
+    "Create a new task with lifecycle states\n" +
+      "Default state is 'created' (not started yet)",
+  )
+  .arguments("<name:string> [desc:string]")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("--ready", "Create task in 'ready' state")
+  .option("--started", "Create task in 'started' state")
+  .option(
+    "-t, --timestamp <ts:string>",
+    "Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)",
+  )
+  .option("--todo <text:string>", "Add a todo item (repeatable)", {
+    collect: true,
+  })
+  .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
+    collect: true,
+  })
+  .action(async (options, name, desc) => {
+    try {
+      await resolveScopeContext(options.scope);
+
+      // Validate: can't have both --ready and --started
+      if (options.ready && options.started) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --ready and --started flags",
+        );
+      }
+
+      // Determine initial status
+      let initialStatus: TaskStatus = "created";
+      if (options.ready) {
+        initialStatus = "ready";
+      } else if (options.started) {
+        initialStatus = "started";
+      }
+
+      const todos = options.todo ?? [];
+      let timestampValue: string | undefined;
+      if (options.timestamp) {
+        try {
+          timestampValue = parseFlexibleTimestamp(options.timestamp);
+          // Ensure timezone is present, add local timezone if missing
+          const tzRegex = /[+-]\d{2}:\d{2}$/;
+          if (!tzRegex.test(timestampValue)) {
+            const now = new Date();
+            const tzOffset = -now.getTimezoneOffset();
+            const sign = tzOffset >= 0 ? "+" : "-";
+            const hours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(
+              2,
+              "0",
+            );
+            const minutes = String(Math.abs(tzOffset) % 60).padStart(2, "0");
+            timestampValue += `${sign}${hours}:${minutes}`;
+          }
+        } catch {
+          throw new WtError(
+            "invalid_args",
+            `Invalid timestamp format: ${options.timestamp}. Use format [YYYY-MM-DD]THH:mm[:SS][<tz>]`,
+          );
+        }
+      }
+      const metadata = parseMetaOption(options.meta);
+      const output = await cmdAdd(name, desc, initialStatus, todos, metadata, timestampValue);
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -4264,7 +4649,7 @@ const doneCmd = new Command()
     "Final consolidation: synthesize ALL traces (changes) + REX (learnings)\n" +
       "⚠️  ALWAYS run 'wl show <id>' first to review traces & check TODOs!",
   )
-  .arguments("<taskId:string> <changes:string> <learnings:string>")
+  .arguments("<taskId:string> [changes:string] [learnings:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("-f, --force", "Force completion")
@@ -4283,6 +4668,53 @@ const doneCmd = new Command()
         options.force ?? false,
         metadata,
       );
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const readyCmd = new Command()
+  .description("Mark task as ready to work on")
+  .arguments("<taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdReady(taskId);
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const startCmd = new Command()
+  .description("Start working on a task")
+  .arguments("<taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdStart(taskId);
+      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const updateCmd = new Command()
+  .description("Update task name or description")
+  .arguments("<taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option("--name <name:string>", "New name for the task")
+  .option("--desc <desc:string>", "New description for the task")
+  .action(async (options, taskId) => {
+    try {
+      await resolveScopeContext(options.scope);
+      const output = await cmdUpdate(taskId, options.name, options.desc);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -4326,11 +4758,24 @@ const listCmd = new Command()
   .description("List tasks")
   .option("--json", "Output as JSON")
   .option("--all", "Include completed tasks")
+  .option("--created", "Show only created tasks")
+  .option("--ready", "Show only ready tasks")
+  .option("--started", "Show only started tasks")
+  .option("--done", "Show only done tasks")
+  .option("--cancelled", "Show only cancelled tasks")
   .option("-p, --path <path:string>", "Path to .worklog directory")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--all-scopes", "Show all scopes")
   .action(async (options) => {
     try {
+      // Build status filter from flags
+      const statusFilters: TaskStatus[] = [];
+      if (options.created) statusFilters.push("created");
+      if (options.ready) statusFilters.push("ready");
+      if (options.started) statusFilters.push("started");
+      if (options.done) statusFilters.push("done");
+      if (options.cancelled) statusFilters.push("cancelled");
+
       const cwd = Deno.cwd();
       const gitRoot = await findGitRoot(cwd);
       let currentScope: string | undefined;
@@ -4349,6 +4794,7 @@ const listCmd = new Command()
         gitRoot,
         currentScope,
         cwd,
+        statusFilters.length > 0 ? statusFilters : undefined,
       );
       console.log(
         options.json ? JSON.stringify(output) : formatList(output, options.all),
@@ -4432,6 +4878,10 @@ const cli = new Command()
       "See 'wl <command> --help' for details",
   )
   .command("init", initCmd)
+  .command("create", createCmd)
+  .command("ready", readyCmd)
+  .command("start", startCmd)
+  .command("update", updateCmd)
   .command("task", taskCmd)
   .command("trace", traceCmd)
   .command("traces", tracesCmd)

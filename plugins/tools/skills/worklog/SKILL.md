@@ -9,6 +9,14 @@ Track work progress with traces and checkpoints. **Always work within a worktask
 
 ## Core Concepts
 
+**Task lifecycle:** `created` → `ready` → `started` → `done` / `cancelled`
+
+- **created**: Task defined, not ready to work on yet
+- **ready**: Task ready to be picked up
+- **started**: Actively working on the task
+- **done**: Task completed with final checkpoint
+- **cancelled**: Task abandoned
+
 **Two types of entries:**
 
 1. **Traces** (append-only): Log what you're doing with causes & pistes
@@ -32,11 +40,18 @@ Track work progress with traces and checkpoints. **Always work within a worktask
 # Check if tracking active
 wl list
 
-# Create worktask if needed (returns ID like 250116a)
-wl task create --desc "Implement feature X"
+# Create worktask (default: created state)
+wl create "Implement feature X" "Detailed description here"
+
+# Create and start immediately
+wl create --started "Fix login bug"
 
 # Optional: Add TODOs for multi-step tasks
-wl task create "Feature X" --todo "Analyze code" --todo "Implement" --todo "Test"
+wl create "Feature X" --todo "Analyze code" --todo "Implement" --todo "Test"
+
+# Transition task through states
+wl ready <id>                    # Mark ready to work on
+wl start <id>                    # Start working
 ```
 
 **Critical:** Never work without an active worktask. Create one first.
@@ -45,22 +60,24 @@ wl task create "Feature X" --todo "Analyze code" --todo "Implement" --todo "Test
 
 ```bash
 # ✅ GOOD traces (include causes & pistes)
-wl trace 250116a "Goal: support multi-currency"
-wl trace 250116a "Tried direct field - broke 12 tests (cause: validator expects single total)"
-wl trace 250116a "Pivot to CurrencyBucket pattern (piste: isolate currency logic)"
-wl trace 250116a "Tests pass - CurrencyBucket works"
+wl trace <id> "Goal: support multi-currency"
+wl trace <id> "Tried direct field - broke 12 tests (cause: validator expects single total)"
+wl trace <id> "Pivot to CurrencyBucket pattern (piste: isolate currency logic)"
+wl trace <id> "Tests pass - CurrencyBucket works"
 
 # ❌ BAD traces (missing context)
-wl trace 250116a "Tried X"
-wl trace 250116a "Didn't work"
-wl trace 250116a "Fixed it"
+wl trace <id> "Tried X"
+wl trace <id> "Didn't work"
+wl trace <id> "Fixed it"
 ```
+
+**Note:** `wl trace` warns if task is not started. Start with `wl start <id>` first.
 
 **Batch tracing?** Use real timestamps:
 ```bash
-wl trace 250116a -t T14:30 "Started investigation"
-wl trace 250116a -t T15:15 "Found root cause"
-wl trace 250116a -t T15:45 "Applied fix"
+wl trace <id> -t T14:30 "Started investigation"
+wl trace <id> -t T15:15 "Found root cause"
+wl trace <id> -t T15:45 "Applied fix"
 ```
 
 ### 3. Consolidate with Checkpoints
@@ -69,10 +86,10 @@ When `wl trace` says "checkpoint recommended":
 
 ```bash
 # 1. Review traces
-wl logs 250116a
+wl logs <id>
 
 # 2. Synthesize (don't just concatenate)
-wl checkpoint 250116a \
+wl checkpoint <id> \
   "- Implemented CurrencyBucket pattern
 - Initial direct field approach failed (broke tests)
 - Pivot to CurrencyBucket → all tests pass" \
@@ -95,14 +112,14 @@ git add .
 git commit -m "feat: multi-currency support"
 
 # 2. Review ALL traces + check TODOs
-wl show 250116a
+wl show <id>
 # ⚠️ Check output for:
 #   - Pending TODOs that need completion
 #   - All significant traces to consolidate
 #   - Pattern of what failed/worked
 
 # 3. Final consolidation + REX
-wl done 250116a \
+wl done <id> \
   "Multi-currency validation via CurrencyBucket (12 tests pass)
 
 Actions:
@@ -119,6 +136,9 @@ Résultat:
 3. Centralized validation prevents fragmentation
 4. Validate aggregate before buckets - catches edge cases" \
   --meta commit=$(git rev-parse HEAD)
+
+# If no new traces since last checkpoint, no args needed:
+wl done <id>
 ```
 
 **REX quality check:**
@@ -135,21 +155,28 @@ Résultat:
 5. **Done before commit** → Commit first, then done
 6. **Done without reviewing** → ALWAYS do `wl show <id>` first to review traces + check TODOs
 7. **REX = summary** → NO! REX = critical distance, reusable insights
+8. **Tracing without starting** → `wl start <id>` before tracing
 
 ## Quick Reference
 
 ```bash
-wl task create "description"              # Create worktask
+wl create "name" ["description"]  # Create worktask (default: created)
+wl create --started "name"        # Create and start immediately
+wl ready <id>                     # Mark task ready
+wl start <id>                     # Start working on task
+wl update <id> --name "new"       # Update task name or description
 wl trace <id> "msg"               # Log with context (causes/pistes)
 wl trace <id> -t T14:30 "msg"     # With timestamp
 wl show <id>                      # Review traces + TODOs (before checkpoint/done!)
 wl checkpoint <id> "changes" "rx" # Consolidate traces
-wl done <id> "changes" "rx"       # After commit + wl show!
+wl done <id> ["changes" "rx"]     # After commit + wl show! (args optional if no new traces)
 wl cancel <id> [reason]           # Abandon task (marks as cancelled)
-wl list                           # See active worktasks
+wl list                           # See active worktasks (created/ready/started)
+wl list --started                 # Filter by status
+wl list --done                    # Show done tasks
 
 # TODO management
-wl task create "Task" --todo "Step 1" --todo "Step 2"
+wl create "Task" --todo "Step 1" --todo "Step 2"
 wl todo list                      # All TODOs
 wl todo set status=done <id>      # Mark done
 ```

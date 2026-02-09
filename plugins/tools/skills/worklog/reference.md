@@ -2,47 +2,232 @@
 
 Complete reference for the worklog skill.
 
+## Task Lifecycle
+
+```
+created → ready → started → done
+   │         │        │
+   │         │        └──→ cancelled
+   │         └──→ cancelled
+   └──→ cancelled
+```
+
+- **created** (default): Task defined, not ready yet
+- **ready**: Task ready to be picked up
+- **started**: Actively working on the task
+- **done**: Task completed (final checkpoint)
+- **cancelled**: Task abandoned
+
+Transitions: `ready` allows `created → ready` and `started → ready`. `start` allows `created → started`, `ready → started`, and `done → started` (reopen). `cancel` works from any state except `done`.
+
 ## Commands
 
 ### Core commands
 
 ```bash
-wl task create [--desc "description"] [--todo "text"]... # Create task → outputs ID
-wl trace <id> [options] "message"                # Log entry → "ok" or "checkpoint recommended"
-wl logs <id>                                     # Get context (last checkpoint + recent entries)
-wl checkpoint <id> "changes" "learnings"         # Create checkpoint
-wl done <id> "changes" "learnings"               # Final checkpoint + close task
-wl cancel <id> [reason]                          # Cancel/abandon task (marks as cancelled)
-wl list [--all] [-p PATH]                        # List active tasks (--all includes done <30d)
-wl meta <id> [<key> <value>]                     # View or set task metadata
-wl summary [--since YYYY-MM-DD]                  # Aggregate all tasks
-wl import [-p PATH | -b BRANCH] [--rm]           # Import from other worktree
+wl create <name> [desc] [--ready|--started]  # Create task → outputs ID
+wl ready <id>                                # Transition to ready
+wl start <id>                                # Transition to started (or reopen done)
+wl update <id> [--name <name>] [--desc <d>]  # Update task name or description
+wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
+wl logs <id>                                 # Get context (last checkpoint + recent entries)
+wl checkpoint <id> "changes" "learnings"     # Create checkpoint
+wl done <id> ["changes" "learnings"]         # Final checkpoint + close task (args optional)
+wl cancel <id> [reason]                      # Cancel/abandon task (marks as cancelled)
+wl list [--created] [--ready] [--started] [--done] [--cancelled]  # Filter tasks
+wl show <id>                                 # Detailed task view with history
+wl meta <id> [<key> <value>]                 # View or set task metadata
+wl summary [--since YYYY-MM-DD]              # Aggregate all tasks
+wl import [-p PATH | -b BRANCH] [--rm]       # Import from other worktree
+```
+
+### Backward compatibility
+
+```bash
+wl task create <desc> [--todo]...            # Creates in 'started' state (legacy)
 ```
 
 ### TODO management
 
 ```bash
-wl todo list [<task-id>]                         # List todos (all active tasks or specific task)
-wl todo add <task-id> <text>                     # Add a todo to a task
-wl todo set key=value <todo-id>                  # Update todo (e.g., status=done)
-wl todo next [<task-id>]                         # Show next available todo
+wl todo list [<task-id>]                     # List todos (all active tasks or specific task)
+wl todo add <task-id> <text>                 # Add a todo to a task
+wl todo set key=value <todo-id>              # Update todo (e.g., status=done)
+wl todo next [<task-id>]                     # Show next available todo
 ```
 
 ### Global options
 
 - `--json`: Output in JSON format (all commands)
-- `--force` or `-f`: Modify completed tasks (`trace`, `checkpoint`)
+- `--force` or `-f`: Modify completed tasks (`trace`, `checkpoint`, `done`)
 
-### Trace options
+## Create command
+
+```bash
+wl create <name> [desc] [options]
+```
+
+Creates a new task. The `name` is displayed in list views, `desc` is the detailed description (defaults to `name` if not provided).
+
+**Options:**
+- `--ready`: Create in 'ready' state
+- `--started`: Create in 'started' state
+- `--todo <text>`: Add a TODO item (repeatable)
+- `--meta <key=value>`: Set metadata (repeatable)
+- `-t, --timestamp <ts>`: Custom creation timestamp
+
+**Examples:**
+
+```bash
+# Default: created state
+wl create "Fix login bug"
+
+# With description
+wl create "Fix login bug" "Users can't login after session timeout"
+
+# Start immediately
+wl create --started "Urgent hotfix"
+
+# With TODOs
+wl create "Feature X" --todo "Analyze" --todo "Implement" --todo "Test"
+```
+
+## State transition commands
+
+### `wl ready <id>`
+
+Marks task as ready to work on.
+
+- Allowed from: `created`, `started`
+- Rejected from: `done`, `cancelled`
+
+### `wl start <id>`
+
+Starts working on a task (or reopens a done task).
+
+- Allowed from: `created`, `ready`, `done` (reopen)
+- Rejected from: `cancelled`
+- When reopening done: clears `done_at`
+
+### `wl update <id>`
+
+Updates task name and/or description.
+
+```bash
+wl update <id> --name "New name"
+wl update <id> --desc "New description"
+wl update <id> --name "New name" --desc "New description"
+```
+
+Must provide at least one of `--name` or `--desc`.
+
+## List command
+
+```bash
+wl list [options]
+```
+
+**Default:** Shows tasks in `created`, `ready`, and `started` states.
+
+**Status filters** (cumulative):
+- `--created`: Show created tasks
+- `--ready`: Show ready tasks
+- `--started`: Show started tasks
+- `--done`: Show done tasks
+- `--cancelled`: Show cancelled tasks
+
+When any status filter is specified, only those statuses are shown. Multiple filters are combined with OR logic.
+
+**Other options:**
+- `--all` or `-a`: Show all tasks including completed (<30d)
+- `-p <path>`: List tasks at specific path
+
+**Examples:**
+
+```bash
+wl list                              # created + ready + started (default)
+wl list --started                    # Only started tasks
+wl list --created --ready            # Created OR ready tasks
+wl list --done                       # Only done tasks
+wl list --all                        # Everything including done/cancelled
+```
+
+## Show command
+
+Displays detailed task information with lifecycle history.
+
+```bash
+wl show <id>
+```
+
+**Output format:**
+
+```
+id: 2u83qv
+full id: 2u83qv12wsgi1oxty1d8gzfnd
+name: Fix login bug
+status: started
+history:
+  created: 2026-02-05 10:00
+  ready: 2026-02-05 10:15
+  started: 2026-02-05 10:30
+
+desc:
+  Description de la tâche.
+  Peut-être sur plusieurs lignes.
+
+last checkpoint: 2026-02-05 14:14
+  CHANGES
+    Consolidation des traces
+    Peut être sur plusieurs lignes.
+  LEARNINGS
+    REX de cette tâche.
+    Peut être sur plusieurs lignes.
+
+entries since checkpoint: 2
+  2025-01-16 11:30
+    Contenu de la trace
+    Peut être sur plusieurs lignes.
+  2025-01-16 11:45
+    Contenu de la trace
+    Peut être sur plusieurs lignes.
+
+todos: 2
+  CphkaD [x] Première todo
+  3cq2Ut [ ] Deuxième todo
+```
+
+## Trace options
 
 **IMPORTANT:** Always place options BETWEEN the task ID and the message content. This ensures options remain visible in truncated UI displays.
 
-✅ **Correct:** `wl trace 250116a -t T11:35 "message"` ❌ **Incorrect:** `wl trace 250116a "message" -t T11:35`
+✅ **Correct:** `wl trace <id> -t T11:35 "message"` ❌ **Incorrect:** `wl trace <id> "message" -t T11:35`
 
 Available options:
 
 - `--timestamp TS` or `-t TS`: Custom timestamp (see format below)
 - `--force` or `-f`: Allow modifying completed tasks
+
+**Warning behavior:** `wl trace` warns if the task is not in `started` state (but still records the trace). If the task is `done`, it errors unless `--force` is used.
+
+## Done command
+
+```bash
+wl done <id> ["changes" "learnings"] [--force] [--meta key=value]
+```
+
+**Arguments are optional** when there are no uncheckpointed entries (no new traces since last checkpoint). If there are uncheckpointed entries, `changes` and `learnings` are required.
+
+```bash
+# With final checkpoint (when traces exist)
+wl done <id> "What changed" "What we learned"
+
+# Without args (when no new traces since last checkpoint)
+wl done <id>
+
+# Force completion despite pending TODOs
+wl done <id> "changes" "learnings" --force
+```
 
 ## Timestamp format
 
@@ -59,16 +244,16 @@ Examples:
 
 ```bash
 # Time only (today's date, local timezone)
-wl trace 250116a -t T11:15 "Quick fix"
+wl trace <id> -t T11:15 "Quick fix"
 
 # Time with seconds
-wl trace 250116a -t T11:15:30 "Detailed fix"
+wl trace <id> -t T11:15:30 "Detailed fix"
 
 # Full date + time (local timezone)
-wl trace 250116a -t 2024-12-15T11:15 "Session resumed"
+wl trace <id> -t 2024-12-15T11:15 "Session resumed"
 
 # Full ISO timestamp with timezone
-wl trace 250116a -t "2024-12-15T11:15:30+01:00" "Fixed validation"
+wl trace <id> -t "2024-12-15T11:15:30+01:00" "Fixed validation"
 ```
 
 **Use case:** Importing historical entries from other logs (e.g., WORKLOG.md) while preserving original timestamps.
@@ -79,10 +264,10 @@ By default, completed tasks cannot be modified. Use `--force` (or `-f`) to add e
 
 ```bash
 # Add post-completion entry
-wl trace 250116a -f "Found edge case in production"
+wl trace <id> -f "Found edge case in production"
 
 # Create post-completion checkpoint
-wl checkpoint 250116a -f "Hotfix applied" "Edge case documented"
+wl checkpoint <id> -f "Hotfix applied" "Edge case documented"
 ```
 
 **When to use force:**
@@ -100,10 +285,10 @@ Use `wl cancel` to abandon a task without completing it. This marks the task as 
 
 ```bash
 # Cancel a task without reason
-wl cancel 250116a
+wl cancel <id>
 
 # Cancel with a reason (stored in metadata)
-wl cancel 250116a "Requirements changed, no longer needed"
+wl cancel <id> "Requirements changed, no longer needed"
 ```
 
 **When to cancel:**
@@ -123,10 +308,10 @@ wl cancel 250116a "Requirements changed, no longer needed"
 
 **Difference from done:**
 
-- `done` = task completed successfully (requires changes + learnings)
+- `done` = task completed successfully (requires changes + learnings if traces exist)
 - `cancel` = task abandoned (optional reason)
 
-Cancelled tasks appear in `wl list --all` but not in default `wl list` (which shows only active tasks).
+Cancelled tasks appear in `wl list --cancelled` but not in default `wl list`.
 
 ## Importing from other worktrees
 
@@ -168,8 +353,8 @@ wl import -b feature-x --rm
 ```bash
 # In feature worktree
 cd ~/project-feature-x
-wl task create --desc "Implement feature X"
-wl trace 260122a "Working on feature..."
+wl create --started "Implement feature X"
+wl trace <id> "Working on feature..."
 # ... work ...
 
 # Before deleting worktree, import to main
@@ -184,11 +369,22 @@ git worktree remove ~/project-feature-x
 
 Default output is human-readable text. Use `--json` for structured JSON.
 
-### `wl task create`
+### `wl create`
 
 ```
-250116a
+acjold
 ```
+
+### `wl list`
+
+```
+acjold  started  "Multi-currency support"  2025-01-16 09:15
+b2x9kf  created  "Fix login bug"  2025-01-16 14:30
+```
+
+### `wl show`
+
+See [Show command](#show-command) section above.
 
 ### `wl trace`
 
@@ -200,31 +396,6 @@ or
 
 ```
 checkpoint recommended (52 entries)
-```
-
-### `wl list`
-
-```
-250116a  active  "Multi-currency support"  2025-01-16 09:15
-250116b  active  "Fix login bug"  2025-01-16 14:30
-```
-
-### `wl logs`
-
-```
-task: 250116a
-desc: Multi-currency support
-status: active
-
-last checkpoint: 2025-01-16 11:00
-changes:
-  - Introduced CurrencyBucket
-learnings:
-  - Centraliser la validation
-
-entries since checkpoint: 2
-  2025-01-16 11:30: Added edge case handling
-  2025-01-16 11:45: Tests passing
 ```
 
 ### `wl checkpoint` / `wl done`
@@ -240,12 +411,12 @@ task completed
 ### `wl todo list`
 
 ```
-Task: 260203a "Implement feature X"
+Task: acjold "Implement feature X"
   abc1234  [ ] Analyze existing code
   def5678  [>] Write tests  [dependsOn:: abc1234]
   ghi9012  [x] Setup environment  [due:: 2026-02-10]
 
-Task: 260203b "Fix bug Y"
+Task: b2x9kf "Fix bug Y"
   jkl3456  [/] Debug issue
 ```
 
@@ -263,7 +434,7 @@ todo updated
 
 ```
 Next TODO: abc1234
-Task: 260203a "Implement feature X"
+Task: acjold "Implement feature X"
 Text: Analyze existing code
 Status: todo
 ```
@@ -273,8 +444,8 @@ Status: todo
 You can have multiple active tasks. Always specify the task ID:
 
 ```bash
-wl trace 250116a "Working on currency bucket"
-wl trace 250116b "Fixed unrelated login bug"
+wl trace <id1> "Working on currency bucket"
+wl trace <id2> "Fixed unrelated login bug"
 ```
 
 Use `wl list` to see all active tasks if you lose track.
@@ -287,10 +458,10 @@ TODOs allow tracking discrete action items within a task.
 
 ```bash
 # Create task with initial TODOs
-wl task create "Feature X" --todo "Analyze code" --todo "Write tests" --todo "Implement"
+wl create "Feature X" --todo "Analyze code" --todo "Write tests" --todo "Implement"
 
 # Shortcut: use first TODO as task description
-wl task create --todo "Fix authentication bug"
+wl create --todo "Fix authentication bug"
 ```
 
 ### Managing TODOs
@@ -454,40 +625,57 @@ Metadata is stored in the task's YAML frontmatter and preserved across imports.
 
 ```
 .worklog/
-├── index.json           # Task list (for fast wl list)
+├── index.json           # Task list with version (for fast wl list)
 └── tasks/
-    └── 250116a.md       # Task file (frontmatter + entries + checkpoints)
+    └── <id>.md          # Task file (frontmatter + entries + checkpoints)
 ```
 
 Task files are Markdown with YAML frontmatter. Old completed tasks (>30 days) are auto-purged.
+
+### Index format (v2)
+
+```json
+{
+  "version": 2,
+  "tasks": {
+    "<full-id>": {
+      "name": "Short name",
+      "desc": "Full description",
+      "status": "started",
+      "created": "2026-02-05T10:00:00+01:00",
+      "status_updated_at": "2026-02-05T10:30:00+01:00"
+    }
+  }
+}
+```
 
 ## JSON output format
 
 Add `--json` to any command for machine-readable output.
 
-### Task object
+### Show output
 
 ```json
 {
-  "uid": "01234567-89ab-cdef-0123-456789abcdef",
-  "id": "250116a",
+  "task": "acjold",
+  "fullId": "acjold3x5q1m8h2k9n7p0r4w6",
+  "name": "Implement feature X",
   "desc": "Implement feature X",
-  "status": "active",
-  "created_at": "2025-01-16T09:15:00Z",
-  "completed_at": null,
-  "has_uncheckpointed_entries": true,
-  "entries": [
+  "status": "started",
+  "created": "2026-02-05 10:00",
+  "ready": null,
+  "started": "2026-02-05 10:30",
+  "last_checkpoint": {
+    "ts": "2025-01-16 11:00",
+    "changes": "- Added initial structure",
+    "learnings": "- Pattern X works well"
+  },
+  "entries_since_checkpoint": [
     {
-      "timestamp": "2025-01-16T09:30:00Z",
-      "message": "Starting implementation"
+      "ts": "2025-01-16 11:30",
+      "msg": "Added edge case handling"
     }
   ],
-  "checkpoints": [
-    {
-      "timestamp": "2025-01-16T11:00:00Z",
-      "changes": "- Added initial structure",
-      "learnings": "- Pattern X works well"
-    }
-  ]
+  "todos": []
 }
 ```
