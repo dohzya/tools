@@ -1447,7 +1447,10 @@ Deno.test("worklog task create - accepts custom timestamp in ISO format", async 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
 
     // Should contain the custom timestamp in the created field
-    assertStringIncludes(taskContent, 'created_at: "2024-12-15T14:30:00+01:00"');
+    assertStringIncludes(
+      taskContent,
+      'created_at: "2024-12-15T14:30:00+01:00"',
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -1474,7 +1477,10 @@ Deno.test("worklog task create - accepts -t as alias for --timestamp", async () 
     // Read task file to verify timestamp
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
 
-    assertStringIncludes(taskContent, 'created_at: "2024-11-20T09:00:00+01:00"');
+    assertStringIncludes(
+      taskContent,
+      'created_at: "2024-11-20T09:00:00+01:00"',
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -1617,7 +1623,10 @@ Deno.test("migration - detects version 1 index without version field", async () 
         },
       },
     };
-    await Deno.writeTextFile(".worklog/index.json", JSON.stringify(v1Index, null, 2));
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(v1Index, null, 2),
+    );
 
     // Create corresponding task file in v1 format
     const taskContent = `---
@@ -1669,7 +1678,10 @@ Deno.test("migration - converts active to created status", async () => {
         },
       },
     };
-    await Deno.writeTextFile(".worklog/index.json", JSON.stringify(v1Index, null, 2));
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(v1Index, null, 2),
+    );
 
     const taskContent = `---
 id: a
@@ -1735,7 +1747,10 @@ Deno.test("migration - preserves done and cancelled tasks", async () => {
         },
       },
     };
-    await Deno.writeTextFile(".worklog/index.json", JSON.stringify(v1Index, null, 2));
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(v1Index, null, 2),
+    );
 
     const doneTaskContent = `---
 id: a
@@ -1807,7 +1822,10 @@ Deno.test("migration - renames created to created_at", async () => {
         },
       },
     };
-    await Deno.writeTextFile(".worklog/index.json", JSON.stringify(v1Index, null, 2));
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(v1Index, null, 2),
+    );
 
     const taskContent = `---
 id: a
@@ -1860,7 +1878,10 @@ Deno.test("migration - extracts name from desc for all tasks", async () => {
         },
       },
     };
-    await Deno.writeTextFile(".worklog/index.json", JSON.stringify(v1Index, null, 2));
+    await Deno.writeTextFile(
+      ".worklog/index.json",
+      JSON.stringify(v1Index, null, 2),
+    );
 
     const taskContent = `---
 id: a
@@ -1939,7 +1960,12 @@ Deno.test("create - accepts name and detailed description", async () => {
     await main(["init"]);
 
     // Create task with name and description
-    await main(["create", "Fix bug", "User cannot login to the system", "--json"]);
+    await main([
+      "create",
+      "Fix bug",
+      "User cannot login to the system",
+      "--json",
+    ]);
 
     // Get task ID from list
     const listOutput = await captureOutput(() => main(["list", "--json"]));
@@ -1949,7 +1975,10 @@ Deno.test("create - accepts name and detailed description", async () => {
     // Check task file
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     assertStringIncludes(taskContent, 'name: "Fix bug"');
-    assertStringIncludes(taskContent, 'desc: "User cannot login to the system"');
+    assertStringIncludes(
+      taskContent,
+      'desc: "User cannot login to the system"',
+    );
     assertStringIncludes(taskContent, "status: created");
   } finally {
     Deno.chdir(originalCwd);
@@ -2153,7 +2182,9 @@ Deno.test("ready - rejects cancelled tasks", async () => {
     console.error = () => {};
 
     await main(["init"]);
-    const output = await captureOutput(() => main(["create", "Task", "--json"]));
+    const output = await captureOutput(() =>
+      main(["create", "Task", "--json"])
+    );
     const { id } = JSON.parse(output);
     await main(["cancel", id]);
 
@@ -2261,7 +2292,9 @@ Deno.test("start - rejects cancelled tasks", async () => {
     console.error = () => {};
 
     await main(["init"]);
-    const output = await captureOutput(() => main(["create", "Task", "--json"]));
+    const output = await captureOutput(() =>
+      main(["create", "Task", "--json"])
+    );
     const { id } = JSON.parse(output);
     await main(["cancel", id]);
 
@@ -2363,10 +2396,14 @@ Deno.test("update - rejects when no options provided", async () => {
       exitCode = code;
       throw new Error("EXIT");
     }) as typeof Deno.exit;
-    console.error = (msg: string) => { errorOutput += msg; };
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
 
     await main(["init"]);
-    const output = await captureOutput(() => main(["create", "Task", "--json"]));
+    const output = await captureOutput(() =>
+      main(["create", "Task", "--json"])
+    );
     const { id } = JSON.parse(output);
 
     try {
@@ -2424,7 +2461,9 @@ Deno.test("list --ready - shows only ready tasks", async () => {
     await main(["create", "--ready", "Ready task"]);
     await main(["create", "--started", "Started task"]);
 
-    const listOutput = await captureOutput(() => main(["list", "--ready", "--json"]));
+    const listOutput = await captureOutput(() =>
+      main(["list", "--ready", "--json"])
+    );
     const { tasks } = JSON.parse(listOutput);
 
     assertEquals(tasks.length, 1);
@@ -2474,7 +2513,9 @@ Deno.test("list --done - shows only done tasks", async () => {
     const doneId = JSON.parse(output).id;
     await main(["done", doneId, "changes", "learnings"]);
 
-    const listOutput = await captureOutput(() => main(["list", "--done", "--json"]));
+    const listOutput = await captureOutput(() =>
+      main(["list", "--done", "--json"])
+    );
     const { tasks } = JSON.parse(listOutput);
 
     assertEquals(tasks.length, 1);
@@ -2514,7 +2555,9 @@ Deno.test("trace - warns when task is created (but records trace)", async () => 
   let errorOutput = "";
   try {
     Deno.chdir(tempDir);
-    console.error = (...args: unknown[]) => { errorOutput += args.join(" ") + "\n"; };
+    console.error = (...args: unknown[]) => {
+      errorOutput += args.join(" ") + "\n";
+    };
 
     await main(["init"]);
     await main(["create", "Task"]);
@@ -2543,7 +2586,9 @@ Deno.test("trace - no warning when task is started", async () => {
   let errorOutput = "";
   try {
     Deno.chdir(tempDir);
-    console.error = (...args: unknown[]) => { errorOutput += args.join(" ") + "\n"; };
+    console.error = (...args: unknown[]) => {
+      errorOutput += args.join(" ") + "\n";
+    };
 
     await main(["init"]);
     const output = await captureOutput(() =>
@@ -2602,7 +2647,9 @@ Deno.test("trace --force - warns when task is done but records trace", async () 
   let errorOutput = "";
   try {
     Deno.chdir(tempDir);
-    console.error = (...args: unknown[]) => { errorOutput += args.join(" ") + "\n"; };
+    console.error = (...args: unknown[]) => {
+      errorOutput += args.join(" ") + "\n";
+    };
 
     await main(["init"]);
     await main(["create", "--started", "Task"]);
@@ -2666,7 +2713,9 @@ Deno.test("done - rejects no args when uncheckpointed entries exist", async () =
       exitCode = code;
       throw new Error("EXIT");
     }) as typeof Deno.exit;
-    console.error = (msg: string) => { errorOutput += msg; };
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
 
     await main(["init"]);
     const output = await captureOutput(() =>
@@ -2722,7 +2771,12 @@ Deno.test("show - displays new format with history and name", async () => {
     Deno.chdir(tempDir);
     await main(["init"]);
 
-    await main(["create", "--started", "Fix login bug", "User cannot login due to session timeout"]);
+    await main([
+      "create",
+      "--started",
+      "Fix login bug",
+      "User cannot login due to session timeout",
+    ]);
     const _ls = await captureOutput(() => main(["list", "--all", "--json"]));
     const id = JSON.parse(_ls).tasks[0].id;
 
@@ -2743,7 +2797,10 @@ Deno.test("show - displays new format with history and name", async () => {
 
     // Description section
     assertStringIncludes(showOutput, "desc:");
-    assertStringIncludes(showOutput, "  User cannot login due to session timeout");
+    assertStringIncludes(
+      showOutput,
+      "  User cannot login due to session timeout",
+    );
 
     // Entries
     assertStringIncludes(showOutput, "entries since checkpoint: 1");
@@ -2977,9 +3034,7 @@ Deno.test("show - done task JSON has all timestamps", async () => {
     const id = JSON.parse(_ls).tasks[0].id;
     await main(["done", id]);
 
-    const showOutput = await captureOutput(() =>
-      main(["show", id, "--json"])
-    );
+    const showOutput = await captureOutput(() => main(["show", id, "--json"]));
     const result = JSON.parse(showOutput);
 
     assertEquals(result.status, "done");
@@ -3053,11 +3108,19 @@ Deno.test("update - handles YAML special chars in desc", async () => {
     const _ls = await captureOutput(() => main(["list", "--all", "--json"]));
     const id = JSON.parse(_ls).tasks[0].id;
 
-    await main(["update", id, "--desc", "Fix: handle #tags and key: value pairs"]);
+    await main([
+      "update",
+      id,
+      "--desc",
+      "Fix: handle #tags and key: value pairs",
+    ]);
 
     const indexContent = await Deno.readTextFile(".worklog/index.json");
     const index = JSON.parse(indexContent);
-    assertEquals(index.tasks[id].desc, "Fix: handle #tags and key: value pairs");
+    assertEquals(
+      index.tasks[id].desc,
+      "Fix: handle #tags and key: value pairs",
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -3105,7 +3168,7 @@ Deno.test("ready - sets status_updated_at in index", async () => {
     const id = JSON.parse(_ls).tasks[0].id;
 
     const indexBefore = JSON.parse(
-      await Deno.readTextFile(".worklog/index.json")
+      await Deno.readTextFile(".worklog/index.json"),
     );
     const createdAt = indexBefore.tasks[id].status_updated_at;
 
@@ -3115,7 +3178,7 @@ Deno.test("ready - sets status_updated_at in index", async () => {
     await main(["ready", id]);
 
     const indexAfter = JSON.parse(
-      await Deno.readTextFile(".worklog/index.json")
+      await Deno.readTextFile(".worklog/index.json"),
     );
     assertEquals(indexAfter.tasks[id].status, "ready");
     // status_updated_at should have changed
@@ -3333,7 +3396,10 @@ Deno.test("--worklog-dir basic - operates on non-standard worklog path", async (
     Deno.chdir(tempDir);
     Deno.mkdirSync(".wl");
     Deno.mkdirSync(".wl/tasks");
-    Deno.writeTextFileSync(".wl/index.json", JSON.stringify({ version: 2, tasks: {} }));
+    Deno.writeTextFileSync(
+      ".wl/index.json",
+      JSON.stringify({ version: 2, tasks: {} }),
+    );
     Deno.chdir(originalCwd);
 
     // Use --worklog-dir to point to the non-standard path
@@ -3386,7 +3452,10 @@ Deno.test("--worklog-dir + --scope conflict - throws error", async () => {
     }
     assert(caught instanceof WtError);
     assertEquals(caught.code, "invalid_args");
-    assertStringIncludes(caught.message, "Cannot use --scope with --worklog-dir");
+    assertStringIncludes(
+      caught.message,
+      "Cannot use --scope with --worklog-dir",
+    );
   } finally {
     // deno-lint-ignore no-explicit-any
     (Deno as any).exit = originalExit;
@@ -3409,7 +3478,13 @@ Deno.test("--worklog-dir + init - creates non-standard worklog dir", async () =>
 
     // Verify we can list from it
     const listOutput = await captureOutput(() =>
-      main(["--worklog-dir", `${tempDir}/.custom-wl`, "list", "--all", "--json"])
+      main([
+        "--worklog-dir",
+        `${tempDir}/.custom-wl`,
+        "list",
+        "--all",
+        "--json",
+      ])
     );
     const { tasks } = JSON.parse(listOutput);
     assertEquals(tasks.length, 0);
@@ -3418,7 +3493,6 @@ Deno.test("--worklog-dir + init - creates non-standard worklog dir", async () =>
     await Deno.remove(tempDir, { recursive: true });
   }
 });
-
 
 // ============================================================================
 // Tag System Tests
@@ -3431,7 +3505,14 @@ Deno.test("tags - create task with tags", async () => {
     Deno.chdir(tempDir);
     await main(["init"]);
 
-    await main(["create", "Test task", "--tag", "feat/auth", "--tag", "urgent"]);
+    await main([
+      "create",
+      "Test task",
+      "--tag",
+      "feat/auth",
+      "--tag",
+      "urgent",
+    ]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -3503,7 +3584,14 @@ Deno.test("tags - display in show command", async () => {
     Deno.chdir(tempDir);
     await main(["init"]);
 
-    await main(["create", "Test task", "--tag", "feat/test", "--tag", "urgent"]);
+    await main([
+      "create",
+      "Test task",
+      "--tag",
+      "feat/test",
+      "--tag",
+      "urgent",
+    ]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);
@@ -3524,7 +3612,14 @@ Deno.test("tags - persist in task file frontmatter", async () => {
     Deno.chdir(tempDir);
     await main(["init"]);
 
-    await main(["create", "Test task", "--tag", "feat/test", "--tag", "urgent"]);
+    await main([
+      "create",
+      "Test task",
+      "--tag",
+      "feat/test",
+      "--tag",
+      "urgent",
+    ]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(listOutput);

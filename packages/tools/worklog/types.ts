@@ -2,7 +2,13 @@
 
 export type TaskStatus = "created" | "ready" | "started" | "done" | "cancelled";
 
-export const TASK_STATUSES = ["created", "ready", "started", "done", "cancelled"] as const;
+export const TASK_STATUSES = [
+  "created",
+  "ready",
+  "started",
+  "done",
+  "cancelled",
+] as const;
 
 export function isValidTaskStatus(value: string): value is TaskStatus {
   return TASK_STATUSES.includes(value as TaskStatus);

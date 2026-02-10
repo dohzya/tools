@@ -53,14 +53,14 @@ JSR package: @dohzya/tools@0.6.1
 # 0. ALWAYS validate first
 task validate  # ✅ Must be green
 
-# 1. Bump version (updates deno.json + tool cli.ts + imports)
-task bump TOOL=wl VERSION=0.5.0
+# 1. Prepare version bump (updates deno.json + tool cli.ts + skill imports only)
+task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
 
 # 1b. Validate after bump
 task validate  # ✅ Must pass
 
 # 2. Commit (don't push yet)
-git add -A && git commit -m "chore(wl): bump to v0.5.0"
+git add -A && git commit -m "chore(wl): bump to v0.6.1"
 
 # 3. Publish to JSR (interactive - requires manual auth)
 #    CRITICAL: This must happen with the correct committed code
@@ -74,19 +74,27 @@ gh run watch
 # ✅ Confirm all checks are GREEN before proceeding
 
 # 6. Tag and push tag ONLY after CI is green
-git tag wl-v0.5.0 && git push origin wl-v0.5.0
+git tag wl-v0.6.1 && git push origin wl-v0.6.1
 
 # 7. Wait for release workflow to build binaries (~2-3 min)
 gh run watch
+# ✅ Confirm release workflow completed successfully
 
-# 8. Update homebrew tap (downloads binaries, calculates checksums)
-task update-tap TOOL=wl VERSION=0.5.0
+# 8. Finalize release (updates homebrew checksums, docs, plugin)
+task bump-finalize TOOL=wl VERSION=0.6.1
 
-# 9. Verify installation
+# 9. Commit and push finalization
+git add -A && git commit -m "chore(wl): finalize v0.6.1 release"
+git push origin main
+
+# 10. Update homebrew tap (downloads binaries again, updates tap repo)
+task update-tap TOOL=wl VERSION=0.6.1
+
+# 11. Verify installation
 brew update && brew upgrade wl && wl --version
 
-# 10. (Optional) Bundle release for mise
-git tag v0.6.0 && git push origin v0.6.0
+# 12. (Optional) Bundle release for mise
+git tag v0.6.2 && git push origin v0.6.2
 # Then update dohzya/mise-tools with new tag
 ```
 
@@ -95,7 +103,7 @@ git tag v0.6.0 && git push origin v0.6.0
 | Step | Validation                    | Command                                          | Why                                               |
 | ---- | ----------------------------- | ------------------------------------------------ | ------------------------------------------------- |
 | 0    | `task validate` ✅            | Must pass                                        | Ensure clean starting state                       |
-| 1    | N/A                           | `task bump TOOL=wl VERSION=X.Y.Z`                | Updates deno.json, cli.ts, skill imports          |
+| 1    | N/A                           | `task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY |
 | 1b   | `task validate` ✅            | Must pass                                        | Verify bump didn't break anything                 |
 | 2    | N/A                           | `git commit` (no push!)                          | Commit version changes locally                    |
 | 3    | Manual test                   | `deno publish`                                   | **JSR MUST have correct code** - binaries built from JSR |
@@ -103,8 +111,10 @@ git tag v0.6.0 && git push origin v0.6.0
 | 5    | **CI GREEN** ✅ (GATE)        | `gh run watch`                                   | **MUST pass before tagging** - never tag failed CI |
 | 6    | N/A                           | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z` | Trigger release workflow (builds from JSR)        |
 | 7    | Release workflow green ✅     | `gh run watch`                                   | GitHub Actions builds binaries from JSR           |
-| 8    | N/A                           | `task update-tap TOOL=wl VERSION=X.Y.Z`          | Downloads GH release binaries, calculates checksums |
-| 9    | Test installation             | `brew upgrade wl && wl --version`                | Verify users can install and get correct version  |
+| 8    | N/A                           | `task bump-finalize TOOL=wl VERSION=X.Y.Z`       | Updates homebrew checksums, docs, plugin (post-release) |
+| 9    | N/A                           | `git commit && git push`                         | Push finalization changes                         |
+| 10   | N/A                           | `task update-tap TOOL=wl VERSION=X.Y.Z`          | Downloads GH release binaries, updates tap repo   |
+| 11   | Test installation             | `brew upgrade wl && wl --version`                | Verify users can install and get correct version  |
 
 **Key gates:**
 
@@ -136,21 +146,32 @@ When assisting with releases, Claude should:
 
 ## Version Files
 
-`task bump` updates these automatically:
+### Phase 1: Pre-Release (`task bump-prepare`)
+
+Updates ONLY files needed BEFORE the GitHub release:
 
 **For wl:**
-
 - `packages/tools/deno.json` (JSR package version - always increments)
 - `packages/tools/worklog/cli.ts` (VERSION constant - tool version)
 - `plugins/tools/skills/worklog/wl` (import path with JSR version)
-- `homebrew/Formula/wl.rb` (version + URLs, checksums updated later by `update-tap`)
-- `plugins/tools/.claude-plugin/plugin.json` (plugin version)
 
 **For md:**
-
 - Same pattern with `markdown-surgeon` paths
 
-**Important:** After `task bump`, the skill import uses the NEW JSR version, but homebrew checksums are NOT updated until AFTER the GitHub release exists (done by `task update-tap`).
+### Phase 2: Post-Release (`task bump-finalize`)
+
+Updates files that depend on the GitHub release existing:
+
+**For both tools:**
+- `homebrew/Formula/{tool}.rb` (version, URLs, and checksums from GH release)
+- `CLI_SETUP.md` (version references in examples)
+- `MISE_SETUP.md` (version references in examples)
+- `plugins/tools/.claude-plugin/plugin.json` (plugin version)
+
+**Important:** The two-phase approach ensures:
+1. Skill imports reference the JSR version that will be published
+2. Homebrew checksums are calculated from actual GitHub release binaries
+3. Documentation references don't point to non-existent releases
 
 ## Bundle Releases (mise)
 

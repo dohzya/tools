@@ -187,7 +187,13 @@ Deno.test("worklog: CLI main function exists", () => {
 });
 
 Deno.test("worklog: TaskStatus type values", () => {
-  const statuses: TaskStatus[] = ["active", "done"];
+  const statuses: TaskStatus[] = [
+    "created",
+    "ready",
+    "started",
+    "done",
+    "cancelled",
+  ];
   statuses.forEach((status) => {
     const _validStatus: TaskStatus = status;
   });
@@ -197,9 +203,10 @@ Deno.test("worklog: TaskMeta type structure", () => {
   const meta: TaskMeta = {
     id: "260123a",
     uid: "uuid-string",
+    name: "Test",
     desc: "Test task",
-    status: "active",
-    created: "2026-01-23T10:00:00Z",
+    status: "started",
+    created_at: "2026-01-23T10:00:00Z",
     done_at: null,
     last_checkpoint: null,
     has_uncheckpointed_entries: false,
@@ -207,8 +214,8 @@ Deno.test("worklog: TaskMeta type structure", () => {
   assertEquals(meta.id, "260123a");
   assertEquals(meta.uid, "uuid-string");
   assertEquals(meta.desc, "Test task");
-  assertEquals(meta.status, "active");
-  assertExists(meta.created);
+  assertEquals(meta.status, "started");
+  assertExists(meta.created_at);
   assertEquals(meta.done_at, null);
   assertEquals(meta.last_checkpoint, null);
   assertEquals(meta.has_uncheckpointed_entries, false);
@@ -216,13 +223,15 @@ Deno.test("worklog: TaskMeta type structure", () => {
 
 Deno.test("worklog: IndexEntry type structure", () => {
   const entry: IndexEntry = {
+    name: "Test",
     desc: "Test task",
-    status: "active",
+    status: "started",
     created: "2026-01-23T10:00:00Z",
+    status_updated_at: "2026-01-23T10:00:00Z",
     done_at: null,
   };
   assertEquals(entry.desc, "Test task");
-  assertEquals(entry.status, "active");
+  assertEquals(entry.status, "started");
   assertExists(entry.created);
   assertEquals(entry.done_at, null);
 });
@@ -231,9 +240,11 @@ Deno.test("worklog: Index type structure", () => {
   const index: Index = {
     tasks: {
       "260123a": {
+        name: "Test",
         desc: "Test",
-        status: "active",
+        status: "started",
         created: "2026-01-23T10:00:00Z",
+        status_updated_at: "2026-01-23T10:00:00Z",
         done_at: null,
       },
     },
@@ -286,15 +297,20 @@ Deno.test("worklog: TraceOutput type structure", () => {
 Deno.test("worklog: ShowOutput type structure", () => {
   const output: ShowOutput = {
     task: "260123a",
+    fullId: "260123a-full-uuid",
+    name: "Test",
     desc: "Test task",
-    status: "active",
+    status: "started",
+    created: "2026-01-23 10:00",
+    ready: null,
+    started: "2026-01-23 10:15",
     last_checkpoint: null,
     entries_since_checkpoint: [],
     todos: [],
   };
   assertEquals(output.task, "260123a");
   assertEquals(output.desc, "Test task");
-  assertEquals(output.status, "active");
+  assertEquals(output.status, "started");
   assertEquals(output.last_checkpoint, null);
   assertEquals(output.entries_since_checkpoint.length, 0);
   assertEquals(output.todos.length, 0);
@@ -315,13 +331,14 @@ Deno.test("worklog: TracesOutput type structure", () => {
 Deno.test("worklog: ListTaskItem type structure", () => {
   const item: ListTaskItem = {
     id: "260123a",
+    name: "Test",
     desc: "Test task",
-    status: "active",
+    status: "started",
     created: "2026-01-23T10:00:00Z",
   };
   assertEquals(item.id, "260123a");
   assertEquals(item.desc, "Test task");
-  assertEquals(item.status, "active");
+  assertEquals(item.status, "started");
   assertExists(item.created);
 });
 
@@ -337,13 +354,13 @@ Deno.test("worklog: SummaryTaskItem type structure", () => {
   const item: SummaryTaskItem = {
     id: "260123a",
     desc: "Test task",
-    status: "active",
+    status: "started",
     checkpoints: [],
     entries: [],
   };
   assertEquals(item.id, "260123a");
   assertEquals(item.desc, "Test task");
-  assertEquals(item.status, "active");
+  assertEquals(item.status, "started");
   assertEquals(Array.isArray(item.checkpoints), true);
   assertEquals(Array.isArray(item.entries), true);
 });

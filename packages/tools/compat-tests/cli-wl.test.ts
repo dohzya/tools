@@ -225,7 +225,7 @@ Deno.test("wl: show --json outputs valid JSON", async () => {
     const json = JSON.parse(result.stdout);
     assertEquals(json.task.startsWith(id), true);
     assertEquals(json.desc, "Test task");
-    assertEquals(json.status, "active");
+    assertEquals(json.status, "started");
     assertEquals(Array.isArray(json.entries_since_checkpoint), true);
   } finally {
     Deno.removeSync(workspace, { recursive: true });

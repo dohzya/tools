@@ -56,9 +56,25 @@ tasks:
       vars: [VERSION]
 
   bump:
-    desc: "Bump version (usage: task bump TOOL=wl VERSION=0.4.3)"
+    desc: "Bump version (DEPRECATED - use bump-prepare instead)"
     cmds:
+      - echo "⚠️  This task is deprecated. Use 'task bump-prepare' instead."
+      - echo "See RELEASE.md for the new two-phase release process."
       - bash scripts/bump-version.sh {{.TOOL}} {{.VERSION}}
+    requires:
+      vars: [TOOL, VERSION]
+
+  bump-prepare:
+    desc: "Prepare version bump (usage: task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2)"
+    cmds:
+      - bash scripts/bump-prepare.sh {{.TOOL}} {{.TOOL_VERSION}} {{.JSR_VERSION}}
+    requires:
+      vars: [TOOL, TOOL_VERSION, JSR_VERSION]
+
+  bump-finalize:
+    desc: "Finalize version bump after GitHub release (usage: task bump-finalize TOOL=wl VERSION=0.6.1)"
+    cmds:
+      - bash scripts/bump-finalize.sh {{.TOOL}} {{.VERSION}}
     requires:
       vars: [TOOL, VERSION]
 

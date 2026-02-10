@@ -45,9 +45,33 @@ import {
   parseFrontmatter,
   stringifyFrontmatter,
 } from "../markdown-surgeon/yaml.ts";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "@std/path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+} from "@std/path";
 import { ensureDir } from "@std/fs";
 import { z } from "@zod/zod/mini";
+
+// ============================================================================
+// Global Options Type
+// ============================================================================
+
+/**
+ * Global options available to all commands via .globalOption()
+ */
+interface GlobalOptions {
+  cwd?: string;
+  worklogDir?: string;
+}
+
+/**
+ * Type helper to include global options in command options
+ */
+type WithGlobalOptions<T> = T & GlobalOptions;
 
 // ============================================================================
 // Version
@@ -241,12 +265,19 @@ async function findTasksByTagPattern(
   pattern: string,
   gitRoot: string | null,
   cwd: string,
-): Promise<Array<{ id: string; task: IndexEntry; scopeId: string; scopePath: string }>> {
+): Promise<
+  Array<{ id: string; task: IndexEntry; scopeId: string; scopePath: string }>
+> {
   const results = [];
 
   const scopes = gitRoot
     ? await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT)
-    : [{ absolutePath: join(cwd, WORKLOG_DIR), id: ".", relativePath: ".", isParent: false }];
+    : [{
+      absolutePath: join(cwd, WORKLOG_DIR),
+      id: ".",
+      relativePath: ".",
+      isParent: false,
+    }];
 
   for (const scope of scopes) {
     const indexPath = join(scope.absolutePath, "index.json");
@@ -254,9 +285,18 @@ async function findTasksByTagPattern(
 
     const index = JSON.parse(await Deno.readTextFile(indexPath)) as Index;
     for (const [id, task] of Object.entries(index.tasks)) {
-      const effectiveTags = await getEffectiveTags(task.tags, scope.absolutePath, gitRoot);
+      const effectiveTags = await getEffectiveTags(
+        task.tags,
+        scope.absolutePath,
+        gitRoot,
+      );
       if (hasMatchingTag(pattern, effectiveTags)) {
-        results.push({ id, task, scopeId: scope.id, scopePath: scope.absolutePath });
+        results.push({
+          id,
+          task,
+          scopeId: scope.id,
+          scopePath: scope.absolutePath,
+        });
       }
     }
   }
@@ -271,7 +311,9 @@ async function isChildWorklog(scopePath: string): Promise<boolean> {
   const scopeJsonPath = join(scopePath, "scope.json");
   if (!(await exists(scopeJsonPath))) return false;
 
-  const config = JSON.parse(await Deno.readTextFile(scopeJsonPath)) as ScopeConfig;
+  const config = JSON.parse(
+    await Deno.readTextFile(scopeJsonPath),
+  ) as ScopeConfig;
   return "parent" in config;
 }
 
@@ -280,7 +322,9 @@ async function isChildWorklog(scopePath: string): Promise<boolean> {
  */
 async function getParentScope(childPath: string): Promise<string> {
   const scopeJsonPath = join(childPath, "scope.json");
-  const config = JSON.parse(await Deno.readTextFile(scopeJsonPath)) as ScopeConfigChild;
+  const config = JSON.parse(
+    await Deno.readTextFile(scopeJsonPath),
+  ) as ScopeConfigChild;
   return resolve(dirname(childPath), config.parent);
 }
 
@@ -482,7 +526,10 @@ async function migrateIndexToV2(): Promise<void> {
     const content = await loadTaskContent(taskId);
     const doc = await parseDocument(content);
     const yamlContent = getFrontmatterContent(doc);
-    const frontmatter = parseFrontmatter(yamlContent) as Record<string, unknown>;
+    const frontmatter = parseFrontmatter(yamlContent) as Record<
+      string,
+      unknown
+    >;
 
     // 1. Convert active status to created (NOT started)
     if (frontmatter.status === "active") {
@@ -1213,7 +1260,10 @@ async function saveTaskContent(taskId: string, content: string): Promise<void> {
   await writeFile(taskFilePath(taskId), content);
 }
 
-async function loadTaskContentFrom(taskId: string, worklogPath: string): Promise<string> {
+async function loadTaskContentFrom(
+  taskId: string,
+  worklogPath: string,
+): Promise<string> {
   const path = `${worklogPath}/tasks/${taskId}.md`;
   if (!(await exists(path))) {
     throw new WtError("task_not_found", `Task not found: ${taskId}`);
@@ -1761,7 +1811,9 @@ function formatList(output: ListOutput, showAll = false): string {
 
       // Filter scope prefix if it matches the filter pattern
       let prefix = "";
-      if (t.scopePrefix && (!t.filterPattern || t.scopePrefix !== t.filterPattern)) {
+      if (
+        t.scopePrefix && (!t.filterPattern || t.scopePrefix !== t.filterPattern)
+      ) {
         prefix = `[${t.scopePrefix}]  `;
       }
 
@@ -2609,7 +2661,9 @@ async function cmdMeta(
     if (index.tasks[taskId]) {
       index.tasks[taskId].status = frontmatter.status;
       index.tasks[taskId].status_updated_at = getLocalISOString();
-      if (["created", "ready", "started"].includes(frontmatter.status as string)) {
+      if (
+        ["created", "ready", "started"].includes(frontmatter.status as string)
+      ) {
         delete index.tasks[taskId].done_at;
       } else if (frontmatter.status === "done" && frontmatter.done_at) {
         index.tasks[taskId].done_at = frontmatter.done_at;
@@ -2632,7 +2686,12 @@ async function cmdListTags(
 
   const scopes = gitRoot
     ? await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT)
-    : [{ absolutePath: join(cwd, WORKLOG_DIR), id: ".", relativePath: ".", isParent: false }];
+    : [{
+      absolutePath: join(cwd, WORKLOG_DIR),
+      id: ".",
+      relativePath: ".",
+      isParent: false,
+    }];
 
   for (const scope of scopes) {
     const indexPath = join(scope.absolutePath, "index.json");
@@ -2667,7 +2726,9 @@ async function cmdTags(
   removeTags: string[] | undefined,
   gitRoot: string | null,
   cwd: string,
-): Promise<{ tags?: string[]; allTags?: Array<{ tag: string; count: number }> }> {
+): Promise<
+  { tags?: string[]; allTags?: Array<{ tag: string; count: number }> }
+> {
   // Case 1: No taskId → list all tags
   if (!taskId) {
     const result = await cmdListTags(gitRoot, cwd);
@@ -2685,7 +2746,10 @@ async function cmdTags(
     const content = await loadTaskContent(resolvedId);
     const doc = await parseDocument(content);
     const yamlContent = getFrontmatterContent(doc);
-    const frontmatter = parseFrontmatter(yamlContent) as Record<string, unknown>;
+    const frontmatter = parseFrontmatter(yamlContent) as Record<
+      string,
+      unknown
+    >;
 
     const effectiveTags = await getEffectiveTags(
       frontmatter.tags as string[] | undefined,
@@ -2985,13 +3049,17 @@ async function cmdList(
   // Handle unified tag/scope filtering
   if (filterPattern && gitRoot && cwd) {
     // Try tag filtering first (more granular)
-    const taggedTasks = await findTasksByTagPattern(filterPattern, gitRoot, cwd);
+    const taggedTasks = await findTasksByTagPattern(
+      filterPattern,
+      gitRoot,
+      cwd,
+    );
 
     if (taggedTasks.length > 0) {
       // Found tasks with matching tags
       const filteredTasks = taggedTasks
         .filter(({ task }) => matchStatus(task.status))
-        .map(({ id, task, scopeId }) => ({
+        .map(({ id, task, scopeId: _scopeId }) => ({
           id,
           name: task.name ?? task.desc,
           desc: task.desc,
@@ -3008,13 +3076,17 @@ async function cmdList(
 
     // Fall back to scope filtering if no tag matches
     try {
-      const worklogPath = await resolveScopeIdentifier(filterPattern, gitRoot, cwd);
+      const worklogPath = await resolveScopeIdentifier(
+        filterPattern,
+        gitRoot,
+        cwd,
+      );
       const indexPath = `${worklogPath}/index.json`;
 
       if (await exists(indexPath)) {
         const content = await readFile(indexPath);
         const index = JSON.parse(content) as Index;
-        const scopeId = await getScopeId(worklogPath, gitRoot);
+        const _scopeId = await getScopeId(worklogPath, gitRoot);
 
         const scopeTasks = Object.entries(index.tasks)
           .filter(([_, t]) => matchStatus(t.status))
@@ -3037,7 +3109,10 @@ async function cmdList(
       // No scope matching either
     }
 
-    throw new WtError("task_not_found", `No tag or scope matching: ${filterPattern}`);
+    throw new WtError(
+      "task_not_found",
+      `No tag or scope matching: ${filterPattern}`,
+    );
   }
 
   // Determine which scopes to list
@@ -3134,12 +3209,17 @@ async function cmdList(
     if (isChild && currentScopeId && currentScopeId !== ".") {
       try {
         const parentScope = await getParentScope(currentScope);
-        const parentTasks = await findTasksByTagPattern(currentScopeId, gitRoot, cwd || Deno.cwd());
+        const parentTasks = await findTasksByTagPattern(
+          currentScopeId,
+          gitRoot,
+          cwd || Deno.cwd(),
+        );
 
         // Filter to only active parent tasks
         const activeParentTasks = parentTasks
           .filter(({ task, scopePath }) =>
-            matchStatus(task.status) && scopePath === join(parentScope, WORKLOG_DIR)
+            matchStatus(task.status) &&
+            scopePath === join(parentScope, WORKLOG_DIR)
           )
           .map(({ id, task }) => ({
             id,
@@ -3562,7 +3642,9 @@ async function cmdImportScopeToTag(
   gitRoot: string | null,
 ): Promise<ImportOutput & { tag: string }> {
   // Get source scope ID
-  const scopeId = gitRoot ? await getScopeId(dirname(sourcePath), gitRoot) : basename(dirname(sourcePath));
+  const scopeId = gitRoot
+    ? await getScopeId(dirname(sourcePath), gitRoot)
+    : basename(dirname(sourcePath));
   const tagName = customTagName || scopeId;
 
   validateTags([tagName]);
@@ -3580,7 +3662,10 @@ async function cmdImportScopeToTag(
     const content = await loadTaskContent(taskId);
     const doc = await parseDocument(content);
     const yamlContent = getFrontmatterContent(doc);
-    const frontmatter = parseFrontmatter(yamlContent) as Record<string, unknown>;
+    const frontmatter = parseFrontmatter(yamlContent) as Record<
+      string,
+      unknown
+    >;
 
     const currentTags = (frontmatter.tags as string[]) || [];
     const tagSet = new Set(currentTags);
@@ -4224,7 +4309,10 @@ async function cmdScopesExport(
     const content = await loadTaskContentFrom(id, sourceWorklogPath);
     const doc = await parseDocument(content);
     const yamlContent = getFrontmatterContent(doc);
-    const frontmatter = parseFrontmatter(yamlContent) as Record<string, unknown>;
+    const frontmatter = parseFrontmatter(yamlContent) as Record<
+      string,
+      unknown
+    >;
 
     // Adjust tags: remove exported tag or tag prefix
     const currentTags = (frontmatter.tags as string[]) || [];
@@ -4277,7 +4365,10 @@ async function cmdScopesExport(
       await Deno.readTextFile(parentScopeJsonPath),
     ) as ScopeConfigParent;
     if (!("children" in parentConfig)) {
-      throw new WtError("invalid_state", "Parent scope.json is not a parent config");
+      throw new WtError(
+        "invalid_state",
+        "Parent scope.json is not a parent config",
+      );
     }
   } else {
     parentConfig = { children: [] };
@@ -4291,7 +4382,10 @@ async function cmdScopesExport(
     type: "path",
   });
 
-  await Deno.writeTextFile(parentScopeJsonPath, JSON.stringify(parentConfig, null, 2));
+  await Deno.writeTextFile(
+    parentScopeJsonPath,
+    JSON.stringify(parentConfig, null, 2),
+  );
 
   return {
     exported: matchingTasks.length,
@@ -4731,7 +4825,10 @@ async function resolveScopeContext(
 
   if (explicitWorklog) {
     if (scopeFlag) {
-      throw new WtError("invalid_args", "Cannot use --scope with --worklog-dir");
+      throw new WtError(
+        "invalid_args",
+        "Cannot use --scope with --worklog-dir",
+      );
     }
     return { cwd: Deno.cwd(), gitRoot: null };
   }
@@ -4786,7 +4883,11 @@ const todoListCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdTodoList(taskId);
       console.log(
         options.json ? JSON.stringify(output) : formatTodoList(output),
@@ -4803,7 +4904,11 @@ const todoAddCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId, ...textParts) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const text = textParts.join(" ");
       const output = await cmdTodoAdd(taskId, text);
       console.log(
@@ -4821,7 +4926,11 @@ const todoSetCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, ...args) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       // Parse key=value pairs and todo-id
       const updates: Record<string, string> = {};
       let todoId = "";
@@ -4853,7 +4962,11 @@ const todoNextCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const todo = await cmdTodoNext(taskId);
       console.log(options.json ? JSON.stringify(todo) : formatTodoNext(todo));
     } catch (e) {
@@ -4882,7 +4995,10 @@ const scopesListCmd = new Command()
   .option("--refresh", "Force rescan of scopes")
   .action(async (options, scopeId) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesList(
         cwd,
@@ -4912,7 +5028,10 @@ const scopesAddCmd = new Command()
   .option("--ref <ref:string>", "Git ref for worktree")
   .action(async (options, scopeId, pathArg) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const effectivePath = options.path ?? pathArg;
       if (effectivePath && options.worktree) {
@@ -4941,7 +5060,10 @@ const scopesAddParentCmd = new Command()
   .option("--id <id:string>", "Scope ID for this scope")
   .action(async (options, parentPath) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesAddParent(parentPath, options.id, cwd);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
@@ -4956,7 +5078,10 @@ const scopesRenameCmd = new Command()
   .option("--json", "Output as JSON")
   .action(async (options, scopeId, newId) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesRename(scopeId, newId, cwd);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
@@ -4976,7 +5101,10 @@ const scopesDeleteCmd = new Command()
   .option("--delete-tasks", "Force delete with tasks")
   .action(async (options, scopeId) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesDelete(
         scopeId,
@@ -4996,7 +5124,10 @@ const scopesAssignCmd = new Command()
   .option("--json", "Output as JSON")
   .action(async (options, scopeId, ...taskIds) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesAssign(scopeId, taskIds, cwd);
       console.log(options.json ? JSON.stringify(output) : formatAssign(output));
@@ -5013,7 +5144,10 @@ const scopesExportCmd = new Command()
   .option("--scope-id <id:string>", "Custom scope ID (defaults to tag)")
   .action(async (options, tag, targetPath) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const gitRoot = await findGitRoot(cwd);
       const output = await cmdScopesExport(
@@ -5027,7 +5161,9 @@ const scopesExportCmd = new Command()
       if (options.json) {
         console.log(JSON.stringify(output));
       } else {
-        console.log(`Exported ${output.exported} tasks to ${output.targetPath}`);
+        console.log(
+          `Exported ${output.exported} tasks to ${output.targetPath}`,
+        );
         console.log(`Scope ID: ${output.scopeId}`);
       }
     } catch (e) {
@@ -5041,7 +5177,10 @@ const scopesSyncWorktreesCmd = new Command()
   .option("--dry-run", "Preview changes without applying")
   .action(async (options) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesSyncWorktrees(cwd, options.dryRun ?? false);
       if (options.json) {
@@ -5078,7 +5217,10 @@ const scopesCmd = new Command()
   .action(async function (options) {
     // Default action: list scopes
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const output = await cmdScopesList(cwd, false, undefined);
       if ("taskCount" in output) {
@@ -5112,7 +5254,10 @@ const initCmd = new Command()
   .option("--json", "Output as JSON")
   .action(async (options) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdInit();
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
@@ -5143,7 +5288,11 @@ const taskCreateCmd = new Command()
   })
   .action(async (options, desc) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const todos = options.todo ?? [];
       const tags = options.tag ?? [];
       let timestampValue: string | undefined;
@@ -5173,7 +5322,15 @@ const taskCreateCmd = new Command()
       const metadata = parseMetaOption(options.meta);
       // For backward compat, `wl task create` creates started tasks
       const name = desc.split("\n")[0].trim();
-      const output = await cmdAdd(name, desc, "started", todos, metadata, tags, timestampValue);
+      const output = await cmdAdd(
+        name,
+        desc,
+        "started",
+        todos,
+        metadata,
+        tags,
+        timestampValue,
+      );
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -5205,7 +5362,11 @@ const createCmd = new Command()
   })
   .action(async (options, name, desc) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
 
       // Validate: can't have both --ready and --started
       if (options.ready && options.started) {
@@ -5250,7 +5411,15 @@ const createCmd = new Command()
         }
       }
       const metadata = parseMetaOption(options.meta);
-      const output = await cmdAdd(name, desc, initialStatus, todos, metadata, tags, timestampValue);
+      const output = await cmdAdd(
+        name,
+        desc,
+        initialStatus,
+        todos,
+        metadata,
+        tags,
+        timestampValue,
+      );
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -5279,7 +5448,11 @@ const traceCmd = new Command()
   })
   .action(async (options, taskId, message) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       let timestampValue: string | undefined;
       if (options.timestamp) {
         try {
@@ -5316,7 +5489,11 @@ const showCmd = new Command()
   .option("--active", "Show only active todos (exclude done/cancelled)")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdShow(taskId, options.active ?? false);
       console.log(options.json ? JSON.stringify(output) : formatShow(output));
     } catch (e) {
@@ -5331,7 +5508,11 @@ const tracesCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdTraces(taskId);
       console.log(options.json ? JSON.stringify(output) : formatTraces(output));
     } catch (e) {
@@ -5348,7 +5529,11 @@ const checkpointCmd = new Command()
   .option("-t, --timestamp <ts:string>", "Timestamp (currently ignored)")
   .action(async (options, taskId, changes, learnings) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdCheckpoint(
         taskId,
         changes,
@@ -5376,7 +5561,11 @@ const doneCmd = new Command()
   })
   .action(async (options, taskId, changes, learnings) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const metadata = parseMetaOption(options.meta);
       const output = await cmdDone(
         taskId,
@@ -5398,7 +5587,11 @@ const readyCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdReady(taskId);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
@@ -5413,7 +5606,11 @@ const startCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdStart(taskId);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
@@ -5430,7 +5627,11 @@ const updateCmd = new Command()
   .option("--desc <desc:string>", "New description for the task")
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdUpdate(taskId, options.name, options.desc);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
@@ -5445,7 +5646,11 @@ const cancelCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId, reason) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdCancel(taskId, reason);
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
@@ -5463,7 +5668,11 @@ const metaCmd = new Command()
   .option("--delete <key:string>", "Delete a metadata key")
   .action(async (options, taskId, key, value) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdMeta(taskId, key, value, options.delete);
       console.log(options.json ? JSON.stringify(output) : formatMeta(output));
     } catch (e) {
@@ -5480,7 +5689,11 @@ const tagsCmd = new Command()
   .option("--remove <tag:string>", "Remove tag (repeatable)", { collect: true })
   .action(async (options, taskId) => {
     try {
-      await resolveScopeContext(options.scope, options.cwd, options.worklogDir);
+      await resolveScopeContext(
+        options.scope,
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const cwd = Deno.cwd();
       const gitRoot = await findGitRoot(cwd);
 
@@ -5501,7 +5714,9 @@ const tagsCmd = new Command()
         } else {
           console.log("Available tags:");
           for (const { tag, count } of output.allTags) {
-            console.log(`  ${tag} (${count} ${count === 1 ? "task" : "tasks"})`);
+            console.log(
+              `  ${tag} (${count} ${count === 1 ? "task" : "tasks"})`,
+            );
           }
         }
       } else if (output.tags) {
@@ -5540,17 +5755,29 @@ const listCmd = new Command()
       if (options.done) statusFilters.push("done");
       if (options.cancelled) statusFilters.push("cancelled");
 
-      const explicitWorklog = applyDirOptions(options.cwd, options.worklogDir);
+      const explicitWorklog = applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
 
       if (explicitWorklog) {
         if (options.scope) {
-          throw new WtError("invalid_args", "Cannot use --scope with --worklog-dir");
+          throw new WtError(
+            "invalid_args",
+            "Cannot use --scope with --worklog-dir",
+          );
         }
         if (options.allScopes) {
-          throw new WtError("invalid_args", "Cannot use --all-scopes with --worklog-dir");
+          throw new WtError(
+            "invalid_args",
+            "Cannot use --all-scopes with --worklog-dir",
+          );
         }
         if (options.path) {
-          throw new WtError("invalid_args", "Cannot use --path with --worklog-dir");
+          throw new WtError(
+            "invalid_args",
+            "Cannot use --path with --worklog-dir",
+          );
         }
         const output = await cmdList(
           options.all ?? false,
@@ -5564,7 +5791,9 @@ const listCmd = new Command()
           pattern,
         );
         console.log(
-          options.json ? JSON.stringify(output) : formatList(output, options.all),
+          options.json
+            ? JSON.stringify(output)
+            : formatList(output, options.all),
         );
         return;
       }
@@ -5604,7 +5833,10 @@ const summaryCmd = new Command()
   .option("--since <date:string>", "Filter by date (YYYY-MM-DD)")
   .action(async (options) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       const output = await cmdSummary(options.since ?? null);
       console.log(
         options.json ? JSON.stringify(output) : formatSummary(output),
@@ -5627,7 +5859,10 @@ const importCmd = new Command()
   .option("--tag-name <name:string>", "Custom tag name (with --scope-to-tag)")
   .action(async (options) => {
     try {
-      applyDirOptions(options.cwd, options.worklogDir);
+      applyDirOptions(
+        (options as WithGlobalOptions<typeof options>).cwd,
+        (options as WithGlobalOptions<typeof options>).worklogDir,
+      );
       if (options.path && options.branch) {
         throw new WtError(
           "invalid_args",
@@ -5671,7 +5906,9 @@ const importCmd = new Command()
         }
       } else {
         const output = await cmdImport(sourcePath, options.rm ?? false);
-        console.log(options.json ? JSON.stringify(output) : formatImport(output));
+        console.log(
+          options.json ? JSON.stringify(output) : formatImport(output),
+        );
       }
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -5700,8 +5937,14 @@ const cli = new Command()
       '  - Use -t for batch tracing: wl trace <id> -t T14:30 "msg"\n\n' +
       "See 'wl <command> --help' for details",
   )
-  .globalOption("-C, --cwd <dir:string>", "Change to directory before doing anything")
-  .globalOption("--worklog-dir <path:string>", "Path to .worklog directory (relative to -C if set)")
+  .globalOption(
+    "-C, --cwd <dir:string>",
+    "Change to directory before doing anything",
+  )
+  .globalOption(
+    "--worklog-dir <path:string>",
+    "Path to .worklog directory (relative to -C if set)",
+  )
   .command("init", initCmd)
   .command("create", createCmd)
   .command("ready", readyCmd)
