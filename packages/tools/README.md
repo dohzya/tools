@@ -127,8 +127,7 @@ await main(["outline", "doc.md"]);
 
 ### worklog
 
-Append-only work logging with checkpoint snapshots for tracking development
-progress.
+Append-only work logging with checkpoint snapshots for tracking development progress.
 
 #### Core API (`@dohzya/tools/worklog`)
 
@@ -205,8 +204,7 @@ await main([
 ]);
 ```
 
-CLI commands: `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`,
-`summary`
+CLI commands: `init`, `add`, `trace`, `logs`, `checkpoint`, `done`, `list`, `summary`
 
 Both `add` and `trace` support `-t, --timestamp` for flexible timestamp input:
 
@@ -214,9 +212,7 @@ Both `add` and `trace` support `-t, --timestamp` for flexible timestamp input:
 - `2024-12-15T14:30` - Specific date/time (local timezone added)
 - `2024-12-15T14:30+01:00` - Full ISO format with timezone
 
-See the
-[worklog skill documentation](../../plugins/tools/skills/worklog/SKILL.md) for
-detailed usage.
+See the [worklog skill documentation](../../plugins/tools/skills/worklog/SKILL.md) for detailed usage.
 
 ## Publishing
 

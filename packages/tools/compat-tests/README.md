@@ -2,8 +2,7 @@
 
 ## Purpose
 
-These tests ensure the stability of the public API. They act as a safeguard
-against unintended **breaking changes**.
+These tests ensure the stability of the public API. They act as a safeguard against unintended **breaking changes**.
 
 ## Difference from Unit Tests
 
@@ -21,18 +20,15 @@ against unintended **breaking changes**.
 
 This includes:
 
-- Having to fix a test that doesn't compile anymore (types changed in the
-  library)
+- Having to fix a test that doesn't compile anymore (types changed in the library)
 - Having to fix a test that fails (behavior changed)
 - Having to update expected values (output format changed)
 
-**If all tests pass without modifications** → No breaking change → Patch OK
-(x.y.z → x.y.z+1)
+**If all tests pass without modifications** → No breaking change → Patch OK (x.y.z → x.y.z+1)
 
 ## Test Structure
 
-All test files use `.test.ts` extension to be automatically discovered by
-`deno test`.
+All test files use `.test.ts` extension to be automatically discovered by `deno test`.
 
 ### 1. `typescript-api.test.ts`
 
@@ -83,8 +79,7 @@ That's it. All compatibility tests are automatically included.
 **✅ Allowed:**
 
 - Add tests for new features
-- Fix bugs in the tests themselves (wrong assertion logic, not wrong expected
-  values)
+- Fix bugs in the tests themselves (wrong assertion logic, not wrong expected values)
 
 **❌ Requires version bump:**
 
@@ -108,6 +103,5 @@ That's it. All compatibility tests are automatically included.
 
 1. Develop your feature/fix
 2. Run `task test`
-3. If compatibility tests need modifications → Ensure you're OK with bumping the
-   version
+3. If compatibility tests need modifications → Ensure you're OK with bumping the version
 4. Update tests + bump version accordingly

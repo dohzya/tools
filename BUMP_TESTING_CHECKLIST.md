@@ -16,6 +16,7 @@ task validate
 ## Test 1: bump-prepare Validation
 
 ### Test normal execution
+
 ```bash
 # Run bump-prepare with test values
 task bump-prepare TOOL=wl TOOL_VERSION=0.6.0 JSR_VERSION=0.6.1
@@ -35,6 +36,7 @@ git status
 ```
 
 ### Verify file contents
+
 ```bash
 # Check deno.json has JSR version
 grep '"version": "0.6.1"' packages/tools/deno.json
@@ -49,6 +51,7 @@ grep '@dohzya/tools@0.6.1/worklog' plugins/tools/skills/worklog/wl
 ```
 
 ### Test error handling
+
 ```bash
 # Reset first
 git reset --hard origin/main
@@ -72,6 +75,7 @@ git reset --hard origin/main
 ## Test 2: bump-finalize Validation
 
 ### Test error handling (no release)
+
 ```bash
 # This should fail gracefully
 ./scripts/bump-finalize.sh wl 99.99.99
@@ -79,6 +83,7 @@ git reset --hard origin/main
 ```
 
 ### Test with existing release (if available)
+
 ```bash
 # Find a recent release
 gh release list | head -3
@@ -103,6 +108,7 @@ grep 'sha256' homebrew/Formula/wl.rb | head -4
 ```
 
 ### Verify file contents
+
 ```bash
 # Check homebrew version
 grep 'version "0.6.0"' homebrew/Formula/wl.rb

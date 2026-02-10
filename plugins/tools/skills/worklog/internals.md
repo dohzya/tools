@@ -114,6 +114,7 @@ Numbered insights
 ```
 
 **Status symbols:**
+
 - `[ ]` - todo
 - `[/]` - wip
 - `[>]` - blocked
@@ -121,6 +122,7 @@ Numbered insights
 - `[x]` - done
 
 **Metadata examples:**
+
 - `[dependsOn:: other-id]`
 - `[due:: 2026-02-15]`
 - `[priority:: high]`
@@ -132,6 +134,7 @@ Numbered insights
 Format: `YYMMDD{base62}` where base62 is a counter.
 
 Examples:
+
 - `260205a` - First task on 2026-02-05
 - `260205b` - Second task on 2026-02-05
 - `2602051` - 62nd task on 2026-02-05
@@ -255,6 +258,7 @@ Ensure format is exact:
 ```
 
 Common mistakes:
+
 - Missing space before `[checkpoint]`
 - `### Changes` instead of `### Changes` (case-sensitive)
 - Missing newline after `### Changes` or `### Learnings`
@@ -268,6 +272,7 @@ Check format:
 ```
 
 Common mistakes:
+
 - Missing space after checkbox: `[ ]` not `[]`
 - ID not in brackets: `[id:: abc1234]` not `id: abc1234`
 - Missing block reference: `^abc1234` is required

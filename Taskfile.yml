@@ -30,11 +30,11 @@ tasks:
 
   check:
     desc: "Check the code (format & type & lint)"
-    dir: packages/tools
     cmds:
-      - deno task fmt:check
-      - deno task check
-      - deno task lint
+      - deno fmt --check .
+      - cd packages/tools && deno task fmt:check
+      - cd packages/tools && deno task check
+      - cd packages/tools && deno task lint
 
   validate:
     desc: "Run all checks (fmt, lint, check, test)"

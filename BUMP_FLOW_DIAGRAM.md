@@ -103,6 +103,7 @@
 ## File Modification Summary
 
 ### Phase 1 Files (Pre-Release)
+
 ```
 packages/tools/
 ├── deno.json ...................... JSR package version
@@ -119,6 +120,7 @@ plugins/tools/skills/
 ```
 
 ### Phase 2 Files (Post-Release)
+
 ```
 homebrew/Formula/
 ├── wl.rb .......................... Version, URLs, checksums
@@ -180,6 +182,7 @@ bump-prepare needs BOTH versions to be explicit!
 ## Error Recovery
 
 ### If Phase 1 fails
+
 ```
 git reset --hard HEAD~1  # Undo commit
 # Fix issue
@@ -187,6 +190,7 @@ git reset --hard HEAD~1  # Undo commit
 ```
 
 ### If JSR publish fails
+
 ```
 # Fix issue in code
 task validate
@@ -196,6 +200,7 @@ deno publish
 ```
 
 ### If Phase 2 fails
+
 ```
 # Release exists, so safe to retry
 task bump-finalize TOOL=wl VERSION=0.6.1
@@ -203,6 +208,7 @@ task bump-finalize TOOL=wl VERSION=0.6.1
 ```
 
 ### If checksums wrong
+
 ```
 # Phase 2 calculates from GH release
 # So just re-run:

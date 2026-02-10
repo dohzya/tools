@@ -30,5 +30,8 @@
     "check": "deno check mod.ts",
     "test": "deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot",
     "validate": "deno task fmt:check && deno task lint && deno task check && deno task test"
+  },
+  "fmt": {
+    "proseWrap": "never"
   }
 }

@@ -29,6 +29,7 @@ Track work progress with traces and checkpoints. **Always work within a worktask
    - Review `wl logs <id>` before creating checkpoint
 
 **Key principle:** `done` = final checkpoint with:
+
 - **Changes**: Consolidate ALL traces (what happened, including failed attempts)
 - **Learnings**: REX with critical distance (reusable insights, not just "what we did")
 
@@ -74,6 +75,7 @@ wl trace <id> "Fixed it"
 **Note:** `wl trace` warns if task is not started. Start with `wl start <id>` first.
 
 **Batch tracing?** Use real timestamps:
+
 ```bash
 wl trace <id> -t T14:30 "Started investigation"
 wl trace <id> -t T15:15 "Found root cause"
@@ -102,6 +104,7 @@ wl checkpoint <id> \
 **CRITICAL: Always review before closing!**
 
 **Order matters:**
+
 1. Commit your changes first
 2. **Review traces & check TODOs** with `wl show`
 3. Then mark worktask done
@@ -142,6 +145,7 @@ wl done <id>
 ```
 
 **REX quality check:**
+
 - ❌ "Tests pass" (result, not learning)
 - ❌ "Used CurrencyBucket" (action, not insight)
 - ✅ "Bucket pattern isolates concerns better than direct fields"

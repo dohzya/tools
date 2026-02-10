@@ -28,15 +28,15 @@ wl done <id> "Changes" "Learnings"
 
 **L'ordre à suivre pour TOUT travail sur ce projet :**
 
-| Étape | Action | Commande |
-|-------|--------|----------|
-| 1 | Créer worktask | `wl task create "..."` |
-| 2 | Travailler + tracer | `wl trace <id> "..."` |
-| 3 | Tester localement | `deno -A packages/tools/<tool>/cli.ts ...` |
-| 4 | Valider | `task validate` |
-| 5 | Commit (si applicable) | `git add ... && git commit ...` |
-| 6 | Terminer worktask | `wl done <id> "changes" "learnings"` |
-| 7 | Release? | Voir [RELEASE.md](RELEASE.md) |
+| Étape | Action                 | Commande                                   |
+| ----- | ---------------------- | ------------------------------------------ |
+| 1     | Créer worktask         | `wl task create "..."`                     |
+| 2     | Travailler + tracer    | `wl trace <id> "..."`                      |
+| 3     | Tester localement      | `deno -A packages/tools/<tool>/cli.ts ...` |
+| 4     | Valider                | `task validate`                            |
+| 5     | Commit (si applicable) | `git add ... && git commit ...`            |
+| 6     | Terminer worktask      | `wl done <id> "changes" "learnings"`       |
+| 7     | Release?               | Voir [RELEASE.md](RELEASE.md)              |
 
 **CRITIQUE :** Ne JAMAIS dire "j'ai terminé" sans avoir exécuté `task validate`.
 
@@ -63,6 +63,7 @@ wl trace <id> "task validate OK"
 ```
 
 **Bonnes traces = avec causes & pistes :**
+
 - ✅ `"Essayé X - échec (cause: validator attend Y), piste: pattern Z"`
 - ❌ `"Essayé X"` / `"Ça marche pas"`
 
@@ -122,11 +123,13 @@ deno -A packages/tools/markdown-surgeon/cli.ts meta file.md
 ```
 
 **Pourquoi :**
+
 - `wl` et `md` installés via Homebrew/mise utilisent `jsr:@dohzya/tools@X.Y.Z`
 - Tes modifications locales ne seront pas visibles tant que tu n'as pas publié sur JSR
 - `deno -A packages/tools/.../cli.ts` exécute ton code local directement
 
 **Alias pratiques (optionnel) :**
+
 ```bash
 alias wl-dev='deno -A packages/tools/worklog/cli.ts'
 alias md-dev='deno -A packages/tools/markdown-surgeon/cli.ts'
@@ -213,6 +216,7 @@ const validated = schema.parse(data); // Throw si invalide
 **→ Voir [RELEASE.md](RELEASE.md)** pour le processus complet.
 
 **Points clés :**
+
 - JSR publish AVANT de créer le tag (les binaires téléchargent depuis JSR)
 - `task bump TOOL=wl VERSION=X.Y.Z` met à jour tous les fichiers
 - `task update-tap` calcule les checksums depuis les binaires GitHub

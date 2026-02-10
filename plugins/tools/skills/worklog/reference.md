@@ -70,6 +70,7 @@ wl create <name> [desc] [options]
 Creates a new task. The `name` is displayed in list views, `desc` is the detailed description (defaults to `name` if not provided).
 
 **Options:**
+
 - `--ready`: Create in 'ready' state
 - `--started`: Create in 'started' state
 - `--todo <text>`: Add a TODO item (repeatable)
@@ -130,6 +131,7 @@ wl list [options]
 **Default:** Shows tasks in `created`, `ready`, and `started` states.
 
 **Status filters** (cumulative):
+
 - `--created`: Show created tasks
 - `--ready`: Show ready tasks
 - `--started`: Show started tasks
@@ -139,6 +141,7 @@ wl list [options]
 When any status filter is specified, only those statuses are shown. Multiple filters are combined with OR logic.
 
 **Other options:**
+
 - `--all` or `-a`: Show all tasks including completed (<30d)
 - `-p <path>`: List tasks at specific path
 

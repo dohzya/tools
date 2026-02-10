@@ -100,21 +100,21 @@ git tag v0.6.2 && git push origin v0.6.2
 
 ## Order of Operations (CRITICAL)
 
-| Step | Validation                    | Command                                          | Why                                               |
-| ---- | ----------------------------- | ------------------------------------------------ | ------------------------------------------------- |
-| 0    | `task validate` ✅            | Must pass                                        | Ensure clean starting state                       |
-| 1    | N/A                           | `task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY |
-| 1b   | `task validate` ✅            | Must pass                                        | Verify bump didn't break anything                 |
-| 2    | N/A                           | `git commit` (no push!)                          | Commit version changes locally                    |
-| 3    | Manual test                   | `deno publish`                                   | **JSR MUST have correct code** - binaries built from JSR |
-| 4    | N/A                           | `git push origin main`                           | Push commit (NOT tag yet!)                        |
-| 5    | **CI GREEN** ✅ (GATE)        | `gh run watch`                                   | **MUST pass before tagging** - never tag failed CI |
-| 6    | N/A                           | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z` | Trigger release workflow (builds from JSR)        |
-| 7    | Release workflow green ✅     | `gh run watch`                                   | GitHub Actions builds binaries from JSR           |
-| 8    | N/A                           | `task bump-finalize TOOL=wl VERSION=X.Y.Z`       | Updates homebrew checksums, docs, plugin (post-release) |
-| 9    | N/A                           | `git commit && git push`                         | Push finalization changes                         |
-| 10   | N/A                           | `task update-tap TOOL=wl VERSION=X.Y.Z`          | Downloads GH release binaries, updates tap repo   |
-| 11   | Test installation             | `brew upgrade wl && wl --version`                | Verify users can install and get correct version  |
+| Step | Validation                | Command                                                          | Why                                                      |
+| ---- | ------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
+| 0    | `task validate` ✅        | Must pass                                                        | Ensure clean starting state                              |
+| 1    | N/A                       | `task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY            |
+| 1b   | `task validate` ✅        | Must pass                                                        | Verify bump didn't break anything                        |
+| 2    | N/A                       | `git commit` (no push!)                                          | Commit version changes locally                           |
+| 3    | Manual test               | `deno publish`                                                   | **JSR MUST have correct code** - binaries built from JSR |
+| 4    | N/A                       | `git push origin main`                                           | Push commit (NOT tag yet!)                               |
+| 5    | **CI GREEN** ✅ (GATE)    | `gh run watch`                                                   | **MUST pass before tagging** - never tag failed CI       |
+| 6    | N/A                       | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z`                 | Trigger release workflow (builds from JSR)               |
+| 7    | Release workflow green ✅ | `gh run watch`                                                   | GitHub Actions builds binaries from JSR                  |
+| 8    | N/A                       | `task bump-finalize TOOL=wl VERSION=X.Y.Z`                       | Updates homebrew checksums, docs, plugin (post-release)  |
+| 9    | N/A                       | `git commit && git push`                                         | Push finalization changes                                |
+| 10   | N/A                       | `task update-tap TOOL=wl VERSION=X.Y.Z`                          | Downloads GH release binaries, updates tap repo          |
+| 11   | Test installation         | `brew upgrade wl && wl --version`                                | Verify users can install and get correct version         |
 
 **Key gates:**
 
@@ -151,11 +151,13 @@ When assisting with releases, Claude should:
 Updates ONLY files needed BEFORE the GitHub release:
 
 **For wl:**
+
 - `packages/tools/deno.json` (JSR package version - always increments)
 - `packages/tools/worklog/cli.ts` (VERSION constant - tool version)
 - `plugins/tools/skills/worklog/wl` (import path with JSR version)
 
 **For md:**
+
 - Same pattern with `markdown-surgeon` paths
 
 ### Phase 2: Post-Release (`task bump-finalize`)
@@ -163,12 +165,14 @@ Updates ONLY files needed BEFORE the GitHub release:
 Updates files that depend on the GitHub release existing:
 
 **For both tools:**
+
 - `homebrew/Formula/{tool}.rb` (version, URLs, and checksums from GH release)
 - `CLI_SETUP.md` (version references in examples)
 - `MISE_SETUP.md` (version references in examples)
 - `plugins/tools/.claude-plugin/plugin.json` (plugin version)
 
 **Important:** The two-phase approach ensures:
+
 1. Skill imports reference the JSR version that will be published
 2. Homebrew checksums are calculated from actual GitHub release binaries
 3. Documentation references don't point to non-existent releases
@@ -196,18 +200,18 @@ cd ~/bin/share/mise-tools
 
 ## Common Pitfalls
 
-| Problem                               | Cause                                     | Fix                                                  |
-| ------------------------------------- | ----------------------------------------- | ---------------------------------------------------- |
-| Published JSR with wrong version      | Didn't validate before commit/publish     | Always `task validate` before commit AND publish     |
-| Binary shows wrong version            | JSR published with stale code             | Re-bump, re-validate, re-publish with correct code   |
-| Tag triggered build failure           | CI wasn't green on main                   | **Never tag until CI passes** - delete tag and retry |
-| deno.json at wrong version            | Only bumped tool version                  | deno.json MUST bump every release (it's the JSR pkg) |
-| Homebrew checksum mismatch            | Checksums from local build                | Re-run `task update-tap` (downloads from GH release) |
-| Homebrew/docs point to missing release| bump script ran too early                 | These files updated AFTER release exists             |
-| "Package not found" during build      | JSR publish missing or wrong version      | Check JSR has correct version, republish if needed   |
-| Can't republish to JSR                | Same version exists                       | Bump to new version number                           |
-| brew upgrade shows old version        | Tap not updated                           | Run `task update-tap`                                |
-| Workflow fails "version mismatch"     | Tag version doesn't match any tool        | Tag must match a tool version (wl or md cli.ts)      |
+| Problem                                | Cause                                 | Fix                                                  |
+| -------------------------------------- | ------------------------------------- | ---------------------------------------------------- |
+| Published JSR with wrong version       | Didn't validate before commit/publish | Always `task validate` before commit AND publish     |
+| Binary shows wrong version             | JSR published with stale code         | Re-bump, re-validate, re-publish with correct code   |
+| Tag triggered build failure            | CI wasn't green on main               | **Never tag until CI passes** - delete tag and retry |
+| deno.json at wrong version             | Only bumped tool version              | deno.json MUST bump every release (it's the JSR pkg) |
+| Homebrew checksum mismatch             | Checksums from local build            | Re-run `task update-tap` (downloads from GH release) |
+| Homebrew/docs point to missing release | bump script ran too early             | These files updated AFTER release exists             |
+| "Package not found" during build       | JSR publish missing or wrong version  | Check JSR has correct version, republish if needed   |
+| Can't republish to JSR                 | Same version exists                   | Bump to new version number                           |
+| brew upgrade shows old version         | Tap not updated                       | Run `task update-tap`                                |
+| Workflow fails "version mismatch"      | Tag version doesn't match any tool    | Tag must match a tool version (wl or md cli.ts)      |
 
 ## Troubleshooting
 

@@ -1,14 +1,15 @@
 # Bump Infrastructure Improvements
 
-**Task:** 3fn03v
-**Date:** 2026-02-10
-**Context:** Addressing issues documented in REX-04vcuw.md
+- **Task:** 3fn03v
+- **Date:** 2026-02-10
+- **Context:** Addressing issues documented in REX-04vcuw.md
 
 ## Problems Identified
 
 ### 1. Original bump-version.sh Modified Too Many Files Too Early
 
 **Issue:** The monolithic `bump-version.sh` script modified all files at once, including:
+
 - Homebrew formulas (with URLs pointing to non-existent releases)
 - Documentation (*_SETUP.md with non-existent version references)
 - Plugin configuration
@@ -18,6 +19,7 @@
 ### 2. No Separation Between JSR Version and Tool Version
 
 **Issue:** The original script only took one version parameter, leading to confusion about:
+
 - JSR package version (@dohzya/tools)
 - Individual tool versions (wl and md)
 
@@ -36,16 +38,19 @@
 **When:** BEFORE JSR publish and GitHub release
 
 **What it updates:**
+
 - `packages/tools/deno.json` - JSR package version
 - `packages/tools/{tool}/cli.ts` - Tool VERSION constant
 - `plugins/tools/skills/{tool}/{tool}` - JSR import paths
 
 **Why separate:** These files must be correct BEFORE:
+
 1. Publishing to JSR (deno publish reads deno.json)
 2. Creating the git tag (GitHub Actions builds from JSR)
 3. The skill imports must reference the JSR version that will exist
 
 **Command:**
+
 ```bash
 task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
 ```
@@ -55,17 +60,20 @@ task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
 **When:** AFTER GitHub release workflow completes
 
 **What it updates:**
+
 - `homebrew/Formula/{tool}.rb` - Version, URLs, and checksums
 - `CLI_SETUP.md` - Version references
 - `MISE_SETUP.md` - Version references
 - `plugins/tools/.claude-plugin/plugin.json` - Plugin version
 
 **Why separate:** These files require:
+
 1. The GitHub release to exist (for URLs to be valid)
 2. Release binaries to be available (for checksum calculation)
 3. Download verification (ensures binaries are accessible)
 
 **Command:**
+
 ```bash
 task bump-finalize TOOL=wl VERSION=0.6.1
 ```
@@ -87,6 +95,7 @@ task bump-prepare TOOL=md TOOL_VERSION=0.5.2 JSR_VERSION=0.6.2
 ### 2. Automatic Checksum Calculation
 
 `bump-finalize.sh` automatically:
+
 1. Downloads binaries from GitHub release
 2. Calculates SHA256 checksums
 3. Updates homebrew formula with correct checksums
@@ -95,12 +104,14 @@ task bump-prepare TOOL=md TOOL_VERSION=0.5.2 JSR_VERSION=0.6.2
 ### 3. Built-in Safety Checks
 
 **bump-prepare.sh:**
+
 - Shows current vs new versions
 - Lists what WILL and WON'T be updated
 - Validates version format
 - Requires confirmation before proceeding
 
 **bump-finalize.sh:**
+
 - Verifies GitHub release exists before starting
 - Downloads all platform binaries to verify availability
 - Fails fast if any binary is missing
@@ -111,6 +122,7 @@ task bump-prepare TOOL=md TOOL_VERSION=0.5.2 JSR_VERSION=0.6.2
 The scripts guide users through the correct process:
 
 **bump-prepare.sh** output includes:
+
 1. Validate with `task validate`
 2. Review with `git diff`
 3. Commit (don't push)
@@ -122,6 +134,7 @@ The scripts guide users through the correct process:
 9. Run bump-finalize
 
 **bump-finalize.sh** output includes:
+
 1. Review changes
 2. Commit finalization
 3. Update homebrew tap
@@ -129,15 +142,15 @@ The scripts guide users through the correct process:
 
 ## File Modification Matrix
 
-| File | Phase 1 (Prepare) | Phase 2 (Finalize) | Reason |
-|------|-------------------|-------------------|--------|
-| `packages/tools/deno.json` | ✓ | - | JSR version for publish |
-| `packages/tools/{tool}/cli.ts` | ✓ | - | Tool version constant |
-| `plugins/tools/skills/{tool}/{tool}` | ✓ | - | JSR import path |
-| `homebrew/Formula/{tool}.rb` | - | ✓ | Needs release binaries for checksums |
-| `CLI_SETUP.md` | - | ✓ | Should reference existing release |
-| `MISE_SETUP.md` | - | ✓ | Should reference existing release |
-| `plugins/tools/.claude-plugin/plugin.json` | - | ✓ | Plugin version update |
+| File                                       | Phase 1 (Prepare) | Phase 2 (Finalize) | Reason                               |
+| ------------------------------------------ | ----------------- | ------------------ | ------------------------------------ |
+| `packages/tools/deno.json`                 | ✓                 | -                  | JSR version for publish              |
+| `packages/tools/{tool}/cli.ts`             | ✓                 | -                  | Tool version constant                |
+| `plugins/tools/skills/{tool}/{tool}`       | ✓                 | -                  | JSR import path                      |
+| `homebrew/Formula/{tool}.rb`               | -                 | ✓                  | Needs release binaries for checksums |
+| `CLI_SETUP.md`                             | -                 | ✓                  | Should reference existing release    |
+| `MISE_SETUP.md`                            | -                 | ✓                  | Should reference existing release    |
+| `plugins/tools/.claude-plugin/plugin.json` | -                 | ✓                  | Plugin version update                |
 
 ## Updated Release Flow
 
@@ -172,6 +185,7 @@ The scripts guide users through the correct process:
 ## Backward Compatibility
 
 The original `task bump` is deprecated but still works:
+
 - Shows deprecation warning
 - Directs users to new process
 - Still calls old script for emergency use
@@ -221,15 +235,18 @@ When doing the next release:
 ## Files Changed
 
 ### New Files
+
 - `/scripts/bump-prepare.sh` - Pre-release version preparation
 - `/scripts/bump-finalize.sh` - Post-release finalization
 - `/BUMP_IMPROVEMENTS.md` - This document
 
 ### Modified Files
+
 - `/Taskfile.yml` - Added bump-prepare and bump-finalize tasks
 - `/RELEASE.md` - Updated with two-phase process documentation
 
 ### Unchanged Files
+
 - `/scripts/bump-version.sh` - Kept for backward compatibility (deprecated)
 - `/scripts/update-homebrew-tap.sh` - Still used in step 11
 

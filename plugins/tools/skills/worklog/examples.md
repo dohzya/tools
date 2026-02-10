@@ -120,6 +120,7 @@ wl trace 260205c "Fixed it"
 ```
 
 **Problems:**
+
 - No context about what was tried
 - No causes for failures
 - No pistes for pivots
@@ -136,6 +137,7 @@ wl trace 260205c "Memory leak resolved - heap stable after 1000 connections"
 ```
 
 **Benefits:**
+
 - Clear goal
 - Specific attempts with causes for failures
 - Clear pivots with pistes
@@ -148,6 +150,7 @@ wl done 260205c "Task completed" "Everything works"
 ```
 
 **Problems:**
+
 - No consolidation of traces
 - No indication of what was done
 - No REX - just status update
@@ -177,6 +180,7 @@ Résultat:
 ```
 
 **Benefits:**
+
 - Consolidates full journey from traces
 - Shows what failed and why
 - REX has critical distance and reusable insights
