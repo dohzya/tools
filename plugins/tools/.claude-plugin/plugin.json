@@ -1,6 +1,6 @@
 {
   "name": "tools",
   "description": "Markdown manipulation and productivity skills for Claude Code",
-  "version": "0.5.1",
+  "version": "0.7.0",
   "agents": "./agents/"
 }
