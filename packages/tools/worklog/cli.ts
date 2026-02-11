@@ -1203,6 +1203,10 @@ async function resolveActiveScope(
 }
 
 function getRelativeScopePath(worklogPath: string, gitRoot: string): string {
+  if (!worklogPath.startsWith(gitRoot)) {
+    return basename(worklogPath);
+  }
+
   const relativePath = worklogPath.slice(gitRoot.length + 1);
   if (relativePath === WORKLOG_DIR) {
     return ".";

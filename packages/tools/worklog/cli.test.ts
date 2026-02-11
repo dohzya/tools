@@ -1056,6 +1056,67 @@ Very old entry
   }
 });
 
+Deno.test("worklog import - handles external worktree with --scope-to-tag", async () => {
+  const tempDirRoot = await Deno.makeTempDir();
+  const tempDirExternal = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+
+  try {
+    // Setup git repo in root directory
+    Deno.chdir(tempDirRoot);
+    await new Deno.Command("git", { args: ["init"] }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.email", "test@example.com"],
+    }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.name", "Test User"],
+    }).output();
+
+    // Initialize worklog in root
+    await main(["init"]);
+
+    // Setup external worktree (outside git root)
+    Deno.chdir(tempDirExternal);
+    await main(["init"]);
+    await main(["task", "create", "External task"]);
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Import from external worktree with --scope-to-tag
+    Deno.chdir(tempDirRoot);
+    const importOutput = await captureOutput(() =>
+      main([
+        "import",
+        "--path",
+        `${tempDirExternal}/.worklog`,
+        "--scope-to-tag",
+        "--json",
+      ])
+    );
+    const importResult = JSON.parse(importOutput);
+
+    assertEquals(importResult.imported, 1);
+
+    // Tag should be the basename of the external directory
+    const expectedTag = tempDirExternal.split("/").pop()!;
+    assertEquals(importResult.tag, expectedTag);
+
+    // Verify task has the tag
+    const destList = await captureOutput(() => main(["list", "--json"]));
+    const destTasks = JSON.parse(destList);
+    assertEquals(destTasks.tasks.length, 1);
+    assert(
+      destTasks.tasks[0].tags?.includes(expectedTag),
+      `Task should have tag ${expectedTag}`,
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDirRoot, { recursive: true });
+    await Deno.remove(tempDirExternal, { recursive: true });
+  }
+});
+
 Deno.test("worklog trace - recommends checkpoint at 50 entries", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
