@@ -58,55 +58,6 @@ import { ensureDir } from "@std/fs";
 import { z } from "@zod/zod/mini";
 
 // ============================================================================
-// Hexagonal Architecture Imports
-// ============================================================================
-
-// Adapters
-import { DenoFileSystem } from "./adapters/filesystem/deno-fs.ts";
-import { DenoGitService } from "./adapters/git/deno-git.ts";
-import { DenoProcessRunner } from "./adapters/process/deno-process-runner.ts";
-import { Blake3HashService } from "../markdown-surgeon/adapters/services/blake3-hash.ts";
-import { YamlParserService } from "../markdown-surgeon/adapters/services/yaml-parser.ts";
-import { MarkdownTaskRepository } from "./adapters/repositories/markdown-task-repo.ts";
-import { JsonIndexRepository } from "./adapters/repositories/json-index-repo.ts";
-import { JsonScopeRepository } from "./adapters/repositories/json-scope-repo.ts";
-import { MarkdownSurgeonAdapter } from "./adapters/markdown/surgeon-adapter.ts";
-
-// Markdown-surgeon use cases (for MarkdownSurgeonAdapter)
-import { ParseDocumentUseCase } from "../markdown-surgeon/domain/use-cases/parse-document.ts";
-import { ReadSectionUseCase } from "../markdown-surgeon/domain/use-cases/read-section.ts";
-import { ManageFrontmatterUseCase } from "../markdown-surgeon/domain/use-cases/manage-frontmatter.ts";
-
-// Worklog use cases
-import { InitUseCase } from "./domain/use-cases/task/init.ts";
-import { CreateTaskUseCase } from "./domain/use-cases/task/create-task.ts";
-import { ShowTaskUseCase } from "./domain/use-cases/task/show-task.ts";
-import { ListTasksUseCase } from "./domain/use-cases/task/list-tasks.ts";
-import { UpdateStatusUseCase } from "./domain/use-cases/task/update-status.ts";
-import { UpdateMetaUseCase } from "./domain/use-cases/task/update-meta.ts";
-import { UpdateTaskUseCase } from "./domain/use-cases/task/update-task.ts";
-import { AddTraceUseCase } from "./domain/use-cases/trace/add-trace.ts";
-import { ListTracesUseCase } from "./domain/use-cases/trace/list-traces.ts";
-import { CreateCheckpointUseCase } from "./domain/use-cases/trace/checkpoint.ts";
-import { AddTodoUseCase } from "./domain/use-cases/todo/add-todo.ts";
-import { ListTodosUseCase } from "./domain/use-cases/todo/list-todos.ts";
-import { UpdateTodoUseCase } from "./domain/use-cases/todo/update-todo.ts";
-import { GetNextTodoUseCase } from "./domain/use-cases/todo/next-todo.ts";
-import { ListScopesUseCase } from "./domain/use-cases/scope/list-scopes.ts";
-import { AddScopeUseCase } from "./domain/use-cases/scope/add-scope.ts";
-import { SyncWorktreesUseCase } from "./domain/use-cases/scope/sync-worktrees.ts";
-import { RenameScopeUseCase } from "./domain/use-cases/scope/rename-scope.ts";
-import { DeleteScopeUseCase } from "./domain/use-cases/scope/delete-scope.ts";
-import { ExportScopeUseCase } from "./domain/use-cases/scope/export-scope.ts";
-import { AssignScopeUseCase } from "./domain/use-cases/scope/assign-scope.ts";
-import { ImportTasksUseCase } from "./domain/use-cases/import/import-tasks.ts";
-import { ImportScopeToTagUseCase } from "./domain/use-cases/import/import-scope-to-tag.ts";
-import { RunCommandUseCase } from "./domain/use-cases/run-command.ts";
-import { ClaudeCommandUseCase } from "./domain/use-cases/claude-command.ts";
-import { GenerateSummaryUseCase } from "./domain/use-cases/summary.ts";
-import { ListTagsUseCase } from "./domain/use-cases/list-tags.ts";
-
-// ============================================================================
 // Global Options Type
 // ============================================================================
 
@@ -185,131 +136,6 @@ const TaskMetaSchema = z.object({
   metadata: z.optional(z.record(z.string(), z.string())),
   tags: z.optional(z.array(z.string())),
 });
-
-// ============================================================================
-// Dependency Injection Setup
-// ============================================================================
-
-// Core adapters
-const fs = new DenoFileSystem();
-const git = new DenoGitService();
-const processRunner = new DenoProcessRunner();
-const hashService = new Blake3HashService();
-const yamlService = new YamlParserService();
-
-// Markdown-surgeon setup
-const parseDoc = new ParseDocumentUseCase(hashService);
-const readSection = new ReadSectionUseCase();
-const manageFrontmatter = new ManageFrontmatterUseCase(yamlService);
-const markdownService = new MarkdownSurgeonAdapter(hashService, yamlService);
-
-// Repositories (will be re-instantiated when WORKLOG_DIR changes)
-let taskRepo: MarkdownTaskRepository;
-let indexRepo: JsonIndexRepository;
-let scopeRepo: JsonScopeRepository;
-
-// Use cases (will be re-instantiated when repositories change)
-let initUseCase: InitUseCase;
-let createTaskUseCase: CreateTaskUseCase;
-let showTaskUseCase: ShowTaskUseCase;
-let listTasksUseCase: ListTasksUseCase;
-let updateStatusUseCase: UpdateStatusUseCase;
-let updateMetaUseCase: UpdateMetaUseCase;
-let updateTaskUseCase: UpdateTaskUseCase;
-let addTraceUseCase: AddTraceUseCase;
-let listTracesUseCase: ListTracesUseCase;
-let createCheckpointUseCase: CreateCheckpointUseCase;
-let addTodoUseCase: AddTodoUseCase;
-let listTodosUseCase: ListTodosUseCase;
-let updateTodoUseCase: UpdateTodoUseCase;
-let getNextTodoUseCase: GetNextTodoUseCase;
-let listScopesUseCase: ListScopesUseCase;
-let addScopeUseCase: AddScopeUseCase;
-let syncWorktreesUseCase: SyncWorktreesUseCase;
-let renameScopeUseCase: RenameScopeUseCase;
-let deleteScopeUseCase: DeleteScopeUseCase;
-let exportScopeUseCase: ExportScopeUseCase;
-let assignScopeUseCase: AssignScopeUseCase;
-let importTasksUseCase: ImportTasksUseCase;
-let importScopeToTagUseCase: ImportScopeToTagUseCase;
-let runCommandUseCase: RunCommandUseCase;
-let claudeCommandUseCase: ClaudeCommandUseCase;
-let summaryUseCase: GenerateSummaryUseCase;
-let listTagsUseCase: ListTagsUseCase;
-
-/**
- * Initialize or reinitialize all use cases with current WORKLOG_DIR
- * Called on startup and whenever WORKLOG_DIR changes
- */
-function initializeUseCases(): void {
-  // Repositories
-  taskRepo = new MarkdownTaskRepository(fs, markdownService, TASKS_DIR);
-  indexRepo = new JsonIndexRepository(fs, markdownService, INDEX_FILE, TASKS_DIR);
-  scopeRepo = new JsonScopeRepository(fs, join(WORKLOG_DIR, "scope.json"));
-
-  // Warn function for use cases
-  const warn = (msg: string) => console.error(msg);
-
-  // Task use cases
-  initUseCase = new InitUseCase(fs, indexRepo);
-  createTaskUseCase = new CreateTaskUseCase({
-    indexRepo,
-    taskRepo,
-    markdownService,
-  });
-  showTaskUseCase = new ShowTaskUseCase(indexRepo, taskRepo, scopeRepo, fs);
-  listTasksUseCase = new ListTasksUseCase(indexRepo, scopeRepo, fs);
-  updateStatusUseCase = new UpdateStatusUseCase(indexRepo, taskRepo, markdownService);
-  updateMetaUseCase = new UpdateMetaUseCase(indexRepo, taskRepo, markdownService);
-  updateTaskUseCase = new UpdateTaskUseCase(indexRepo, taskRepo, markdownService);
-
-  // Trace use cases
-  addTraceUseCase = new AddTraceUseCase(indexRepo, taskRepo, markdownService);
-  listTracesUseCase = new ListTracesUseCase(indexRepo, taskRepo);
-  createCheckpointUseCase = new CreateCheckpointUseCase(indexRepo, taskRepo, markdownService);
-
-  // Todo use cases
-  addTodoUseCase = new AddTodoUseCase(indexRepo, taskRepo, markdownService);
-  listTodosUseCase = new ListTodosUseCase(indexRepo, taskRepo);
-  updateTodoUseCase = new UpdateTodoUseCase(indexRepo, taskRepo);
-  getNextTodoUseCase = new GetNextTodoUseCase(indexRepo, taskRepo);
-
-  // Scope use cases
-  listScopesUseCase = new ListScopesUseCase(scopeRepo, fs, git);
-  addScopeUseCase = new AddScopeUseCase(scopeRepo, fs, git);
-  syncWorktreesUseCase = new SyncWorktreesUseCase(scopeRepo, fs, git);
-  renameScopeUseCase = new RenameScopeUseCase(scopeRepo, git);
-  deleteScopeUseCase = new DeleteScopeUseCase(scopeRepo, fs, git);
-  exportScopeUseCase = new ExportScopeUseCase(scopeRepo, fs, git, markdownService);
-  assignScopeUseCase = new AssignScopeUseCase(scopeRepo, fs, git, markdownService);
-
-  // Import use cases
-  importTasksUseCase = new ImportTasksUseCase(indexRepo, taskRepo, fs, markdownService);
-  importScopeToTagUseCase = new ImportScopeToTagUseCase(indexRepo, taskRepo, fs, markdownService, git, scopeRepo);
-
-  // Run/Claude use cases (use deps objects)
-  runCommandUseCase = new RunCommandUseCase({
-    indexRepo,
-    taskRepo,
-    processRunner,
-  });
-  claudeCommandUseCase = new ClaudeCommandUseCase({
-    indexRepo,
-    processRunner,
-    showTaskFn: async (taskId: string) => showTaskUseCase.execute({
-      taskId,
-      worklogDir: WORKLOG_DIR,
-      gitRoot: null, // Will be determined by the use case
-    }),
-  });
-
-  // Other use cases
-  summaryUseCase = new GenerateSummaryUseCase(indexRepo, taskRepo);
-  listTagsUseCase = new ListTagsUseCase(indexRepo, taskRepo, scopeRepo, fs, markdownService);
-}
-
-// Initialize on startup
-initializeUseCases();
 
 // ============================================================================
 // Helper functions
@@ -2383,10 +2209,12 @@ function formatError(error: WtError): string {
 // ============================================================================
 
 async function cmdInit(): Promise<StatusOutput> {
-  return await initUseCase.execute({
-    worklogDir: WORKLOG_DIR,
-    tasksDir: TASKS_DIR,
-  });
+  if (await exists(WORKLOG_DIR)) {
+    return { status: "already_initialized" };
+  }
+  await Deno.mkdir(TASKS_DIR, { recursive: true });
+  await saveIndex({ tasks: {} });
+  return { status: "initialized" };
 }
 
 async function cmdAdd(
@@ -2398,18 +2226,101 @@ async function cmdAdd(
   tags?: string[],
   timestamp?: string,
 ): Promise<AddOutput> {
+  // Validate tags
+  if (tags && tags.length > 0) {
+    validateTags(tags);
+  }
+
   await autoInit();
   await purge();
 
-  return await createTaskUseCase.execute({
+  const id = generateTaskIdBase62();
+  const uid = crypto.randomUUID();
+  const now = timestamp ?? getLocalISOString();
+
+  const taskDesc = desc ?? "";
+  const status = initialStatus ?? "created";
+
+  // Build TODO section if todos are provided
+  let todoSection = "";
+  if (todos.length > 0) {
+    todoSection = "\n# TODO\n\n";
+    for (const todoText of todos) {
+      const todoId = generateTodoId();
+      todoSection += `- [ ] ${todoText}  [id:: ${todoId}] ^${todoId}\n`;
+    }
+  }
+
+  // Build metadata section if provided
+  let metadataYaml = "";
+  if (metadata && Object.keys(metadata).length > 0) {
+    metadataYaml = "\nmetadata:\n";
+    for (const [key, value] of Object.entries(metadata)) {
+      // Escape value if it contains special YAML characters
+      const escapedValue =
+        value.includes(":") || value.includes("#") || value.includes('"')
+          ? `"${value.replace(/"/g, '\\"')}"`
+          : value;
+      metadataYaml += `  ${key}: ${escapedValue}\n`;
+    }
+  }
+
+  // Build tags section if provided
+  let tagsYaml = "";
+  if (tags && tags.length > 0) {
+    tagsYaml = "\ntags:\n";
+    for (const tag of tags) {
+      tagsYaml += `  - ${tag}\n`;
+    }
+  }
+
+  // Set timestamps based on initial status
+  let readyAt = "null";
+  let startedAt = "null";
+  if (status === "ready") {
+    readyAt = `"${now}"`;
+  } else if (status === "started") {
+    startedAt = `"${now}"`;
+  }
+
+  const content = `---
+id: ${id}
+uid: ${uid}
+name: "${name.replace(/"/g, '\\"')}"
+desc: "${taskDesc.replace(/"/g, '\\"')}"
+status: ${status}
+created_at: "${now}"
+ready_at: ${readyAt}
+started_at: ${startedAt}
+done_at: null
+last_checkpoint: null
+has_uncheckpointed_entries: false${metadataYaml}${tagsYaml}
+---
+
+# Entries
+
+# Checkpoints${todoSection}
+`;
+
+  await saveTaskContent(id, content);
+
+  const index = await loadIndex();
+  index.tasks[id] = {
     name,
-    desc,
-    initialStatus,
-    todos,
-    metadata,
-    tags,
-    timestamp,
-  });
+    desc: taskDesc,
+    status,
+    created: now,
+    status_updated_at: now,
+    done_at: null,
+    ...(tags && tags.length > 0 && { tags }),
+  };
+  await saveIndex(index);
+
+  // Calculate short ID for display
+  const allIds = Object.keys(index.tasks);
+  const shortId = getShortId(id, allIds);
+
+  return { id: shortId };
 }
 
 async function cmdTrace(
@@ -2420,15 +2331,108 @@ async function cmdTrace(
   metadata?: Record<string, string>,
 ): Promise<TraceOutput> {
   await purge();
+
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
-  return await addTraceUseCase.execute({
-    taskId,
-    message,
-    timestamp,
-    force,
-    metadata,
-  });
+  const content = await loadTaskContent(taskId);
+  const { meta } = await parseTaskFile(content);
+
+  // Check status: reject done unless --force, warn if not started
+  if (meta.status === "done" && !force) {
+    throw new WtError(
+      "task_already_done",
+      `Task ${meta.id} is completed. Use --force to add post-completion traces.`,
+    );
+  }
+  if (meta.status !== "started") {
+    console.error(
+      `Warning: Task is not started. Trace recorded. Run 'wl start ${taskId}' to start working.`,
+    );
+  }
+
+  const doc = await parseDocument(content);
+  const entriesId = await getEntriesId();
+  const checkpointsId = await getCheckpointsId();
+
+  const entriesSection = findSection(doc, entriesId);
+  const checkpointsSection = findSection(doc, checkpointsId);
+
+  if (!entriesSection) {
+    throw new WtError(
+      "io_error",
+      "Invalid task file: missing # Entries section",
+    );
+  }
+
+  // Find insertion point: before # Checkpoints if it exists
+  const insertLine = checkpointsSection
+    ? checkpointsSection.line - 2 // Before blank line before # Checkpoints
+    : getSectionEndLine(doc, entriesSection, true);
+
+  // Use provided timestamp or current time
+  let nowShort: string;
+  if (timestamp) {
+    try {
+      const testDate = new Date(timestamp);
+      if (isNaN(testDate.getTime())) {
+        throw new WtError(
+          "invalid_args",
+          `Invalid timestamp format: ${timestamp}. Use ISO format (YYYY-MM-DDTHH:MM:SS+TZ) or short format (YYYY-MM-DD HH:MM)`,
+        );
+      }
+      // Use formatShort to preserve timezone info from ISO string
+      nowShort = formatShort(timestamp);
+    } catch (e) {
+      if (e instanceof WtError) throw e;
+      throw new WtError(
+        "invalid_args",
+        `Invalid timestamp: ${timestamp}`,
+      );
+    }
+  } else {
+    nowShort = getShortDateTime();
+  }
+  const entry = `\n## ${nowShort}\n${message}\n`;
+  const entryLines = entry.split("\n");
+
+  doc.lines.splice(insertLine, 0, ...entryLines);
+
+  // Update frontmatter to mark has_uncheckpointed_entries and add metadata if provided
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+  frontmatter.has_uncheckpointed_entries = true;
+
+  // Add metadata if provided
+  if (metadata && Object.keys(metadata).length > 0) {
+    if (!frontmatter.metadata) {
+      frontmatter.metadata = {};
+    }
+    Object.assign(frontmatter.metadata as Record<string, string>, metadata);
+  }
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Count entries since last checkpoint
+  const parsed = await parseTaskFile(serializeDocument(doc));
+  const entriesSinceCheckpoint = getEntriesAfterCheckpoint(
+    parsed.entries,
+    meta.last_checkpoint,
+  );
+
+  if (entriesSinceCheckpoint.length >= CHECKPOINT_THRESHOLD) {
+    return {
+      status: "checkpoint_recommended",
+      entries_since_checkpoint: entriesSinceCheckpoint.length,
+    };
+  }
+
+  return { status: "ok" };
 }
 
 async function cmdShow(
@@ -2436,24 +2440,70 @@ async function cmdShow(
   activeOnly: boolean = false,
 ): Promise<ShowOutput> {
   await purge();
+
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
+  const content = await loadTaskContent(taskId);
+  const { meta, entries, checkpoints, todos } = await parseTaskFile(content);
+
+  const lastCheckpoint = getLastCheckpoint(checkpoints);
+  const entriesSinceCheckpoint = getEntriesAfterCheckpoint(
+    entries,
+    meta.last_checkpoint,
+  );
+
+  // Filter todos if activeOnly is true
+  const filteredTodos = activeOnly
+    ? todos.filter((todo) =>
+      todo.status !== "done" && todo.status !== "cancelled"
+    )
+    : todos;
+
+  // Compute short ID for display
+  const index = await loadIndex();
+  const allIds = Object.keys(index.tasks);
+  const shortId = getShortId(taskId, allIds);
+
+  // Get effective tags (task + inherited worktree tags)
   const cwd = Deno.cwd();
   const gitRoot = await findGitRoot(cwd);
-
-  return await showTaskUseCase.execute({
-    taskId,
-    activeOnly,
-    worklogDir: WORKLOG_DIR,
+  const effectiveTags = await getEffectiveTags(
+    meta.tags,
+    join(cwd, WORKLOG_DIR),
     gitRoot,
-  }) as ShowOutput;
+  );
+
+  return {
+    task: shortId,
+    fullId: taskId,
+    name: meta.name,
+    desc: meta.desc,
+    status: meta.status,
+    created: formatShort(meta.created_at),
+    ready: meta.ready_at ? formatShort(meta.ready_at) : null,
+    started: meta.started_at ? formatShort(meta.started_at) : null,
+    last_checkpoint: lastCheckpoint,
+    entries_since_checkpoint: entriesSinceCheckpoint,
+    todos: filteredTodos,
+    tags: effectiveTags.length > 0 ? effectiveTags : undefined,
+  };
 }
 
 async function cmdTraces(taskId: string): Promise<TracesOutput> {
   await purge();
+
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
-  return await listTracesUseCase.execute({ taskId }) as TracesOutput;
+  const content = await loadTaskContent(taskId);
+  const { meta, entries } = await parseTaskFile(content);
+
+  return {
+    task: taskId,
+    desc: meta.desc,
+    entries,
+  };
 }
 
 async function cmdCheckpoint(
@@ -2463,14 +2513,83 @@ async function cmdCheckpoint(
   force?: boolean,
 ): Promise<StatusOutput> {
   await purge();
+
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
-  return await createCheckpointUseCase.execute({
-    taskId,
-    changes,
-    learnings,
-    force,
-  });
+  const content = await loadTaskContent(taskId);
+  const { meta, entries } = await parseTaskFile(content);
+
+  // Only check if task is active if not forcing
+  if (!force) {
+    assertActive(meta);
+  }
+
+  // Check if checkpoint is needed (unless forced)
+  if (!force) {
+    let needsCheckpoint = meta.has_uncheckpointed_entries;
+
+    // Also check timestamps
+    if (!needsCheckpoint && entries.length > 0) {
+      const lastEntryTs = entries[entries.length - 1].ts;
+      if (meta.last_checkpoint) {
+        const lastCheckpointDate = parseDate(meta.last_checkpoint);
+        const lastEntryDate = parseDate(lastEntryTs);
+        needsCheckpoint = lastEntryDate > lastCheckpointDate;
+      } else {
+        // No checkpoint yet but has entries
+        needsCheckpoint = true;
+      }
+    }
+
+    if (!needsCheckpoint) {
+      throw new WtError(
+        "no_uncheckpointed_entries",
+        "No uncheckpointed entries. Use --force to create checkpoint anyway",
+      );
+    }
+  }
+
+  const doc = await parseDocument(content);
+  const checkpointsId = await getCheckpointsId();
+  const checkpointsSection = findSection(doc, checkpointsId);
+
+  if (!checkpointsSection) {
+    throw new WtError(
+      "io_error",
+      "Invalid task file: missing # Checkpoints section",
+    );
+  }
+
+  const checkpointsEnd = getSectionEndLine(doc, checkpointsSection, true);
+  const nowShort = getShortDateTime();
+  const now = getLocalISOString();
+
+  const checkpoint = `
+## ${nowShort}
+
+### Changes
+${changes}
+
+### Learnings
+${learnings}
+`;
+
+  doc.lines.splice(checkpointsEnd, 0, ...checkpoint.split("\n"));
+
+  // Update frontmatter
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+  frontmatter.last_checkpoint = now;
+  frontmatter.has_uncheckpointed_entries = false;
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  return { status: "checkpoint_created" };
 }
 
 async function cmdDone(
@@ -2512,48 +2631,130 @@ async function cmdDone(
     }
   }
 
-  // Create final checkpoint if changes/learnings provided
+  // Create final checkpoint only if changes/learnings provided
   if (changes || learnings) {
-    await createCheckpointUseCase.execute({
-      taskId,
-      changes: changes ?? "",
-      learnings: learnings ?? "",
-      force: true,
-    });
+    await cmdCheckpoint(taskId, changes ?? "", learnings ?? "", true);
   }
+
+  // Then mark as done
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const now = getLocalISOString();
+
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+  frontmatter.status = "done";
+  frontmatter.done_at = now;
 
   // Add metadata if provided
   if (metadata && Object.keys(metadata).length > 0) {
-    for (const [key, value] of Object.entries(metadata)) {
-      await updateMetaUseCase.execute({ taskId, key, value });
+    if (!frontmatter.metadata) {
+      frontmatter.metadata = {};
     }
+    Object.assign(frontmatter.metadata as Record<string, string>, metadata);
   }
 
-  // Mark as done
-  return await updateStatusUseCase.execute({
-    taskId,
-    targetStatus: "done",
-  });
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "done";
+    index.tasks[taskId].done_at = now;
+    await saveIndex(index);
+  }
+
+  return { status: "task_completed" };
 }
 
 async function cmdReady(taskId: string): Promise<StatusOutput> {
   await purge();
   taskId = await resolveTaskId(taskId);
 
-  return await updateStatusUseCase.execute({
-    taskId,
-    targetStatus: "ready",
-  });
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+
+  // Validate: allow created, started; reject done, cancelled
+  if (!["created", "started"].includes(frontmatter.status as string)) {
+    throw new WtError(
+      "invalid_state",
+      `Cannot transition from '${frontmatter.status}' to 'ready'`,
+    );
+  }
+
+  const now = getLocalISOString();
+  frontmatter.status = "ready";
+  frontmatter.ready_at = now;
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "ready";
+    index.tasks[taskId].status_updated_at = now;
+    await saveIndex(index);
+  }
+
+  return { status: "task_ready" };
 }
 
 async function cmdStart(taskId: string): Promise<StatusOutput> {
   await purge();
   taskId = await resolveTaskId(taskId);
 
-  return await updateStatusUseCase.execute({
-    taskId,
-    targetStatus: "started",
-  });
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+
+  // Allow: created, ready, done; reject: cancelled
+  if (frontmatter.status === "cancelled") {
+    throw new WtError(
+      "invalid_state",
+      `Cannot transition from 'cancelled' to 'started'`,
+    );
+  }
+  if (frontmatter.status === "started") {
+    return { status: "task_already_started" };
+  }
+
+  const now = getLocalISOString();
+  frontmatter.status = "started";
+  frontmatter.started_at = now;
+
+  // Clear done_at if reopening
+  if (frontmatter.done_at) {
+    frontmatter.done_at = null;
+  }
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "started";
+    index.tasks[taskId].status_updated_at = now;
+    delete index.tasks[taskId].done_at;
+    await saveIndex(index);
+  }
+
+  return { status: "task_started" };
 }
 
 async function cmdRun(
@@ -2561,22 +2762,47 @@ async function cmdRun(
   taskId?: string,
   createName?: string,
 ): Promise<RunOutput> {
-  if (!taskId && !createName) {
+  let resolvedTaskId: string;
+  let wasCreated = false;
+
+  // Either use provided taskId or create a new task
+  if (createName) {
+    const createOutput = await cmdAdd(createName);
+    // cmdAdd returns short ID, resolve it to full ID
+    resolvedTaskId = await resolveTaskId(createOutput.id);
+    wasCreated = true;
+  } else if (taskId) {
+    await purge();
+    resolvedTaskId = await resolveTaskId(taskId);
+  } else {
     throw new WtError(
       "invalid_args",
       "Either taskId or --create must be provided",
     );
   }
 
-  if (taskId) {
-    await purge();
-  }
+  // Verify task exists
+  await loadTaskContent(resolvedTaskId);
 
-  return await runCommandUseCase.execute({
-    cmd,
-    taskId,
-    createName,
+  // Execute command with WORKLOG_TASK_ID set
+  const command = new Deno.Command(cmd[0], {
+    args: cmd.slice(1),
+    env: {
+      ...Deno.env.toObject(),
+      WORKLOG_TASK_ID: resolvedTaskId,
+    },
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
   });
+
+  const { code } = await command.output();
+
+  return {
+    taskId: resolvedTaskId,
+    exitCode: code,
+    created: wasCreated,
+  };
 }
 
 async function cmdClaude(
@@ -2588,10 +2814,70 @@ async function cmdClaude(
   // Resolve taskId with env fallback
   const resolvedTaskId = await resolveTaskIdWithEnvFallback(taskId);
 
-  return await claudeCommandUseCase.execute({
-    taskId: resolvedTaskId,
-    claudeArgs,
+  // Load task details
+  const taskInfo = await cmdShow(resolvedTaskId, false);
+
+  // Build system prompt with task context
+  const recentTraces = taskInfo.entries_since_checkpoint
+    .slice(-5)
+    .map((e) => `  - [${e.ts}] ${e.msg}`)
+    .join("\n");
+
+  const todos = taskInfo.todos
+    .filter((t) => t.status === "todo")
+    .map((t) => `  - [ ] ${t.text}`)
+    .join("\n");
+
+  const systemPrompt = `
+# Current Worktask Context
+
+You are working on the following task:
+
+**Task ID**: ${taskInfo.fullId} (short: ${taskInfo.task})
+**Name**: ${taskInfo.name}
+**Status**: ${taskInfo.status}
+**Created**: ${taskInfo.created}
+${taskInfo.started ? `**Started**: ${taskInfo.started}` : ""}
+
+## Description
+${taskInfo.desc || "(no description)"}
+
+${recentTraces ? `## Recent Traces\n${recentTraces}` : ""}
+
+${todos ? `## TODO\n${todos}` : ""}
+
+---
+
+## WORKLOG_TASK_ID
+
+The environment variable is set to: ${resolvedTaskId}
+
+Commands that work **without taskId** (uses WORKLOG_TASK_ID automatically):
+  wl show, wl start, wl ready, wl traces, wl update, wl cancel, wl meta, wl todo next
+
+Commands that still **require taskId as first argument** (ambiguous with other args):
+  wl trace <id> "msg", wl checkpoint <id> ..., wl done <id> ...
+`.trim();
+
+  // Launch Claude with appended system prompt
+  const command = new Deno.Command("claude", {
+    args: ["--append-system-prompt", systemPrompt, ...claudeArgs],
+    env: {
+      ...Deno.env.toObject(),
+      WORKLOG_TASK_ID: resolvedTaskId,
+    },
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
   });
+
+  const { code } = await command.output();
+
+  return {
+    taskId: resolvedTaskId,
+    exitCode: code,
+    created: false,
+  };
 }
 
 async function cmdUpdate(
@@ -2609,11 +2895,29 @@ async function cmdUpdate(
   await purge();
   taskId = await resolveTaskId(taskId);
 
-  return await updateTaskUseCase.execute({
-    taskId,
-    name,
-    desc,
-  });
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+
+  if (name) frontmatter.name = name;
+  if (desc !== undefined) frontmatter.desc = desc;
+
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    if (name) index.tasks[taskId].name = name;
+    if (desc !== undefined) index.tasks[taskId].desc = desc;
+    await saveIndex(index);
+  }
+
+  return { status: "task_updated" };
 }
 
 async function cmdCancel(
@@ -2621,21 +2925,45 @@ async function cmdCancel(
   reason?: string,
 ): Promise<StatusOutput> {
   await purge();
+
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
-  // Add reason as metadata if provided
+  // Load and update task
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const now = getLocalISOString();
+
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = parseFrontmatter(yamlContent);
+  frontmatter.status = "cancelled";
+  frontmatter.cancelled_at = now;
+
+  // Add cancellation reason as metadata if provided
   if (reason) {
-    await updateMetaUseCase.execute({
-      taskId,
-      key: "cancellation_reason",
-      value: reason,
-    });
+    if (!frontmatter.metadata) {
+      frontmatter.metadata = {};
+    }
+    (frontmatter.metadata as Record<string, string>).cancellation_reason =
+      reason;
   }
 
-  return await updateStatusUseCase.execute({
-    taskId,
-    targetStatus: "cancelled",
-  });
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as Record<string, unknown>),
+  );
+
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index
+  const index = await loadIndex();
+  if (index.tasks[taskId]) {
+    index.tasks[taskId].status = "cancelled";
+    index.tasks[taskId].cancelled_at = now;
+    await saveIndex(index);
+  }
+
+  return { status: "task_cancelled" };
 }
 
 async function cmdMeta(
@@ -2645,14 +2973,88 @@ async function cmdMeta(
   deleteKey?: string,
 ): Promise<{ metadata: Record<string, string> }> {
   await purge();
+
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
-  return await updateMetaUseCase.execute({
-    taskId,
-    key,
-    value,
-    deleteKey,
-  });
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+  const yamlContent = getFrontmatterContent(doc);
+  const frontmatter = TaskMetaSchema.parse(parseFrontmatter(yamlContent));
+
+  // Initialize metadata if not present
+  if (!frontmatter.metadata) {
+    frontmatter.metadata = {};
+  }
+
+  // Delete key if requested
+  if (deleteKey) {
+    delete frontmatter.metadata[deleteKey];
+  }
+
+  // Set/update key-value if provided
+  if (key && value !== undefined) {
+    // Handle special top-level fields
+    if (key === "status") {
+      if (!isValidTaskStatus(value)) {
+        throw new WtError(
+          "invalid_args",
+          `Invalid status: ${value}. Must be one of: ${
+            TASK_STATUSES.join(", ")
+          }`,
+        );
+      }
+      frontmatter.status = value;
+      // Update timestamp fields based on status
+      const now = new Date().toISOString();
+      if (value === "done" && !frontmatter.done_at) {
+        frontmatter.done_at = now;
+      } else if (value === "cancelled" && !frontmatter.cancelled_at) {
+        frontmatter.cancelled_at = now;
+      } else if (value === "started" && !frontmatter.started_at) {
+        frontmatter.started_at = now;
+        frontmatter.done_at = null;
+        frontmatter.cancelled_at = null;
+      } else if (value === "ready" && !frontmatter.ready_at) {
+        frontmatter.ready_at = now;
+      } else if (value === "created") {
+        // Reset all status timestamps
+        frontmatter.ready_at = null;
+        frontmatter.started_at = null;
+        frontmatter.done_at = null;
+        frontmatter.cancelled_at = null;
+      }
+    } else {
+      // Regular metadata field
+      frontmatter.metadata[key] = value;
+    }
+  }
+
+  // Save changes
+  setFrontmatter(
+    doc,
+    stringifyFrontmatter(frontmatter as unknown as Record<string, unknown>),
+  );
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  // Update index if status was changed
+  if (key === "status") {
+    const index = await loadIndex();
+    if (index.tasks[taskId]) {
+      index.tasks[taskId].status = frontmatter.status;
+      index.tasks[taskId].status_updated_at = getLocalISOString();
+      if (
+        ["created", "ready", "started"].includes(frontmatter.status as string)
+      ) {
+        delete index.tasks[taskId].done_at;
+      } else if (frontmatter.status === "done" && frontmatter.done_at) {
+        index.tasks[taskId].done_at = frontmatter.done_at;
+      }
+      await saveIndex(index);
+    }
+  }
+
+  return { metadata: frontmatter.metadata };
 }
 
 /**
@@ -2662,7 +3064,36 @@ async function cmdListTags(
   gitRoot: string | null,
   cwd: string,
 ): Promise<{ tags: Array<{ tag: string; count: number }> }> {
-  return await listTagsUseCase.listAll({ gitRoot, cwd, worklogDir: WORKLOG_DIR, depthLimit: WORKLOG_DEPTH_LIMIT }) as { tags: Array<{ tag: string; count: number }> };
+  const tagCounts = new Map<string, number>();
+
+  const scopes = gitRoot
+    ? await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT)
+    : [{
+      absolutePath: join(cwd, WORKLOG_DIR),
+      id: ".",
+      relativePath: ".",
+      isParent: false,
+    }];
+
+  for (const scope of scopes) {
+    const indexPath = join(scope.absolutePath, "index.json");
+    if (!(await exists(indexPath))) continue;
+
+    const index = JSON.parse(await Deno.readTextFile(indexPath)) as Index;
+    for (const task of Object.values(index.tasks)) {
+      if (task.tags) {
+        for (const tag of task.tags) {
+          tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+        }
+      }
+    }
+  }
+
+  const tags = Array.from(tagCounts.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([tag, count]) => ({ tag, count }));
+
+  return { tags };
 }
 
 /**
@@ -2744,10 +3175,44 @@ async function cmdTodoList(taskId?: string): Promise<TodoListOutput> {
   await purge();
 
   if (taskId) {
+    // Resolve task ID prefix
     taskId = await resolveTaskId(taskId);
-  }
 
-  return await listTodosUseCase.execute({ taskId }) as TodoListOutput;
+    // List todos for specific task
+    const content = await loadTaskContent(taskId);
+    const { todos } = await parseTaskFile(content);
+    return { todos };
+  } else {
+    // List todos for all active tasks
+    const index = await loadIndex();
+    const allTodos: Todo[] = [];
+
+    for (const [id, task] of Object.entries(index.tasks)) {
+      if (task.status === "done") continue;
+
+      try {
+        const content = await loadTaskContent(id);
+        const { todos, meta } = await parseTaskFile(content);
+
+        // Add task context to each todo
+        for (const todo of todos) {
+          allTodos.push({
+            ...todo,
+            metadata: {
+              ...todo.metadata,
+              taskId: id,
+              taskDesc: meta.desc,
+            },
+          });
+        }
+      } catch {
+        // Task file might not exist, skip
+        continue;
+      }
+    }
+
+    return { todos: allTodos };
+  }
 }
 
 async function cmdTodoAdd(
@@ -2757,9 +3222,44 @@ async function cmdTodoAdd(
 ): Promise<TodoAddOutput> {
   await purge();
 
+  // Resolve task ID prefix
   taskId = await resolveTaskId(taskId);
 
-  return await addTodoUseCase.execute({ taskId, text, metadata });
+  const content = await loadTaskContent(taskId);
+  const doc = await parseDocument(content);
+
+  let todosSection = findSection(doc, await getTodosId());
+
+  // Create # TODO section if it doesn't exist
+  if (!todosSection) {
+    const checkpointsId = await getCheckpointsId();
+    const checkpointsSection = findSection(doc, checkpointsId);
+    const insertLine = checkpointsSection
+      ? checkpointsSection.line - 1
+      : doc.lines.length;
+
+    doc.lines.splice(insertLine, 0, "", "# TODO", "");
+    // Re-parse to get the new section
+    const reparsed = await parseDocument(serializeDocument(doc));
+    Object.assign(doc, reparsed);
+    todosSection = findSection(doc, await getTodosId());
+  }
+
+  const todoId = generateTodoId();
+  const todosEnd = getSectionEndLine(doc, todosSection!, true);
+
+  // Build metadata string
+  let metadataStr = `  [id:: ${todoId}]`;
+  for (const [key, value] of Object.entries(metadata)) {
+    metadataStr += ` [${key}:: ${value}]`;
+  }
+
+  const todoLine = `- [ ] ${text}${metadataStr} ^${todoId}`;
+  doc.lines.splice(todosEnd, 0, todoLine);
+
+  await saveTaskContent(taskId, serializeDocument(doc));
+
+  return { id: todoId, taskId };
 }
 
 async function cmdTodoSet(
@@ -2768,17 +3268,140 @@ async function cmdTodoSet(
 ): Promise<StatusOutput> {
   await purge();
 
-  return await updateTodoUseCase.execute({ todoId, updates });
+  // Collect all todos to resolve prefix
+  const index = await loadIndex();
+  const allTodos: Todo[] = [];
+  const todoToTask = new Map<string, string>();
+
+  for (const taskId of Object.keys(index.tasks)) {
+    try {
+      const content = await loadTaskContent(taskId);
+      const { todos } = await parseTaskFile(content);
+      for (const todo of todos) {
+        allTodos.push(todo);
+        todoToTask.set(todo.id, taskId);
+      }
+    } catch {
+      // Task file might not exist, skip
+      continue;
+    }
+  }
+
+  // Resolve todo ID prefix
+  const resolvedTodoId = resolveTodoId(todoId, allTodos);
+  const foundTaskId = todoToTask.get(resolvedTodoId);
+
+  if (!foundTaskId) {
+    throw new WtError("todo_not_found", `Todo ${todoId} not found`);
+  }
+
+  const content = await loadTaskContent(foundTaskId);
+  const doc = await parseDocument(content);
+
+  // Find the todo line
+  const todosSection = findSection(doc, await getTodosId());
+  if (!todosSection) {
+    throw new WtError("todo_not_found", `Todo section not found`);
+  }
+
+  const todosEnd = getSectionEndLine(doc, todosSection, true);
+
+  for (let i = todosSection.line + 1; i < todosEnd; i++) {
+    const line = doc.lines[i];
+    if (line.includes(`^${resolvedTodoId}`)) {
+      // Parse the line
+      const todoMatch = line.match(/^(-\s*\[)(.)\](\s*)(.+)$/);
+      if (!todoMatch) continue;
+
+      const prefix = todoMatch[1];
+      let statusChar = todoMatch[2];
+      const spacing = todoMatch[3];
+      let rest = todoMatch[4];
+
+      // Apply updates
+      if (updates.status) {
+        const statusMap: Record<TodoStatus, string> = {
+          "todo": " ",
+          "wip": "/",
+          "blocked": ">",
+          "cancelled": "-",
+          "done": "x",
+        };
+        statusChar = statusMap[updates.status as TodoStatus] || statusChar;
+      }
+
+      // Update metadata
+      for (const [key, value] of Object.entries(updates)) {
+        if (key === "status") continue;
+
+        // Check if metadata exists
+        const metaRegex = new RegExp(`\\[${key}::\\s*([^\\]]+)\\]`);
+        if (metaRegex.test(rest)) {
+          // Update existing
+          rest = rest.replace(metaRegex, `[${key}:: ${value}]`);
+        } else {
+          // Add new metadata before ^id
+          const blockRefMatch = rest.match(/(\s+\^[\w]+)$/);
+          if (blockRefMatch) {
+            rest = rest.substring(0, blockRefMatch.index) +
+              ` [${key}:: ${value}]` + blockRefMatch[0];
+          }
+        }
+      }
+
+      doc.lines[i] = `${prefix}${statusChar}]${spacing}${rest}`;
+      break;
+    }
+  }
+
+  await saveTaskContent(foundTaskId, serializeDocument(doc));
+
+  return { status: "todo_updated" };
 }
 
 async function cmdTodoNext(taskId?: string): Promise<Todo | null> {
   await purge();
 
   if (taskId) {
+    // Resolve task ID prefix
     taskId = await resolveTaskId(taskId);
-  }
 
-  return await getNextTodoUseCase.execute({ taskId });
+    // Get next todo for specific task
+    const content = await loadTaskContent(taskId);
+    const { todos } = await parseTaskFile(content);
+
+    // Find first todo that is not done or cancelled, and not blocked (or blocked but dependency resolved)
+    for (const todo of todos) {
+      if (todo.status === "done" || todo.status === "cancelled") continue;
+      if (todo.status === "blocked") {
+        // Check if dependency is resolved
+        const dependsOn = todo.metadata.dependsOn;
+        if (dependsOn) {
+          // For now, we'll skip blocked todos (full dependency resolution would require checking the dependency status)
+          continue;
+        }
+      }
+      return todo;
+    }
+
+    return null;
+  } else {
+    // Get next todo across all active tasks
+    const index = await loadIndex();
+
+    for (const taskId of Object.keys(index.tasks)) {
+      if (index.tasks[taskId].status === "done") continue;
+
+      try {
+        const next = await cmdTodoNext(taskId);
+        if (next) return next;
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
 }
 
 async function cmdList(
@@ -2792,29 +3415,318 @@ async function cmdList(
   statusFilters?: TaskStatus[],
   filterPattern?: string,
 ): Promise<ListOutput> {
+  // Only purge the local worklog, not remote ones
   if (!baseDir) {
     await purge();
   }
 
-  return await listTasksUseCase.execute({
-    showAll,
-    baseDir,
-    scopeIdentifier,
-    allScopes,
-    gitRoot,
-    currentScope,
-    cwd,
-    statusFilters,
-    filterPattern,
-    worklogDir: WORKLOG_DIR,
-    depthLimit: WORKLOG_DEPTH_LIMIT,
-  }) as ListOutput;
+  // Determine which statuses to show
+  const defaultStatuses: TaskStatus[] = ["created", "ready", "started"];
+  const allowedStatuses = statusFilters ?? defaultStatuses;
+  const matchStatus = (status: string) =>
+    showAll || allowedStatuses.includes(status as TaskStatus);
+
+  const tasks: ListOutput["tasks"] = [];
+
+  // Handle unified tag/scope filtering
+  if (filterPattern && gitRoot && cwd) {
+    // Try tag filtering first (more granular)
+    const taggedTasks = await findTasksByTagPattern(
+      filterPattern,
+      gitRoot,
+      cwd,
+    );
+
+    if (taggedTasks.length > 0) {
+      // Found tasks with matching tags
+      const filteredTasks = taggedTasks
+        .filter(({ task }) => matchStatus(task.status))
+        .map(({ id, task, scopeId: _scopeId }) => ({
+          id,
+          name: task.name ?? task.desc,
+          desc: task.desc,
+          status: task.status,
+          created: formatShort(task.created),
+          // Don't show scope prefix when filtering by tag
+          scopePrefix: undefined,
+          tags: task.tags,
+          filterPattern, // Pass filter pattern for tag display filtering
+        }));
+
+      return { tasks: filteredTasks };
+    }
+
+    // Fall back to scope filtering if no tag matches
+    try {
+      const worklogPath = await resolveScopeIdentifier(
+        filterPattern,
+        gitRoot,
+        cwd,
+      );
+      const indexPath = `${worklogPath}/index.json`;
+
+      if (await exists(indexPath)) {
+        const content = await readFile(indexPath);
+        const index = JSON.parse(content) as Index;
+        const _scopeId = await getScopeId(worklogPath, gitRoot);
+
+        const scopeTasks = Object.entries(index.tasks)
+          .filter(([_, t]) => matchStatus(t.status))
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([id, t]) => ({
+            id,
+            name: t.name ?? t.desc,
+            desc: t.desc,
+            status: t.status,
+            created: formatShort(t.created),
+            // Don't show scope prefix when filtering by scope
+            scopePrefix: undefined,
+            tags: t.tags,
+            filterPattern, // Pass filter pattern for tag display filtering
+          }));
+
+        return { tasks: scopeTasks };
+      }
+    } catch {
+      // No scope matching either
+    }
+
+    throw new WtError(
+      "task_not_found",
+      `No tag or scope matching: ${filterPattern}`,
+    );
+  }
+
+  // Determine which scopes to list
+  if (allScopes && gitRoot) {
+    // List all scopes
+    const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+
+    for (const scope of scopes) {
+      const indexPath = `${scope.absolutePath}/index.json`;
+      if (!(await exists(indexPath))) {
+        continue;
+      }
+
+      const content = await readFile(indexPath);
+      const index = JSON.parse(content) as Index;
+      const scopeId = await getScopeId(scope.absolutePath, gitRoot);
+
+      const scopeTasks = Object.entries(index.tasks)
+        .filter(([_, t]) => matchStatus(t.status))
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([id, t]) => ({
+          id,
+          name: t.name ?? t.desc,
+          desc: t.desc,
+          status: t.status,
+          created: formatShort(t.created),
+          scopePrefix: scopeId,
+          tags: t.tags,
+        }));
+
+      tasks.push(...scopeTasks);
+    }
+  } else if (scopeIdentifier && gitRoot && cwd) {
+    // List specific scope only
+    const worklogPath = await resolveScopeIdentifier(
+      scopeIdentifier,
+      gitRoot,
+      cwd,
+    );
+    const indexPath = `${worklogPath}/index.json`;
+
+    if (!(await exists(indexPath))) {
+      throw new WtError(
+        "not_initialized",
+        `Worklog not found at: ${worklogPath}`,
+      );
+    }
+
+    const content = await readFile(indexPath);
+    const index = JSON.parse(content) as Index;
+
+    const scopeTasks = Object.entries(index.tasks)
+      .filter(([_, t]) => matchStatus(t.status))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, t]) => ({
+        id,
+        name: t.name ?? t.desc,
+        desc: t.desc,
+        status: t.status,
+        created: formatShort(t.created),
+        tags: t.tags,
+      }));
+
+    tasks.push(...scopeTasks);
+  } else if (gitRoot && currentScope) {
+    // Default: current scope + children (children get prefixes)
+    const currentScopeId = await getScopeId(currentScope, gitRoot);
+
+    // Check if this is a child worklog for parent tag pull
+    const isChild = await isChildWorklog(currentScope);
+
+    // Load current scope tasks (no prefix)
+    const currentIndexPath = `${currentScope}/index.json`;
+    if (await exists(currentIndexPath)) {
+      const content = await readFile(currentIndexPath);
+      const index = JSON.parse(content) as Index;
+
+      const currentTasks = Object.entries(index.tasks)
+        .filter(([_, t]) => matchStatus(t.status))
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([id, t]) => ({
+          id,
+          name: t.name ?? t.desc,
+          desc: t.desc,
+          status: t.status,
+          created: formatShort(t.created),
+          tags: t.tags,
+        }));
+
+      tasks.push(...currentTasks);
+    }
+
+    // Parent tag pull: if child worklog, include parent tasks with matching tags
+    if (isChild && currentScopeId && currentScopeId !== ".") {
+      try {
+        const parentScope = await getParentScope(currentScope);
+        const parentTasks = await findTasksByTagPattern(
+          currentScopeId,
+          gitRoot,
+          cwd || Deno.cwd(),
+        );
+
+        // Filter to only active parent tasks
+        const activeParentTasks = parentTasks
+          .filter(({ task, scopePath }) =>
+            matchStatus(task.status) &&
+            scopePath === join(parentScope, WORKLOG_DIR)
+          )
+          .map(({ id, task }) => ({
+            id,
+            name: task.name ?? task.desc,
+            desc: task.desc,
+            status: task.status,
+            created: formatShort(task.created),
+            scopePrefix: "⬆",
+            tags: task.tags,
+          }));
+
+        tasks.push(...activeParentTasks);
+      } catch {
+        // Parent scope not found or error reading it, skip parent tag pull
+      }
+    }
+
+    // Load children tasks (with prefix)
+    const scopeConfigPath = `${currentScope}/scope.json`;
+    if (await exists(scopeConfigPath)) {
+      try {
+        const configContent = await readFile(scopeConfigPath);
+        const config = JSON.parse(configContent) as ScopeConfig;
+
+        if ("children" in config) {
+          for (const child of config.children) {
+            const childWorklogPath = isAbsolute(child.path)
+              ? `${child.path}/${WORKLOG_DIR}`
+              : `${gitRoot}/${child.path}/${WORKLOG_DIR}`;
+            const childIndexPath = `${childWorklogPath}/index.json`;
+
+            if (!(await exists(childIndexPath))) {
+              continue;
+            }
+
+            const content = await readFile(childIndexPath);
+            const index = JSON.parse(content) as Index;
+
+            const childTasks = Object.entries(index.tasks)
+              .filter(([_, t]) => matchStatus(t.status))
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([id, t]) => ({
+                id,
+                name: t.name ?? t.desc,
+                desc: t.desc,
+                status: t.status,
+                created: formatShort(t.created),
+                scopePrefix: child.id,
+                tags: t.tags,
+              }));
+
+            tasks.push(...childTasks);
+          }
+        }
+      } catch {
+        // No scope.json or parse error, skip children
+      }
+    }
+  } else {
+    // Fallback: single worklog mode (backward compatibility)
+    let index: Index;
+    if (baseDir) {
+      const indexPath = `${baseDir}/index.json`;
+      if (!(await exists(indexPath))) {
+        throw new WtError(
+          "not_initialized",
+          `Worklog not found at: ${baseDir}`,
+        );
+      }
+      const content = await readFile(indexPath);
+      index = JSON.parse(content) as Index;
+    } else {
+      index = await loadIndex();
+    }
+
+    const singleTasks = Object.entries(index.tasks)
+      .filter(([_, t]) => matchStatus(t.status))
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, t]) => ({
+        id,
+        name: t.name ?? t.desc,
+        desc: t.desc,
+        status: t.status,
+        created: formatShort(t.created),
+        tags: t.tags,
+      }));
+
+    tasks.push(...singleTasks);
+  }
+
+  return { tasks };
 }
 
 async function cmdSummary(since: string | null): Promise<SummaryOutput> {
   await purge();
 
-  return await summaryUseCase.execute({ since }) as SummaryOutput;
+  const index = await loadIndex();
+  const sinceDate = since ? parseDate(since) : null;
+
+  const result: SummaryOutput["tasks"] = [];
+
+  for (const [id, info] of Object.entries(index.tasks)) {
+    const include = ["created", "ready", "started"].includes(info.status) ||
+      (sinceDate && info.done_at && parseDate(info.done_at) >= sinceDate);
+
+    if (!include) continue;
+
+    const content = await loadTaskContent(id);
+    const { entries, checkpoints } = await parseTaskFile(content);
+
+    let filteredEntries = entries;
+    if (sinceDate) {
+      filteredEntries = entries.filter((e) => parseDate(e.ts) >= sinceDate);
+    }
+
+    result.push({
+      id,
+      desc: info.desc,
+      status: info.status,
+      checkpoints,
+      entries: filteredEntries,
+    });
+  }
+
+  return { tasks: result };
 }
 
 async function cmdImport(
@@ -2823,10 +3735,285 @@ async function cmdImport(
 ): Promise<ImportOutput> {
   await autoInit();
 
-  return await importTasksUseCase.execute({
-    sourcePath,
-    removeSource,
-  }) as ImportOutput;
+  // Verify source exists
+  const sourceIndexPath = `${sourcePath}/index.json`;
+  if (!(await exists(sourceIndexPath))) {
+    throw new WtError(
+      "import_source_not_found",
+      `Source worklog not found: ${sourcePath}`,
+    );
+  }
+
+  const sourceIndexContent = await Deno.readTextFile(sourceIndexPath);
+  const sourceIndex = JSON.parse(sourceIndexContent) as Index;
+  const destIndex = await loadIndex();
+
+  const results: ImportTaskResult[] = [];
+  let imported = 0;
+  let merged = 0;
+  let skipped = 0;
+  const tasksToRemove: string[] = [];
+
+  for (const [sourceId, sourceInfo] of Object.entries(sourceIndex.tasks)) {
+    const sourceTaskPath = `${sourcePath}/tasks/${sourceId}.md`;
+    let sourceContent = await Deno.readTextFile(sourceTaskPath);
+    const {
+      meta: sourceMeta,
+      entries: sourceEntries,
+      checkpoints: sourceCheckpoints,
+    } = await parseTaskFile(sourceContent);
+
+    // Generate uid if missing (for backward compatibility)
+    if (!sourceMeta.uid) {
+      sourceMeta.uid = crypto.randomUUID();
+      // Update source file with uid
+      const doc = await parseDocument(sourceContent);
+      const yamlContent = getFrontmatterContent(doc);
+      const frontmatter = parseFrontmatter(yamlContent);
+      frontmatter.uid = sourceMeta.uid;
+      setFrontmatter(
+        doc,
+        stringifyFrontmatter(frontmatter as Record<string, unknown>),
+      );
+      const updatedContent = serializeDocument(doc);
+      await Deno.writeTextFile(sourceTaskPath, updatedContent);
+      // Update sourceContent with the new content that includes uid
+      sourceContent = updatedContent;
+    }
+
+    // Check if this task's UID already exists
+    let existingTaskId: string | undefined;
+    for (const id of Object.keys(destIndex.tasks)) {
+      const content = await loadTaskContent(id);
+      const { meta } = await parseTaskFile(content);
+
+      // Generate uid if missing in dest (for backward compatibility)
+      if (!meta.uid) {
+        meta.uid = crypto.randomUUID();
+        // Update dest file with uid
+        const doc = await parseDocument(content);
+        const yamlContent = getFrontmatterContent(doc);
+        const frontmatter = parseFrontmatter(yamlContent);
+        frontmatter.uid = meta.uid;
+        setFrontmatter(
+          doc,
+          stringifyFrontmatter(frontmatter as Record<string, unknown>),
+        );
+        await saveTaskContent(id, serializeDocument(doc));
+      }
+
+      if (meta.uid === sourceMeta.uid) {
+        existingTaskId = id;
+        break;
+      }
+    }
+
+    if (existingTaskId) {
+      // Same task - merge traces
+      const destContent = await loadTaskContent(existingTaskId);
+      const {
+        meta: destMeta,
+        entries: destEntries,
+        checkpoints: destCheckpoints,
+      } = await parseTaskFile(destContent);
+      const warnings: string[] = [];
+
+      // Merge entries
+      const destTimestamps = new Set(destEntries.map((e) => e.ts));
+      const entriesToAdd: Entry[] = [];
+
+      for (const entry of sourceEntries) {
+        if (destTimestamps.has(entry.ts)) {
+          continue; // Already exists
+        }
+
+        // Check if entry is older than last checkpoint
+        if (destMeta.last_checkpoint) {
+          const entryDate = parseDate(entry.ts);
+          const lastCheckpointDate = parseDate(destMeta.last_checkpoint);
+          if (entryDate < lastCheckpointDate) {
+            warnings.push(
+              `Entry at ${entry.ts} is older than last checkpoint, skipped`,
+            );
+            continue;
+          }
+        }
+
+        entriesToAdd.push(entry);
+      }
+
+      // Merge checkpoints (if any new ones)
+      const destCheckpointTimestamps = new Set(
+        destCheckpoints.map((c) => c.ts),
+      );
+      const checkpointsToAdd: Checkpoint[] = [];
+      for (const checkpoint of sourceCheckpoints) {
+        if (!destCheckpointTimestamps.has(checkpoint.ts)) {
+          checkpointsToAdd.push(checkpoint);
+        }
+      }
+
+      if (entriesToAdd.length > 0 || checkpointsToAdd.length > 0) {
+        // Add entries and checkpoints to destination task
+        const doc = await parseDocument(destContent);
+        const entriesId = await getEntriesId();
+        const checkpointsId = await getCheckpointsId();
+
+        if (entriesToAdd.length > 0) {
+          const entriesSection = findSection(doc, entriesId);
+          if (entriesSection) {
+            const entriesEnd = getSectionEndLine(doc, entriesSection, true);
+            for (const entry of entriesToAdd) {
+              const entryText = `\n## ${entry.ts}\n\n${entry.msg}\n`;
+              doc.lines.splice(entriesEnd, 0, ...entryText.split("\n"));
+            }
+          }
+
+          // Set has_uncheckpointed_entries flag
+          const yamlContent = getFrontmatterContent(doc);
+          const frontmatter = parseFrontmatter(yamlContent);
+          frontmatter.has_uncheckpointed_entries = true;
+          setFrontmatter(
+            doc,
+            stringifyFrontmatter(frontmatter as Record<string, unknown>),
+          );
+        }
+
+        if (checkpointsToAdd.length > 0) {
+          const checkpointsSection = findSection(doc, checkpointsId);
+          if (checkpointsSection) {
+            const checkpointsEnd = getSectionEndLine(
+              doc,
+              checkpointsSection,
+              true,
+            );
+            for (const checkpoint of checkpointsToAdd) {
+              const checkpointText =
+                `\n## ${checkpoint.ts}\n\n### Changes\n${checkpoint.changes}\n\n### Learnings\n${checkpoint.learnings}\n`;
+              doc.lines.splice(
+                checkpointsEnd,
+                0,
+                ...checkpointText.split("\n"),
+              );
+            }
+
+            // Update last_checkpoint if newer
+            const yamlContent = getFrontmatterContent(doc);
+            const frontmatter = parseFrontmatter(yamlContent);
+            const newestCheckpoint =
+              [...destCheckpoints, ...checkpointsToAdd].sort((a, b) =>
+                parseDate(b.ts).getTime() - parseDate(a.ts).getTime()
+              )[0];
+            const newestDate = parseDate(newestCheckpoint.ts);
+            frontmatter.last_checkpoint = newestDate.toISOString();
+            setFrontmatter(
+              doc,
+              stringifyFrontmatter(frontmatter as Record<string, unknown>),
+            );
+          }
+        }
+
+        await saveTaskContent(existingTaskId, serializeDocument(doc));
+
+        results.push({
+          id: existingTaskId,
+          status: "merged",
+          warnings: warnings.length > 0 ? warnings : undefined,
+        });
+        merged++;
+
+        if (warnings.length === 0) {
+          tasksToRemove.push(sourceId);
+        }
+      } else {
+        results.push({
+          id: existingTaskId,
+          status: "skipped",
+          warnings: ["No new entries or checkpoints to merge"],
+        });
+        skipped++;
+        tasksToRemove.push(sourceId); // Can remove since nothing to merge
+      }
+    } else {
+      // Different task - check ID collision
+      let targetId = sourceId;
+      if (destIndex.tasks[sourceId]) {
+        // ID collision - generate new ID
+        const prefix = sourceId.slice(0, 6); // YYMMDD
+        const existing = Object.keys(destIndex.tasks)
+          .filter((id) => id.startsWith(prefix))
+          .map((id) => id.slice(6))
+          .sort();
+        const last = existing[existing.length - 1];
+        targetId = `${prefix}${incrementLetter(last)}`;
+      }
+
+      // Import task with (possibly renamed) ID
+      let taskContent = sourceContent;
+      if (targetId !== sourceId) {
+        // Update ID in frontmatter
+        const doc = await parseDocument(sourceContent);
+        const yamlContent = getFrontmatterContent(doc);
+        const frontmatter = parseFrontmatter(yamlContent);
+        frontmatter.id = targetId;
+        setFrontmatter(
+          doc,
+          stringifyFrontmatter(frontmatter as Record<string, unknown>),
+        );
+        taskContent = serializeDocument(doc);
+      }
+
+      await saveTaskContent(targetId, taskContent);
+
+      destIndex.tasks[targetId] = {
+        name: sourceInfo.name,
+        desc: sourceInfo.desc,
+        status: sourceInfo.status,
+        created: sourceInfo.created,
+        status_updated_at: sourceInfo.status_updated_at,
+        done_at: sourceInfo.done_at,
+      };
+
+      results.push({
+        id: targetId,
+        status: "imported",
+        warnings: targetId !== sourceId
+          ? [`Renamed from ${sourceId} to ${targetId}`]
+          : undefined,
+      });
+      imported++;
+      tasksToRemove.push(sourceId);
+    }
+  }
+
+  await saveIndex(destIndex);
+
+  // Remove source tasks if requested and fully imported
+  if (removeSource && tasksToRemove.length > 0) {
+    for (const taskId of tasksToRemove) {
+      const taskPath = `${sourcePath}/tasks/${taskId}.md`;
+      await Deno.remove(taskPath);
+      delete sourceIndex.tasks[taskId];
+    }
+
+    // Update source index
+    await Deno.writeTextFile(
+      sourceIndexPath,
+      JSON.stringify(sourceIndex, null, 2),
+    );
+
+    // If no tasks left, remove the whole .worklog directory
+    if (Object.keys(sourceIndex.tasks).length === 0) {
+      await Deno.remove(sourcePath, { recursive: true });
+    }
+  }
+
+  return {
+    imported,
+    merged,
+    skipped,
+    tasks: results,
+  };
 }
 
 /**
@@ -2838,17 +4025,50 @@ async function cmdImportScopeToTag(
   customTagName: string | undefined,
   gitRoot: string | null,
 ): Promise<ImportOutput & { tag: string }> {
-  if (customTagName) {
-    validateTags([customTagName]);
+  // Get source scope ID
+  const scopeId = gitRoot
+    ? await getScopeId(dirname(sourcePath), gitRoot)
+    : basename(dirname(sourcePath));
+  const tagName = customTagName || scopeId;
+
+  validateTags([tagName]);
+
+  // Import tasks using existing cmdImport
+  const importResult = await cmdImport(sourcePath, removeSource);
+
+  // Add tag to all imported tasks (not merged ones, as they already exist)
+  const targetIndex = await loadIndex();
+
+  for (const taskResult of importResult.tasks) {
+    if (taskResult.status !== "imported") continue; // Skip merged/skipped
+
+    const taskId = taskResult.id;
+    const content = await loadTaskContent(taskId);
+    const doc = await parseDocument(content);
+    const yamlContent = getFrontmatterContent(doc);
+    const frontmatter = parseFrontmatter(yamlContent) as Record<
+      string,
+      unknown
+    >;
+
+    const currentTags = (frontmatter.tags as string[]) || [];
+    const tagSet = new Set(currentTags);
+    tagSet.add(tagName);
+    const newTags = Array.from(tagSet).sort();
+
+    frontmatter.tags = newTags;
+    setFrontmatter(doc, stringifyFrontmatter(frontmatter));
+    await saveTaskContent(taskId, serializeDocument(doc));
+
+    // Update index
+    if (targetIndex.tasks[taskId]) {
+      targetIndex.tasks[taskId].tags = newTags;
+    }
   }
 
-  return await importScopeToTagUseCase.execute({
-    sourcePath,
-    removeSource,
-    customTagName,
-    gitRoot,
-    worklogDir: WORKLOG_DIR,
-  }) as ImportOutput & { tag: string };
+  await saveIndex(targetIndex);
+
+  return { ...importResult, tag: tagName };
 }
 
 async function cmdScopes(refresh: boolean, cwd: string): Promise<ScopesOutput> {
@@ -3022,15 +4242,148 @@ async function cmdScopesAdd(
     );
   }
 
-  return await addScopeUseCase.execute({
-    scopeId,
-    path: pathFlag,
-    worktree: worktreeFlag,
-    gitRef: refFlag,
-    cwd,
-    worklogDir: WORKLOG_DIR,
-    depthLimit: WORKLOG_DEPTH_LIMIT,
-  });
+  // Validate mutually exclusive flags
+  if (pathFlag && worktreeFlag) {
+    throw new WtError(
+      "invalid_args",
+      "Cannot use --path and --worktree together. Choose one.",
+    );
+  }
+
+  let targetDir: string;
+  let effectivePath: string;
+  let gitRef: string | undefined;
+  let scopeType: "path" | "worktree" = "path";
+
+  if (worktreeFlag) {
+    // Worktree mode
+    scopeType = "worktree";
+    gitRef = refFlag ?? scopeId;
+
+    // Try to find the worktree path
+    const worktrees = await listAllWorktrees(cwd);
+    const worktree = worktrees.find((wt) => wt.branch === gitRef);
+
+    if (worktree) {
+      targetDir = worktree.path;
+    } else {
+      // Maybe we're inside the worktree already - check current branch
+      const currentBranch = await getCurrentBranch(cwd);
+      if (currentBranch === gitRef) {
+        // We're in the worktree, use cwd's git root
+        targetDir = gitRoot;
+      } else {
+        throw new WtError(
+          "worktree_not_found",
+          `No worktree found for ref: ${gitRef}. Create the worktree first with 'git worktree add'.`,
+        );
+      }
+    }
+
+    // For worktrees, use relative path from main repo root if inside, otherwise absolute
+    const mainWorktree = worktrees.find((wt) => wt.isMainWorktree);
+    if (mainWorktree && targetDir.startsWith(mainWorktree.path)) {
+      effectivePath = targetDir.slice(mainWorktree.path.length + 1) || ".";
+    } else {
+      // Worktree is outside the main repo - use absolute path
+      effectivePath = targetDir;
+    }
+  } else {
+    // Path mode (default)
+    effectivePath = pathFlag ?? scopeId;
+
+    // Resolve relative to git root
+    if (effectivePath.startsWith("/")) {
+      targetDir = effectivePath;
+    } else {
+      targetDir = `${gitRoot}/${effectivePath}`;
+    }
+  }
+
+  const worklogPath = `${targetDir}/${WORKLOG_DIR}`;
+
+  // Check if worklog already exists
+  if (await exists(worklogPath)) {
+    // Child worklog exists - check if it already has a parent
+    const scopeJsonPath = `${worklogPath}/scope.json`;
+    if (await exists(scopeJsonPath)) {
+      try {
+        const content = await readFile(scopeJsonPath);
+        const config = JSON.parse(content) as ScopeConfig;
+        if ("parent" in config && config.parent) {
+          throw new WtError(
+            "already_has_parent",
+            `Scope at ${effectivePath} already has a parent configured. Use 'scopes add-parent' to change it.`,
+          );
+        }
+      } catch (e) {
+        if (e instanceof WtError) throw e;
+        // Corrupted or missing scope.json, proceed to configure
+      }
+    }
+
+    // Configure parent for existing worklog
+    const scopeDir = worklogPath.slice(0, -WORKLOG_DIR.length - 1);
+    const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
+    const depth = relativeToGitRoot.split("/").filter((p) => p).length;
+    const parentPath = "../".repeat(depth);
+    const childConfig: ScopeConfigChild = { parent: parentPath };
+    await saveScopeJson(worklogPath, childConfig);
+  } else {
+    // Create new worklog directory structure
+    await Deno.mkdir(`${worklogPath}/tasks`, { recursive: true });
+    await writeFile(
+      `${worklogPath}/index.json`,
+      JSON.stringify({ tasks: {} }, null, 2),
+    );
+
+    // Configure parent path
+    const scopeDir = worklogPath.slice(0, -WORKLOG_DIR.length - 1);
+    const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
+    const depth = relativeToGitRoot.split("/").filter((p) => p).length;
+    const parentPath = "../".repeat(depth);
+    const childConfig: ScopeConfigChild = { parent: parentPath };
+    await saveScopeJson(worklogPath, childConfig);
+  }
+
+  // Update parent scope.json to add this child
+  const rootWorklogPath = `${gitRoot}/${WORKLOG_DIR}`;
+  const rootConfig = await loadOrCreateScopeJson(rootWorklogPath, gitRoot);
+
+  if ("children" in rootConfig) {
+    // Check if child already exists
+    const existingChild = rootConfig.children.find(
+      (c) => c.path === effectivePath,
+    );
+    if (!existingChild) {
+      const newEntry: ScopeEntry = {
+        path: effectivePath,
+        id: scopeId,
+      };
+      if (scopeType === "worktree") {
+        newEntry.type = "worktree";
+        newEntry.gitRef = gitRef;
+      }
+      rootConfig.children.push(newEntry);
+    } else {
+      // Update existing entry
+      existingChild.id = scopeId;
+      if (scopeType === "worktree") {
+        existingChild.type = "worktree";
+        existingChild.gitRef = gitRef;
+      }
+    }
+  } else {
+    // Root is configured as a child? This shouldn't happen for git root
+    throw new WtError(
+      "invalid_state",
+      "Root worklog is configured as a child scope. This is invalid.",
+    );
+  }
+
+  await saveScopeJson(rootWorklogPath, rootConfig);
+
+  return { status: "scope_created" };
 }
 
 /**
@@ -3187,7 +4540,35 @@ async function cmdScopesRename(
     );
   }
 
-  return await renameScopeUseCase.execute({ scopeId, newId, cwd, worklogDir: WORKLOG_DIR });
+  // Load root scope.json
+  const rootConfig = await loadOrCreateScopeJson(
+    `${gitRoot}/${WORKLOG_DIR}`,
+    gitRoot,
+  );
+
+  if (!("children" in rootConfig)) {
+    throw new WtError(
+      "scope_not_found",
+      "Root configuration corrupted or no child scopes found.",
+    );
+  }
+
+  // Find the child with matching scopeId (by ID or path)
+  const child = rootConfig.children.find((c) =>
+    c.id === scopeId || c.path === scopeId
+  );
+
+  if (!child) {
+    throw new WtError("scope_not_found", `Scope not found: ${scopeId}`);
+  }
+
+  // Update the ID
+  child.id = newId;
+
+  // Save updated config
+  await saveScopeJson(`${gitRoot}/${WORKLOG_DIR}`, rootConfig);
+
+  return { status: "scope_renamed" };
 }
 
 async function cmdScopesDelete(
@@ -3205,13 +4586,20 @@ async function cmdScopesDelete(
     );
   }
 
-  // If moveTo is specified, need to move tasks first (delegation to assignScope)
-  if (moveTo) {
-    const worklogPath = await resolveScopeIdentifier(scopeId, gitRoot, cwd);
-    const index = await loadIndexFrom(worklogPath);
-    const taskIds = Object.keys(index.tasks);
-    if (taskIds.length > 0) {
+  // Resolve scope to delete
+  const worklogPath = await resolveScopeIdentifier(scopeId, gitRoot, cwd);
+
+  // Load index to check for tasks
+  const index = await loadIndexFrom(worklogPath);
+  const taskIds = Object.keys(index.tasks);
+  const taskCount = taskIds.length;
+
+  // Handle tasks if they exist
+  if (taskCount > 0) {
+    if (moveTo) {
+      // Move all tasks to target scope before deleting
       const assignResult = await cmdScopesAssign(moveTo, taskIds, cwd);
+      // Check if all tasks were moved successfully
       if (assignResult.errors.length > 0) {
         throw new WtError(
           "io_error",
@@ -3220,10 +4608,23 @@ async function cmdScopesDelete(
           }`,
         );
       }
+    } else if (!deleteTasks) {
+      throw new WtError(
+        "scope_has_tasks",
+        `Scope has ${taskCount} task(s). Use --move-to <scope-id> or --delete-tasks`,
+      );
     }
+    // else: deleteTasks=true, proceed with deletion
   }
 
-  return await deleteScopeUseCase.execute({ scopeId, deleteTasks, cwd, worklogDir: WORKLOG_DIR, depthLimit: WORKLOG_DEPTH_LIMIT });
+  // Delete .worklog directory
+  await Deno.remove(worklogPath, { recursive: true });
+
+  // Refresh hierarchy to update parent scope.json
+  const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+  await refreshScopeHierarchy(gitRoot, scopes);
+
+  return { status: "scope_deleted" };
 }
 
 /**
@@ -3246,16 +4647,135 @@ async function cmdScopesExport(
     );
   }
 
-  return await exportScopeUseCase.execute({
-    tagPattern,
-    targetPath,
-    removeTag,
-    customScopeId,
-    gitRoot,
-    cwd,
-    worklogDir: WORKLOG_DIR,
-    depthLimit: WORKLOG_DEPTH_LIMIT,
+  const scopeId = customScopeId || tagPattern;
+
+  // Find all tasks matching tag
+  const matchingTasks = await findTasksByTagPattern(tagPattern, gitRoot, cwd);
+
+  if (matchingTasks.length === 0) {
+    throw new WtError("task_not_found", `No tasks with tag: ${tagPattern}`);
+  }
+
+  // Resolve target path
+  const absoluteTargetPath = isAbsolute(targetPath)
+    ? targetPath
+    : join(cwd, targetPath);
+  const targetWorklogPath = join(absoluteTargetPath, WORKLOG_DIR);
+
+  // Check if target exists
+  if (await exists(targetWorklogPath)) {
+    const targetIndexPath = join(targetWorklogPath, "index.json");
+    if (await exists(targetIndexPath)) {
+      const targetIndex = JSON.parse(
+        await Deno.readTextFile(targetIndexPath),
+      ) as Index;
+      if (Object.keys(targetIndex.tasks).length > 0) {
+        throw new WtError(
+          "invalid_state",
+          `Target worklog has ${
+            Object.keys(targetIndex.tasks).length
+          } tasks. Choose different path.`,
+        );
+      }
+    }
+  }
+
+  // Create target worklog directory
+  await ensureDir(join(targetWorklogPath, "tasks"));
+
+  // Initialize target index
+  const targetIndex: Index = { version: 2, tasks: {} };
+
+  // Copy tasks
+  for (const { id, task, scopePath } of matchingTasks) {
+    const sourceWorklogPath = scopePath;
+
+    const content = await loadTaskContentFrom(id, sourceWorklogPath);
+    const doc = await parseDocument(content);
+    const yamlContent = getFrontmatterContent(doc);
+    const frontmatter = parseFrontmatter(yamlContent) as Record<
+      string,
+      unknown
+    >;
+
+    // Adjust tags: remove exported tag or tag prefix
+    const currentTags = (frontmatter.tags as string[]) || [];
+    const newTags = removeTag
+      ? currentTags
+        .filter((t) => !matchesTagPattern(tagPattern, t))
+        .map((t) =>
+          t.startsWith(tagPattern + "/") ? t.slice(tagPattern.length + 1) : t
+        )
+      : currentTags;
+
+    frontmatter.tags = newTags.length > 0 ? newTags : undefined;
+    setFrontmatter(doc, stringifyFrontmatter(frontmatter));
+
+    // Save to target
+    await saveTaskContentTo(id, serializeDocument(doc), targetWorklogPath);
+
+    // Add to target index
+    targetIndex.tasks[id] = {
+      ...task,
+      tags: newTags.length > 0 ? newTags : undefined,
+    };
+
+    // Remove from source
+    await Deno.remove(join(sourceWorklogPath, "tasks", `${id}.md`));
+    const sourceIndex = await loadIndexFrom(sourceWorklogPath);
+    delete sourceIndex.tasks[id];
+    await saveIndexTo(sourceIndex, sourceWorklogPath);
+  }
+
+  // Save target index
+  await saveIndexTo(targetIndex, targetWorklogPath);
+
+  // Create scope.json in target (child)
+  const targetScopeConfig: ScopeConfigChild = {
+    parent: relative(absoluteTargetPath, gitRoot),
+  };
+  await Deno.writeTextFile(
+    join(targetWorklogPath, "scope.json"),
+    JSON.stringify(targetScopeConfig, null, 2),
+  );
+
+  // Update parent scope.json
+  const parentWorklogPath = join(gitRoot, WORKLOG_DIR);
+  const parentScopeJsonPath = join(parentWorklogPath, "scope.json");
+
+  let parentConfig: ScopeConfigParent;
+  if (await exists(parentScopeJsonPath)) {
+    parentConfig = JSON.parse(
+      await Deno.readTextFile(parentScopeJsonPath),
+    ) as ScopeConfigParent;
+    if (!("children" in parentConfig)) {
+      throw new WtError(
+        "invalid_state",
+        "Parent scope.json is not a parent config",
+      );
+    }
+  } else {
+    parentConfig = { children: [] };
+  }
+
+  // Add child entry
+  const relativePath = relative(gitRoot, absoluteTargetPath);
+  parentConfig.children.push({
+    path: relativePath,
+    id: scopeId,
+    type: "path",
   });
+
+  await Deno.writeTextFile(
+    parentScopeJsonPath,
+    JSON.stringify(parentConfig, null, 2),
+  );
+
+  return {
+    exported: matchingTasks.length,
+    scopeId,
+    targetPath: absoluteTargetPath,
+  };
 }
 
 interface SyncWorktreesOutput {
@@ -3403,13 +4923,113 @@ async function cmdScopesAssign(
     );
   }
 
-  return await assignScopeUseCase.execute({
+  // Resolve target scope
+  const targetWorklog = await resolveScopeIdentifier(
     targetScopeId,
-    taskIds,
+    gitRoot,
     cwd,
-    worklogDir: WORKLOG_DIR,
-    depthLimit: WORKLOG_DEPTH_LIMIT,
-  }) as AssignOutput;
+  );
+  const scopes = await discoverScopes(gitRoot, WORKLOG_DEPTH_LIMIT);
+
+  let assigned = 0;
+  let merged = 0;
+  const errors: Array<{ taskId: string; error: string }> = [];
+
+  for (const taskIdPrefix of taskIds) {
+    try {
+      // Find task in any scope
+      const found = await findTaskInScopes(taskIdPrefix, scopes);
+
+      if (!found) {
+        errors.push({
+          taskId: taskIdPrefix,
+          error: "Task not found in any scope",
+        });
+        continue;
+      }
+
+      const { worklog: sourceWorklog, taskId } = found;
+
+      // If already in target scope, skip
+      if (sourceWorklog === targetWorklog) {
+        continue;
+      }
+
+      // Load task from source
+      const sourceTaskPath = `${sourceWorklog}/tasks/${taskId}.md`;
+      const taskContent = await Deno.readTextFile(sourceTaskPath);
+      const { meta: sourceMeta } = await parseTaskFile(taskContent);
+
+      // Load target index
+      const targetIndexPath = `${targetWorklog}/index.json`;
+      const targetIndex = await loadIndexFrom(targetWorklog);
+
+      // Check if task with same UID exists in target
+      let existingTaskId: string | undefined;
+      for (const id of Object.keys(targetIndex.tasks)) {
+        const destTaskPath = `${targetWorklog}/tasks/${id}.md`;
+        const destContent = await Deno.readTextFile(destTaskPath);
+        const { meta: destMeta } = await parseTaskFile(destContent);
+
+        if (destMeta.uid === sourceMeta.uid) {
+          existingTaskId = id;
+          break;
+        }
+      }
+
+      if (existingTaskId) {
+        // Task already exists by UID - would need merge logic here
+        // For now, we'll skip merging and just count it
+        merged++;
+
+        // Remove from source anyway
+        await Deno.remove(sourceTaskPath);
+        const sourceIndex = await loadIndexFrom(sourceWorklog);
+        delete sourceIndex.tasks[taskId];
+        await writeFile(
+          `${sourceWorklog}/index.json`,
+          JSON.stringify(sourceIndex, null, 2),
+        );
+      } else {
+        // Import as new task
+        const targetTaskPath = `${targetWorklog}/tasks/${taskId}.md`;
+        await Deno.writeTextFile(targetTaskPath, taskContent);
+
+        targetIndex.tasks[taskId] = {
+          name: sourceMeta.name,
+          desc: sourceMeta.desc,
+          status: sourceMeta.status,
+          created: sourceMeta.created_at,
+          status_updated_at: sourceMeta.created_at,
+          done_at: sourceMeta.done_at,
+        };
+
+        // Save target index
+        await writeFile(
+          targetIndexPath,
+          JSON.stringify(targetIndex, null, 2),
+        );
+
+        assigned++;
+
+        // Remove from source
+        await Deno.remove(sourceTaskPath);
+        const sourceIndex = await loadIndexFrom(sourceWorklog);
+        delete sourceIndex.tasks[taskId];
+        await writeFile(
+          `${sourceWorklog}/index.json`,
+          JSON.stringify(sourceIndex, null, 2),
+        );
+      }
+    } catch (error) {
+      errors.push({
+        taskId: taskIdPrefix,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { assigned, merged, errors };
 }
 
 async function _cmdMove(
@@ -3571,12 +5191,10 @@ function applyDirOptions(
     TASKS_DIR = `${base}/tasks`;
     INDEX_FILE = `${base}/index.json`;
     _SCOPE_FILE = `${base}/scope.json`;
+    return true; // explicit worklog dir → skip scope resolution
   }
 
-  // Reinitialize use cases with new paths
-  initializeUseCases();
-
-  return !!worklogDir;
+  return false;
 }
 
 /**
