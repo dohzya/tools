@@ -2,7 +2,8 @@
 // Handles transitions + done requires checkpoint
 
 import type { StatusOutput } from "../../entities/outputs.ts";
-import type { TaskMeta, TaskStatus } from "../../entities/task.ts";
+import type { IndexEntry } from "../../entities/index.ts";
+import type { TaskStatus } from "../../entities/task.ts";
 import type { Todo } from "../../entities/todo.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
@@ -130,7 +131,9 @@ export class UpdateStatusUseCase {
     content = await this.markdownService.updateFrontmatter(content, updates);
     await this.taskRepo.saveContent(taskId, content);
 
-    const indexUpdates: Record<string, unknown> = {
+    const indexUpdates: Partial<
+      { -readonly [K in keyof IndexEntry]: IndexEntry[K] }
+    > = {
       status: "started",
       status_updated_at: now,
     };
@@ -138,7 +141,7 @@ export class UpdateStatusUseCase {
     // Remove done_at from index if present
     await this.indexRepo.updateEntry(
       taskId,
-      indexUpdates as any,
+      indexUpdates,
     );
 
     return { status: "task_started" };

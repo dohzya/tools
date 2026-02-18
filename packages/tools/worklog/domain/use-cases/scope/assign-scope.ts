@@ -169,7 +169,7 @@ export class AssignScopeUseCase {
   private async findTaskInScopes(
     taskIdPrefix: string,
     scopes: readonly DiscoveredScope[],
-    worklogDir: string,
+    _worklogDir: string,
   ): Promise<{ worklog: string; taskId: string } | null> {
     const allTasks: Array<{ scope: string; taskId: string }> = [];
 
@@ -213,7 +213,7 @@ export class AssignScopeUseCase {
   private async resolveScopeIdentifier(
     identifier: string,
     gitRoot: string,
-    cwd: string,
+    _cwd: string,
     worklogDir: string,
     depthLimit: number,
   ): Promise<string> {

@@ -1,7 +1,12 @@
 // UpdateMetaUseCase - Set/get task metadata
 
 import { WtError } from "../../entities/errors.ts";
-import { isValidTaskStatus, TASK_STATUSES, type TaskStatus } from "../../entities/task.ts";
+import type { IndexEntry } from "../../entities/index.ts";
+import {
+  isValidTaskStatus,
+  TASK_STATUSES,
+  type TaskStatus,
+} from "../../entities/task.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 import type { MarkdownService } from "../../ports/markdown-service.ts";
@@ -22,7 +27,8 @@ export class UpdateMetaUseCase {
     private readonly indexRepo: IndexRepository,
     private readonly taskRepo: TaskRepository,
     private readonly markdownService: MarkdownService,
-    private readonly getTimestamp: () => string = () => new Date().toISOString(),
+    private readonly getTimestamp: () => string = () =>
+      new Date().toISOString(),
   ) {}
 
   async execute(input: UpdateMetaInput): Promise<UpdateMetaOutput> {
@@ -88,16 +94,18 @@ export class UpdateMetaUseCase {
         await this.taskRepo.saveContent(taskId, content);
 
         // Update index
-        const indexUpdates: Record<string, unknown> = {
+        const indexUpdates: Partial<
+          { -readonly [K in keyof IndexEntry]: IndexEntry[K] }
+        > = {
           status: input.value,
           status_updated_at: now,
         };
         if (["created", "ready", "started"].includes(status)) {
           indexUpdates.done_at = undefined;
         } else if (status === "done" && statusUpdates.done_at) {
-          indexUpdates.done_at = statusUpdates.done_at;
+          indexUpdates.done_at = statusUpdates.done_at as string;
         }
-        await this.indexRepo.updateEntry(taskId, indexUpdates as any);
+        await this.indexRepo.updateEntry(taskId, indexUpdates);
 
         return { metadata };
       }

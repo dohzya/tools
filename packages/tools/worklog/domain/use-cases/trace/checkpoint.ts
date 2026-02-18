@@ -1,7 +1,6 @@
 // CreateCheckpointUseCase - Create a checkpoint
 
 import type { StatusOutput } from "../../entities/outputs.ts";
-import type { Entry } from "../../entities/entry.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";

@@ -4,17 +4,12 @@
 import type { Index, IndexEntry } from "../../entities/index.ts";
 import type { ListOutput, ListTaskItem } from "../../entities/outputs.ts";
 import type { TaskStatus } from "../../entities/task.ts";
-import type {
-  DiscoveredScope,
-  ScopeConfig,
-  ScopeConfigParent,
-} from "../../entities/scope.ts";
+import type { ScopeConfig } from "../../entities/scope.ts";
 import { WtError } from "../../entities/errors.ts";
 import { matchesTagPattern } from "../../entities/task-helpers.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
-import type { GitService } from "../../ports/git-service.ts";
 
 export interface ListTasksInput {
   readonly showAll: boolean;
@@ -368,8 +363,8 @@ export class ListTasksUseCase {
   private async findTasksByTagPattern(
     pattern: string,
     gitRoot: string,
-    cwd: string,
-    worklogDir: string,
+    _cwd: string,
+    _worklogDir: string,
     depthLimit: number,
   ): Promise<
     Array<{
@@ -413,7 +408,7 @@ export class ListTasksUseCase {
   private async resolveScopeIdentifier(
     identifier: string,
     gitRoot: string,
-    cwd: string,
+    _cwd: string,
     worklogDir: string,
     depthLimit: number,
   ): Promise<string> {

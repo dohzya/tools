@@ -1,12 +1,11 @@
 // ExportScopeUseCase - Export scope tasks with tag to new child worklog
 
-import type { Index } from "../../entities/index.ts";
+import type { Index, IndexEntry } from "../../entities/index.ts";
 import { WtError } from "../../entities/errors.ts";
 import { matchesTagPattern, validateTag } from "../../entities/task-helpers.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
 import type { GitService } from "../../ports/git-service.ts";
-import type { TaskRepository } from "../../ports/task-repository.ts";
 import type { MarkdownService } from "../../ports/markdown-service.ts";
 
 export interface ExportScopeInput {
@@ -118,10 +117,11 @@ export class ExportScopeUseCase {
     await this.fs.ensureDir(`${targetWorklogPath}/tasks`);
 
     // Initialize target index
-    const targetIndex: { version: number; tasks: Record<string, any> } = {
-      version: 2,
-      tasks: {},
-    };
+    const targetIndex: { version: number; tasks: Record<string, IndexEntry> } =
+      {
+        version: 2,
+        tasks: {},
+      };
 
     // Copy tasks
     for (const { id, scopePath, indexEntry } of matchingTasks) {

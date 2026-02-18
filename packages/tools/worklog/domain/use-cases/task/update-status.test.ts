@@ -1,7 +1,11 @@
+// deno-lint-ignore-file require-await no-explicit-any
 import { assertEquals, assertRejects } from "@std/assert";
 import { UpdateStatusUseCase } from "./update-status.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
-import type { TaskRepository, TaskFileData } from "../../ports/task-repository.ts";
+import type {
+  TaskFileData,
+  TaskRepository,
+} from "../../ports/task-repository.ts";
 import type { MarkdownService } from "../../ports/markdown-service.ts";
 import type { Index, IndexEntry } from "../../entities/index.ts";
 import type { TaskMeta } from "../../entities/task.ts";
@@ -101,7 +105,10 @@ function createMockMarkdownService(): MarkdownService & {
 
 function makeTaskFileData(
   overrides: Partial<TaskMeta> = {},
-  options: { todos?: TaskFileData["todos"]; entries?: TaskFileData["entries"] } = {},
+  options: {
+    todos?: TaskFileData["todos"];
+    entries?: TaskFileData["entries"];
+  } = {},
 ): TaskFileData {
   return {
     meta: {
@@ -165,11 +172,17 @@ Deno.test("UpdateStatusUseCase - toReady from created", async () => {
   // Verify frontmatter was updated with ready status and timestamp
   assertEquals(markdownService.lastFrontmatterUpdates.length, 1);
   assertEquals(markdownService.lastFrontmatterUpdates[0].status, "ready");
-  assertEquals(markdownService.lastFrontmatterUpdates[0].ready_at, FIXED_TIMESTAMP);
+  assertEquals(
+    markdownService.lastFrontmatterUpdates[0].ready_at,
+    FIXED_TIMESTAMP,
+  );
 
   // Verify index was updated
   assertEquals(indexRepo.index.tasks[TASK_ID].status, "ready");
-  assertEquals(indexRepo.index.tasks[TASK_ID].status_updated_at, FIXED_TIMESTAMP);
+  assertEquals(
+    indexRepo.index.tasks[TASK_ID].status_updated_at,
+    FIXED_TIMESTAMP,
+  );
 });
 
 Deno.test("UpdateStatusUseCase - toReady from started (allowed)", async () => {
@@ -249,7 +262,10 @@ Deno.test("UpdateStatusUseCase - toStarted from created", async () => {
   // Verify frontmatter updates
   assertEquals(markdownService.lastFrontmatterUpdates.length, 1);
   assertEquals(markdownService.lastFrontmatterUpdates[0].status, "started");
-  assertEquals(markdownService.lastFrontmatterUpdates[0].started_at, FIXED_TIMESTAMP);
+  assertEquals(
+    markdownService.lastFrontmatterUpdates[0].started_at,
+    FIXED_TIMESTAMP,
+  );
 
   // Verify index was updated
   assertEquals(indexRepo.index.tasks[TASK_ID].status, "started");
@@ -311,7 +327,10 @@ Deno.test("UpdateStatusUseCase - toStarted from cancelled (rejected)", async () 
 
 Deno.test("UpdateStatusUseCase - toStarted from done (reopening, clears done_at)", async () => {
   const indexRepo = createMockIndexRepo({
-    [TASK_ID]: makeIndexEntry({ status: "done", done_at: "2025-01-18T12:00:00+01:00" }),
+    [TASK_ID]: makeIndexEntry({
+      status: "done",
+      done_at: "2025-01-18T12:00:00+01:00",
+    }),
   });
   const taskRepo = createMockTaskRepo({
     [TASK_ID]: makeTaskFileData({
@@ -535,7 +554,10 @@ Deno.test("UpdateStatusUseCase - toCancelled with reason", async () => {
   assertEquals(markdownService.lastFrontmatterUpdates.length, 1);
   assertEquals(markdownService.lastFrontmatterUpdates[0].status, "cancelled");
   assertEquals(
-    (markdownService.lastFrontmatterUpdates[0].metadata as Record<string, string>)
+    (markdownService.lastFrontmatterUpdates[0].metadata as Record<
+      string,
+      string
+    >)
       .cancellation_reason,
     "No longer needed",
   );

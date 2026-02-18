@@ -23,7 +23,8 @@ export class GenerateSummaryUseCase {
 
     for (const [id, info] of Object.entries(index.tasks)) {
       const include = ["created", "ready", "started"].includes(info.status) ||
-        (sinceDate && info.done_at && this.parseDate(info.done_at) >= sinceDate);
+        (sinceDate && info.done_at &&
+          this.parseDate(info.done_at) >= sinceDate);
 
       if (!include) continue;
 

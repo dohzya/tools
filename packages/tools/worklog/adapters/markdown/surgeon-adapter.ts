@@ -326,7 +326,8 @@ has_uncheckpointed_entries: ${meta.has_uncheckpointed_entries}${metadataYaml}${t
 
     // Add checkpoints
     for (const cp of checkpoints) {
-      content += `\n\n## ${cp.ts}\n\n### Changes\n${cp.changes}\n\n### Learnings\n${cp.learnings}\n`;
+      content +=
+        `\n\n## ${cp.ts}\n\n### Changes\n${cp.changes}\n\n### Learnings\n${cp.learnings}\n`;
     }
 
     // Add todos if any

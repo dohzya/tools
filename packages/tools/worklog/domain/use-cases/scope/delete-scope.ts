@@ -77,7 +77,7 @@ export class DeleteScopeUseCase {
     // Refresh parent scope.json
     const rootScope = scopes.find((s) => s.isParent);
     if (rootScope) {
-      const childScopes = scopes.filter((s) => !s.isParent);
+      const _childScopes = scopes.filter((s) => !s.isParent);
       const rootConfig = await this.scopeRepo.loadConfig(
         rootScope.absolutePath,
       );
@@ -101,7 +101,7 @@ export class DeleteScopeUseCase {
   private async resolveScopeIdentifier(
     identifier: string,
     gitRoot: string,
-    cwd: string,
+    _cwd: string,
     worklogDir: string,
     depthLimit: number,
   ): Promise<string> {

@@ -187,7 +187,9 @@ export function formatStatus(output: StatusOutput): string {
   return output.status.replace(/_/g, " ");
 }
 
-export function formatMeta(output: { metadata: Record<string, string> }): string {
+export function formatMeta(
+  output: { metadata: Record<string, string> },
+): string {
   if (Object.keys(output.metadata).length === 0) {
     return "(no metadata)";
   }

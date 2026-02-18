@@ -4,7 +4,6 @@ import type {
   ScopeDetailOutput,
   ScopesOutput,
 } from "../../entities/outputs.ts";
-import type { DiscoveredScope, ScopeConfig } from "../../entities/scope.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
@@ -200,7 +199,7 @@ export class ListScopesUseCase {
 
   private async resolveActiveScope(
     cwd: string,
-    flagScope: string | null,
+    _flagScope: string | null,
     gitRoot: string | null,
     worklogDir: string,
   ): Promise<string> {
@@ -220,7 +219,7 @@ export class ListScopesUseCase {
   private async resolveScopeIdentifier(
     identifier: string,
     gitRoot: string,
-    cwd: string,
+    _cwd: string,
     worklogDir: string,
     depthLimit: number,
   ): Promise<string> {

@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await
 import { assertEquals, assertRejects } from "@std/assert";
 import { ListTasksUseCase } from "./list-tasks.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
@@ -248,7 +249,10 @@ Deno.test("ListTasksUseCase - all scopes listing", async () => {
 
   const files = new Map<string, string>();
   files.set("/repo/.worklog/index.json", scope1Index);
-  files.set("/repo/.worklog/scope.json", JSON.stringify({ children: [{ path: "packages/api", id: "api" }] }));
+  files.set(
+    "/repo/.worklog/scope.json",
+    JSON.stringify({ children: [{ path: "packages/api", id: "api" }] }),
+  );
   files.set("/repo/packages/api/.worklog/index.json", scope2Index);
 
   const scopes: DiscoveredScope[] = [

@@ -6,10 +6,8 @@ import {
   type DiscoveredScope,
   type Entry,
   type ImportOutput,
-  type ImportTaskResult,
   type Index,
   type IndexEntry,
-  isValidTaskStatus,
   type ListOutput,
   type MoveOutput,
   type RunOutput,
@@ -46,15 +44,7 @@ import {
   parseFrontmatter,
   stringifyFrontmatter,
 } from "../markdown-surgeon/yaml.ts";
-import {
-  basename,
-  dirname,
-  isAbsolute,
-  join,
-  relative,
-  resolve,
-} from "@std/path";
-import { ensureDir } from "@std/fs";
+import { basename, dirname, isAbsolute, join, resolve } from "@std/path";
 import { z } from "@zod/zod/mini";
 
 // ============================================================================
@@ -138,7 +128,7 @@ let WORKLOG_DIR = DEFAULT_WORKLOG_DIR;
 let TASKS_DIR = `${WORKLOG_DIR}/tasks`;
 let INDEX_FILE = `${WORKLOG_DIR}/index.json`;
 let _SCOPE_FILE = `${WORKLOG_DIR}/scope.json`;
-const CHECKPOINT_THRESHOLD = 50;
+const _CHECKPOINT_THRESHOLD = 50;
 
 // Monorepo depth limit (configurable via env var)
 const WORKLOG_DEPTH_LIMIT = (() => {
@@ -198,9 +188,9 @@ const hashService = new Blake3HashService();
 const yamlService = new YamlParserService();
 
 // Markdown-surgeon setup
-const parseDoc = new ParseDocumentUseCase(hashService);
-const readSection = new ReadSectionUseCase();
-const manageFrontmatter = new ManageFrontmatterUseCase(yamlService);
+const _parseDoc = new ParseDocumentUseCase(hashService);
+const _readSection = new ReadSectionUseCase();
+const _manageFrontmatter = new ManageFrontmatterUseCase(yamlService);
 const markdownService = new MarkdownSurgeonAdapter(hashService, yamlService);
 
 // Repositories (will be re-instantiated when WORKLOG_DIR changes)
@@ -223,9 +213,9 @@ let addTodoUseCase: AddTodoUseCase;
 let listTodosUseCase: ListTodosUseCase;
 let updateTodoUseCase: UpdateTodoUseCase;
 let getNextTodoUseCase: GetNextTodoUseCase;
-let listScopesUseCase: ListScopesUseCase;
+let _listScopesUseCase: ListScopesUseCase;
 let addScopeUseCase: AddScopeUseCase;
-let syncWorktreesUseCase: SyncWorktreesUseCase;
+let _syncWorktreesUseCase: SyncWorktreesUseCase;
 let renameScopeUseCase: RenameScopeUseCase;
 let deleteScopeUseCase: DeleteScopeUseCase;
 let exportScopeUseCase: ExportScopeUseCase;
@@ -244,7 +234,12 @@ let listTagsUseCase: ListTagsUseCase;
 function initializeUseCases(): void {
   // Repositories
   taskRepo = new MarkdownTaskRepository(fs, markdownService, TASKS_DIR);
-  indexRepo = new JsonIndexRepository(fs, markdownService, INDEX_FILE, TASKS_DIR);
+  indexRepo = new JsonIndexRepository(
+    fs,
+    markdownService,
+    INDEX_FILE,
+    TASKS_DIR,
+  );
   scopeRepo = new JsonScopeRepository(fs, join(WORKLOG_DIR, "scope.json"));
 
   // Warn function for use cases
@@ -259,9 +254,21 @@ function initializeUseCases(): void {
   });
   showTaskUseCase = new ShowTaskUseCase(indexRepo, taskRepo, scopeRepo, fs);
   listTasksUseCase = new ListTasksUseCase(indexRepo, scopeRepo, fs);
-  updateStatusUseCase = new UpdateStatusUseCase(indexRepo, taskRepo, markdownService);
-  updateMetaUseCase = new UpdateMetaUseCase(indexRepo, taskRepo, markdownService);
-  updateTaskUseCase = new UpdateTaskUseCase(indexRepo, taskRepo, markdownService);
+  updateStatusUseCase = new UpdateStatusUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+  );
+  updateMetaUseCase = new UpdateMetaUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+  );
+  updateTaskUseCase = new UpdateTaskUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+  );
 
   // Trace use cases
   addTraceUseCase = new AddTraceUseCase(
@@ -272,7 +279,11 @@ function initializeUseCases(): void {
     warn,
   );
   listTracesUseCase = new ListTracesUseCase(indexRepo, taskRepo);
-  createCheckpointUseCase = new CreateCheckpointUseCase(indexRepo, taskRepo, markdownService);
+  createCheckpointUseCase = new CreateCheckpointUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+  );
 
   // Todo use cases
   addTodoUseCase = new AddTodoUseCase(indexRepo, taskRepo, markdownService);
@@ -281,17 +292,39 @@ function initializeUseCases(): void {
   getNextTodoUseCase = new GetNextTodoUseCase(indexRepo, taskRepo);
 
   // Scope use cases
-  listScopesUseCase = new ListScopesUseCase(scopeRepo, fs, git);
+  _listScopesUseCase = new ListScopesUseCase(scopeRepo, fs, git);
   addScopeUseCase = new AddScopeUseCase(scopeRepo, fs, git);
-  syncWorktreesUseCase = new SyncWorktreesUseCase(scopeRepo, fs, git);
+  _syncWorktreesUseCase = new SyncWorktreesUseCase(scopeRepo, fs, git);
   renameScopeUseCase = new RenameScopeUseCase(scopeRepo, git);
   deleteScopeUseCase = new DeleteScopeUseCase(scopeRepo, fs, git);
-  exportScopeUseCase = new ExportScopeUseCase(scopeRepo, fs, git, markdownService);
-  assignScopeUseCase = new AssignScopeUseCase(scopeRepo, fs, git, markdownService);
+  exportScopeUseCase = new ExportScopeUseCase(
+    scopeRepo,
+    fs,
+    git,
+    markdownService,
+  );
+  assignScopeUseCase = new AssignScopeUseCase(
+    scopeRepo,
+    fs,
+    git,
+    markdownService,
+  );
 
   // Import use cases
-  importTasksUseCase = new ImportTasksUseCase(indexRepo, taskRepo, fs, markdownService);
-  importScopeToTagUseCase = new ImportScopeToTagUseCase(indexRepo, taskRepo, fs, markdownService, git, scopeRepo);
+  importTasksUseCase = new ImportTasksUseCase(
+    indexRepo,
+    taskRepo,
+    fs,
+    markdownService,
+  );
+  importScopeToTagUseCase = new ImportScopeToTagUseCase(
+    indexRepo,
+    taskRepo,
+    fs,
+    markdownService,
+    git,
+    scopeRepo,
+  );
 
   // Run/Claude use cases (use deps objects)
   runCommandUseCase = new RunCommandUseCase({
@@ -302,16 +335,24 @@ function initializeUseCases(): void {
   claudeCommandUseCase = new ClaudeCommandUseCase({
     indexRepo,
     processRunner,
-    showTaskFn: async (taskId: string) => showTaskUseCase.execute({
-      taskId,
-      worklogDir: WORKLOG_DIR,
-      gitRoot: null, // Will be determined by the use case
-    }),
+    // deno-lint-ignore require-await
+    showTaskFn: async (taskId: string) =>
+      showTaskUseCase.execute({
+        taskId,
+        worklogDir: WORKLOG_DIR,
+        gitRoot: null, // Will be determined by the use case
+      }),
   });
 
   // Other use cases
   summaryUseCase = new GenerateSummaryUseCase(indexRepo, taskRepo);
-  listTagsUseCase = new ListTagsUseCase(indexRepo, taskRepo, scopeRepo, fs, markdownService);
+  listTagsUseCase = new ListTagsUseCase(
+    indexRepo,
+    taskRepo,
+    scopeRepo,
+    fs,
+    markdownService,
+  );
 }
 
 // Initialize on startup
@@ -452,7 +493,7 @@ async function getEffectiveTags(
 /**
  * Find tasks matching tag pattern across all scopes.
  */
-async function findTasksByTagPattern(
+async function _findTasksByTagPattern(
   pattern: string,
   gitRoot: string | null,
   cwd: string,
@@ -523,7 +564,7 @@ async function getParentScope(childPath: string): Promise<string> {
 // Date/Time utilities
 // ============================================================================
 
-function getLocalISOString(): string {
+function _getLocalISOString(): string {
   const now = new Date();
   const tzOffset = -now.getTimezoneOffset();
   const sign = tzOffset >= 0 ? "+" : "-";
@@ -540,7 +581,7 @@ function getLocalISOString(): string {
   return `${year}-${month}-${day}T${hour}:${minute}:${second}${sign}${hours}:${minutes}`;
 }
 
-function getShortDateTime(date?: Date): string {
+function _getShortDateTime(date?: Date): string {
   const now = date || new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -770,7 +811,7 @@ async function migrateIndexToV2(): Promise<void> {
 // Task ID generation
 // ============================================================================
 
-function incrementLetter(s: string): string {
+function _incrementLetter(s: string): string {
   if (s === "z") return "aa";
   if (s.length === 1) return String.fromCharCode(s.charCodeAt(0) + 1);
 
@@ -789,7 +830,7 @@ function incrementLetter(s: string): string {
   return chars.join("");
 }
 
-function generateTodoId(): string {
+function _generateTodoId(): string {
   // Generate random 7-char base62 ID for todos
   const chars =
     "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -1137,7 +1178,7 @@ async function resolveTaskIdWithEnvFallbackAcrossScopes(
 }
 
 // Resolve todo ID prefix to full ID with detailed error message
-function resolveTodoId(prefix: string, todos: Todo[]): string {
+function _resolveTodoId(prefix: string, todos: Todo[]): string {
   const allIds = todos.map((t) => t.id);
   const matches = todos.filter((t) =>
     t.id.toLowerCase().startsWith(prefix.toLowerCase())
@@ -1168,7 +1209,7 @@ function resolveTodoId(prefix: string, todos: Todo[]): string {
   return matches[0].id;
 }
 
-function generateTaskIdBase62(): string {
+function _generateTaskIdBase62(): string {
   // Generate UUID and convert to base36 (no collision check needed with UUID)
   const uuid = crypto.randomUUID();
   return uuidToBase36(uuid);
@@ -1289,7 +1330,7 @@ async function listAllWorktrees(cwd: string): Promise<WorktreeInfo[]> {
 /**
  * Get the current git branch name
  */
-async function getCurrentBranch(cwd: string): Promise<string | null> {
+async function _getCurrentBranch(cwd: string): Promise<string | null> {
   const process = new Deno.Command("git", {
     args: ["rev-parse", "--abbrev-ref", "HEAD"],
     cwd,
@@ -1644,7 +1685,7 @@ function getRelativeScopePath(worklogPath: string, gitRoot: string): string {
   return relativePath.slice(0, -WORKLOG_DIR.length - 1);
 }
 
-async function getScopeId(
+async function _getScopeId(
   worklogPath: string,
   gitRoot: string,
 ): Promise<string> {
@@ -1694,7 +1735,7 @@ async function saveTaskContent(taskId: string, content: string): Promise<void> {
   await writeFile(taskFilePath(taskId), content);
 }
 
-async function loadTaskContentFrom(
+async function _loadTaskContentFrom(
   taskId: string,
   worklogPath: string,
 ): Promise<string> {
@@ -1705,7 +1746,7 @@ async function loadTaskContentFrom(
   return await Deno.readTextFile(path);
 }
 
-async function saveTaskContentTo(
+async function _saveTaskContentTo(
   taskId: string,
   content: string,
   worklogPath: string,
@@ -1713,12 +1754,12 @@ async function saveTaskContentTo(
   await Deno.writeTextFile(`${worklogPath}/tasks/${taskId}.md`, content);
 }
 
-async function saveIndexTo(index: Index, worklogPath: string): Promise<void> {
+async function _saveIndexTo(index: Index, worklogPath: string): Promise<void> {
   const indexPath = `${worklogPath}/index.json`;
   await Deno.writeTextFile(indexPath, JSON.stringify(index, null, 2));
 }
 
-function assertActive(meta: TaskMeta): void {
+function _assertActive(meta: TaskMeta): void {
   if (meta.status === "done") {
     throw new WtError(
       "task_already_done",
@@ -1957,7 +1998,7 @@ async function parseTaskFile(content: string): Promise<ParsedTask> {
   return { meta, entries, checkpoints, todos };
 }
 
-function getEntriesAfterCheckpoint(
+function _getEntriesAfterCheckpoint(
   entries: Entry[],
   lastCheckpointTs: string | null,
 ): Entry[] {
@@ -1967,7 +2008,7 @@ function getEntriesAfterCheckpoint(
   return entries.filter((e) => parseDate(e.ts) > checkpointDate);
 }
 
-function getLastCheckpoint(checkpoints: Checkpoint[]): Checkpoint | null {
+function _getLastCheckpoint(checkpoints: Checkpoint[]): Checkpoint | null {
   if (checkpoints.length === 0) return null;
   return checkpoints[checkpoints.length - 1];
 }
@@ -2668,7 +2709,12 @@ async function cmdListTags(
   gitRoot: string | null,
   cwd: string,
 ): Promise<{ tags: Array<{ tag: string; count: number }> }> {
-  return await listTagsUseCase.listAll({ gitRoot, cwd, worklogDir: WORKLOG_DIR, depthLimit: WORKLOG_DEPTH_LIMIT }) as { tags: Array<{ tag: string; count: number }> };
+  return await listTagsUseCase.listAll({
+    gitRoot,
+    cwd,
+    worklogDir: WORKLOG_DIR,
+    depthLimit: WORKLOG_DEPTH_LIMIT,
+  }) as { tags: Array<{ tag: string; count: number }> };
 }
 
 /**
@@ -3193,7 +3239,12 @@ async function cmdScopesRename(
     );
   }
 
-  return await renameScopeUseCase.execute({ scopeId, newId, cwd, worklogDir: WORKLOG_DIR });
+  return await renameScopeUseCase.execute({
+    scopeId,
+    newId,
+    cwd,
+    worklogDir: WORKLOG_DIR,
+  });
 }
 
 async function cmdScopesDelete(
@@ -3229,7 +3280,13 @@ async function cmdScopesDelete(
     }
   }
 
-  return await deleteScopeUseCase.execute({ scopeId, deleteTasks, cwd, worklogDir: WORKLOG_DIR, depthLimit: WORKLOG_DEPTH_LIMIT });
+  return await deleteScopeUseCase.execute({
+    scopeId,
+    deleteTasks,
+    cwd,
+    worklogDir: WORKLOG_DIR,
+    depthLimit: WORKLOG_DEPTH_LIMIT,
+  });
 }
 
 /**
@@ -3489,7 +3546,7 @@ async function loadIndexFrom(worklogPath: string): Promise<Index> {
   return JSON.parse(content) as Index;
 }
 
-async function findTaskInScopes(
+async function _findTaskInScopes(
   taskIdPrefix: string,
   scopes: DiscoveredScope[],
 ): Promise<{ worklog: string; taskId: string } | null> {

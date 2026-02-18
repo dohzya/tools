@@ -72,8 +72,8 @@ export class UpdateTodoUseCase {
 
         // Apply updates
         if (input.updates.status) {
-          statusChar =
-            statusMap[input.updates.status as TodoStatus] || statusChar;
+          statusChar = statusMap[input.updates.status as TodoStatus] ||
+            statusChar;
         }
 
         // Update metadata
@@ -115,7 +115,7 @@ export class UpdateTodoUseCase {
     }
 
     if (matches.length > 1) {
-      const allIds = todos.map((t) => t.id);
+      const _allIds = todos.map((t) => t.id);
       const lines = [
         `Ambiguous todo ID prefix '${prefix}' matches ${matches.length} todos:`,
       ];

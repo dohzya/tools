@@ -116,8 +116,7 @@ export class CreateTaskUseCase {
     if (todoItems.length > 0) {
       todoSection = "\n# TODO\n\n";
       for (const todo of todoItems) {
-        todoSection +=
-          `- [ ] ${todo.text}  [id:: ${todo.id}] ^${todo.id}\n`;
+        todoSection += `- [ ] ${todo.text}  [id:: ${todo.id}] ^${todo.id}\n`;
       }
     }
 

@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await no-explicit-any
 import { assertEquals, assertRejects } from "@std/assert";
 import { CreateTaskUseCase } from "./create-task.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
@@ -117,8 +118,8 @@ Deno.test("CreateTaskUseCase - creates task with default status", async () => {
   // Should save content
   assertEquals(taskRepo.savedContent.size, 1);
   const savedContent = taskRepo.savedContent.get("test_id_1234567890abcdef")!;
-  assertEquals(savedContent.includes("name: \"Test task\""), true);
-  assertEquals(savedContent.includes("desc: \"Test description\""), true);
+  assertEquals(savedContent.includes('name: "Test task"'), true);
+  assertEquals(savedContent.includes('desc: "Test description"'), true);
   assertEquals(savedContent.includes("status: created"), true);
   assertEquals(
     savedContent.includes('created_at: "2025-01-15T10:00:00+01:00"'),

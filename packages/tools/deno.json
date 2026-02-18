@@ -8,7 +8,6 @@
     "./markdown-surgeon/parser": "./markdown-surgeon/parser.ts",
     "./markdown-surgeon/hash": "./markdown-surgeon/hash.ts",
     "./markdown-surgeon/yaml": "./markdown-surgeon/yaml.ts",
-    "./markdown-surgeon/magic": "./markdown-surgeon/magic.ts",
     "./markdown-surgeon/types": "./markdown-surgeon/types.ts",
     "./markdown-surgeon/cli": "./markdown-surgeon/cli.ts",
     "./worklog": "./worklog/mod.ts",

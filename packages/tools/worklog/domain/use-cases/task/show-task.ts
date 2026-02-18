@@ -4,12 +4,12 @@ import type { ShowOutput } from "../../entities/outputs.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 import { WtError } from "../../entities/errors.ts";
-import { getShortId, matchesTagPattern } from "../../entities/task-helpers.ts";
+import { getShortId } from "../../entities/task-helpers.ts";
+import type { IndexEntry } from "../../entities/index.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
-import type { ScopeConfig, ScopeConfigParent } from "../../entities/scope.ts";
+import type { ScopeConfigParent } from "../../entities/scope.ts";
 import type { Entry } from "../../entities/entry.ts";
-import type { Checkpoint } from "../../entities/checkpoint.ts";
 
 export interface ShowTaskInput {
   readonly taskId: string;
@@ -52,7 +52,6 @@ export class ShowTaskUseCase {
       )
       : todos;
 
-    const allIds = Object.keys(index.tasks);
     const shortId = getShortId(index, taskId);
 
     // Get effective tags
@@ -95,7 +94,12 @@ export class ShowTaskUseCase {
         `Ambiguous task ID prefix '${prefix}' matches ${matches.length} tasks:`,
       ];
       for (const id of matches.slice(0, 10)) {
-        const shortId = getShortId({ tasks: Object.fromEntries(allIds.map((i) => [i, {}])) } as any, id);
+        const shortId = getShortId(
+          {
+            tasks: Object.fromEntries(allIds.map((i) => [i, {} as IndexEntry])),
+          },
+          id,
+        );
         lines.push(`  ${shortId}`);
       }
       if (matches.length > 10) {
@@ -147,7 +151,10 @@ export class ShowTaskUseCase {
         if (parentConfig && "children" in parentConfig) {
           const myEntry = (parentConfig as ScopeConfigParent).children.find(
             (c) => {
-              const resolvedChildPath = this.resolvePath(resolvedParent, c.path);
+              const resolvedChildPath = this.resolvePath(
+                resolvedParent,
+                c.path,
+              );
               return resolvedChildPath === scopePath;
             },
           );

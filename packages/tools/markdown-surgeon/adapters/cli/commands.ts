@@ -8,7 +8,6 @@
 import { Command } from "@cliffy/command";
 import { expandGlob } from "@std/fs";
 import { MdError } from "../../domain/entities/document.ts";
-import type { FileSystem } from "../../domain/ports/filesystem.ts";
 import type { HashService } from "../../domain/ports/hash-service.ts";
 import type { YamlService } from "../../domain/ports/yaml-service.ts";
 import { ParseDocumentUseCase } from "../../domain/use-cases/parse-document.ts";
@@ -494,9 +493,7 @@ export function createCommands(deps: CommandDeps) {
       return json ? jsonSearchMatches(matches) : formatSearchMatches(matches);
     }
 
-    return json
-      ? jsonSearchSummary(summaries)
-      : formatSearchSummary(summaries);
+    return json ? jsonSearchSummary(summaries) : formatSearchSummary(summaries);
   }
 
   async function cmdMeta(

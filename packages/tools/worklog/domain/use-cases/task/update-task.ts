@@ -1,6 +1,7 @@
 // UpdateTaskUseCase - Update task name/desc
 
 import type { StatusOutput } from "../../entities/outputs.ts";
+import type { IndexEntry } from "../../entities/index.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
@@ -39,10 +40,12 @@ export class UpdateTaskUseCase {
     await this.taskRepo.saveContent(taskId, content);
 
     // Update index
-    const indexUpdates: Record<string, unknown> = {};
+    const indexUpdates: Partial<
+      { -readonly [K in keyof IndexEntry]: IndexEntry[K] }
+    > = {};
     if (input.name) indexUpdates.name = input.name;
     if (input.desc !== undefined) indexUpdates.desc = input.desc;
-    await this.indexRepo.updateEntry(taskId, indexUpdates as any);
+    await this.indexRepo.updateEntry(taskId, indexUpdates);
 
     return { status: "task_updated" };
   }

@@ -1,11 +1,7 @@
 // AddScopeUseCase - Add a scope (cmdScopesAdd / cmdScopesAddParent)
 
 import type { StatusOutput } from "../../entities/outputs.ts";
-import type {
-  ScopeConfigChild,
-  ScopeConfigParent,
-  ScopeEntry,
-} from "../../entities/scope.ts";
+import type { ScopeConfigParent, ScopeEntry } from "../../entities/scope.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
