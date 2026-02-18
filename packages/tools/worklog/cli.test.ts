@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
-import { WtError } from "./types.ts";
+import { WtError } from "./domain/entities/errors.ts";
 
 // WtError tests
 Deno.test("WtError - creates error with code and message", () => {

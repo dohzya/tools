@@ -92,6 +92,12 @@ For external data (files, APIs, user input). Let validation errors bubble up.
 
 ---
 
+## Architecture
+
+→ See [ARCHI.md](ARCHI.md) for architecture rules (hexagonal, layer dependencies, forbidden patterns).
+
+---
+
 ## Releases & CHANGELOG
 
 → See [RELEASE.md](RELEASE.md)
