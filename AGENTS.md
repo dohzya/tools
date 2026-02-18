@@ -58,6 +58,9 @@ task test:md    # Tests markdown-surgeon
 task test:wl    # Tests worklog
 task test       # All tests
 task validate   # fmt + check + lint + test
+
+# After editing any .md file:
+deno fmt        # MANDATORY — CI checks markdown formatting too
 ```
 
 **Writing tests:** Use `Deno.makeTempDir()` and `createTempFile()`, never `/tmp/test-vault`.

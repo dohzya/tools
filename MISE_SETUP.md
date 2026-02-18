@@ -112,7 +112,7 @@ md --version
 Check GitHub releases for available bundles:
 
 ```bash
-gh release list -R dohzya/tools | grep -v "wl-v0.7.0\|md-v0.6.0"
+gh release list -R dohzya/tools | grep -v "wl-v0.8.0\|md-v0.7.0"
 ```
 
 ### Permission denied
