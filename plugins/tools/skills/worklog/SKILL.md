@@ -150,6 +150,30 @@ wl done <id>
 - ❌ "Used CurrencyBucket" (action, not insight)
 - ✅ "Bucket pattern isolates concerns better than direct fields"
 
+### 5. Run Commands with Task Context
+
+Use `wl run` and `wl claude` to propagate task context via the `WORKLOG_TASK_ID` env var:
+
+```bash
+# Run any command with task context injected
+wl run <id> npm test
+wl run <id> ./scripts/deploy.sh
+
+# Create task on-the-fly and run
+wl run --create "Run tests" npm test
+
+# Launch Claude with task context in system prompt
+wl claude              # uses WORKLOG_TASK_ID if set
+wl claude <id>         # explicit task
+wl claude <id> -c      # pass Claude args after taskId
+
+# For complex claude args, use wl run instead:
+wl run <id> claude -c --model opus
+```
+
+`WORKLOG_TASK_ID` is also picked up automatically by `trace`, `checkpoint`, `done`, etc.
+when running inside `wl run` — no need to specify `<id>` explicitly.
+
 ## Common Mistakes to Avoid
 
 1. **Working without worktask** → Always create worktask first
@@ -178,6 +202,11 @@ wl cancel <id> [reason]           # Abandon task (marks as cancelled)
 wl list                           # See active worktasks (created/ready/started)
 wl list --started                 # Filter by status
 wl list --done                    # Show done tasks
+
+# Run with task context (sets WORKLOG_TASK_ID for sub-process)
+wl run <id> <cmd...>              # Execute command with task injected
+wl run --create "name" <cmd...>   # Create task on-the-fly + run
+wl claude [id] [claude-args...]   # Launch Claude with task context
 
 # TODO management
 wl create "Task" --todo "Step 1" --todo "Step 2"
