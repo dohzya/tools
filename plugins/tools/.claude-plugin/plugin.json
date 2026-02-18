@@ -2,5 +2,11 @@
   "name": "tools",
   "description": "Markdown manipulation and productivity skills for Claude Code",
   "version": "0.6.0",
-  "agents": "./agents/"
+  "agents": "./agents/",
+  "skills": [
+    "./skills/worklog",
+    "./skills/markdown-surgeon",
+    "./skills/obsidian-journal",
+    "./skills/rex-session"
+  ]
 }

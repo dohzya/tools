@@ -13,7 +13,14 @@
       "source": "./plugins/tools",
       "description": "Markdown manipulation and productivity skills for Claude Code",
       "version": "0.6.1",
-      "license": "MIT"
+      "license": "MIT",
+      "strict": false,
+      "skills": [
+        "./skills/worklog",
+        "./skills/markdown-surgeon",
+        "./skills/obsidian-journal",
+        "./skills/rex-session"
+      ]
     }
   ]
 }
