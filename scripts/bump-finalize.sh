@@ -109,26 +109,31 @@ sed -i.bak "s/version \".*\"/version \"$VERSION\"/" "homebrew/Formula/$TOOL.rb"
 sed -i.bak2 "s/$TOOL-v[0-9.]*/$TOOL-v$VERSION/g" "homebrew/Formula/$TOOL.rb"
 
 # Update checksums - target the sha256 lines within each platform block
-# We use awk to replace sha256 values while preserving structure
+# We use awk to replace sha256 values while preserving structure.
+# Architecture is tracked from the url line (not the sha256 line itself).
 awk -v arm64="$DARWIN_ARM64" -v x64="$DARWIN_X86_64" -v larm64="$LINUX_ARM64" -v lx64="$LINUX_X86_64" '
-BEGIN { in_macos=0; in_linux=0; }
+BEGIN { in_macos=0; in_linux=0; last_arch=""; }
 /on_macos do/ { in_macos=1; in_linux=0; }
 /on_linux do/ { in_linux=1; in_macos=0; }
 /end$/ { if (in_macos || in_linux) { in_macos=0; in_linux=0; } }
+/url / {
+  if (/arm64/) last_arch="arm64"
+  else if (/x86_64/) last_arch="x86_64"
+}
 /sha256/ {
   if (in_macos) {
-    if (/arm64/) {
+    if (last_arch == "arm64") {
       print "      sha256 \"" arm64 "\""
       next
-    } else if (/x86_64/ || /intel/) {
+    } else if (last_arch == "x86_64") {
       print "      sha256 \"" x64 "\""
       next
     }
   } else if (in_linux) {
-    if (/arm64/) {
+    if (last_arch == "arm64") {
       print "      sha256 \"" larm64 "\""
       next
-    } else if (/x86_64/ || /intel/) {
+    } else if (last_arch == "x86_64") {
       print "      sha256 \"" lx64 "\""
       next
     }
