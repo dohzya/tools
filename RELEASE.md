@@ -198,6 +198,56 @@ cd ~/bin/share/mise-tools
 - Bundle tags: `vX.Y.Z` (no tool prefix)
 - Tool tags: `wl-vX.Y.Z` or `md-vX.Y.Z`
 
+## Binary-Only Release (no library changes)
+
+Use this when only the **compiled binary** changes but the TypeScript library code is identical (e.g., updating Deno compile permissions, changing compile flags).
+
+**Key difference:** No JSR publish needed — the CI will recompile from the same JSR version already published.
+
+**What to skip:** Steps 1 (`bump-prepare`), 1b, and 3 (`deno publish`). No `deno.json` bump.
+
+**What still applies:** CI gate (step 5), release workflow (step 7), and finalization (steps 8–11).
+
+```bash
+# 0. Validate
+task validate
+
+# 1. Manually bump VERSION constant in cli.ts only
+#    (edit packages/tools/worklog/cli.ts or markdown-surgeon/cli.ts)
+
+# 2. Commit
+git add -A && git commit -m "chore(wl): bump to vX.Y.Z (<reason>)"
+
+# 3. Push (NO deno publish — JSR lib unchanged)
+git push origin main
+
+# 4. Wait for CI to pass (MANDATORY GATE)
+gh run watch
+
+# 5. Tag and push tag ONLY after CI is green
+git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z
+
+# 6. Wait for release workflow to build binaries
+gh run watch
+
+# 7. Finalize release (updates homebrew checksums, docs, plugin)
+task bump-finalize TOOL=wl VERSION=X.Y.Z
+git add -A && git commit -m "chore(wl): finalize vX.Y.Z release"
+git push origin main
+
+# 8. Update homebrew tap
+task update-tap TOOL=wl VERSION=X.Y.Z
+
+# 9. Verify installation
+brew upgrade wl && wl --version
+```
+
+**When this applies:**
+
+- Adding a new `--allow-run=<binary>` permission to the compiled binary
+- Changing other `deno compile` flags
+- Any infrastructure/build change with no TypeScript code change
+
 ## Common Pitfalls
 
 | Problem                                | Cause                                 | Fix                                                  |
