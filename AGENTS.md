@@ -3,11 +3,18 @@
 ## Workflow
 
 ```bash
-wl task create "Description"           # 1. Create worktask
-wl trace <id> "Action with cause"      # 2. Trace actions
-deno -A packages/tools/.../cli.ts ...  # 3. Test LOCAL (not wl/md)
-task validate                          # 4. Validate (MANDATORY)
-wl done <id> "Changes" "Learnings"     # 5. Complete
+# Main agent:
+wl task create "Description"          # 1a. Create worktask (if none exists)
+wl update "More context..."           # 1b. OR update existing task description
+# → Launch subagent for each code change (steps 2–5 run inside subagent)
+
+# Subagent (TDD loop — MANDATORY for every code change):
+wl trace <id> "Writing test for X"              # 2. Trace BEFORE writing test
+# → Write failing test
+wl trace <id> "Test fails as expected (Y)"      # 3. Trace confirmed failure
+# → Implement
+wl trace <id> "Implemented X — tests green"     # 4. Trace after green
+task validate                                   # 5. Validate (MANDATORY)
 
 # Release → RELEASE.md
 ```
@@ -65,11 +72,11 @@ deno fmt        # MANDATORY — CI checks markdown formatting too
 
 **Writing tests:** Use `Deno.makeTempDir()` and `createTempFile()`, never `/tmp/test-vault`.
 
-### TDD (MANDATORY for bugs/features)
+### TDD (MANDATORY for all code changes)
 
 1. Write test → 2. Verify failure → 3. Implement → 4. Verify success → 5. Refactor → 6. Verify success
 
-**Avoids false positives, documents behavior.**
+`wl trace` at each step (see Workflow above). **Avoids false positives, documents behavior.**
 
 ### Comments
 
