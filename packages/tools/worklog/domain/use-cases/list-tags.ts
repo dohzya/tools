@@ -36,6 +36,18 @@ export interface ManageTagsOutput {
   readonly allTags?: ReadonlyArray<{ tag: string; count: number }>;
 }
 
+export interface RenameTagInput {
+  readonly oldTag: string;
+  readonly newTag: string;
+}
+
+export interface RenameTagOutput {
+  readonly status: "tag_renamed" | "tag_not_found";
+  readonly updatedCount: number;
+  readonly oldTag: string;
+  readonly newTag: string;
+}
+
 export class ListTagsUseCase {
   constructor(
     private readonly indexRepo: IndexRepository,
@@ -139,6 +151,46 @@ export class ListTagsUseCase {
     });
 
     return { tags: newTags };
+  }
+
+  async renameTag(input: RenameTagInput): Promise<RenameTagOutput> {
+    const oldTagError = validateTag(input.oldTag);
+    if (oldTagError) {
+      throw new WtError("invalid_args", `Invalid tag '${input.oldTag}': ${oldTagError}`);
+    }
+    const newTagError = validateTag(input.newTag);
+    if (newTagError) {
+      throw new WtError("invalid_args", `Invalid tag '${input.newTag}': ${newTagError}`);
+    }
+
+    const index = await this.indexRepo.load();
+    const affected = Object.entries(index.tasks).filter(([, task]) =>
+      task.tags?.includes(input.oldTag)
+    );
+
+    if (affected.length === 0) {
+      return { status: "tag_not_found", updatedCount: 0, oldTag: input.oldTag, newTag: input.newTag };
+    }
+
+    for (const [taskId] of affected) {
+      let content = await this.taskRepo.loadContent(taskId);
+      const taskData = await this.taskRepo.findById(taskId);
+      const currentTags = taskData?.meta.tags ? [...taskData.meta.tags] : [];
+      const tagSet = new Set(currentTags);
+      tagSet.delete(input.oldTag);
+      tagSet.add(input.newTag);
+      const newTags = Array.from(tagSet).sort();
+
+      content = await this.markdownService.updateFrontmatter(content, {
+        tags: newTags.length > 0 ? newTags : undefined,
+      });
+      await this.taskRepo.saveContent(taskId, content);
+      await this.indexRepo.updateEntry(taskId, {
+        tags: newTags.length > 0 ? newTags : undefined,
+      });
+    }
+
+    return { status: "tag_renamed", updatedCount: affected.length, oldTag: input.oldTag, newTag: input.newTag };
   }
 
   private resolveTaskId(prefix: string, allIds: string[]): string {

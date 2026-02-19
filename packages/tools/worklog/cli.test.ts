@@ -3689,6 +3689,30 @@ Deno.test("tags - add and remove tags", async () => {
   }
 });
 
+Deno.test("tags - remove last tag clears tags field without crashing", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "Test task", "--tag", "solo"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const taskId = JSON.parse(listOutput).tasks[0].id;
+
+    // Remove the only tag — used to crash with "Cannot stringify undefined"
+    await main(["tags", taskId, "--remove", "solo"]);
+
+    const updatedOutput = await captureOutput(() => main(["list", "--json"]));
+    const updatedTask = JSON.parse(updatedOutput).tasks[0];
+    assertEquals(updatedTask.tags == null || updatedTask.tags.length === 0, true);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("tags - list all tags with counts", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -3783,6 +3807,88 @@ Deno.test("tags - persist in index for fast filtering", async () => {
     const taskIds = Object.keys(index.tasks);
     assertEquals(taskIds.length, 1);
     assertEquals(index.tasks[taskIds[0]].tags, ["feat/test"]);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("tags - add tag via subcommand", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const tasks = JSON.parse(listOutput).tasks;
+    const taskId = tasks[0].id;
+
+    await main(["tags", "add", "feat/auth", taskId]);
+
+    const updatedOutput = await captureOutput(() => main(["list", "--json"]));
+    const updatedTasks = JSON.parse(updatedOutput).tasks;
+    assertEquals(updatedTasks[0].tags, ["feat/auth"]);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("tags - remove tag via subcommand", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "Test task", "--tag", "feat/auth", "--tag", "urgent"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const tasks = JSON.parse(listOutput).tasks;
+    const taskId = tasks[0].id;
+
+    await main(["tags", "remove", "urgent", taskId]);
+
+    const updatedOutput = await captureOutput(() => main(["list", "--json"]));
+    const updatedTasks = JSON.parse(updatedOutput).tasks;
+    assertEquals(updatedTasks[0].tags, ["feat/auth"]);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("tags - rename tag across tasks", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "Task A", "--tag", "feat/auth"]);
+    await main(["create", "Task B", "--tag", "feat/auth"]);
+    await main(["create", "Task C", "--tag", "urgent"]);
+
+    await main(["tags", "rename", "feat/auth", "feat/oauth"]);
+
+    const indexContent = await Deno.readTextFile(".worklog/index.json");
+    const index = JSON.parse(indexContent);
+    const allTasks = Object.values(index.tasks) as Array<{ name: string; tags?: string[] }>;
+
+    const taskA = allTasks.find((t) => t.name === "Task A");
+    const taskB = allTasks.find((t) => t.name === "Task B");
+    const taskC = allTasks.find((t) => t.name === "Task C");
+
+    assertEquals(taskA?.tags, ["feat/oauth"]);
+    assertEquals(taskB?.tags, ["feat/oauth"]);
+    assertEquals(taskC?.tags, ["urgent"]);
+
+    // Ensure old tag is gone
+    const allTagsFlat = allTasks.flatMap((t) => t.tags ?? []);
+    assertEquals(allTagsFlat.includes("feat/auth"), false);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });

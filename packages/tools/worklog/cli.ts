@@ -99,6 +99,7 @@ import { GenerateSummaryUseCase } from "./domain/use-cases/summary.ts";
 import {
   type ListTagsOutput,
   ListTagsUseCase,
+  type RenameTagOutput,
 } from "./domain/use-cases/list-tags.ts";
 
 // ============================================================================
@@ -2804,7 +2805,11 @@ async function cmdTags(
   removeTags?.forEach((t) => tagSet.delete(t));
 
   const newTags = Array.from(tagSet).sort();
-  frontmatter.tags = newTags.length > 0 ? newTags : undefined;
+  if (newTags.length > 0) {
+    frontmatter.tags = newTags;
+  } else {
+    delete frontmatter.tags;
+  }
 
   // Save task
   setFrontmatter(doc, stringifyFrontmatter(frontmatter));
@@ -2818,6 +2823,11 @@ async function cmdTags(
   await saveIndex(index);
 
   return { tags: newTags };
+}
+
+async function cmdRenameTag(oldTag: string, newTag: string): Promise<RenameTagOutput> {
+  await purge();
+  return await listTagsUseCase.renameTag({ oldTag, newTag });
 }
 
 async function cmdTodoList(taskId?: string): Promise<TodoListOutput> {
@@ -4770,6 +4780,91 @@ const metaCmd = new Command()
     }
   });
 
+const tagsAddCmd = new Command()
+  .description("Add a tag to a task")
+  .arguments("<tag:string> <taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, tag, taskId) => {
+    try {
+      const { gitRoot } = await resolveScopeContext(
+        options.scope,
+        asGlobal(options).cwd,
+        asGlobal(options).worklogDir,
+      );
+      const resolvedTaskId = await resolveTaskIdAcrossScopes(
+        taskId,
+        options.scope ? null : gitRoot,
+      );
+      const effectiveGitRoot = gitRoot ?? await findGitRoot(Deno.cwd());
+      const output = await cmdTags(resolvedTaskId, [tag], [], effectiveGitRoot, Deno.cwd());
+      if (options.json) {
+        console.log(JSON.stringify(output));
+      } else if (output.tags !== undefined) {
+        if (output.tags.length === 0) {
+          console.log("(no tags)");
+        } else {
+          console.log(output.tags.map((t) => `#${t}`).join(" "));
+        }
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const tagsRemoveCmd = new Command()
+  .description("Remove a tag from a task")
+  .arguments("<tag:string> <taskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, tag, taskId) => {
+    try {
+      const { gitRoot } = await resolveScopeContext(
+        options.scope,
+        asGlobal(options).cwd,
+        asGlobal(options).worklogDir,
+      );
+      const resolvedTaskId = await resolveTaskIdAcrossScopes(
+        taskId,
+        options.scope ? null : gitRoot,
+      );
+      const effectiveGitRoot = gitRoot ?? await findGitRoot(Deno.cwd());
+      const output = await cmdTags(resolvedTaskId, [], [tag], effectiveGitRoot, Deno.cwd());
+      if (options.json) {
+        console.log(JSON.stringify(output));
+      } else if (output.tags !== undefined) {
+        if (output.tags.length === 0) {
+          console.log("(no tags)");
+        } else {
+          console.log(output.tags.map((t) => `#${t}`).join(" "));
+        }
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const tagsRenameCmd = new Command()
+  .description("Rename a tag across all tasks")
+  .arguments("<oldTag:string> <newTag:string>")
+  .option("--json", "Output as JSON")
+  .action(async (options, oldTag, newTag) => {
+    try {
+      const output = await cmdRenameTag(oldTag, newTag);
+      if (options.json) {
+        console.log(JSON.stringify(output));
+      } else if (output.status === "tag_not_found") {
+        console.log(`Tag '#${output.oldTag}' not found`);
+      } else {
+        console.log(
+          `Renamed '#${output.oldTag}' → '#${output.newTag}' (${output.updatedCount} ${output.updatedCount === 1 ? "task" : "tasks"} updated)`,
+        );
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
 const tagsCmd = new Command()
   .description("Manage task tags")
   .arguments("[taskId:string]")
@@ -4830,7 +4925,10 @@ const tagsCmd = new Command()
     } catch (e) {
       handleError(e, options.json ?? false);
     }
-  });
+  })
+  .command("add", tagsAddCmd)
+  .command("remove", tagsRemoveCmd)
+  .command("rename", tagsRenameCmd);
 
 const listCmd = new Command()
   .description("List tasks (optionally filter by tag or scope pattern)")
