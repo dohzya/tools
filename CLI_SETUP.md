@@ -57,7 +57,7 @@ deno install -g --allow-read --allow-write --allow-run=git -n wl \
 
 Download pre-compiled binaries from [GitHub Releases](https://github.com/dohzya/tools/releases):
 
-1. Find the latest release for your tool (`md-v0.7.0*` or `wl-v0.8.1*`)
+1. Find the latest release for your tool (`md-v0.7.0*` or `wl-v0.9.0*`)
 2. Download the binary for your platform (e.g., `md-darwin-arm64` for macOS ARM)
 3. Make it executable: `chmod +x md-darwin-arm64`
 4. Move to your PATH: `mv md-darwin-arm64 ~/.local/bin/md`
