@@ -15,6 +15,7 @@ export type IndexEntry = {
   readonly done_at?: string | null;
   readonly cancelled_at?: string | null;
   readonly tags?: readonly string[]; // Denormalized from task frontmatter for fast filtering
+  readonly parent?: string; // Full parent task ID (if this is a subtask)
 };
 
 /**

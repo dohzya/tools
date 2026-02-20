@@ -5,6 +5,18 @@ import type { Entry } from "./entry.ts";
 import type { TaskStatus } from "./task.ts";
 import type { Todo } from "./todo.ts";
 
+export type SubtaskSummary = {
+  readonly id: string;
+  readonly shortId: string;
+  readonly name: string;
+  readonly status: TaskStatus;
+  readonly doneAt?: string | null;
+  readonly cancelledAt?: string | null;
+  readonly lastCheckpoint?: Checkpoint | null;
+  readonly activeTodos?: readonly Todo[];
+  readonly subtasks?: readonly SubtaskSummary[];
+};
+
 export type AddOutput = {
   readonly id: string;
 };
@@ -33,6 +45,13 @@ export type ShowOutput = {
   readonly entries_since_checkpoint: readonly Entry[];
   readonly todos: readonly Todo[];
   readonly tags?: readonly string[];
+  readonly parent?: {
+    readonly id: string;
+    readonly shortId: string;
+    readonly name: string;
+    readonly status: TaskStatus;
+  } | null;
+  readonly subtasks?: readonly SubtaskSummary[];
 };
 
 export type ListTaskItem = {
@@ -44,6 +63,7 @@ export type ListTaskItem = {
   readonly scopePrefix?: string;
   readonly tags?: readonly string[];
   readonly filterPattern?: string; // Pattern used for filtering (to hide from display)
+  readonly parent?: string; // Full parent task ID (set in --subtasks mode)
 };
 
 export type ListOutput = {

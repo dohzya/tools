@@ -38,6 +38,7 @@ export type Task = {
   readonly hasUncheckpointedEntries: boolean;
   readonly metadata: Readonly<Record<string, string>>;
   readonly tags: readonly string[];
+  readonly parent?: string | null;
 };
 
 /**
@@ -59,6 +60,7 @@ export type TaskMeta = {
   readonly has_uncheckpointed_entries: boolean;
   readonly metadata?: Readonly<Record<string, string>>;
   readonly tags?: readonly string[];
+  readonly parent?: string | null;
 };
 
 /**
@@ -110,6 +112,7 @@ export function taskFromMeta(meta: TaskMeta): Task {
     hasUncheckpointedEntries: meta.has_uncheckpointed_entries,
     metadata: meta.metadata ?? {},
     tags: meta.tags ?? [],
+    parent: meta.parent ?? null,
   };
 }
 
@@ -132,5 +135,6 @@ export function taskToMeta(task: Task): TaskMeta {
     has_uncheckpointed_entries: task.hasUncheckpointedEntries,
     metadata: task.metadata,
     tags: task.tags,
+    parent: task.parent,
   };
 }

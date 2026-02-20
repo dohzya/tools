@@ -30,6 +30,7 @@ export interface TaskMeta {
   has_uncheckpointed_entries: boolean;
   metadata?: Record<string, string>; // Custom attributes like commit_id, pr_url, etc.
   tags?: string[]; // User-defined hierarchical tags for flexible organization
+  parent?: string | null; // Full parent task ID (if this is a subtask)
 }
 
 export interface IndexEntry {
@@ -41,6 +42,7 @@ export interface IndexEntry {
   done_at?: string | null;
   cancelled_at?: string | null;
   tags?: string[]; // Denormalized from task frontmatter for fast filtering
+  parent?: string; // Full parent task ID (if this is a subtask)
 }
 
 export interface Index {
@@ -66,6 +68,18 @@ export interface Todo {
   text: string;
   status: TodoStatus;
   metadata: Record<string, string>; // Custom attributes like dependsOn, due, etc.
+}
+
+export interface SubtaskSummary {
+  id: string;
+  shortId: string;
+  name: string;
+  status: TaskStatus;
+  doneAt?: string | null;
+  cancelledAt?: string | null;
+  lastCheckpoint?: Checkpoint | null;
+  activeTodos?: readonly Todo[];
+  subtasks?: readonly SubtaskSummary[];
 }
 
 // Command outputs
@@ -97,6 +111,10 @@ export interface ShowOutput {
   entries_since_checkpoint: readonly Entry[];
   todos: readonly Todo[];
   tags?: readonly string[]; // Effective tags (task + inherited worktree tags)
+  parent?:
+    | { id: string; shortId: string; name: string; status: TaskStatus }
+    | null;
+  subtasks?: readonly SubtaskSummary[];
 }
 
 export interface ListTaskItem {
@@ -108,6 +126,7 @@ export interface ListTaskItem {
   scopePrefix?: string;
   tags?: readonly string[];
   filterPattern?: string; // Pattern used for filtering (to hide from display)
+  parent?: string; // Full parent task ID (set in --subtasks mode)
 }
 
 export interface ListOutput {

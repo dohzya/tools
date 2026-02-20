@@ -21,6 +21,7 @@ export interface CreateTaskInput {
   readonly metadata?: Readonly<Record<string, string>>;
   readonly tags?: readonly string[];
   readonly timestamp?: string;
+  readonly parent?: string; // Full parent task ID (already resolved)
 }
 
 export interface CreateTaskDeps {
@@ -120,6 +121,8 @@ export class CreateTaskUseCase {
       }
     }
 
+    const parentYaml = input.parent ? `\nparent: "${input.parent}"` : "";
+
     const content = `---
 id: ${id}
 uid: ${uid}
@@ -131,7 +134,7 @@ ready_at: ${readyAt}
 started_at: ${startedAt}
 done_at: null
 last_checkpoint: null
-has_uncheckpointed_entries: false${metadataYaml}${tagsYaml}
+has_uncheckpointed_entries: false${metadataYaml}${tagsYaml}${parentYaml}
 ---
 
 # Entries
@@ -150,6 +153,7 @@ has_uncheckpointed_entries: false${metadataYaml}${tagsYaml}
       status_updated_at: now,
       done_at: null,
       ...(input.tags && input.tags.length > 0 && { tags: input.tags }),
+      ...(input.parent && { parent: input.parent }),
     });
 
     // Calculate short ID for display

@@ -3706,7 +3706,10 @@ Deno.test("tags - remove last tag clears tags field without crashing", async () 
 
     const updatedOutput = await captureOutput(() => main(["list", "--json"]));
     const updatedTask = JSON.parse(updatedOutput).tasks[0];
-    assertEquals(updatedTask.tags == null || updatedTask.tags.length === 0, true);
+    assertEquals(
+      updatedTask.tags == null || updatedTask.tags.length === 0,
+      true,
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -3844,7 +3847,14 @@ Deno.test("tags - remove tag via subcommand", async () => {
     Deno.chdir(tempDir);
     await main(["init"]);
 
-    await main(["create", "Test task", "--tag", "feat/auth", "--tag", "urgent"]);
+    await main([
+      "create",
+      "Test task",
+      "--tag",
+      "feat/auth",
+      "--tag",
+      "urgent",
+    ]);
 
     const listOutput = await captureOutput(() => main(["list", "--json"]));
     const tasks = JSON.parse(listOutput).tasks;
@@ -3875,8 +3885,9 @@ Deno.test("tags - rename tag across tasks", async () => {
     await main(["tags", "rename", "feat/auth", "feat/oauth"]);
 
     const indexContent = await Deno.readTextFile(".worklog/index.json");
-    const index = JSON.parse(indexContent);
-    const allTasks = Object.values(index.tasks) as Array<{ name: string; tags?: string[] }>;
+    const indexTasks: Record<string, { name: string; tags?: string[] }> =
+      JSON.parse(indexContent).tasks;
+    const allTasks = Object.values(indexTasks);
 
     const taskA = allTasks.find((t) => t.name === "Task A");
     const taskB = allTasks.find((t) => t.name === "Task B");
@@ -4247,5 +4258,542 @@ Deno.test("cross-scope - resolves task in worktree scope outside git root", asyn
     Deno.chdir(originalCwd);
     await Deno.remove(rootDir, { recursive: true });
     await Deno.remove(siblingDir, { recursive: true });
+  }
+});
+
+// ============================================================================
+// Subtasks (parent/child) tests
+// ============================================================================
+
+Deno.test("subtasks - create --parent creates subtask with parent field in index", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    // Get parent full ID
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    // Create subtask
+    await main(["create", "subtask A", "--parent", parentId]);
+
+    // List all including subtasks to get both
+    const listOut2 = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const tasks = JSON.parse(listOut2).tasks;
+    const subtask = tasks.find((t: { name: string }) => t.name === "subtask A");
+    assert(subtask, "subtask should be in list");
+    assertEquals(subtask.parent, parentId);
+
+    // Also verify index.json directly
+    const indexContent = await Deno.readTextFile(
+      `${tempDir}/.worklog/index.json`,
+    );
+    const indexTasks: Record<string, { name: string; parent?: string }> =
+      JSON.parse(indexContent).tasks;
+    const subtaskEntry = Object.values(indexTasks).find(
+      (e) => e.name === "subtask A",
+    );
+    assert(subtaskEntry, "subtask should be in index");
+    assertEquals(subtaskEntry.parent, parentId);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - create --parent fails with unknown parent ID", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    try {
+      await main(["create", "subtask A", "--parent", "nonexistentid"]);
+    } catch (e) {
+      if (!(e instanceof Error) || e.message !== "EXIT") throw e;
+    }
+
+    assertEquals(exitCode, 1, "should exit with code 1");
+    assertStringIncludes(errorOutput, "task_not_found");
+
+    // No subtask should have been created
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = JSON.parse(listOut).tasks;
+    assertEquals(tasks.length, 0, "no task should have been created");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - show displays parent link for subtask", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    await main(["create", "subtask A", "--parent", parentId]);
+
+    // Get subtask full ID
+    const listOut2 = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const subtaskId = JSON.parse(listOut2).tasks.find(
+      (t: { name: string }) => t.name === "subtask A",
+    ).id;
+
+    // Show subtask
+    const showOut = await captureOutput(() => main(["show", subtaskId]));
+    assertStringIncludes(showOut, "parent:");
+    assertStringIncludes(showOut, "parent task");
+
+    // Show subtask --json
+    const showJson = await captureOutput(() =>
+      main(["show", subtaskId, "--json"])
+    );
+    const result = JSON.parse(showJson);
+    assertEquals(result.parent.id, parentId);
+    assertEquals(result.parent.name, "parent task");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - show parent displays active subtask with todos", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    // Create subtask with a todo
+    await main([
+      "create",
+      "subtask with todo",
+      "--parent",
+      parentId,
+      "--todo",
+      "implement feature",
+    ]);
+
+    const showOut = await captureOutput(() => main(["show", parentId]));
+    assertStringIncludes(showOut, "subtasks since checkpoint:");
+    assertStringIncludes(showOut, "subtask with todo");
+    assertStringIncludes(showOut, "implement feature");
+
+    const showJson = await captureOutput(() =>
+      main(["show", parentId, "--json"])
+    );
+    const result = JSON.parse(showJson);
+    assert(
+      result.subtasks && result.subtasks.length > 0,
+      "should have subtasks",
+    );
+    assertEquals(result.subtasks[0].name, "subtask with todo");
+    assert(
+      result.subtasks[0].activeTodos &&
+        result.subtasks[0].activeTodos.length > 0,
+      "should have active todos",
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - show hides done-before-checkpoint subtasks", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    // Create and complete a subtask
+    await main(["create", "old subtask", "--parent", parentId]);
+    const listOut2 = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const oldSubId = JSON.parse(listOut2).tasks.find(
+      (t: { name: string }) => t.name === "old subtask",
+    ).id;
+    await main(["done", oldSubId, "--force"]);
+
+    // Add a trace to parent so checkpoint has content
+    await main(["trace", parentId, "some work done"]);
+
+    // Create checkpoint on parent AFTER the subtask was done
+    await main([
+      "checkpoint",
+      parentId,
+      "reviewed old subtask",
+      "it was done",
+    ]);
+
+    const showJson = await captureOutput(() =>
+      main(["show", parentId, "--json"])
+    );
+    const result = JSON.parse(showJson);
+    // The done subtask should not appear in subtasks (it was done before checkpoint)
+    const subtasks = result.subtasks ?? [];
+    const foundOld = subtasks.find(
+      (s: { name: string }) => s.name === "old subtask",
+    );
+    assert(!foundOld, "done-before-checkpoint subtask should be hidden");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - show includes done subtask with lastCheckpoint when parent has no checkpoint", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    // Parent task with no checkpoint — all done subtasks are always shown
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    // Create and complete a subtask with its own checkpoint
+    await main(["create", "completed subtask", "--parent", parentId]);
+    const listOut2 = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const subId = JSON.parse(listOut2).tasks.find(
+      (t: { name: string }) => t.name === "completed subtask",
+    ).id;
+
+    await main(["trace", subId, "subtask work"]);
+    await main(["checkpoint", subId, "subtask changes", "subtask learnings"]);
+    await main(["done", subId, "--force"]);
+
+    const showJson = await captureOutput(() =>
+      main(["show", parentId, "--json"])
+    );
+    const result = JSON.parse(showJson);
+    const subtasks = result.subtasks ?? [];
+    const found = subtasks.find(
+      (s: { name: string }) => s.name === "completed subtask",
+    );
+    // Parent has no checkpoint → done subtask is always visible
+    assert(
+      found,
+      "done subtask should be visible when parent has no checkpoint",
+    );
+    assert(found.lastCheckpoint, "should include lastCheckpoint content");
+    assertStringIncludes(found.lastCheckpoint.changes, "subtask changes");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - show recursive: sub-sub-task appears nested", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "grandparent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const grandparentId = JSON.parse(listOut).tasks[0].id;
+
+    // Create child
+    await main(["create", "child task", "--parent", grandparentId]);
+    const listOut2 = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const childId = JSON.parse(listOut2).tasks.find(
+      (t: { name: string }) => t.name === "child task",
+    ).id;
+
+    // Create grandchild
+    await main([
+      "create",
+      "grandchild task",
+      "--parent",
+      childId,
+      "--todo",
+      "do something",
+    ]);
+
+    const showJson = await captureOutput(() =>
+      main(["show", grandparentId, "--json"])
+    );
+    const result = JSON.parse(showJson);
+    assert(
+      result.subtasks && result.subtasks.length > 0,
+      "should have subtasks",
+    );
+    const child = result.subtasks[0];
+    assertEquals(child.name, "child task");
+    assert(
+      child.subtasks && child.subtasks.length > 0,
+      "child should have subtasks",
+    );
+    assertEquals(child.subtasks[0].name, "grandchild task");
+
+    // Also check text output
+    const showOut = await captureOutput(() => main(["show", grandparentId]));
+    assertStringIncludes(showOut, "child task");
+    assertStringIncludes(showOut, "grandchild task");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - show --json includes parent and subtasks fields", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "main task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    await main(["create", "child task", "--parent", parentId]);
+
+    // Parent show JSON should have subtasks
+    const parentJson = await captureOutput(() =>
+      main(["show", parentId, "--json"])
+    );
+    const parentResult = JSON.parse(parentJson);
+    assert("subtasks" in parentResult, "parent should have subtasks field");
+    assertEquals(parentResult.subtasks[0].name, "child task");
+
+    // Child show JSON should have parent
+    const listOut2 = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const childId = JSON.parse(listOut2).tasks.find(
+      (t: { name: string }) => t.name === "child task",
+    ).id;
+
+    const childJson = await captureOutput(() =>
+      main(["show", childId, "--json"])
+    );
+    const childResult = JSON.parse(childJson);
+    assert("parent" in childResult, "child should have parent field");
+    assertEquals(childResult.parent.id, parentId);
+    assertEquals(childResult.parent.name, "main task");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - list hides subtasks by default", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    await main(["create", "subtask A", "--parent", parentId]);
+
+    // Default list should only show parent
+    const listDefault = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = JSON.parse(listDefault).tasks;
+    assertEquals(tasks.length, 1, "only parent should appear by default");
+    assertEquals(tasks[0].name, "parent task");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - list --subtasks shows all tasks including subtasks, indented", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    await main(["create", "subtask A", "--parent", parentId]);
+
+    // --subtasks should show both
+    const listSubtasks = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const tasks = JSON.parse(listSubtasks).tasks;
+    assertEquals(tasks.length, 2, "both parent and subtask should appear");
+
+    const subtask = tasks.find((t: { name: string }) => t.name === "subtask A");
+    assert(subtask, "subtask A should appear");
+    assertEquals(subtask.parent, parentId, "subtask should have parent field");
+
+    // Text output should show indented subtask
+    const listText = await captureOutput(() =>
+      main(["list", "--all", "--subtasks"])
+    );
+    assertStringIncludes(listText, "parent task");
+    assertStringIncludes(listText, "subtask A");
+    // Subtask should appear after parent (indented with 2 spaces)
+    const lines = listText.split("\n");
+    const parentLine = lines.findIndex((l) => l.includes("parent task"));
+    const subtaskLine = lines.findIndex((l) => l.includes("subtask A"));
+    assert(subtaskLine > parentLine, "subtask should appear after parent");
+    assert(lines[subtaskLine].startsWith("  "), "subtask should be indented");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - list --parent shows only direct children flat", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+    await main(["create", "other task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = JSON.parse(listOut).tasks;
+    const parentId = tasks.find((t: { name: string }) =>
+      t.name === "parent task"
+    ).id;
+
+    await main(["create", "subtask A", "--parent", parentId]);
+    await main(["create", "subtask B", "--parent", parentId]);
+
+    // --parent should show only children
+    const listParent = await captureOutput(() =>
+      main(["list", "--all", "--json", "--parent", parentId])
+    );
+    const children = JSON.parse(listParent).tasks;
+    assertEquals(children.length, 2, "should show only the 2 subtasks");
+    assert(
+      children.every((t: { name: string }) => t.name.startsWith("subtask")),
+      "all should be subtasks",
+    );
+
+    // Text output should be flat (no indentation)
+    const listText = await captureOutput(() =>
+      main(["list", "--all", "--parent", parentId])
+    );
+    const lines = listText.split("\n").filter((l) => l.trim().length > 0);
+    for (const line of lines) {
+      assert(!line.startsWith("  "), `line should not be indented: "${line}"`);
+    }
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("subtasks - list --json parent field present on subtask items", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "parent task"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const parentId = JSON.parse(listOut).tasks[0].id;
+
+    await main(["create", "subtask A", "--parent", parentId]);
+
+    // list --subtasks --json should have parent field on subtask item
+    const listJson = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const tasks = JSON.parse(listJson).tasks;
+    const subtask = tasks.find((t: { name: string }) => t.name === "subtask A");
+    assert(subtask, "subtask A should be in results");
+    assertEquals(subtask.parent, parentId, "parent field should be full ID");
+
+    // Parent task should NOT have parent field
+    const parent = tasks.find((t: { name: string }) =>
+      t.name === "parent task"
+    );
+    assert(parent, "parent task should be in results");
+    assertEquals(
+      parent.parent,
+      undefined,
+      "parent task should have no parent field",
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
   }
 });

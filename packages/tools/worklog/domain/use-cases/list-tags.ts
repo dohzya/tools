@@ -156,11 +156,17 @@ export class ListTagsUseCase {
   async renameTag(input: RenameTagInput): Promise<RenameTagOutput> {
     const oldTagError = validateTag(input.oldTag);
     if (oldTagError) {
-      throw new WtError("invalid_args", `Invalid tag '${input.oldTag}': ${oldTagError}`);
+      throw new WtError(
+        "invalid_args",
+        `Invalid tag '${input.oldTag}': ${oldTagError}`,
+      );
     }
     const newTagError = validateTag(input.newTag);
     if (newTagError) {
-      throw new WtError("invalid_args", `Invalid tag '${input.newTag}': ${newTagError}`);
+      throw new WtError(
+        "invalid_args",
+        `Invalid tag '${input.newTag}': ${newTagError}`,
+      );
     }
 
     const index = await this.indexRepo.load();
@@ -169,7 +175,12 @@ export class ListTagsUseCase {
     );
 
     if (affected.length === 0) {
-      return { status: "tag_not_found", updatedCount: 0, oldTag: input.oldTag, newTag: input.newTag };
+      return {
+        status: "tag_not_found",
+        updatedCount: 0,
+        oldTag: input.oldTag,
+        newTag: input.newTag,
+      };
     }
 
     for (const [taskId] of affected) {
@@ -190,7 +201,12 @@ export class ListTagsUseCase {
       });
     }
 
-    return { status: "tag_renamed", updatedCount: affected.length, oldTag: input.oldTag, newTag: input.newTag };
+    return {
+      status: "tag_renamed",
+      updatedCount: affected.length,
+      oldTag: input.oldTag,
+      newTag: input.newTag,
+    };
   }
 
   private resolveTaskId(prefix: string, allIds: string[]): string {

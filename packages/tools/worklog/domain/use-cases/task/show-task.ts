@@ -1,11 +1,11 @@
 // ShowTaskUseCase - Show task details with recent entries
 
-import type { ShowOutput } from "../../entities/outputs.ts";
+import type { ShowOutput, SubtaskSummary } from "../../entities/outputs.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 import { WtError } from "../../entities/errors.ts";
 import { getShortId } from "../../entities/task-helpers.ts";
-import type { IndexEntry } from "../../entities/index.ts";
+import type { Index, IndexEntry } from "../../entities/index.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
 import type { Entry } from "../../entities/entry.ts";
@@ -61,6 +61,34 @@ export class ShowTaskUseCase {
       input.gitRoot,
     );
 
+    // Build parent link if this is a subtask
+    let parentOutput: ShowOutput["parent"] = undefined;
+    if (meta.parent) {
+      const parentEntry = index.tasks[meta.parent];
+      if (parentEntry) {
+        const parentShortId = getShortId(index, meta.parent);
+        parentOutput = {
+          id: meta.parent,
+          shortId: parentShortId,
+          name: parentEntry.name,
+          status: parentEntry.status,
+        };
+      }
+    }
+
+    // Find and build subtasks
+    const children = Object.entries(index.tasks).filter(
+      ([_, e]) => e.parent === taskId,
+    );
+    const subtasks = children.length > 0
+      ? await this.buildSubtaskSummaries(
+        children,
+        meta.last_checkpoint,
+        index,
+        0,
+      )
+      : undefined;
+
     return {
       task: shortId,
       fullId: taskId,
@@ -74,7 +102,91 @@ export class ShowTaskUseCase {
       entries_since_checkpoint: entriesSinceCheckpoint,
       todos: filteredTodos,
       tags: effectiveTags.length > 0 ? effectiveTags : undefined,
+      parent: parentOutput,
+      subtasks,
     };
+  }
+
+  private static readonly MAX_SUBTASK_DEPTH = 3;
+
+  private async buildSubtaskSummaries(
+    children: Array<[string, IndexEntry]>,
+    parentLastCheckpointTs: string | null,
+    index: Index,
+    depth: number,
+  ): Promise<readonly SubtaskSummary[]> {
+    if (depth >= ShowTaskUseCase.MAX_SUBTASK_DEPTH) return [];
+
+    const result: SubtaskSummary[] = [];
+
+    for (const [childId, childEntry] of children) {
+      const isDone = childEntry.status === "done" ||
+        childEntry.status === "cancelled";
+      const terminatedAt = childEntry.done_at ?? childEntry.cancelled_at ??
+        null;
+
+      // Skip if done/cancelled before parent's last checkpoint
+      if (isDone && terminatedAt && parentLastCheckpointTs) {
+        const terminatedDate = new Date(terminatedAt);
+        const checkpointDate = new Date(parentLastCheckpointTs);
+        if (terminatedDate <= checkpointDate) continue;
+      }
+
+      const childData = await this.taskRepo.findById(childId);
+      if (!childData) continue;
+
+      const {
+        meta: childMeta,
+        checkpoints: childCheckpoints,
+        todos: childTodos,
+      } = childData;
+      const childLastCheckpoint = childCheckpoints.length > 0
+        ? childCheckpoints[childCheckpoints.length - 1]
+        : null;
+      const childShortId = getShortId(index, childId);
+
+      if (isDone) {
+        result.push({
+          id: childId,
+          shortId: childShortId,
+          name: childMeta.name,
+          status: childMeta.status,
+          doneAt: childMeta.done_at ?? null,
+          cancelledAt: childMeta.cancelled_at ?? null,
+          lastCheckpoint: childLastCheckpoint,
+        });
+      } else {
+        // Active subtask: include active todos and recurse
+        const activeTodos = childTodos.filter(
+          (t) => t.status !== "done" && t.status !== "cancelled",
+        );
+
+        const grandchildren = Object.entries(index.tasks).filter(
+          ([_, e]) => e.parent === childId,
+        );
+        const nestedSubtasks = grandchildren.length > 0
+          ? await this.buildSubtaskSummaries(
+            grandchildren,
+            childMeta.last_checkpoint,
+            index,
+            depth + 1,
+          )
+          : undefined;
+
+        result.push({
+          id: childId,
+          shortId: childShortId,
+          name: childMeta.name,
+          status: childMeta.status,
+          activeTodos: activeTodos.length > 0 ? activeTodos : undefined,
+          subtasks: nestedSubtasks && nestedSubtasks.length > 0
+            ? nestedSubtasks
+            : undefined,
+        });
+      }
+    }
+
+    return result;
   }
 
   private resolveTaskId(prefix: string, allIds: string[]): string {

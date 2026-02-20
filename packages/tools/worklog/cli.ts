@@ -10,6 +10,7 @@ import {
   type Index,
   type IndexEntry,
   type ListOutput,
+  type ListTaskItem,
   type MoveOutput,
   type RunOutput,
   type ScopeConfig,
@@ -20,6 +21,7 @@ import {
   type ScopesOutput,
   type ShowOutput,
   type StatusOutput,
+  type SubtaskSummary,
   type SummaryOutput,
   TASK_STATUSES,
   type TaskMeta,
@@ -185,6 +187,7 @@ const TaskMetaSchema = z.object({
   has_uncheckpointed_entries: z.boolean(),
   metadata: z.optional(z.record(z.string(), z.string())),
   tags: z.optional(z.array(z.string())),
+  parent: z.optional(z.nullable(z.string())),
 });
 
 // ============================================================================
@@ -2192,6 +2195,11 @@ function formatShow(output: ShowOutput): string {
   lines.push(`full id: ${output.fullId}`);
   lines.push(`name: ${output.name}`);
   lines.push(`status: ${output.status}`);
+  if (output.parent) {
+    lines.push(
+      `parent: ${output.parent.shortId}  "${output.parent.name}"  (${output.parent.status})`,
+    );
+  }
   if (output.tags && output.tags.length > 0) {
     lines.push(`tags: ${output.tags.map((t) => `#${t}`).join(" ")}`);
   }
@@ -2274,7 +2282,61 @@ function formatShow(output: ShowOutput): string {
     }
   }
 
+  // Subtasks section
+  if (output.subtasks && output.subtasks.length > 0) {
+    lines.push("");
+    lines.push(`subtasks since checkpoint: ${output.subtasks.length}`);
+    for (const line of renderSubtasks(output.subtasks, "  ")) {
+      lines.push(line);
+    }
+  }
+
   return lines.join("\n");
+}
+
+function renderSubtasks(
+  subtasks: readonly SubtaskSummary[],
+  indent: string,
+): string[] {
+  const lines: string[] = [];
+  for (const sub of subtasks) {
+    lines.push(`${indent}${sub.shortId}  ${sub.status}  "${sub.name}"`);
+    if (sub.lastCheckpoint) {
+      lines.push(`${indent}  CHANGES`);
+      for (const l of sub.lastCheckpoint.changes.split("\n")) {
+        lines.push(`${indent}    ${l}`);
+      }
+      lines.push(`${indent}  LEARNINGS`);
+      for (const l of sub.lastCheckpoint.learnings.split("\n")) {
+        lines.push(`${indent}    ${l}`);
+      }
+    }
+    if (sub.activeTodos && sub.activeTodos.length > 0) {
+      const allTodoIds = sub.activeTodos.map((t) => t.id);
+      const statusChars: Record<TodoStatus, string> = {
+        "todo": " ",
+        "wip": "/",
+        "blocked": ">",
+        "cancelled": "-",
+        "done": "x",
+      };
+      for (const todo of sub.activeTodos) {
+        const shortTodoId = getShortId(todo.id, allTodoIds);
+        lines.push(
+          `${indent}  ${shortTodoId} [${
+            statusChars[todo.status]
+          }] ${todo.text}`,
+        );
+      }
+    }
+    if (sub.subtasks && sub.subtasks.length > 0) {
+      lines.push(`${indent}  subtasks: ${sub.subtasks.length}`);
+      for (const l of renderSubtasks(sub.subtasks, indent + "  ")) {
+        lines.push(l);
+      }
+    }
+  }
+  return lines;
 }
 
 function formatTraces(output: TracesOutput): string {
@@ -2301,6 +2363,9 @@ function formatList(output: ListOutput, showAll = false): string {
     return showAll ? "no tasks" : "no active tasks";
   }
 
+  // Detect --subtasks mode: any item has parent set
+  const isSubtasksMode = output.tasks.some((t) => t.parent !== undefined);
+
   // Sort tasks by creation date (newest first)
   const sortedTasks = [...output.tasks].sort((a, b) =>
     new Date(b.created).getTime() - new Date(a.created).getTime()
@@ -2309,38 +2374,61 @@ function formatList(output: ListOutput, showAll = false): string {
   // Calculate short IDs
   const allIds = sortedTasks.map((t) => t.id);
 
-  return sortedTasks
-    .map((t) => {
-      const shortId = getShortId(t.id, allIds);
+  const renderTask = (t: ListTaskItem, extraIndent: string): string => {
+    const shortId = getShortId(t.id, allIds);
 
-      // Filter scope prefix if it matches the filter pattern
-      let prefix = "";
-      if (
-        t.scopePrefix && (!t.filterPattern || t.scopePrefix !== t.filterPattern)
-      ) {
-        prefix = `[${t.scopePrefix}]  `;
+    // Filter scope prefix if it matches the filter pattern
+    let prefix = extraIndent;
+    if (
+      t.scopePrefix && (!t.filterPattern || t.scopePrefix !== t.filterPattern)
+    ) {
+      prefix += `[${t.scopePrefix}]  `;
+    }
+
+    // Filter tags - exclude the exact match of filterPattern, but keep children
+    let tagsToShow = t.tags || [];
+    if (t.filterPattern && t.tags) {
+      tagsToShow = t.tags.filter((tag) => {
+        if (tag === t.filterPattern) return false;
+        if (t.filterPattern!.startsWith(tag + "/")) return false;
+        return true;
+      });
+    }
+
+    const tagsStr = tagsToShow.length > 0
+      ? tagsToShow.map((tag) => `#${tag}`).join(" ") + "  "
+      : "";
+
+    return `${prefix}${tagsStr}${shortId}  ${t.status}  "${t.name}"  ${t.created}`;
+  };
+
+  if (isSubtasksMode) {
+    // Group tasks: parents first, then their children indented
+    const parentMap = new Map<string, ListTaskItem[]>();
+    const topLevel: ListTaskItem[] = [];
+
+    for (const t of sortedTasks) {
+      if (t.parent) {
+        const children = parentMap.get(t.parent) ?? [];
+        children.push(t);
+        parentMap.set(t.parent, children);
+      } else {
+        topLevel.push(t);
       }
+    }
 
-      // Filter tags - exclude the exact match of filterPattern, but keep children
-      let tagsToShow = t.tags || [];
-      if (t.filterPattern && t.tags) {
-        tagsToShow = t.tags.filter((tag) => {
-          // Exclude exact match
-          if (tag === t.filterPattern) return false;
-          // Exclude if filterPattern is a child of this tag (shouldn't happen but be safe)
-          if (t.filterPattern!.startsWith(tag + "/")) return false;
-          // Include everything else (including children of filterPattern like foo/bar when filtering by foo)
-          return true;
-        });
+    const lines: string[] = [];
+    for (const t of topLevel) {
+      lines.push(renderTask(t, ""));
+      const children = parentMap.get(t.id) ?? [];
+      for (const child of children) {
+        lines.push(renderTask(child, "  "));
       }
+    }
+    return lines.join("\n");
+  }
 
-      const tagsStr = tagsToShow.length > 0
-        ? tagsToShow.map((tag) => `#${tag}`).join(" ") + "  "
-        : "";
-
-      return `${prefix}${tagsStr}${shortId}  ${t.status}  "${t.name}"  ${t.created}`;
-    })
-    .join("\n");
+  return sortedTasks.map((t) => renderTask(t, "")).join("\n");
 }
 
 function formatScopes(output: ScopesOutput): string {
@@ -2468,6 +2556,7 @@ async function cmdAdd(
   metadata?: Record<string, string>,
   tags?: string[],
   timestamp?: string,
+  parent?: string,
 ): Promise<AddOutput> {
   await autoInit();
   await purge();
@@ -2480,6 +2569,7 @@ async function cmdAdd(
     metadata,
     tags,
     timestamp,
+    parent,
   });
 }
 
@@ -2825,7 +2915,10 @@ async function cmdTags(
   return { tags: newTags };
 }
 
-async function cmdRenameTag(oldTag: string, newTag: string): Promise<RenameTagOutput> {
+async function cmdRenameTag(
+  oldTag: string,
+  newTag: string,
+): Promise<RenameTagOutput> {
   await purge();
   return await listTagsUseCase.renameTag({ oldTag, newTag });
 }
@@ -2881,6 +2974,8 @@ async function cmdList(
   cwd?: string,
   statusFilters?: TaskStatus[],
   filterPattern?: string,
+  showSubtasks?: boolean,
+  parentFilter?: string,
 ): Promise<ListOutput> {
   if (!baseDir) {
     await purge();
@@ -2898,6 +2993,8 @@ async function cmdList(
     filterPattern,
     worklogDir: WORKLOG_DIR,
     depthLimit: WORKLOG_DEPTH_LIMIT,
+    showSubtasks,
+    parentFilter,
   });
 }
 
@@ -4249,9 +4346,10 @@ const createCmd = new Command()
   .option("--tag <tag:string>", "Add tag (repeatable)", {
     collect: true,
   })
+  .option("--parent <taskId:string>", "Set parent task (creates a subtask)")
   .action(async (options, name, desc) => {
     try {
-      await resolveScopeContext(
+      const { gitRoot } = await resolveScopeContext(
         options.scope,
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
@@ -4299,6 +4397,24 @@ const createCmd = new Command()
           );
         }
       }
+
+      // Resolve parent task ID if provided
+      let parentId: string | undefined;
+      if (options.parent) {
+        parentId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+          options.parent,
+          options.scope ? null : gitRoot,
+        );
+        // Validate parent exists in index
+        const index = await loadIndex();
+        if (!index.tasks[parentId]) {
+          throw new WtError(
+            "task_not_found",
+            `Parent task not found: ${options.parent}`,
+          );
+        }
+      }
+
       const metadata = parseMetaOption(options.meta);
       const output = await cmdAdd(
         name,
@@ -4308,6 +4424,7 @@ const createCmd = new Command()
         metadata,
         tags,
         timestampValue,
+        parentId,
       );
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
     } catch (e) {
@@ -4797,7 +4914,13 @@ const tagsAddCmd = new Command()
         options.scope ? null : gitRoot,
       );
       const effectiveGitRoot = gitRoot ?? await findGitRoot(Deno.cwd());
-      const output = await cmdTags(resolvedTaskId, [tag], [], effectiveGitRoot, Deno.cwd());
+      const output = await cmdTags(
+        resolvedTaskId,
+        [tag],
+        [],
+        effectiveGitRoot,
+        Deno.cwd(),
+      );
       if (options.json) {
         console.log(JSON.stringify(output));
       } else if (output.tags !== undefined) {
@@ -4829,7 +4952,13 @@ const tagsRemoveCmd = new Command()
         options.scope ? null : gitRoot,
       );
       const effectiveGitRoot = gitRoot ?? await findGitRoot(Deno.cwd());
-      const output = await cmdTags(resolvedTaskId, [], [tag], effectiveGitRoot, Deno.cwd());
+      const output = await cmdTags(
+        resolvedTaskId,
+        [],
+        [tag],
+        effectiveGitRoot,
+        Deno.cwd(),
+      );
       if (options.json) {
         console.log(JSON.stringify(output));
       } else if (output.tags !== undefined) {
@@ -4857,7 +4986,9 @@ const tagsRenameCmd = new Command()
         console.log(`Tag '#${output.oldTag}' not found`);
       } else {
         console.log(
-          `Renamed '#${output.oldTag}' → '#${output.newTag}' (${output.updatedCount} ${output.updatedCount === 1 ? "task" : "tasks"} updated)`,
+          `Renamed '#${output.oldTag}' → '#${output.newTag}' (${output.updatedCount} ${
+            output.updatedCount === 1 ? "task" : "tasks"
+          } updated)`,
         );
       }
     } catch (e) {
@@ -4943,6 +5074,8 @@ const listCmd = new Command()
   .option("-p, --path <path:string>", "Path to .worklog directory")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--all-scopes", "Show all scopes")
+  .option("--subtasks", "Include subtasks (hidden by default)")
+  .option("--parent <taskId:string>", "Show only subtasks of this parent")
   .action(async (options, pattern) => {
     try {
       // Build status filter from flags
@@ -4957,6 +5090,17 @@ const listCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
+
+      // Resolve --parent option to a full task ID
+      let resolvedParentFilter: string | undefined;
+      if (options.parent) {
+        const cwd = Deno.cwd();
+        const gitRoot = await findGitRoot(cwd);
+        resolvedParentFilter = await resolveTaskIdWithEnvFallbackAcrossScopes(
+          options.parent,
+          gitRoot,
+        );
+      }
 
       if (explicitWorklog) {
         if (options.scope) {
@@ -4987,6 +5131,8 @@ const listCmd = new Command()
           Deno.cwd(),
           statusFilters.length > 0 ? statusFilters : undefined,
           pattern,
+          options.subtasks ?? false,
+          resolvedParentFilter,
         );
         console.log(
           options.json
@@ -5016,6 +5162,8 @@ const listCmd = new Command()
         cwd,
         statusFilters.length > 0 ? statusFilters : undefined,
         pattern,
+        options.subtasks ?? false,
+        resolvedParentFilter,
       );
       console.log(
         options.json ? JSON.stringify(output) : formatList(output, options.all),
