@@ -5208,6 +5208,10 @@ const importCmd = new Command()
   .option("--rm", "Remove imported tasks from source")
   .option("--scope-to-tag", "Convert source scope to tag")
   .option("--tag-name <name:string>", "Custom tag name (with --scope-to-tag)")
+  .option(
+    "--allow-missing",
+    "Succeed silently if source worktree or .worklog does not exist",
+  )
   .action(async (options) => {
     try {
       applyDirOptions(
@@ -5262,6 +5266,25 @@ const importCmd = new Command()
         );
       }
     } catch (e) {
+      if (
+        options.allowMissing &&
+        e instanceof WtError &&
+        (e.code === "worktree_not_found" ||
+          e.code === "import_source_not_found")
+      ) {
+        const emptyOutput: ImportOutput = {
+          imported: 0,
+          merged: 0,
+          skipped: 0,
+          tasks: [],
+        };
+        if (options.json) {
+          console.log(JSON.stringify(emptyOutput));
+        } else {
+          console.log(`Source not found, nothing imported.`);
+        }
+        return;
+      }
       handleError(e, options.json ?? false);
     }
   });

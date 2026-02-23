@@ -1059,6 +1059,73 @@ Very old entry
   }
 });
 
+Deno.test("worklog import --allow-missing - succeeds with empty result when path does not exist", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const output = await captureOutput(() =>
+      main([
+        "import",
+        "--path",
+        `${tempDir}/nonexistent/.worklog`,
+        "--allow-missing",
+        "--json",
+      ])
+    );
+    const result = JSON.parse(output);
+
+    assertEquals(result.imported, 0);
+    assertEquals(result.merged, 0);
+    assertEquals(result.skipped, 0);
+    assertEquals(result.tasks.length, 0);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog import - fails with error when path does not exist and no --allow-missing", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+  console.error = () => {};
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    try {
+      await main([
+        "import",
+        "--path",
+        `${tempDir}/nonexistent/.worklog`,
+        "--json",
+      ]);
+    } catch (_e) {
+      // Expected: Deno.exit throws "EXIT"
+    }
+
+    assertEquals(exitCode, 1);
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("worklog import - handles external worktree with --scope-to-tag", async () => {
   const tempDirRoot = await Deno.makeTempDir();
   const tempDirExternal = await Deno.makeTempDir();
