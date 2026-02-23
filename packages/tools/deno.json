@@ -28,14 +28,19 @@
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
     "check": "deno check mod.ts",
-    "test": "deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot",
+    "test": "env -u WORKLOG_TASK_ID deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot",
     "validate": "deno task fmt:check && deno task lint && deno task check && deno task test"
   },
   "fmt": {
     "proseWrap": "never"
   },
   "lint": {
-    "plugins": ["./lint-plugin.ts"],
-    "exclude": ["explicit-cast.ts", "lint-plugin.ts"]
+    "plugins": [
+      "./lint-plugin.ts"
+    ],
+    "exclude": [
+      "explicit-cast.ts",
+      "lint-plugin.ts"
+    ]
   }
 }
