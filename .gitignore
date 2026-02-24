@@ -2,3 +2,4 @@
 .worklog/
 .worktrees/
 mise.toml
+*.skill

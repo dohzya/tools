@@ -2,6 +2,101 @@
 
 Complete reference for the worklog skill.
 
+## Workflow Guide
+
+### Tracing well
+
+```bash
+# ✅ GOOD: include goal, cause, piste
+wl trace <id> "Goal: support multi-currency"
+wl trace <id> "Tried direct field - broke 12 tests (cause: validator expects single total)"
+wl trace <id> "Pivot to CurrencyBucket pattern (piste: isolate currency logic)"
+wl trace <id> "Tests pass - CurrencyBucket works"
+
+# ❌ BAD: no context
+wl trace <id> "Tried X" / "Didn't work" / "Fixed it"
+```
+
+**Batch tracing with timestamps:**
+
+```bash
+wl trace <id> -t T14:30 "Started investigation"
+wl trace <id> -t T15:15 "Found root cause"
+```
+
+### Checkpoints
+
+When `wl trace` says "checkpoint recommended":
+
+```bash
+wl logs <id>    # 1. Review traces first
+wl checkpoint <id> \
+  "- Implemented CurrencyBucket pattern
+- Initial direct field approach failed (broke tests)
+- Pivot to CurrencyBucket → all tests pass" \
+  "- Direct field broke validators (wrong abstraction)
+- Bucket pattern isolates concerns better"
+```
+
+### Completing a task
+
+**Order matters:** commit → `wl show` → `wl done`
+
+```bash
+git commit -m "feat: multi-currency support"
+wl show <id>      # check pending TODOs + traces to consolidate
+wl done <id> \
+  "Changes narrative (all actions including failed attempts)" \
+  "1. Direct field broke validators - wrong abstraction
+2. Bucket pattern isolates concerns - reusable pattern" \
+  --meta commit=$(git rev-parse HEAD)
+```
+
+REX quality: ❌ "Tests pass" (result) · ❌ "Used CurrencyBucket" (action) · ✅ "Bucket pattern isolates concerns better than direct fields" (insight)
+
+### Sub-agent communication via subtasks
+
+```bash
+# Main agent
+wl create --started "Implement feature X"  # → <parent-id>
+wl claude <parent-id>                       # launch sub-agent with task context
+
+# Sub-agent creates its own scoped subtask
+wl create --parent <parent-id> --started "Analyze existing API"
+wl trace <subtask-id> "Found 3 endpoints to modify"
+
+# Main agent monitors
+wl show <parent-id>          # shows subtasks-since-checkpoint
+wl list --subtasks           # all tasks with subtasks indented
+wl list --parent <parent-id> # only children of this parent
+```
+
+Use `ready` (not `started`) for subtasks planned but not yet assigned to a sub-agent.
+
+### `wl run` and `wl claude`
+
+```bash
+wl run <id> npm test             # run with WORKLOG_TASK_ID injected
+wl run --create "Run tests" npm test   # create task on-the-fly + run
+wl claude              # uses WORKLOG_TASK_ID if already set
+wl claude <id>         # explicit task
+wl claude <id> -c      # pass Claude args after taskId
+wl run <id> claude -c --model opus    # complex Claude args
+```
+
+`WORKLOG_TASK_ID` is picked up automatically by `trace`, `checkpoint`, `done` — no need to specify `<id>` when running inside `wl run`.
+
+### Common mistakes
+
+1. **Working without worktask** → always create worktask first
+2. **Vague traces** → include causes (why failed) & pistes (what next)
+3. **Missing timestamps on batch traces** → use `-t`
+4. **Checkpoint = conclusion** → NO: consolidate traces into narrative
+5. **Done before commit** → commit first
+6. **Done without reviewing** → always `wl show <id>` first
+7. **REX = summary** → REX = critical distance, reusable insights
+8. **Tracing without starting** → `wl start <id>` before tracing
+
 ## Task Lifecycle
 
 ```

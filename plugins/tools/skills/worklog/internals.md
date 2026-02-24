@@ -6,9 +6,10 @@ File format and structure documentation for debugging and manual editing.
 
 ```
 .worklog/
+├── index.json                          # Fast lookup index (v2)
 ├── tasks/
-│   ├── 260205a.md          # Task file (ID as filename)
-│   ├── 260205b.md
+│   ├── 04vcuwpmxiygt1oq3hdrf3kob.md   # Task file (full ID as filename)
+│   ├── 0bcxbtkydvyqfr46n0juf4zgy.md
 │   └── ...
 ├── scopes/                  # Optional: multi-scope setup
 │   ├── main/
@@ -24,14 +25,23 @@ Each task is a markdown file with YAML frontmatter:
 
 ```markdown
 ---
-id: 260205a
-desc: Implement feature X
-status: active
-created: 2026-02-05T09:30:00+01:00
-updated: 2026-02-05T15:45:00+01:00
+id: 04vcuwpmxiygt1oq3hdrf3kob
+uid: 7c8b6bbb-22f9-4b17-a3cb-0c383369826e
+name: Implement feature X
+desc: Implement feature X with detailed description
+status: started
+created_at: '2026-02-05T09:30:00+01:00'
+ready_at: '2026-02-05T09:45:00+01:00'
+started_at: '2026-02-05T10:00:00+01:00'
+done_at: null
+cancelled_at: null
+last_checkpoint: '2026-02-05T14:30:00+01:00'
+has_uncheckpointed_entries: true
 metadata:
   commit: abc1234567890def
   author: alice
+parent: null
+tags: []
 ---
 
 # TODO
@@ -39,7 +49,7 @@ metadata:
 - [ ] Analyze code [id:: abc1234] ^abc1234
 - [x] Implement [id:: def5678] ^def5678
 
-# Log
+# Entries
 
 ## 2026-02-05T09:30:00+01:00
 
@@ -71,17 +81,24 @@ Completed implementation
 
 ### Required
 
-- `id` (string): Task ID (7-char base62, e.g., "260205a")
-- `desc` (string): Task description
-- `status` (string): "active" or "done"
-- `created` (ISO timestamp): Creation time
-- `updated` (ISO timestamp): Last modification time
+- `id` (string): Short task ID (25-char base36 UUID encoding, e.g., `04vcuwpmxiygt1oq3hdrf3kob`)
+- `uid` (string): Original UUID (for cross-worktree deduplication on import)
+- `name` (string): Short display name (shown in `wl list`)
+- `desc` (string): Full description
+- `status` (string): One of `created`, `ready`, `started`, `done`, `cancelled`
+- `created_at` (ISO timestamp): Creation time
+- `last_checkpoint` (ISO timestamp or null): Time of last checkpoint
+- `has_uncheckpointed_entries` (boolean): True if traces exist since last checkpoint
 
-### Optional
+### Optional (null when not set)
 
-- `metadata` (object): Custom key-value pairs
-  - Common: `commit`, `author`, `session`, `pr`, `issue`
-- `scope` (string): Scope ID for multi-scope setups
+- `ready_at` (ISO timestamp): When task transitioned to `ready`
+- `started_at` (ISO timestamp): When task transitioned to `started`
+- `done_at` (ISO timestamp): When task was completed
+- `cancelled_at` (ISO timestamp): When task was cancelled
+- `metadata` (object): Custom key-value pairs — common: `commit`, `author`, `pr`, `ticket`
+- `tags` (array): Tag strings
+- `parent` (string): Parent task ID for subtasks
 
 ## Log Entry Format
 
@@ -131,15 +148,16 @@ Numbered insights
 
 ## Task ID Generation
 
-Format: `YYMMDD{base62}` where base62 is a counter.
+Task IDs are UUIDs encoded in base36 (lowercase `0-9a-z`), producing 25-character strings.
 
 Examples:
 
-- `260205a` - First task on 2026-02-05
-- `260205b` - Second task on 2026-02-05
-- `2602051` - 62nd task on 2026-02-05
+- `04vcuwpmxiygt1oq3hdrf3kob`
+- `0bcxbtkydvyqfr46n0juf4zgy`
 
-Base62 alphabet: `0-9a-zA-Z`
+The encoding is **case-insensitive** and collision-safe across parallel sessions and multi-worktree setups. Any unambiguous prefix can be used (like git short SHAs).
+
+**Note:** Old date-based IDs (`260205a`) from prior versions are still supported.
 
 ## Scopes (Multi-Scope Setup)
 

@@ -1,269 +1,76 @@
 ---
 name: worklog
-description: Track work progress during development sessions. Activates when .worklog/ exists OR user says "track this", ">track", "let's track", "worktask", "work on worktask". Maintains a chronological worklog with on-demand consolidation via checkpoints.
+description: Track work progress during development sessions. Activates when .worklog/ exists OR user says "track this", "let's track", "worktask", "work on worktask". Maintains a chronological worklog with on-demand consolidation via checkpoints.
 ---
 
 # Worklog
 
-Track work progress with traces and checkpoints. **Always work within a worktask.**
+Track work with traces and checkpoints. **Always work within a worktask.**
 
-## Core Concepts
+## Task Lifecycle
 
-**Task lifecycle:** `created` → `ready` → `started` → `done` / `cancelled`
+`created` → `ready` → `started` → `done` / `cancelled`
 
-- **created**: Task defined, scope still being refined
-- **ready**: Fully scoped, queued for execution — work not started yet (use for backlog or tasks assigned to future sub-agents)
-- **started**: Actively executing NOW — always `start` before tracing
-- **done**: Task completed with final checkpoint
-- **cancelled**: Task abandoned
+- **created**: defined, not ready yet
+- **ready**: fully scoped, queued (use for backlog / future sub-agents)
+- **started**: actively working NOW — always `start` before tracing
+- **done**: completed with final checkpoint + REX learnings
 
-**Two types of entries:**
+## Orient Yourself
 
-1. **Traces** (append-only): Log what you're doing with causes & pistes
-   - Include **causes** for failures (why it failed)
-   - Include **pistes** for pivots (what to try next)
-   - Use real timestamps when batch-tracing (`-t T14:30`)
+```bash
+wl list                  # Active tasks (created + ready + started)
+wl list --started        # In-progress only
+wl list --all            # All including done/cancelled (<30d)
+wl show <id>             # Status, history, traces, TODOs, subtasks
+wl logs <id>             # Entries since last checkpoint
+```
 
-2. **Checkpoints** (consolidation): Rewrite traces into narrative
-   - **NOT a conclusion** - synthesize the traces themselves
-   - Review `wl logs <id>` before creating checkpoint
-
-**Key principle:** `done` = final checkpoint with:
-
-- **Changes**: Consolidate ALL traces (what happened, including failed attempts)
-- **Learnings**: REX with critical distance (reusable insights, not just "what we did")
+Output: `<id>  <status>  "<name>"  <date>`
 
 ## Essential Workflow
 
-### 1. Always Start with a Worktask
+1. **Create & start**: `wl create --started "Task name"`
+2. **Trace** with context: `wl trace <id> "Goal / action (cause: why failed) (piste: what next)"`
+3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "learnings"`
+4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces)
+5. **Close**: `wl done <id> "changes" "REX learnings"` (args optional if no new traces since last checkpoint)
 
-```bash
-# Check if tracking active
-wl list
-
-# Create worktask (default: created state)
-wl create "Implement feature X" "Detailed description here"
-
-# Create and start immediately
-wl create --started "Fix login bug"
-
-# Optional: Add TODOs for multi-step tasks
-wl create "Feature X" --todo "Analyze code" --todo "Implement" --todo "Test"
-
-# Transition task through states
-wl ready <id>                    # Mark ready to work on
-wl start <id>                    # Start working
-```
-
-**Critical:** Never work without an active worktask. Create one first.
-
-### 2. Trace Everything with Context
-
-```bash
-# ✅ GOOD traces (include causes & pistes)
-wl trace <id> "Goal: support multi-currency"
-wl trace <id> "Tried direct field - broke 12 tests (cause: validator expects single total)"
-wl trace <id> "Pivot to CurrencyBucket pattern (piste: isolate currency logic)"
-wl trace <id> "Tests pass - CurrencyBucket works"
-
-# ❌ BAD traces (missing context)
-wl trace <id> "Tried X"
-wl trace <id> "Didn't work"
-wl trace <id> "Fixed it"
-```
-
-**Note:** `wl trace` warns if task is not started. Start with `wl start <id>` first.
-
-**Batch tracing?** Use real timestamps:
-
-```bash
-wl trace <id> -t T14:30 "Started investigation"
-wl trace <id> -t T15:15 "Found root cause"
-wl trace <id> -t T15:45 "Applied fix"
-```
-
-### 3. Consolidate with Checkpoints
-
-When `wl trace` says "checkpoint recommended":
-
-```bash
-# 1. Review traces
-wl logs <id>
-
-# 2. Synthesize (don't just concatenate)
-wl checkpoint <id> \
-  "- Implemented CurrencyBucket pattern
-- Initial direct field approach failed (broke tests)
-- Pivot to CurrencyBucket → all tests pass" \
-  "- Direct field broke validators (wrong abstraction)
-- Bucket pattern isolates concerns better"
-```
-
-### 4. Complete Task (After Commit!)
-
-**CRITICAL: Always review before closing!**
-
-**Order matters:**
-
-1. Commit your changes first
-2. **Review traces & check TODOs** with `wl show`
-3. Then mark worktask done
-
-```bash
-# 1. Commit
-git add .
-git commit -m "feat: multi-currency support"
-
-# 2. Review ALL traces + check TODOs
-wl show <id>
-# ⚠️ Check output for:
-#   - Pending TODOs that need completion
-#   - All significant traces to consolidate
-#   - Pattern of what failed/worked
-
-# 3. Final consolidation + REX
-wl done <id> \
-  "Multi-currency validation via CurrencyBucket (12 tests pass)
-
-Actions:
-- Implemented CurrencyBucket pattern
-- Added error handling
-- Initial direct field approach failed (broke 12 tests)
-- Pivot to CurrencyBucket → tests pass
-
-Résultat:
-- 12/12 tests passing
-- Single-currency unchanged" \
-  "1. Direct field broke validators - wrong abstraction layer
-2. Bucket pattern isolates concerns - reusable pattern
-3. Centralized validation prevents fragmentation
-4. Validate aggregate before buckets - catches edge cases" \
-  --meta commit=$(git rev-parse HEAD)
-
-# If no new traces since last checkpoint, no args needed:
-wl done <id>
-```
-
-**REX quality check:**
-
-- ❌ "Tests pass" (result, not learning)
-- ❌ "Used CurrencyBucket" (action, not insight)
-- ✅ "Bucket pattern isolates concerns better than direct fields"
-
-### 5. Run Commands with Task Context
-
-Use `wl run` and `wl claude` to propagate task context via the `WORKLOG_TASK_ID` env var:
-
-```bash
-# Run any command with task context injected
-wl run <id> npm test
-wl run <id> ./scripts/deploy.sh
-
-# Create task on-the-fly and run
-wl run --create "Run tests" npm test
-
-# Launch Claude with task context in system prompt
-wl claude              # uses WORKLOG_TASK_ID if set
-wl claude <id>         # explicit task
-wl claude <id> -c      # pass Claude args after taskId
-
-# For complex claude args, use wl run instead:
-wl run <id> claude -c --model opus
-```
-
-`WORKLOG_TASK_ID` is also picked up automatically by `trace`, `checkpoint`, `done`, etc. when running inside `wl run` — no need to specify `<id>` explicitly.
-
-### 6. Sub-Agent Communication via Subtasks
-
-When delegating work to a sub-agent (e.g., `wl claude`), use subtasks to give each agent its own tracing scope without polluting the parent task.
-
-```bash
-# Main agent creates parent task and launches sub-agent
-wl create --started "Implement feature X"
-wl claude <id>         # sub-agent inherits WORKLOG_TASK_ID
-
-# Sub-agent creates its own subtask for scoped tracing
-wl create --parent <parent-id> --started "Analyze existing API"
-
-# Sub-agent traces to its own subtask
-wl trace <subtask-id> "Found 3 endpoints to modify"
-
-# Main agent monitors sub-agent progress
-wl show <parent-id>          # shows subtasks-since-checkpoint
-wl list --subtasks           # all tasks with subtasks indented
-wl list --parent <parent-id> # only children of this parent (flat)
-```
-
-**When to use subtasks:**
-
-- Sub-agent has a distinct scope of work (not just a step)
-- You want sub-agent traces isolated from parent traces
-- Multiple sub-agents work in parallel under one parent
-
-**`ready` vs `started` for sub-agent work:**
-
-- Create subtasks as `ready` when planning ahead (not yet assigned)
-- Subtask moves to `started` when the sub-agent actually begins
-
-## Common Mistakes to Avoid
-
-1. **Working without worktask** → Always create worktask first
-2. **Vague traces** → Include causes (why failed) & pistes (what next)
-3. **Missing timestamps** → Use `-t` when batch-tracing
-4. **Checkpoint = conclusion** → NO! Consolidate traces into narrative
-5. **Done before commit** → Commit first, then done
-6. **Done without reviewing** → ALWAYS do `wl show <id>` first to review traces + check TODOs
-7. **REX = summary** → NO! REX = critical distance, reusable insights
-8. **Tracing without starting** → `wl start <id>` before tracing
+**Critical:** commit before `done` · `wl show` before done · include causes & pistes in traces · REX = reusable insights (not a summary)
 
 ## Quick Reference
 
 ```bash
-wl create "name" ["description"]  # Create worktask (default: created)
-wl create --started "name"        # Create and start immediately
-wl ready <id>                     # Mark task ready
-wl start <id>                     # Start working on task
-wl start <id> --name "new name"   # Rename while starting
-wl update <id> --name "new"       # Update task name or description
-wl trace <id> "msg"               # Log with context (causes/pistes)
-wl trace <id> -t T14:30 "msg"     # With timestamp
-wl show <id>                      # Review traces + TODOs (before checkpoint/done!)
-wl checkpoint <id> "changes" "rx" # Consolidate traces
-wl done <id> ["changes" "rx"]     # After commit + wl show! (args optional if no new traces)
-wl cancel <id> [reason]           # Abandon task (marks as cancelled)
-wl list                           # See active worktasks (created/ready/started)
-wl list --started                 # Filter by status
-wl list --done                    # Show done tasks
+wl create "name" ["desc"]         # default: created state
+wl create --started "name"        # create + start immediately
+wl ready <id> / wl start <id>     # transition state
+wl trace <id> [-t T14:30] "msg"   # log entry (flags before message)
+wl checkpoint <id> "changes" "rx" # consolidate traces
+wl done <id> ["changes" "rx"]     # final checkpoint + close
+wl cancel <id> [reason]           # abandon task
+wl update <id> --name "new"       # rename task
 
-# Run with task context (sets WORKLOG_TASK_ID for sub-process)
-wl run <id> <cmd...>              # Execute command with task injected
-wl run --create "name" <cmd...>   # Create task on-the-fly + run
-wl claude [id] [claude-args...]   # Launch Claude with task context
+# Subtasks (sub-agent delegation)
+wl create --parent <id> --started "Sub-task"
+wl list --subtasks                # all tasks with subtasks indented
+wl list --parent <id>             # only children of parent
 
-# TODO management
-wl create "Task" --todo "Step 1" --todo "Step 2"
-wl todo list                      # All TODOs
-wl todo set status=done <id>      # Mark done
+# Context propagation
+wl run <id> <cmd...>              # run cmd with WORKLOG_TASK_ID set
+wl claude [id] [args...]          # launch Claude with task context
 
-# Subtasks (sub-agent communication)
-wl create --parent <id> --started "Sub-task"  # Create subtask
-wl list --subtasks                # All tasks with subtasks indented
-wl list --parent <id>             # Only children of parent (flat)
-
-# Tags
-wl create "Task" --tag "backend"  # Tag at creation
-wl tags <id>                      # View tags on a task
-wl tags add <tag> <id>            # Add tag
-wl tags remove <tag> <id>         # Remove tag
-wl tags rename <old> <new>        # Rename tag across all tasks
+# TODOs
+wl create "Task" --todo "Step 1"  # add TODOs at creation
+wl todo list [<id>]               # list TODOs
+wl todo set status=done <todo-id> # update TODO status
 ```
 
-## Additional Resources
+## References
 
-- **[reference.md](reference.md)** - Complete command reference, options, timestamps
-- **[todo-guide.md](todo-guide.md)** - TODO management in depth
-- **[examples.md](examples.md)** - Detailed examples and patterns
-- **[internals.md](internals.md)** - File format and structure (for debugging)
+- **[reference.md](reference.md)** — Full command reference, workflow guide, output formats
+- **[todo-guide.md](todo-guide.md)** — TODO management in depth
+- **[examples.md](examples.md)** — Good/bad trace & checkpoint examples
+- **[internals.md](internals.md)** — File format (for debugging or manual edits)
 
 ## Language
 
