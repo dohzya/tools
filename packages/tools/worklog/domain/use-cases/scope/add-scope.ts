@@ -88,22 +88,30 @@ export class AddScopeUseCase {
 
     const worklogPath = `${targetDir}/${input.worklogDir}`;
 
+    // Compute the parent path this scope would point to
+    const scopeDir = worklogPath.slice(0, -input.worklogDir.length - 1);
+    const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
+    const depth = relativeToGitRoot.split("/").filter((p) => p).length;
+    const parentPath = "../".repeat(depth);
+
+    let alreadyConfigured = false;
+
     if (await this.fs.exists(worklogPath)) {
-      // Check if already has parent
       const config = await this.scopeRepo.loadConfig(worklogPath);
       if (config && "parent" in config && config.parent) {
-        throw new WtError(
-          "already_has_parent",
-          `Scope at ${effectivePath} already has a parent configured.`,
-        );
+        if (config.parent === parentPath) {
+          // Already configured with the same parent — idempotent
+          alreadyConfigured = true;
+        } else {
+          throw new WtError(
+            "already_has_parent",
+            `Scope at ${effectivePath} already has a parent configured.`,
+          );
+        }
+      } else {
+        // Configure parent for existing worklog
+        await this.scopeRepo.saveConfig(worklogPath, { parent: parentPath });
       }
-
-      // Configure parent for existing worklog
-      const scopeDir = worklogPath.slice(0, -input.worklogDir.length - 1);
-      const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
-      const depth = relativeToGitRoot.split("/").filter((p) => p).length;
-      const parentPath = "../".repeat(depth);
-      await this.scopeRepo.saveConfig(worklogPath, { parent: parentPath });
     } else {
       // Create new worklog directory
       await this.fs.ensureDir(`${worklogPath}/tasks`);
@@ -111,11 +119,6 @@ export class AddScopeUseCase {
         `${worklogPath}/index.json`,
         JSON.stringify({ tasks: {} }, null, 2),
       );
-
-      const scopeDir = worklogPath.slice(0, -input.worklogDir.length - 1);
-      const relativeToGitRoot = scopeDir.slice(gitRoot.length + 1);
-      const depth = relativeToGitRoot.split("/").filter((p) => p).length;
-      const parentPath = "../".repeat(depth);
       await this.scopeRepo.saveConfig(worklogPath, { parent: parentPath });
     }
 
@@ -157,7 +160,9 @@ export class AddScopeUseCase {
       children,
     });
 
-    return { status: "scope_created" };
+    return {
+      status: alreadyConfigured ? "scope_already_configured" : "scope_created",
+    };
   }
 
   async executeAddParent(input: AddScopeParentInput): Promise<StatusOutput> {

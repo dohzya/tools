@@ -4909,3 +4909,193 @@ Deno.test("subtasks - list --json parent field present on subtask items", async 
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+// ============================================================================
+// Scopes add / add-parent idempotency tests
+// ============================================================================
+
+Deno.test("scopes add - idempotent when run twice with same args", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    await new Deno.Command("git", { args: ["init"], cwd: tempDir }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.email", "test@example.com"],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.name", "Test User"],
+      cwd: tempDir,
+    }).output();
+
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await Deno.mkdir(`${tempDir}/packages/lib`, { recursive: true });
+
+    // First add - creates scope
+    const out1 = await captureOutput(() =>
+      main(["scopes", "add", "lib", "packages/lib", "--json"])
+    );
+    assertEquals(JSON.parse(out1).status, "scope_created");
+
+    // Second add - same args: should be idempotent, not an error
+    const out2 = await captureOutput(() =>
+      main(["scopes", "add", "lib", "packages/lib", "--json"])
+    );
+    assertEquals(JSON.parse(out2).status, "scope_already_configured");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("scopes add - errors when target already has different parent configured", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  let exitCode = 0;
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  try {
+    await new Deno.Command("git", { args: ["init"], cwd: tempDir }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.email", "test@example.com"],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.name", "Test User"],
+      cwd: tempDir,
+    }).output();
+
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    // Manually create a worklog at packages/lib with a WRONG parent (3 levels, not 2)
+    await Deno.mkdir(`${tempDir}/packages/lib/.worklog/tasks`, {
+      recursive: true,
+    });
+    await Deno.writeTextFile(
+      `${tempDir}/packages/lib/.worklog/index.json`,
+      JSON.stringify({ tasks: {} }, null, 2),
+    );
+    await Deno.writeTextFile(
+      `${tempDir}/packages/lib/.worklog/scope.json`,
+      JSON.stringify({ parent: "../../../" }),
+    );
+
+    // scopes add would compute parent as "../../" but finds "../../../" → error
+    try {
+      await main(["scopes", "add", "lib", "packages/lib"]);
+    } catch (_e) {
+      // Expected: Deno.exit throws
+    }
+    assertEquals(exitCode, 1);
+  } finally {
+    Deno.exit = originalExit;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("scopes add-parent - idempotent when run twice with same parent", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    await new Deno.Command("git", { args: ["init"], cwd: tempDir }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.email", "test@example.com"],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.name", "Test User"],
+      cwd: tempDir,
+    }).output();
+
+    // Init root worklog
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    // Init child worklog
+    const childDir = `${tempDir}/packages/api`;
+    await Deno.mkdir(childDir, { recursive: true });
+    Deno.chdir(childDir);
+    await main(["init"]);
+
+    // First add-parent - configures parent
+    const out1 = await captureOutput(() =>
+      main(["scopes", "add-parent", tempDir, "--id", "api", "--json"])
+    );
+    assertEquals(JSON.parse(out1).status, "parent_configured");
+
+    // Second add-parent - same parent: should be idempotent, not an error
+    const out2 = await captureOutput(() =>
+      main(["scopes", "add-parent", tempDir, "--id", "api", "--json"])
+    );
+    assertEquals(JSON.parse(out2).status, "parent_already_configured");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("scopes add-parent - errors when child already has a different parent configured", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const otherParentDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  let exitCode = 0;
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  try {
+    await new Deno.Command("git", { args: ["init"], cwd: tempDir }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.email", "test@example.com"],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["config", "user.name", "Test User"],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["init"],
+      cwd: otherParentDir,
+    }).output();
+
+    // Init root and child worklogs
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    const childDir = `${tempDir}/packages/api`;
+    await Deno.mkdir(childDir, { recursive: true });
+    Deno.chdir(childDir);
+    await main(["init"]);
+
+    // Configure child with first parent (tempDir)
+    await main(["scopes", "add-parent", tempDir]);
+
+    // Init a different (unrelated) parent
+    Deno.chdir(otherParentDir);
+    await main(["init"]);
+
+    // Try to configure child with a DIFFERENT parent → error
+    Deno.chdir(childDir);
+    try {
+      await main(["scopes", "add-parent", otherParentDir]);
+    } catch (_e) {
+      // Expected: Deno.exit throws
+    }
+    assertEquals(exitCode, 1);
+  } finally {
+    Deno.exit = originalExit;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(otherParentDir, { recursive: true });
+  }
+});

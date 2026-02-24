@@ -3295,7 +3295,11 @@ async function cmdScopesAddParent(
     );
   }
 
+  // Calculate relative path from child to parent (needed for idempotency check)
+  const relativeToParent = calculateRelativePath(childDir, parentDir);
+
   // Check if child already has a parent
+  let alreadyConfigured = false;
   const childScopeJsonPath = `${childWorklogPath}/scope.json`;
   if (await exists(childScopeJsonPath)) {
     try {
@@ -3304,10 +3308,15 @@ async function cmdScopesAddParent(
         ScopeConfig
       >();
       if ("parent" in config && config.parent) {
-        throw new WtError(
-          "already_has_parent",
-          `This scope already has a parent configured: ${config.parent}. Remove it first if you want to change parents.`,
-        );
+        if (config.parent === relativeToParent) {
+          // Already configured with the same parent — idempotent
+          alreadyConfigured = true;
+        } else {
+          throw new WtError(
+            "already_has_parent",
+            `This scope already has a parent configured: ${config.parent}. Remove it first if you want to change parents.`,
+          );
+        }
       }
     } catch (e) {
       if (e instanceof WtError) throw e;
@@ -3315,12 +3324,11 @@ async function cmdScopesAddParent(
     }
   }
 
-  // Calculate relative path from child to parent
-  const relativeToParent = calculateRelativePath(childDir, parentDir);
-
-  // Configure child's scope.json
-  const childConfig: ScopeConfigChild = { parent: relativeToParent };
-  await saveScopeJson(childWorklogPath, childConfig);
+  // Configure child's scope.json (skip if already correctly configured)
+  if (!alreadyConfigured) {
+    const childConfig: ScopeConfigChild = { parent: relativeToParent };
+    await saveScopeJson(childWorklogPath, childConfig);
+  }
 
   // Load parent's scope.json and add this child
   const parentConfig = await loadOrCreateScopeJson(
@@ -3363,7 +3371,11 @@ async function cmdScopesAddParent(
 
   await saveScopeJson(parentWorklogPath, parentConfig);
 
-  return { status: "parent_configured" };
+  return {
+    status: alreadyConfigured
+      ? "parent_already_configured"
+      : "parent_configured",
+  };
 }
 
 async function cmdScopesRename(
