@@ -30,12 +30,12 @@ uid: 7c8b6bbb-22f9-4b17-a3cb-0c383369826e
 name: Implement feature X
 desc: Implement feature X with detailed description
 status: started
-created_at: '2026-02-05T09:30:00+01:00'
-ready_at: '2026-02-05T09:45:00+01:00'
-started_at: '2026-02-05T10:00:00+01:00'
+created_at: "2026-02-05T09:30:00+01:00"
+ready_at: "2026-02-05T09:45:00+01:00"
+started_at: "2026-02-05T10:00:00+01:00"
 done_at: null
 cancelled_at: null
-last_checkpoint: '2026-02-05T14:30:00+01:00'
+last_checkpoint: "2026-02-05T14:30:00+01:00"
 has_uncheckpointed_entries: true
 metadata:
   commit: abc1234567890def
