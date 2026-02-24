@@ -3,9 +3,9 @@ version: "3"
 tasks:
   fmt:
     desc: "Format the code"
-    dir: packages/tools
     cmds:
-      - deno task fmt
+      - deno fmt .
+      - cd packages/tools && deno task fmt
 
   test:
     desc: "Run all tests"
