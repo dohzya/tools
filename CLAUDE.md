@@ -1,23 +1,47 @@
 # Guidelines for AI Agents
 
-## Workflow
+## Development Workflow
+
+**Every code change MUST be performed in a subagent (to preserve conversation context) and MUST follow the TDD loop below — except for scripts, Taskfile tasks, and configuration files which don't require TDD.**
+
+### Main agent
+
+1a. Create a worktask if none exists:
 
 ```bash
-# Main agent:
-wl task create "Description"          # 1a. Create worktask (if none exists)
-wl update "More context..."           # 1b. OR update existing task description
-# → Launch subagent for each code change (steps 2–5 run inside subagent)
+wl task create "short name"
+```
 
-# Subagent (TDD loop — MANDATORY for every code change):
+OR 1b. update an existing task:
+
+```bash
+wl update <id> "More context..."
+```
+
+Then **launch a subagent** for each code change (steps 2–6 run inside the subagent).
+
+### Subagent — TDD loop (MANDATORY for application code)
+
+**Scope:** `packages/tools/` source code. Does NOT apply to scripts, `Taskfile.yml`, docs, or config files — those can be edited directly without TDD.
+
+```bash
 wl trace <id> "Writing test for X"              # 2. Trace BEFORE writing test
 # → Write failing test
-wl trace <id> "Test fails as expected (Y)"      # 3. Trace confirmed failure
-# → Implement
+wl trace <id> "Test fails as expected: Y"       # 3. Trace confirmed failure
+# → Implement minimum code to make it pass
 wl trace <id> "Implemented X — tests green"     # 4. Trace after green
 task validate                                   # 5. Validate (MANDATORY)
-
-# Release → RELEASE.md
 ```
+
+**Steps in detail:**
+
+1. `wl trace` — before touching any code, describe what you're about to test
+2. **Write failing test** — add test; run and confirm it fails for the right reason
+3. `wl trace` — record the observed failure message
+4. **Implement** — minimum code to make the test pass
+5. **Verify** — run `task validate`; confirm green
+6. `wl trace` — record that tests pass
+7. **Refactor if needed** — re-run `task validate` after
 
 **CRITICAL:** NEVER say "done" without running `task validate`.
 
@@ -71,12 +95,6 @@ deno fmt        # MANDATORY — CI checks markdown formatting too
 ```
 
 **Writing tests:** Use `Deno.makeTempDir()` and `createTempFile()`, never `/tmp/test-vault`.
-
-### TDD (MANDATORY for all code changes)
-
-1. Write test → 2. Verify failure → 3. Implement → 4. Verify success → 5. Refactor → 6. Verify success
-
-`wl trace` at each step (see Workflow above). **Avoids false positives, documents behavior.**
 
 ### Comments
 
