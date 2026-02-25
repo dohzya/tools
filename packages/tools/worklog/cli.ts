@@ -4435,7 +4435,10 @@ const taskCreateCmd = new Command()
 const createCmd = new Command()
   .description(
     "Create a new task with lifecycle states\n" +
-      "Default state is 'created' (not started yet)",
+      "Default state is 'created' (not started yet)\n\n" +
+      "With --claude:\n" +
+      '  wl create --claude "task name"           # Create and launch Claude\n' +
+      '  wl create --claude "task name" -- -c     # Pass args to Claude',
   )
   .arguments("<name:string> [desc:string]")
   .option("--json", "Output as JSON")
@@ -4456,7 +4459,8 @@ const createCmd = new Command()
     collect: true,
   })
   .option("--parent <taskId:string>", "Set parent task (creates a subtask)")
-  .action(async (options, name, desc) => {
+  .option("--claude", "Launch Claude after creation with WORKLOG_TASK_ID set")
+  .action(async function (options, name, desc) {
     try {
       const { gitRoot } = await resolveScopeContext(
         options.scope,
@@ -4536,6 +4540,13 @@ const createCmd = new Command()
         parentId,
       );
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
+      if (options.claude) {
+        const claudeArgs = this.getLiteralArgs();
+        const result = await cmdClaude(output.id, claudeArgs);
+        if (result.exitCode !== 0) {
+          console.log(`Claude exited with code ${result.exitCode}`);
+        }
+      }
     } catch (e) {
       handleError(e, options.json ?? false);
     }

@@ -5099,3 +5099,33 @@ Deno.test("scopes add-parent - errors when child already has a different parent 
     await Deno.remove(otherParentDir, { recursive: true });
   }
 });
+
+Deno.test(
+  "create --claude - creates task and sets up for claude launch",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+
+      // create --claude will create the task then try to launch claude (may fail in test env)
+      try {
+        await main(["create", "--claude", "Task for claude"]);
+      } catch (_e) {
+        // Claude launch may fail in test env - that's expected
+      }
+
+      // Task MUST have been created before claude was attempted
+      const listOut = await captureOutput(() =>
+        main(["list", "--all", "--json"])
+      );
+      const { tasks } = JSON.parse(listOut);
+      assertEquals(tasks.length, 1);
+      assertEquals(tasks[0].name, "Task for claude");
+    } finally {
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
