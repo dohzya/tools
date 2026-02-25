@@ -2,6 +2,7 @@ import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import {
   type AddOutput,
+  type AssignByTagOutput,
   type AssignOutput,
   type Checkpoint,
   type DiscoveredScope,
@@ -93,6 +94,7 @@ import { RenameScopeUseCase } from "./domain/use-cases/scope/rename-scope.ts";
 import { DeleteScopeUseCase } from "./domain/use-cases/scope/delete-scope.ts";
 import { ExportScopeUseCase } from "./domain/use-cases/scope/export-scope.ts";
 import { AssignScopeUseCase } from "./domain/use-cases/scope/assign-scope.ts";
+import { AssignByTagUseCase } from "./domain/use-cases/scope/assign-by-tag.ts";
 import { ImportTasksUseCase } from "./domain/use-cases/import/import-tasks.ts";
 import { ImportScopeToTagUseCase } from "./domain/use-cases/import/import-scope-to-tag.ts";
 import { RunCommandUseCase } from "./domain/use-cases/run-command.ts";
@@ -234,6 +236,7 @@ let renameScopeUseCase: RenameScopeUseCase;
 let deleteScopeUseCase: DeleteScopeUseCase;
 let exportScopeUseCase: ExportScopeUseCase;
 let assignScopeUseCase: AssignScopeUseCase;
+let assignByTagUseCase: AssignByTagUseCase;
 let importTasksUseCase: ImportTasksUseCase;
 let importScopeToTagUseCase: ImportScopeToTagUseCase;
 let runCommandUseCase: RunCommandUseCase;
@@ -318,6 +321,12 @@ function initializeUseCases(): void {
     markdownService,
   );
   assignScopeUseCase = new AssignScopeUseCase(
+    scopeRepo,
+    fs,
+    git,
+    markdownService,
+  );
+  assignByTagUseCase = new AssignByTagUseCase(
     scopeRepo,
     fs,
     git,
@@ -2472,6 +2481,21 @@ function formatAssign(output: AssignOutput): string {
   return lines.join("\n");
 }
 
+function formatAssignByTag(output: AssignByTagOutput): string {
+  const lines: string[] = [];
+  lines.push(`Moved: ${output.moved}`);
+  lines.push(`Updated in place: ${output.updated}`);
+
+  if (output.errors.length > 0) {
+    lines.push("\nErrors:");
+    for (const err of output.errors) {
+      lines.push(`  ${err.taskId}: ${err.error}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
 function formatSummary(output: SummaryOutput): string {
   if (output.tasks.length === 0) {
     return "no tasks";
@@ -3628,6 +3652,29 @@ async function cmdScopesAssign(
   });
 }
 
+async function cmdScopesAssignByTag(
+  scopeId: string,
+  tag: string,
+  cwd: string,
+): Promise<AssignByTagOutput> {
+  const gitRoot = await findGitRoot(cwd);
+
+  if (!gitRoot) {
+    throw new WtError(
+      "not_in_git_repo",
+      "Not in a git repository. Scopes require git.",
+    );
+  }
+
+  return await assignByTagUseCase.execute({
+    scopeId,
+    tag,
+    cwd,
+    worklogDir: WORKLOG_DIR,
+    depthLimit: WORKLOG_DEPTH_LIMIT,
+  });
+}
+
 async function _cmdMove(
   sourceIdentifier: string,
   targetPath: string,
@@ -4024,6 +4071,10 @@ const scopesAddCmd = new Command()
   .option("-p, --path <path:string>", "Path to scope directory")
   .option("--worktree", "Treat scope as git worktree")
   .option("--ref <ref:string>", "Git ref for worktree")
+  .option(
+    "--assign",
+    "Assign tasks tagged with scope ID to this scope after creation",
+  )
   .action(async (options, scopeId, pathArg) => {
     try {
       applyDirOptions(
@@ -4046,6 +4097,14 @@ const scopesAddCmd = new Command()
         cwd,
       );
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      if (options.assign) {
+        const assignOutput = await cmdScopesAssignByTag(scopeId, scopeId, cwd);
+        console.log(
+          options.json
+            ? JSON.stringify(assignOutput)
+            : formatAssignByTag(assignOutput),
+        );
+      }
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4117,9 +4176,15 @@ const scopesDeleteCmd = new Command()
   });
 
 const scopesAssignCmd = new Command()
-  .description("Assign task(s) to scope")
-  .arguments("<scopeId:string> <taskIds...:string>")
+  .description(
+    "Assign task(s) to scope, or assign tasks by tag with --tag",
+  )
+  .arguments("[scopeId:string] [taskIds...:string]")
   .option("--json", "Output as JSON")
+  .option(
+    "--tag <tag:string>",
+    "Assign tasks with this tag to scope (scope ID defaults to tag value)",
+  )
   .action(async (options, scopeId, ...taskIds) => {
     try {
       applyDirOptions(
@@ -4127,8 +4192,40 @@ const scopesAssignCmd = new Command()
         asGlobal(options).worklogDir,
       );
       const cwd = Deno.cwd();
-      const output = await cmdScopesAssign(scopeId, taskIds, cwd);
-      console.log(options.json ? JSON.stringify(output) : formatAssign(output));
+      if (options.tag) {
+        if (taskIds.length > 0) {
+          throw new WtError(
+            "invalid_args",
+            "Cannot combine --tag with task ID arguments.",
+          );
+        }
+        const effectiveScopeId = scopeId ?? options.tag;
+        const output = await cmdScopesAssignByTag(
+          effectiveScopeId,
+          options.tag,
+          cwd,
+        );
+        console.log(
+          options.json ? JSON.stringify(output) : formatAssignByTag(output),
+        );
+      } else {
+        if (!scopeId) {
+          throw new WtError(
+            "invalid_args",
+            "Scope ID is required. Use --tag to assign by tag.",
+          );
+        }
+        if (taskIds.length === 0) {
+          throw new WtError(
+            "invalid_args",
+            "Provide at least one task ID, or use --tag to assign by tag.",
+          );
+        }
+        const output = await cmdScopesAssign(scopeId, taskIds, cwd);
+        console.log(
+          options.json ? JSON.stringify(output) : formatAssign(output),
+        );
+      }
     } catch (e) {
       handleError(e, options.json ?? false);
     }

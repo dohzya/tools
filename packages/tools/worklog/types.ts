@@ -215,6 +215,12 @@ export interface AssignOutput {
   errors: ReadonlyArray<{ taskId: string; error: string }>;
 }
 
+export interface AssignByTagOutput {
+  moved: number;
+  updated: number;
+  errors: ReadonlyArray<{ taskId: string; error: string }>;
+}
+
 export interface TodoListOutput {
   todos: readonly Todo[];
 }

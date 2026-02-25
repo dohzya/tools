@@ -127,6 +127,15 @@ export type AssignOutput = {
   }>;
 };
 
+export type AssignByTagOutput = {
+  readonly moved: number;
+  readonly updated: number;
+  readonly errors: ReadonlyArray<{
+    readonly taskId: string;
+    readonly error: string;
+  }>;
+};
+
 export type TodoListOutput = {
   readonly todos: readonly Todo[];
 };
