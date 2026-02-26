@@ -1,5 +1,5 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run=git
 
-import { main } from "jsr:@dohzya/tools@0.8.3/worklog/cli";
+import { main } from "jsr:@dohzya/tools@0.8.4/worklog/cli";
 
 await main(Deno.args);

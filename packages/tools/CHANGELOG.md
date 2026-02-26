@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.11.0] — 2026-02-26
+
+### Added
+
+- **worklog:** `--claude` flag on `wl create` — launches Claude immediately after task creation with `WORKLOG_TASK_ID` set; supports passthrough args via `--` (e.g. `wl create --claude "task" -- --model opus`)
+- **worklog:** `wl start` now reopens `cancelled` tasks (in addition to `done`), returning a "task reopened" status; tracing on closed tasks suggests `wl start <id>` before `--force`
+
 ## [wl-v0.10.0] — 2026-02-25
 
 ### Added
