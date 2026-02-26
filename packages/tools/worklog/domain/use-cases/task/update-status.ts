@@ -105,16 +105,11 @@ export class UpdateStatusUseCase {
 
     const { meta } = taskData;
 
-    // Allow: created, ready, done; reject: cancelled
-    if (meta.status === "cancelled") {
-      throw new WtError(
-        "invalid_state",
-        `Cannot transition from 'cancelled' to 'started'`,
-      );
-    }
     if (meta.status === "started") {
       return { status: "task_already_started" };
     }
+
+    const isReopening = meta.status === "done" || meta.status === "cancelled";
 
     const now = this.getTimestamp();
     const updates: Record<string, unknown> = {
@@ -122,9 +117,14 @@ export class UpdateStatusUseCase {
       started_at: now,
     };
 
-    // Clear done_at if reopening
+    // Clear done_at if reopening from done
     if (meta.done_at) {
       updates.done_at = null;
+    }
+
+    // Clear cancelled_at if reopening from cancelled
+    if (meta.cancelled_at) {
+      updates.cancelled_at = null;
     }
 
     let content = await this.taskRepo.loadContent(taskId);
@@ -138,13 +138,12 @@ export class UpdateStatusUseCase {
       status_updated_at: now,
     };
 
-    // Remove done_at from index if present
     await this.indexRepo.updateEntry(
       taskId,
       indexUpdates,
     );
 
-    return { status: "task_started" };
+    return { status: isReopening ? "task_reopened" : "task_started" };
   }
 
   private async toDone(

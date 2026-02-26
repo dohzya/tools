@@ -45,11 +45,17 @@ export class AddTraceUseCase {
 
     const { meta } = taskData;
 
-    // Check status: reject done unless --force, warn if not started
+    // Check status: reject done/cancelled unless --force, warn if not started
     if (meta.status === "done" && !input.force) {
       throw new WtError(
         "task_already_done",
-        `Task ${meta.id} is completed. Use --force to add post-completion traces.`,
+        `Task is done. Reopen it with 'wl start ${meta.id}', or use --force to add post-completion traces.`,
+      );
+    }
+    if (meta.status === "cancelled" && !input.force) {
+      throw new WtError(
+        "task_already_done",
+        `Task is cancelled. Reopen it with 'wl start ${meta.id}', or use --force to add traces.`,
       );
     }
     if (meta.status !== "started") {

@@ -472,7 +472,9 @@ Deno.test("worklog trace - rejects completed task without --force", async () => 
     }
 
     assertEquals(exitCode, 1);
-    assertStringIncludes(errorOutput, "is completed");
+    assertStringIncludes(errorOutput, "is done");
+    assertStringIncludes(errorOutput, "wl start");
+    assertStringIncludes(errorOutput, "--force");
   } finally {
     Deno.exit = originalExit;
     console.error = originalError;
@@ -2412,20 +2414,11 @@ Deno.test("start - reopens done task", async () => {
   }
 });
 
-Deno.test("start - rejects cancelled tasks", async () => {
+Deno.test("start - reopens cancelled tasks", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
-  const originalExit = Deno.exit;
-  const originalError = console.error;
-  let exitCode = 0;
   try {
     Deno.chdir(tempDir);
-    // deno-lint-ignore dz-tools/no-type-assertion
-    Deno.exit = ((code: number) => {
-      exitCode = code;
-      throw new Error("EXIT");
-    }) as typeof Deno.exit;
-    console.error = () => {};
 
     await main(["init"]);
     const output = await captureOutput(() =>
@@ -2434,14 +2427,14 @@ Deno.test("start - rejects cancelled tasks", async () => {
     const { id } = JSON.parse(output);
     await main(["cancel", id]);
 
-    try {
-      await main(["start", id]);
-    } catch (_e) { /* expected */ }
+    await main(["start", id]);
 
-    assertEquals(exitCode, 1);
+    const listOutput = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const { tasks } = JSON.parse(listOutput);
+    assertEquals(tasks[0].status, "started");
   } finally {
-    Deno.exit = originalExit;
-    console.error = originalError;
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
   }

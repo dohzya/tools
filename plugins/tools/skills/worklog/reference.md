@@ -38,6 +38,18 @@ wl checkpoint <id> \
 - Bucket pattern isolates concerns better"
 ```
 
+### Reopening a task
+
+If you need to work on a task again after closing it, **reopen it** instead of using `--force`:
+
+```bash
+wl start <id>    # reopen done or cancelled task → "task reopened"
+```
+
+This transitions the task back to `started`, clears the `done_at`/`cancelled_at` timestamp, and lets you trace normally without `--force`.
+
+**Prefer reopen over `--force`**: `wl start` restores the task to a proper working state, keeps the history clean, and doesn't require `--force` on every subsequent trace.
+
 ### Completing a task
 
 **Order matters:** commit → `wl show` → `wl done`
@@ -96,13 +108,15 @@ wl run <id> claude -c --model opus    # complex Claude args
 6. **Done without reviewing** → always `wl show <id>` first
 7. **REX = summary** → REX = critical distance, reusable insights
 8. **Tracing without starting** → `wl start <id>` before tracing
+9. **Using --force on a task you need to rework** → reopen with `wl start <id>` instead
 
 ## Task Lifecycle
 
 ```
 created → ready → started → done
-   │         │        │
-   │         │        └──→ cancelled
+   │         │        │       │
+   │         │        │       └──→ started (reopen)
+   │         │        └──→ cancelled → started (reopen)
    │         └──→ cancelled
    └──→ cancelled
 ```
@@ -113,7 +127,7 @@ created → ready → started → done
 - **done**: Task completed (final checkpoint)
 - **cancelled**: Task abandoned
 
-Transitions: `ready` allows `created → ready` and `started → ready`. `start` allows `created → started`, `ready → started`, and `done → started` (reopen). `cancel` works from any state except `done`.
+Transitions: `ready` allows `created → ready` and `started → ready`. `start` allows `created → started`, `ready → started`, `done → started` (reopen), and `cancelled → started` (reopen). `cancel` works from any state except `done`.
 
 ## Commands
 
@@ -199,11 +213,10 @@ Marks task as ready to work on.
 
 ### `wl start <id>`
 
-Starts working on a task (or reopens a done task).
+Starts working on a task, or reopens a done/cancelled task.
 
-- Allowed from: `created`, `ready`, `done` (reopen)
-- Rejected from: `cancelled`
-- When reopening done: clears `done_at`
+- Allowed from: `created`, `ready`, `done` (reopen), `cancelled` (reopen)
+- When reopening: clears `done_at`/`cancelled_at`, returns "task reopened"
 
 ### `wl update <id>`
 
@@ -304,9 +317,9 @@ todos: 2
 Available options:
 
 - `--timestamp TS` or `-t TS`: Custom timestamp (see format below)
-- `--force` or `-f`: Allow modifying completed tasks
+- `--force` or `-f`: Allow tracing on done/cancelled tasks without reopening (prefer `wl start <id>` if you need to work on it again)
 
-**Warning behavior:** `wl trace` warns if the task is not in `started` state (but still records the trace). If the task is `done`, it errors unless `--force` is used.
+**Warning behavior:** `wl trace` warns if the task is not in `started` state (but still records the trace). If the task is `done` or `cancelled`, it errors unless `--force` is used.
 
 ## Done command
 
@@ -358,22 +371,29 @@ wl trace <id> -t "2024-12-15T11:15:30+01:00" "Fixed validation"
 
 ## Modifying completed tasks
 
-By default, completed tasks cannot be modified. Use `--force` (or `-f`) to add entries or checkpoints after completion:
+If you need to continue working on a done or cancelled task, **reopen it first**:
 
 ```bash
-# Add post-completion entry
+wl start <id>    # reopen → back to "started", then trace normally
+```
+
+If you only want to append a note without reopening (post-deployment observation, retrospective finding, etc.), use `--force`:
+
+```bash
+# Add post-completion entry without reopening
 wl trace <id> -f "Found edge case in production"
 
-# Create post-completion checkpoint
+# Create post-completion checkpoint without reopening
 wl checkpoint <id> -f "Hotfix applied" "Edge case documented"
 ```
 
-**When to use force:**
+**Reopen vs force:**
 
-- Recording post-deployment issues
-- Adding retrospective findings
-- Documenting production learnings
-- Appending missed context
+| Situation                      | Preferred                |
+| ------------------------------ | ------------------------ |
+| Need to work on the task again | `wl start <id>` (reopen) |
+| Quick retrospective note       | `wl trace <id> --force`  |
+| Post-deployment observation    | `wl trace <id> --force`  |
 
 **Purge protection:** Tasks with uncheckpointed entries (flag `has_uncheckpointed_entries: true`) are not auto-purged. Create a checkpoint to clear this flag and allow eventual cleanup.
 

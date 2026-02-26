@@ -299,12 +299,15 @@ Deno.test("UpdateStatusUseCase - toStarted when already started returns already_
   assertEquals(markdownService.lastFrontmatterUpdates.length, 0);
 });
 
-Deno.test("UpdateStatusUseCase - toStarted from cancelled (rejected)", async () => {
+Deno.test("UpdateStatusUseCase - toStarted from cancelled (reopen)", async () => {
   const indexRepo = createMockIndexRepo({
     [TASK_ID]: makeIndexEntry({ status: "cancelled" }),
   });
   const taskRepo = createMockTaskRepo({
-    [TASK_ID]: makeTaskFileData({ status: "cancelled" }),
+    [TASK_ID]: makeTaskFileData({
+      status: "cancelled",
+      cancelled_at: "2025-01-18T10:00:00+01:00",
+    }),
   });
   const markdownService = createMockMarkdownService();
 
@@ -315,18 +318,47 @@ Deno.test("UpdateStatusUseCase - toStarted from cancelled (rejected)", async () 
     () => FIXED_TIMESTAMP,
   );
 
-  await assertRejects(
-    () =>
-      useCase.execute({
-        taskId: TASK_ID,
-        targetStatus: "started",
-      }),
-    WtError,
-    "Cannot transition from 'cancelled' to 'started'",
-  );
+  const result = await useCase.execute({
+    taskId: TASK_ID,
+    targetStatus: "started",
+  });
+
+  assertEquals(result.status, "task_reopened");
+
+  // Verify index was updated
+  assertEquals(indexRepo.index.tasks[TASK_ID].status, "started");
 });
 
-Deno.test("UpdateStatusUseCase - toStarted from done (reopening, clears done_at)", async () => {
+Deno.test("UpdateStatusUseCase - toStarted from cancelled clears cancelled_at", async () => {
+  const indexRepo = createMockIndexRepo({
+    [TASK_ID]: makeIndexEntry({ status: "cancelled" }),
+  });
+  const taskRepo = createMockTaskRepo({
+    [TASK_ID]: makeTaskFileData({
+      status: "cancelled",
+      cancelled_at: "2025-01-18T10:00:00+01:00",
+    }),
+  });
+  const markdownService = createMockMarkdownService();
+
+  const useCase = new UpdateStatusUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+    () => FIXED_TIMESTAMP,
+  );
+
+  await useCase.execute({
+    taskId: TASK_ID,
+    targetStatus: "started",
+  });
+
+  // Verify cancelled_at is cleared in frontmatter updates
+  assertEquals(markdownService.lastFrontmatterUpdates[0].cancelled_at, null);
+  assertEquals(markdownService.lastFrontmatterUpdates[0].status, "started");
+});
+
+Deno.test("UpdateStatusUseCase - toStarted from done (reopening) returns task_reopened", async () => {
   const indexRepo = createMockIndexRepo({
     [TASK_ID]: makeIndexEntry({
       status: "done",
@@ -353,7 +385,7 @@ Deno.test("UpdateStatusUseCase - toStarted from done (reopening, clears done_at)
     targetStatus: "started",
   });
 
-  assertEquals(result.status, "task_started");
+  assertEquals(result.status, "task_reopened");
 
   // Verify done_at is cleared in frontmatter updates
   assertEquals(markdownService.lastFrontmatterUpdates[0].done_at, null);

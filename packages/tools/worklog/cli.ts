@@ -4750,7 +4750,7 @@ const readyCmd = new Command()
   });
 
 const startCmd = new Command()
-  .description("Start working on a task")
+  .description("Start working on a task (or reopen a done/cancelled task)")
   .arguments(HAS_ENV_TASK_ID ? "[taskId:string]" : "<taskId:string>")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
