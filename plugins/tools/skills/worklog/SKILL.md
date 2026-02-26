@@ -30,6 +30,8 @@ Output: `<id>  <status>  "<name>"  <date>`
 
 ## Essential Workflow
 
+> **Delegating to sub-agents?** Create a subtask: `wl create --parent <id> --started "Sub-task"`, then launch with `wl claude <subtask-id>`.
+
 1. **Create & start**: `wl create --started "Task name"`
 2. **Trace** with context: `wl trace <id> "Goal / action (cause: why failed) (piste: what next)"`
 3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "learnings"`

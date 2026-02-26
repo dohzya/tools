@@ -75,6 +75,18 @@ Commands that work **without taskId** (uses WORKLOG_TASK_ID automatically):
 
 Commands that still **require taskId as first argument** (ambiguous with other args):
   wl trace <id> "msg", wl checkpoint <id> ..., wl done <id> ...
+
+## Subtasks
+
+To delegate sub-work to another agent, create a subtask linked to this task:
+  wl create --parent ${resolvedTaskId} --started "Sub-task name"
+
+Then launch the sub-agent with its own context:
+  wl claude <subtask-id>
+
+Check subtask progress:
+  wl show ${resolvedTaskId}   # shows subtasks-since-checkpoint section
+  wl list --parent ${resolvedTaskId}   # only children of this task
 `.trim();
 
     // Launch Claude with appended system prompt

@@ -182,6 +182,7 @@ Creates a new task. The `name` is displayed in list views, `desc` is the detaile
 
 - `--ready`: Create in 'ready' state
 - `--started`: Create in 'started' state
+- `--parent <id>`: Set parent task (creates a subtask — use for sub-agent delegation)
 - `--todo <text>`: Add a TODO item (repeatable)
 - `--meta <key=value>`: Set metadata (repeatable)
 - `-t, --timestamp <ts>`: Custom creation timestamp
@@ -197,6 +198,9 @@ wl create "Fix login bug" "Users can't login after session timeout"
 
 # Start immediately
 wl create --started "Urgent hotfix"
+
+# As a subtask (for sub-agent delegation)
+wl create --parent <parent-id> --started "Analyze existing API"
 
 # With TODOs
 wl create "Feature X" --todo "Analyze" --todo "Implement" --todo "Test"
