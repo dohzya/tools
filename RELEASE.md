@@ -56,7 +56,11 @@ task validate  # ✅ Must be green (validate:code + validate:plugin)
 # 1. Prepare version bump (updates deno.json + tool cli.ts + skill imports only)
 task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
 
-# 1b. Validate after bump
+# 1b. Update CHANGELOG.md — add a new section at the top:
+#     ## [wl-v0.6.1] — YYYY-MM-DD
+#     List notable changes since the previous tag (git log wl-v0.6.0..HEAD --oneline)
+
+# 1c. Validate after bump
 task validate  # ✅ Must pass
 
 # 2. Commit (don't push yet)
@@ -104,7 +108,8 @@ git tag v0.6.2 && git push origin v0.6.2
 | ---- | ------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
 | 0    | `task validate` ✅        | Must pass (runs validate:code + validate:plugin)                 | Ensure clean starting state + plugin manifests           |
 | 1    | N/A                       | `task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY            |
-| 1b   | `task validate` ✅        | Must pass                                                        | Verify bump didn't break anything                        |
+| 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section   | Document what changed (git log prev-tag..HEAD)           |
+| 1c   | `task validate` ✅        | Must pass                                                        | Verify bump didn't break anything                        |
 | 2    | N/A                       | `git commit` (no push!)                                          | Commit version changes locally                           |
 | 3    | Manual test               | `deno publish`                                                   | **JSR MUST have correct code** - binaries built from JSR |
 | 4    | N/A                       | `git push origin main`                                           | Push commit (NOT tag yet!)                               |
@@ -119,7 +124,7 @@ git tag v0.6.2 && git push origin v0.6.2
 **Key gates:**
 
 - ✅ Step 0: Clean validation before starting
-- ✅ Step 1b: Validation after version bump
+- ✅ Step 1c: Validation after version bump
 - ✅ Step 5: **CI MUST BE GREEN** before creating any tags
 - ✅ Step 7: Release workflow must succeed before updating homebrew
 
@@ -140,9 +145,10 @@ When assisting with releases, Claude should:
 3. Create a checklist showing each step from "Order of Operations"
 4. Mark steps as in_progress/completed as they execute
 5. Remember that `deno publish` requires user interaction (can't be automated)
-6. **ALWAYS run `task validate`** before ANY commit
-7. **ALWAYS verify CI is green** before creating tags
-8. Never skip validation steps even if "it should work"
+6. **ALWAYS update CHANGELOG.md** (step 1b) before committing — add a new dated section with notable changes (`git log prev-tag..HEAD --oneline --no-merges`)
+7. **ALWAYS run `task validate`** before ANY commit
+8. **ALWAYS verify CI is green** before creating tags
+9. Never skip validation steps even if "it should work"
 
 ## Version Files
 
@@ -159,6 +165,10 @@ Updates ONLY files needed BEFORE the GitHub release:
 **For md:**
 
 - Same pattern with `markdown-surgeon` paths
+
+**Always (manual step 1b):**
+
+- `packages/tools/CHANGELOG.md` (add new `[wl-vX.Y.Z] — YYYY-MM-DD` section)
 
 ### Phase 2: Post-Release (`task bump-finalize`)
 
