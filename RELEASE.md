@@ -59,6 +59,8 @@ task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
 # 1b. Update CHANGELOG.md — add a new section at the top:
 #     ## [wl-v0.6.1] — YYYY-MM-DD
 #     List notable changes since the previous tag (git log wl-v0.6.0..HEAD --oneline)
+#     ⚠️  NEVER infer changelog content from commit message subjects alone
+#        Always read the actual diff to describe what was truly implemented
 
 # 1c. Validate after bump
 task validate  # ✅ Must pass
@@ -108,7 +110,7 @@ git tag v0.6.2 && git push origin v0.6.2
 | ---- | ------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- |
 | 0    | `task validate` ✅        | Must pass (runs validate:code + validate:plugin)                 | Ensure clean starting state + plugin manifests           |
 | 1    | N/A                       | `task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY            |
-| 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section   | Document what changed (git log prev-tag..HEAD)           |
+| 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section   | Document what changed — read actual diffs, not just commit subjects |
 | 1c   | `task validate` ✅        | Must pass                                                        | Verify bump didn't break anything                        |
 | 2    | N/A                       | `git commit` (no push!)                                          | Commit version changes locally                           |
 | 3    | Manual test               | `deno publish`                                                   | **JSR MUST have correct code** - binaries built from JSR |
@@ -145,7 +147,7 @@ When assisting with releases, Claude should:
 3. Create a checklist showing each step from "Order of Operations"
 4. Mark steps as in_progress/completed as they execute
 5. Remember that `deno publish` requires user interaction (can't be automated)
-6. **ALWAYS update CHANGELOG.md** (step 1b) before committing — add a new dated section with notable changes (`git log prev-tag..HEAD --oneline --no-merges`)
+6. **ALWAYS update CHANGELOG.md** (step 1b) before committing — add a new dated section with notable changes (`git log prev-tag..HEAD --oneline --no-merges`) — **read actual diffs to verify each change, never infer from commit subjects alone**
 7. **ALWAYS run `task validate`** before ANY commit
 8. **ALWAYS verify CI is green** before creating tags
 9. Never skip validation steps even if "it should work"
@@ -364,3 +366,4 @@ Historical context - what went wrong and how this process was improved:
 5. **Workflow read wrong version** → Now reads from deno.json, not tag
 6. **Bump script too eager** → Homebrew checksums only updated after release exists
 7. **Used `wl add` instead of `wl trace`** → Now explicit in Claude Code Integration
+8. **CHANGELOG written from commit names without reading the actual diffs** → Never infer changelog content from commit subjects; always read the actual diff (`git show <hash>`) to describe what was truly implemented
