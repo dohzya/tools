@@ -4613,11 +4613,13 @@ const showCmd = new Command()
     "Show task context (alias for 'logs')\n" +
       "Use before creating checkpoints to review traces",
   )
-  .arguments(HAS_ENV_TASK_ID ? "[taskId:string]" : "<taskId:string>")
+  .arguments("[taskId:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--active", "Show only active todos (exclude done/cancelled)")
+  .option("-q, --quiet", "Silently exit if no task ID (for hooks)")
   .action(async (options, taskId?: string) => {
+    if (options.quiet && !taskId && !ENV_TASK_ID) return;
     try {
       const { gitRoot } = await resolveScopeContext(
         options.scope,
@@ -4660,33 +4662,64 @@ const tracesCmd = new Command()
 
 const checkpointCmd = new Command()
   .description("Consolidate recent traces into synthesis (not just a list)")
-  .arguments("<taskId:string> <changes:string> <learnings:string>")
+  .arguments("[taskId:string] [changes:string] [learnings:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("-f, --force", "Force checkpoint on completed tasks")
   .option("-t, --timestamp <ts:string>", "Timestamp (currently ignored)")
-  .action(async (options, taskId, changes, learnings) => {
-    try {
-      const { gitRoot } = await resolveScopeContext(
-        options.scope,
-        asGlobal(options).cwd,
-        asGlobal(options).worklogDir,
-      );
-      const resolvedTaskId = await resolveTaskIdAcrossScopes(
-        taskId,
-        options.scope ? null : gitRoot,
-      );
-      const output = await cmdCheckpoint(
-        resolvedTaskId,
-        changes,
-        learnings,
-        options.force ?? false,
-      );
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
-    } catch (e) {
-      handleError(e, options.json ?? false);
-    }
-  });
+  .option("-q, --quiet", "Silently exit if no task ID (for hooks)")
+  .option("--claude", "Delegate checkpoint synthesis to Claude agent")
+  .action(
+    async (options, taskId?: string, changes?: string, learnings?: string) => {
+      if (options.quiet && !taskId && !ENV_TASK_ID) return;
+      try {
+        const { gitRoot } = await resolveScopeContext(
+          options.scope,
+          asGlobal(options).cwd,
+          asGlobal(options).worklogDir,
+        );
+        if (options.claude) {
+          const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+            taskId,
+            options.scope ? null : gitRoot,
+          );
+          const prompt =
+            `Review the "Recent Traces" in your context and create a checkpoint by running this command:\n\n` +
+            `  wl checkpoint ${resolvedTaskId} "<changes>" "<learnings>"\n\n` +
+            `Guidelines:\n` +
+            `- changes: 1-2 sentences synthesizing what was accomplished (not a list of traces)\n` +
+            `- learnings: 1-2 sentences on what was learned or should be remembered\n\n` +
+            `Run the command directly without asking for confirmation.`;
+          const result = await cmdClaude(resolvedTaskId, ["-p", prompt]);
+          if (result.exitCode !== 0) {
+            console.log(`Claude exited with code ${result.exitCode}`);
+          }
+        } else {
+          if (!taskId || !changes || !learnings) {
+            throw new WtError(
+              "invalid_args",
+              "Usage: wl checkpoint <taskId> <changes> <learnings>",
+            );
+          }
+          const resolvedTaskId = await resolveTaskIdAcrossScopes(
+            taskId,
+            options.scope ? null : gitRoot,
+          );
+          const output = await cmdCheckpoint(
+            resolvedTaskId,
+            changes,
+            learnings,
+            options.force ?? false,
+          );
+          console.log(
+            options.json ? JSON.stringify(output) : formatStatus(output),
+          );
+        }
+      } catch (e) {
+        handleError(e, options.json ?? false);
+      }
+    },
+  );
 
 const doneCmd = new Command()
   .description(

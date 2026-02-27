@@ -5122,3 +5122,88 @@ Deno.test(
     }
   },
 );
+
+Deno.test("wl show -q without taskId exits silently", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const output = await captureOutput(() => main(["show", "-q"]));
+    assertEquals(output, "");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("wl checkpoint -q without taskId exits silently", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const output = await captureOutput(() => main(["checkpoint", "-q"]));
+    assertEquals(output, "");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("wl checkpoint without --claude requires all args", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    try {
+      await main(["checkpoint"]);
+    } catch (_e) {
+      // Expected EXIT
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Usage: wl checkpoint");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("wl checkpoint --claude -q without taskId exits silently", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const output = await captureOutput(() =>
+      main(["checkpoint", "--claude", "-q"])
+    );
+    assertEquals(output, "");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
