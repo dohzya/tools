@@ -236,6 +236,36 @@ Résultat:
   --meta commit=$(git rev-parse HEAD)
 ```
 
+## Example 5: Sub-Agent Delegation
+
+Main agent delegates scoped work to a sub-agent via subtasks:
+
+```bash
+# Main agent creates parent task + subtask for the sub-agent
+wl create --started "Implement payment integration" "Stripe + webhooks"  # → <parent-id>
+wl create --parent <parent-id> --ready "Audit existing payment code" "Map current endpoints and SDK usage"  # → <subtask-id>
+
+# Human launches sub-agent with subtask context: wl claude <subtask-id>
+
+# Sub-agent starts its subtask and traces independently
+wl start <subtask-id>
+wl trace <subtask-id> "Found 3 payment endpoints: /charge, /refund, /webhook"
+wl trace <subtask-id> "Stripe SDK already imported in payments.ts — no new dep needed"
+wl done <subtask-id> "Audited payment code" "Stripe SDK available, only /webhook needs auth guard"
+
+# Main agent monitors
+wl show <parent-id>          # subtasks-since-checkpoint section shows sub-agent activity
+wl list --parent <parent-id> # only children of this task
+
+# Main agent continues based on sub-agent findings
+wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook auth guard"
+```
+
+**Key points:**
+- Use `--ready` (not `--started`) for subtasks planned but not yet assigned to a sub-agent
+- Sub-agent creates traces on its own subtask — main agent sees progress via `wl show <parent-id>`
+- Main agent's context injection via `wl claude` sets `WORKLOG_TASK_ID` so sub-agent commands work without specifying `<id>`
+
 ## Tips for Better Worklogs
 
 1. **Trace immediately** - Don't batch unless using timestamps

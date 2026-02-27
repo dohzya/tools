@@ -144,7 +144,7 @@ Numbered insights
 - `[due:: 2026-02-15]`
 - `[priority:: high]`
 
-**Block reference:** `^todo-id` enables Obsidian linking via `[[task-id#^todo-id]]`
+**Block reference:** `^todo-id` enables direct TODO references via `[[task-id#^todo-id]]`
 
 ## Task ID Generation
 
@@ -196,24 +196,6 @@ You can manually edit task files, but:
 3. **Don't modify IDs** - Used for references
 4. **Preserve checkpoint markers** - `[checkpoint]` is significant
 5. **Keep TODO IDs unique** - Base62 7-char format
-
-## Obsidian Integration
-
-Task files are designed for Obsidian:
-
-- **Wikilinks**: Reference tasks via `[[260205a]]`
-- **Block references**: Reference TODOs via `[[260205a#^abc1234]]`
-- **Frontmatter**: Compatible with Dataview queries
-- **Daily notes**: Link tasks to daily notes for context
-
-Example Dataview query:
-
-```dataview
-TABLE desc, status, created
-FROM ".worklog/tasks"
-WHERE status = "active"
-SORT created DESC
-```
 
 ## Backup and Migration
 

@@ -43,48 +43,47 @@ Output: `<id>  <status>  "<name>"  <date>`
 ## Quick Reference
 
 ```bash
-wl create "name" ["desc"]         # default: created state
-wl create --started "name"        # create + start immediately
-wl ready <id> / wl start <id>     # transition state
-wl trace <id> [-t T14:30] "msg"   # log entry (flags before message)
-wl checkpoint <id> "changes" "rx" # consolidate traces
-wl done <id> ["changes" "rx"]     # final checkpoint + close
-wl cancel <id> [reason]           # abandon task
-wl update <id> --name "new"       # rename task
+# Orient
+wl list                     # active tasks
+wl list --parent <id>       # sub-agent subtasks progress
+wl show <id>                # status, history, todos, subtasks
 
-# Subtasks (sub-agent delegation)
-wl create --parent <id> --started "Sub-task"
-wl list --subtasks                # all tasks with subtasks indented
-wl list --parent <id>             # only children of parent
+# Create
+wl create --started "name" "desc"                    # create + start (desc = scope/goal)
+wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent delegation
 
-# Context propagation
-wl run <id> <cmd...>              # run cmd with WORKLOG_TASK_ID set
-wl claude [id] [args...]          # launch Claude with task context
+# Trace — one entry per event: action done / result observed / problem hit / pivot decided
+wl trace <id> "msg"         # flags before message: wl trace <id> -t T14:30 "msg"
 
-# TODOs
-wl create "Task" --todo "Step 1"  # add TODOs at creation
-wl todo list [<id>]               # list TODOs
-wl todo set status=done <todo-id> # update TODO status
+# Consolidate
+wl checkpoint <id> "narrative (actions + pivots, incl. failures)" "REX (reusable insights, not a summary)"
+wl done <id> ["same as checkpoint"]  # args optional if no new traces since last checkpoint
 ```
+
+See [reference.md](reference.md) for full reference (TODOs, state transitions, metadata, etc.).
 
 ## Claude Code Hooks
 
-Auto-checkpoint on context compaction. Add to `~/.claude/settings.json`:
+Inject task context on session start, auto-checkpoint before compaction.
+Add to `~/.claude/settings.json`:
 
 ```json
-"PreCompact":  [{"type": "command", "command": "wl checkpoint --claude -q"}],
-"PostCompact": [{"type": "command", "command": "wl show -q"}]
+"PreCompact": [{"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --claude -q"}]}],
+"SessionStart": [
+  {"matcher": "startup", "hooks": [{"type": "command", "command": "wl show -q"}]},
+  {"matcher": "compact", "hooks": [{"type": "command", "command": "wl show -q"}]}
+]
 ```
 
 The `-q` flag silently no-ops when no task is active — safe to configure globally.
+`resume` and `clear` are intentionally excluded: they preserve conversation history.
 
 ## References
 
-- **[reference.md](reference.md)** — Full command reference, workflow guide, output formats
-- **[todo-guide.md](todo-guide.md)** — TODO management in depth
-- **[examples.md](examples.md)** — Good/bad trace & checkpoint examples
-- **[internals.md](internals.md)** — File format (for debugging or manual edits)
+- **[reference.md](reference.md)** — Full command reference, workflow guide, output formats, common mistakes
+- **[examples.md](examples.md)** — Good/bad trace & checkpoint examples, sub-agent delegation patterns
+- **[internals.md](internals.md)** — File format, scopes setup (for debugging or manual editing)
 
 ## Language
 
-Adapt to user's language for traces/checkpoints/REX.
+Write traces, checkpoints, and REX in the user's language — follow their choice throughout the session.

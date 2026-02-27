@@ -437,15 +437,7 @@ Cancelled tasks appear in `wl list --cancelled` but not in default `wl list`.
 
 ## Claude Code Hooks
 
-Configure `wl` as Claude Code hooks for automatic checkpoints on context compaction:
-
-```json
-"PreCompact":  [{"type": "command", "command": "wl checkpoint --claude -q"}],
-"PostCompact": [{"type": "command", "command": "wl show -q"}]
-```
-
-- **`PreCompact`**: Before compaction, synthesizes a checkpoint via Claude (`--claude`) so no trace is lost. The `-q` flag silently no-ops when no task is active — safe to configure globally.
-- **`PostCompact`**: After compaction, `wl show -q` reprints task context into the new window. Same `-q` guard.
+Configure `wl` as Claude Code hooks for automatic checkpoints on context compaction and context injection on session start.
 
 **Add to `~/.claude/settings.json`** (or per-project `settings.json`):
 
@@ -453,14 +445,32 @@ Configure `wl` as Claude Code hooks for automatic checkpoints on context compact
 {
   "hooks": {
     "PreCompact": [
-      { "type": "command", "command": "wl checkpoint --claude -q" }
+      {"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --claude -q"}]}
     ],
-    "PostCompact": [{ "type": "command", "command": "wl show -q" }]
+    "SessionStart": [
+      {"matcher": "startup", "hooks": [{"type": "command", "command": "wl show -q"}]},
+      {"matcher": "compact", "hooks": [{"type": "command", "command": "wl show -q"}]}
+    ]
   }
 }
 ```
 
-These hooks are idempotent: if no `WORKLOG_TASK_ID` is set, both commands exit silently.
+- **`PreCompact`**: Before compaction, synthesizes a checkpoint via Claude (`--claude`) so no trace is lost.
+- **`SessionStart startup`**: On fresh session start, injects task context if `WORKLOG_TASK_ID` is set.
+- **`SessionStart compact`**: After compaction, reprints task context into the new window.
+
+`resume` and `clear` are intentionally excluded: they preserve conversation history. The `-q` flag silently no-ops when no task is active — safe to configure globally.
+
+## Scopes
+
+For monorepos or worktree-based workflows with separate task namespaces:
+
+```bash
+wl list --scope main
+wl trace <id> --scope feature-x "message"
+```
+
+See [internals.md](internals.md) for scope configuration (`config.json` format and directory structure).
 
 ## Importing from other worktrees
 
@@ -682,7 +692,16 @@ Each TODO has:
 - **Status checkbox**: `[ ]`, `[/]`, `[>]`, `[-]`, or `[x]`
 - **Text**: The TODO description
 - **Metadata** (optional): Custom key-value pairs like `[dependsOn:: xyz]`, `[due:: date]`
-- **Block reference** (^id): For Obsidian cross-referencing with `[[task-id#^todo-id]]`
+- **Block reference** (`^id`): Enables direct TODO references via `[[task-id#^todo-id]]`
+
+### TODO Best Practices
+
+- **Create TODOs upfront** when the task has clear sub-steps — provides a roadmap and prevents forgetting steps.
+- **Use `wl todo next`** to see what to work on next, especially with blocked TODOs.
+- **Mark TODOs done as you complete them**, not all at once at the end — tracks actual progress.
+- **Use dependencies sparingly** — only block a TODO when it truly cannot start until another completes.
+- **Cancel obsolete TODOs** rather than leaving them pending. Use `status=cancelled` for clarity.
+- **Don't over-structure** — for simple tasks, traces are sufficient. TODOs are for tasks with clear, discrete sub-steps.
 
 ## Task IDs
 
@@ -770,33 +789,9 @@ wl meta acjold --delete pr
 
 Metadata is stored in the task's YAML frontmatter and preserved across imports.
 
-## File structure
+## File structure and internals
 
-```
-.worklog/
-├── index.json           # Task list with version (for fast wl list)
-└── tasks/
-    └── <id>.md          # Task file (frontmatter + entries + checkpoints)
-```
-
-Task files are Markdown with YAML frontmatter. Old completed tasks (>30 days) are auto-purged.
-
-### Index format (v2)
-
-```json
-{
-  "version": 2,
-  "tasks": {
-    "<full-id>": {
-      "name": "Short name",
-      "desc": "Full description",
-      "status": "started",
-      "created": "2026-02-05T10:00:00+01:00",
-      "status_updated_at": "2026-02-05T10:30:00+01:00"
-    }
-  }
-}
-```
+See [internals.md](internals.md) for file structure, index format, frontmatter fields, and scope configuration.
 
 ## JSON output format
 
