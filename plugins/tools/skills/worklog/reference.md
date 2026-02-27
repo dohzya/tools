@@ -435,6 +435,33 @@ wl cancel <id> "Requirements changed, no longer needed"
 
 Cancelled tasks appear in `wl list --cancelled` but not in default `wl list`.
 
+## Claude Code Hooks
+
+Configure `wl` as Claude Code hooks for automatic checkpoints on context compaction:
+
+```json
+"PreCompact":  [{"type": "command", "command": "wl checkpoint --claude -q"}],
+"PostCompact": [{"type": "command", "command": "wl show -q"}]
+```
+
+- **`PreCompact`**: Before compaction, synthesizes a checkpoint via Claude (`--claude`) so no trace is lost. The `-q` flag silently no-ops when no task is active — safe to configure globally.
+- **`PostCompact`**: After compaction, `wl show -q` reprints task context into the new window. Same `-q` guard.
+
+**Add to `~/.claude/settings.json`** (or per-project `settings.json`):
+
+```json
+{
+  "hooks": {
+    "PreCompact": [
+      { "type": "command", "command": "wl checkpoint --claude -q" }
+    ],
+    "PostCompact": [{ "type": "command", "command": "wl show -q" }]
+  }
+}
+```
+
+These hooks are idempotent: if no `WORKLOG_TASK_ID` is set, both commands exit silently.
+
 ## Importing from other worktrees
 
 When working across multiple worktrees, import tasks before deleting the worktree to preserve work history:

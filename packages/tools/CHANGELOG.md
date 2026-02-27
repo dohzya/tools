@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.12.0] — 2026-02-27
+
+### Added
+
+- **worklog:** `wl checkpoint --claude [<id>]` — delegates checkpoint synthesis to Claude via `claude -p`; injects the task context prompt automatically and supports `WORKLOG_TASK_ID` env fallback
+- **worklog:** `-q` / `--quiet` flag on `wl checkpoint` and `wl show` — silently exits (no error) when no task ID is provided or set via env; designed for Claude Code hooks where no active task should not be an error
+- **worklog:** `wl checkpoint` arguments are now optional when `--claude` is used; `changes` and `learnings` are still required for the standard (non-Claude) path
+
+### Claude Code Hooks (recommended config)
+
+```json
+"PreCompact":  [{"type": "command", "command": "wl checkpoint --claude -q"}],
+"PostCompact": [{"type": "command", "command": "wl show -q"}]
+```
+
 ## [wl-v0.11.0] — 2026-02-26
 
 ### Added

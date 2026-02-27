@@ -54,6 +54,9 @@ JSR package: @dohzya/tools@0.6.1
 task validate  # ✅ Must be green (validate:code + validate:plugin)
 
 # 1. Prepare version bump (updates deno.json + tool cli.ts + skill imports only)
+#    The script prompts for confirmation. For non-interactive use (e.g. inside a subagent):
+echo y | task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
+#    Interactive (default):
 task bump-prepare TOOL=wl TOOL_VERSION=0.6.1 JSR_VERSION=0.6.2
 
 # 1b. Update CHANGELOG.md — add a new section at the top:
@@ -106,22 +109,22 @@ git tag v0.6.2 && git push origin v0.6.2
 
 ## Order of Operations (CRITICAL)
 
-| Step | Validation                | Command                                                          | Why                                                                 |
-| ---- | ------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------- |
-| 0    | `task validate` ✅        | Must pass (runs validate:code + validate:plugin)                 | Ensure clean starting state + plugin manifests                      |
-| 1    | N/A                       | `task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY                       |
-| 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section   | Document what changed — read actual diffs, not just commit subjects |
-| 1c   | `task validate` ✅        | Must pass                                                        | Verify bump didn't break anything                                   |
-| 2    | N/A                       | `git commit` (no push!)                                          | Commit version changes locally                                      |
-| 3    | Manual test               | `deno publish`                                                   | **JSR MUST have correct code** - binaries built from JSR            |
-| 4    | N/A                       | `git push origin main`                                           | Push commit (NOT tag yet!)                                          |
-| 5    | **CI GREEN** ✅ (GATE)    | `gh run watch`                                                   | **MUST pass before tagging** - never tag failed CI                  |
-| 6    | N/A                       | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z`                 | Trigger release workflow (builds from JSR)                          |
-| 7    | Release workflow green ✅ | `gh run watch`                                                   | GitHub Actions builds binaries from JSR                             |
-| 8    | N/A                       | `task bump-finalize TOOL=wl VERSION=X.Y.Z`                       | Updates homebrew checksums, docs, plugin (post-release)             |
-| 9    | N/A                       | `git commit && git push`                                         | Push finalization changes                                           |
-| 10   | N/A                       | `task update-tap TOOL=wl VERSION=X.Y.Z`                          | Downloads GH release binaries, updates tap repo                     |
-| 11   | Test installation         | `brew upgrade wl && wl --version`                                | Verify users can install and get correct version                    |
+| Step | Validation                | Command                                                                    | Why                                                                                                              |
+| ---- | ------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 0    | `task validate` ✅        | Must pass (runs validate:code + validate:plugin)                           | Ensure clean starting state + plugin manifests                                                                   |
+| 1    | N/A                       | `echo y \| task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY (script prompts for confirmation; `echo y \|` for non-interactive) |
+| 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section             | Document what changed — read actual diffs, not just commit subjects                                              |
+| 1c   | `task validate` ✅        | Must pass                                                                  | Verify bump didn't break anything                                                                                |
+| 2    | N/A                       | `git commit` (no push!)                                                    | Commit version changes locally                                                                                   |
+| 3    | Manual test               | `deno publish`                                                             | **JSR MUST have correct code** - binaries built from JSR                                                         |
+| 4    | N/A                       | `git push origin main`                                                     | Push commit (NOT tag yet!)                                                                                       |
+| 5    | **CI GREEN** ✅ (GATE)    | `gh run watch`                                                             | **MUST pass before tagging** - never tag failed CI                                                               |
+| 6    | N/A                       | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z`                           | Trigger release workflow (builds from JSR)                                                                       |
+| 7    | Release workflow green ✅ | `gh run watch`                                                             | GitHub Actions builds binaries from JSR                                                                          |
+| 8    | N/A                       | `task bump-finalize TOOL=wl VERSION=X.Y.Z`                                 | Updates homebrew checksums, docs, plugin (post-release)                                                          |
+| 9    | N/A                       | `git commit && git push`                                                   | Push finalization changes                                                                                        |
+| 10   | N/A                       | `task update-tap TOOL=wl VERSION=X.Y.Z`                                    | Downloads GH release binaries, updates tap repo                                                                  |
+| 11   | Test installation         | `brew upgrade wl && wl --version`                                          | Verify users can install and get correct version                                                                 |
 
 **Key gates:**
 

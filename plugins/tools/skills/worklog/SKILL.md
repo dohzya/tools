@@ -67,6 +67,17 @@ wl todo list [<id>]               # list TODOs
 wl todo set status=done <todo-id> # update TODO status
 ```
 
+## Claude Code Hooks
+
+Auto-checkpoint on context compaction. Add to `~/.claude/settings.json`:
+
+```json
+"PreCompact":  [{"type": "command", "command": "wl checkpoint --claude -q"}],
+"PostCompact": [{"type": "command", "command": "wl show -q"}]
+```
+
+The `-q` flag silently no-ops when no task is active — safe to configure globally.
+
 ## References
 
 - **[reference.md](reference.md)** — Full command reference, workflow guide, output formats
