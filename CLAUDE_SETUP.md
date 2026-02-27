@@ -53,6 +53,26 @@ Once installed, the following skills will be available in Claude Code:
 
 See the main [README](README.md) for detailed skill descriptions.
 
+## Recommended Hooks
+
+For the worklog skill, configure these hooks in `~/.claude/settings.json` to get automatic checkpoints on compaction and task context injection on session start:
+
+```json
+{
+  "hooks": {
+    "PreCompact": [
+      {"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --claude -q"}]}
+    ],
+    "SessionStart": [
+      {"matcher": "startup", "hooks": [{"type": "command", "command": "wl show -q"}]},
+      {"matcher": "compact", "hooks": [{"type": "command", "command": "wl show -q"}]}
+    ]
+  }
+}
+```
+
+The `-q` flag silently no-ops when no worklog task is active — safe to configure globally.
+
 ## Updating
 
 To update the plugin to the latest version:
