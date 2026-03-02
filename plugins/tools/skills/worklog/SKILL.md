@@ -64,8 +64,7 @@ See [reference.md](reference.md) for full reference (TODOs, state transitions, m
 
 ## Claude Code Hooks
 
-Inject task context on session start, auto-checkpoint before compaction.
-Add to `~/.claude/settings.json`:
+Inject task context on session start, auto-checkpoint before compaction. Add to `~/.claude/settings.json`:
 
 ```json
 "PreCompact": [{"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --claude -q"}]}],
@@ -75,8 +74,7 @@ Add to `~/.claude/settings.json`:
 ]
 ```
 
-The `-q` flag silently no-ops when no task is active — safe to configure globally.
-`resume` and `clear` are intentionally excluded: they preserve conversation history.
+The `-q` flag silently no-ops when no task is active — safe to configure globally. `resume` and `clear` are intentionally excluded: they preserve conversation history.
 
 ## References
 

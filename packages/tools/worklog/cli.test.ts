@@ -5207,3 +5207,97 @@ Deno.test("wl checkpoint --claude -q without taskId exits silently", async () =>
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+// Regression tests: explicit taskId still works after smart arg resolution changes
+
+Deno.test("regression - wl trace with explicit taskId still works", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["task", "create", "Regression test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Should work with explicit taskId and message
+    await main(["trace", taskId, "Test trace message"]);
+
+    const tracesOutput = await captureOutput(() =>
+      main(["traces", taskId, "--json"])
+    );
+    const tracesResult = JSON.parse(tracesOutput);
+    assertEquals(tracesResult.entries.length, 1);
+    assertStringIncludes(tracesResult.entries[0].msg, "Test trace message");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("regression - wl done with explicit taskId still works", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["task", "create", "Done regression task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Should work with explicit taskId, changes, learnings
+    await main(["done", taskId, "Things done", "Things learned"]);
+
+    const listOutput2 = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const { tasks: tasks2 } = JSON.parse(listOutput2);
+    const doneTask = tasks2.find((t: { id: string; status: string }) =>
+      t.id === taskId
+    );
+    assertEquals(doneTask.status, "done");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("regression - wl checkpoint with explicit taskId still works", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["task", "create", "Checkpoint regression task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    await main(["trace", taskId, "Some trace"]);
+
+    // Should work with explicit taskId, changes, learnings
+    const output = await captureOutput(() =>
+      main(["checkpoint", taskId, "Some changes", "Some learnings"])
+    );
+    assertStringIncludes(output, "checkpoint created");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("help - shows wl task create step 1 when no env task ID", async () => {
+  const output = await captureOutput(() => main([]));
+  assertStringIncludes(output, "wl task create");
+  assertStringIncludes(output, "1.");
+});
+
+Deno.test("help - description contains Subtasks mention", async () => {
+  const output = await captureOutput(() => main([]));
+  assertStringIncludes(output, "Subtasks");
+});

@@ -61,11 +61,20 @@ For the worklog skill, configure these hooks in `~/.claude/settings.json` to get
 {
   "hooks": {
     "PreCompact": [
-      {"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --claude -q"}]}
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "wl checkpoint --claude -q" }]
+      }
     ],
     "SessionStart": [
-      {"matcher": "startup", "hooks": [{"type": "command", "command": "wl show -q"}]},
-      {"matcher": "compact", "hooks": [{"type": "command", "command": "wl show -q"}]}
+      {
+        "matcher": "startup",
+        "hooks": [{ "type": "command", "command": "wl show -q" }]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [{ "type": "command", "command": "wl show -q" }]
+      }
     ]
   }
 }

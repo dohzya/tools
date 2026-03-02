@@ -262,6 +262,7 @@ wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook au
 ```
 
 **Key points:**
+
 - Use `--ready` (not `--started`) for subtasks planned but not yet assigned to a sub-agent
 - Sub-agent creates traces on its own subtask — main agent sees progress via `wl show <parent-id>`
 - Main agent's context injection via `wl claude` sets `WORKLOG_TASK_ID` so sub-agent commands work without specifying `<id>`

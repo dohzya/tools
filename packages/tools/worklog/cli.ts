@@ -4561,7 +4561,11 @@ const taskCmd = new Command()
 
 const traceCmd = new Command()
   .description("Log an entry (include causes for failures, pistes for pivots)")
-  .arguments("<taskId:string> <message:string>")
+  .arguments(
+    HAS_ENV_TASK_ID
+      ? "[taskId:string] [message:string]"
+      : "<taskId:string> <message:string>",
+  )
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option(
@@ -4572,17 +4576,42 @@ const traceCmd = new Command()
   .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
     collect: true,
   })
-  .action(async (options, taskId, message) => {
+  .action(async (options, taskId?: string, message?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
         options.scope,
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
-      const resolvedTaskId = await resolveTaskIdAcrossScopes(
-        taskId,
-        options.scope ? null : gitRoot,
-      );
+
+      // Smart argument resolution:
+      // If WORKLOG_TASK_ID is set and only one arg provided, it's the message
+      let resolvedTaskId: string;
+      let resolvedMessage: string;
+      if (HAS_ENV_TASK_ID && !message) {
+        // Single arg with env var: arg is message, taskId from env
+        if (!taskId) {
+          throw new WtError("invalid_args", "message is required");
+        }
+        resolvedMessage = taskId;
+        resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+          undefined,
+          options.scope ? null : gitRoot,
+        );
+      } else {
+        if (!taskId || !message) {
+          throw new WtError(
+            "invalid_args",
+            "taskId and message are required (or set WORKLOG_TASK_ID)",
+          );
+        }
+        resolvedTaskId = await resolveTaskIdAcrossScopes(
+          taskId,
+          options.scope ? null : gitRoot,
+        );
+        resolvedMessage = message;
+      }
+
       let timestampValue: string | undefined;
       if (options.timestamp) {
         try {
@@ -4597,7 +4626,7 @@ const traceCmd = new Command()
       const metadata = parseMetaOption(options.meta);
       const output = await cmdTrace(
         resolvedTaskId,
-        message,
+        resolvedMessage,
         timestampValue,
         options.force ?? false,
         metadata,
@@ -4695,20 +4724,39 @@ const checkpointCmd = new Command()
             console.log(`Claude exited with code ${result.exitCode}`);
           }
         } else {
-          if (!taskId || !changes || !learnings) {
-            throw new WtError(
-              "invalid_args",
-              "Usage: wl checkpoint <taskId> <changes> <learnings>",
+          // Smart argument resolution:
+          // If WORKLOG_TASK_ID is set and only 2 args provided, args shift
+          let resolvedTaskId: string;
+          let resolvedChanges: string;
+          let resolvedLearnings: string;
+          const usageMsg = HAS_ENV_TASK_ID
+            ? "Usage: wl checkpoint [taskId] <changes> <learnings>"
+            : "Usage: wl checkpoint <taskId> <changes> <learnings>";
+          if (HAS_ENV_TASK_ID && taskId && changes && !learnings) {
+            // 2 args with env: taskId=changes, changes=learnings
+            resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+              undefined,
+              options.scope ? null : gitRoot,
             );
+            resolvedChanges = taskId;
+            resolvedLearnings = changes;
+          } else if (HAS_ENV_TASK_ID && !taskId) {
+            throw new WtError("invalid_args", usageMsg);
+          } else {
+            if (!taskId || !changes || !learnings) {
+              throw new WtError("invalid_args", usageMsg);
+            }
+            resolvedTaskId = await resolveTaskIdAcrossScopes(
+              taskId,
+              options.scope ? null : gitRoot,
+            );
+            resolvedChanges = changes;
+            resolvedLearnings = learnings;
           }
-          const resolvedTaskId = await resolveTaskIdAcrossScopes(
-            taskId,
-            options.scope ? null : gitRoot,
-          );
           const output = await cmdCheckpoint(
             resolvedTaskId,
-            changes,
-            learnings,
+            resolvedChanges,
+            resolvedLearnings,
             options.force ?? false,
           );
           console.log(
@@ -4726,7 +4774,11 @@ const doneCmd = new Command()
     "Final consolidation: synthesize ALL traces (changes) + REX (learnings)\n" +
       "⚠️  ALWAYS run 'wl show <id>' first to review traces & check TODOs!",
   )
-  .arguments("<taskId:string> [changes:string] [learnings:string]")
+  .arguments(
+    HAS_ENV_TASK_ID
+      ? "[taskId:string] [changes:string] [learnings:string]"
+      : "<taskId:string> [changes:string] [learnings:string]",
+  )
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("-f, --force", "Force completion")
@@ -4734,30 +4786,59 @@ const doneCmd = new Command()
   .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
     collect: true,
   })
-  .action(async (options, taskId, changes, learnings) => {
-    try {
-      const { gitRoot } = await resolveScopeContext(
-        options.scope,
-        asGlobal(options).cwd,
-        asGlobal(options).worklogDir,
-      );
-      const resolvedTaskId = await resolveTaskIdAcrossScopes(
-        taskId,
-        options.scope ? null : gitRoot,
-      );
-      const metadata = parseMetaOption(options.meta);
-      const output = await cmdDone(
-        resolvedTaskId,
-        changes,
-        learnings,
-        options.force ?? false,
-        metadata,
-      );
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
-    } catch (e) {
-      handleError(e, options.json ?? false);
-    }
-  });
+  .action(
+    async (options, taskId?: string, changes?: string, learnings?: string) => {
+      try {
+        const { gitRoot } = await resolveScopeContext(
+          options.scope,
+          asGlobal(options).cwd,
+          asGlobal(options).worklogDir,
+        );
+
+        // Smart argument resolution:
+        // If WORKLOG_TASK_ID is set and learnings not provided, args shift
+        let resolvedTaskId: string;
+        let resolvedChanges: string | undefined;
+        let resolvedLearnings: string | undefined;
+        if (HAS_ENV_TASK_ID && !learnings) {
+          // With env and not all 3 args: args shift (taskId→changes, changes→learnings)
+          resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+            undefined,
+            options.scope ? null : gitRoot,
+          );
+          resolvedChanges = taskId;
+          resolvedLearnings = changes;
+        } else {
+          if (!taskId) {
+            throw new WtError(
+              "invalid_args",
+              "taskId is required (or set WORKLOG_TASK_ID)",
+            );
+          }
+          resolvedTaskId = await resolveTaskIdAcrossScopes(
+            taskId,
+            options.scope ? null : gitRoot,
+          );
+          resolvedChanges = changes;
+          resolvedLearnings = learnings;
+        }
+
+        const metadata = parseMetaOption(options.meta);
+        const output = await cmdDone(
+          resolvedTaskId,
+          resolvedChanges,
+          resolvedLearnings,
+          options.force ?? false,
+          metadata,
+        );
+        console.log(
+          options.json ? JSON.stringify(output) : formatStatus(output),
+        );
+      } catch (e) {
+        handleError(e, options.json ?? false);
+      }
+    },
+  );
 
 const readyCmd = new Command()
   .description("Mark task as ready to work on")
@@ -5450,19 +5531,34 @@ const cli = new Command()
   .name("wl")
   .version(VERSION)
   .description(
-    "Worklog - Track work progress with traces and checkpoints\n\n" +
-      "Core workflow:\n" +
-      '  1. wl task create "task"      # Create worktask (returns ID)\n' +
-      '  2. wl trace <id> "msg"        # Log with causes/pistes + timestamps\n' +
-      "  3. wl checkpoint <id> ...      # Consolidate traces into narrative\n" +
-      "  4. wl done <id> ...            # Final REX (after git commit!)\n\n" +
-      "Key principles:\n" +
-      "  - Always work within a worktask (create with 'wl task create' first)\n" +
-      "  - Traces need context: causes (why failed) + pistes (what next)\n" +
-      "  - Checkpoints consolidate traces (not conclusions)\n" +
-      "  - Done = final consolidation + REX with critical distance\n" +
-      '  - Use -t for batch tracing: wl trace <id> -t T14:30 "msg"\n\n' +
-      "See 'wl <command> --help' for details",
+    HAS_ENV_TASK_ID
+      ? "Worklog - Track work progress with traces and checkpoints\n\n" +
+        "Core workflow (WORKLOG_TASK_ID is set):\n" +
+        '  2. wl trace [taskId] "msg"        # Log with causes/pistes + timestamps\n' +
+        "  3. wl checkpoint [taskId] ...      # Consolidate traces into narrative\n" +
+        "  4. wl done [taskId] ...            # Final REX (after git commit!)\n\n" +
+        "Key principles:\n" +
+        "  - WORKLOG_TASK_ID is set: [taskId] is optional in most commands\n" +
+        "  - Traces need context: causes (why failed) + pistes (what next)\n" +
+        "  - Checkpoints consolidate traces (not conclusions)\n" +
+        "  - Done = final consolidation + REX with critical distance\n" +
+        '  - Use -t for batch tracing: wl trace [taskId] -t T14:30 "msg"\n' +
+        '  - Subtasks: wl task create --parent taskId "subtask name"\n\n' +
+        "See 'wl <command> --help' for details"
+      : "Worklog - Track work progress with traces and checkpoints\n\n" +
+        "Core workflow:\n" +
+        '  1. wl task create "task"      # Create worktask (returns ID)\n' +
+        '  2. wl trace taskId "msg"        # Log with causes/pistes + timestamps\n' +
+        "  3. wl checkpoint taskId ...      # Consolidate traces into narrative\n" +
+        "  4. wl done taskId ...            # Final REX (after git commit!)\n\n" +
+        "Key principles:\n" +
+        "  - Always work within a worktask (create with 'wl task create' first)\n" +
+        "  - Traces need context: causes (why failed) + pistes (what next)\n" +
+        "  - Checkpoints consolidate traces (not conclusions)\n" +
+        "  - Done = final consolidation + REX with critical distance\n" +
+        '  - Use -t for batch tracing: wl trace taskId -t T14:30 "msg"\n' +
+        '  - Subtasks: wl task create --parent taskId "subtask name"\n\n' +
+        "See 'wl <command> --help' for details",
   )
   .globalOption(
     "-C, --cwd <dir:string>",
