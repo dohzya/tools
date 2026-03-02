@@ -4360,78 +4360,6 @@ const initCmd = new Command()
     }
   });
 
-const taskCreateCmd = new Command()
-  .description(
-    "Create a new task (returns ID for use in trace/checkpoint/done)\n" +
-      "Always create a worktask before starting work",
-  )
-  .arguments("<desc:string>")
-  .option("--json", "Output as JSON")
-  .option("--scope <scope:string>", "Target specific scope")
-  .option(
-    "-t, --timestamp <ts:string>",
-    "Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)",
-  )
-  .option("--todo <text:string>", "Add a todo item (repeatable)", {
-    collect: true,
-  })
-  .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
-    collect: true,
-  })
-  .option("--tag <tag:string>", "Add tag (repeatable)", {
-    collect: true,
-  })
-  .action(async (options, desc) => {
-    try {
-      await resolveScopeContext(
-        options.scope,
-        asGlobal(options).cwd,
-        asGlobal(options).worklogDir,
-      );
-      const todos = options.todo ?? [];
-      const tags = options.tag ?? [];
-      let timestampValue: string | undefined;
-      if (options.timestamp) {
-        try {
-          timestampValue = parseFlexibleTimestamp(options.timestamp);
-          // Ensure timezone is present, add local timezone if missing
-          const tzRegex = /[+-]\d{2}:\d{2}$/;
-          if (!tzRegex.test(timestampValue)) {
-            const now = new Date();
-            const tzOffset = -now.getTimezoneOffset();
-            const sign = tzOffset >= 0 ? "+" : "-";
-            const hours = String(Math.floor(Math.abs(tzOffset) / 60)).padStart(
-              2,
-              "0",
-            );
-            const minutes = String(Math.abs(tzOffset) % 60).padStart(2, "0");
-            timestampValue += `${sign}${hours}:${minutes}`;
-          }
-        } catch {
-          throw new WtError(
-            "invalid_args",
-            `Invalid timestamp format: ${options.timestamp}. Use format [YYYY-MM-DD]THH:mm[:SS][<tz>]`,
-          );
-        }
-      }
-      const metadata = parseMetaOption(options.meta);
-      // For backward compat, `wl task create` creates started tasks
-      const name = desc.split("\n")[0].trim();
-      const output = await cmdAdd(
-        name,
-        desc,
-        "started",
-        todos,
-        metadata,
-        tags,
-        timestampValue,
-      );
-      console.log(options.json ? JSON.stringify(output) : formatAdd(output));
-    } catch (e) {
-      handleError(e, options.json ?? false);
-    }
-  });
-
 const createCmd = new Command()
   .description(
     "Create a new task with lifecycle states\n" +
@@ -4551,13 +4479,6 @@ const createCmd = new Command()
       handleError(e, options.json ?? false);
     }
   });
-
-const taskCmd = new Command()
-  .description("Task management")
-  .action(function () {
-    this.showHelp();
-  })
-  .command("create", taskCreateCmd);
 
 const traceCmd = new Command()
   .description("Log an entry (include causes for failures, pistes for pivots)")
@@ -5543,21 +5464,21 @@ const cli = new Command()
         "  - Checkpoints consolidate traces (not conclusions)\n" +
         "  - Done = final consolidation + REX with critical distance\n" +
         '  - Use -t for batch tracing: wl trace [taskId] -t T14:30 "msg"\n' +
-        '  - Subtasks: wl task create --parent taskId "subtask name"\n\n' +
+        '  - Subtasks: wl create --parent taskId "subtask name"\n\n' +
         "See 'wl <command> --help' for details"
       : "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow:\n" +
-        '  1. wl task create "task"      # Create worktask (returns ID)\n' +
+        '  1. wl create "task"           # Create worktask (returns ID)\n' +
         '  2. wl trace taskId "msg"        # Log with causes/pistes + timestamps\n' +
         "  3. wl checkpoint taskId ...      # Consolidate traces into narrative\n" +
         "  4. wl done taskId ...            # Final REX (after git commit!)\n\n" +
         "Key principles:\n" +
-        "  - Always work within a worktask (create with 'wl task create' first)\n" +
+        "  - Always work within a worktask (create with 'wl create' first)\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
         "  - Done = final consolidation + REX with critical distance\n" +
         '  - Use -t for batch tracing: wl trace taskId -t T14:30 "msg"\n' +
-        '  - Subtasks: wl task create --parent taskId "subtask name"\n\n' +
+        '  - Subtasks: wl create --parent taskId "subtask name"\n\n' +
         "See 'wl <command> --help' for details",
   )
   .globalOption(
@@ -5575,7 +5496,6 @@ const cli = new Command()
   .command("run", runCmd)
   .command("claude", claudeCmd)
   .command("update", updateCmd)
-  .command("task", taskCmd)
   .command("trace", traceCmd)
   .command("traces", tracesCmd)
   .command("show", showCmd)

@@ -150,12 +150,6 @@ wl summary [--since YYYY-MM-DD]              # Aggregate all tasks
 wl import [-p PATH | -b BRANCH] [--rm]       # Import from other worktree
 ```
 
-### Backward compatibility
-
-```bash
-wl task create <desc> [--todo]...            # Creates in 'started' state (legacy)
-```
-
 ### TODO management
 
 ```bash

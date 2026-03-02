@@ -9,7 +9,7 @@
 1a. Create a worktask if none exists:
 
 ```bash
-wl task create "short name"
+wl create "short name"
 ```
 
 OR 1b. update an existing task:
@@ -59,7 +59,7 @@ Create a worktask at the start, trace each significant action, complete after co
 **Commands:**
 
 ```bash
-wl task create "..."       # Create
+wl create "..."            # Create
 wl trace <id> "..."        # Trace
 wl show <id>               # Context since checkpoint
 wl traces <id>             # All traces
