@@ -20,7 +20,7 @@ export class InitUseCase {
       return { status: "already_initialized" };
     }
     await this.fs.ensureDir(input.tasksDir);
-    await this.indexRepo.save({ tasks: {} });
+    await this.indexRepo.save({ version: 2, tasks: {} });
     return { status: "initialized" };
   }
 }

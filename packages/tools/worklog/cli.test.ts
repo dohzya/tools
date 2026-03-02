@@ -3186,19 +3186,19 @@ Deno.test("migration - idempotent (v2 index not re-migrated)", async () => {
     };
 
     await main(["init"]);
-    // First command triggers migration (init creates v1 index)
+    // init now creates a v2 index — no migration should ever fire
     await main(["create", "Task 1"]);
-    assertEquals(migrationCount, 1);
+    assertEquals(migrationCount, 0);
 
-    // Second command should NOT trigger migration
+    // Second command should NOT trigger migration either
     await main(["create", "Task 2"]);
-    assertEquals(migrationCount, 1);
+    assertEquals(migrationCount, 0);
 
     // List should also NOT trigger migration
     const output = await captureOutput(() => main(["list", "--json"]));
     const { tasks } = JSON.parse(output);
     assertEquals(tasks.length, 2);
-    assertEquals(migrationCount, 1);
+    assertEquals(migrationCount, 0);
   } finally {
     console.error = originalError;
     Deno.chdir(originalCwd);
