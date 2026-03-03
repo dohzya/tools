@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.13.0] — 2026-03-03
+
+### Added
+
+- **worklog:** `wl trace` and `wl checkpoint` now adapt their `--help` output when `WORKLOG_TASK_ID` is set — task ID shown as `[taskId]` (optional) instead of `<taskId>` (required); smart arg resolution lets both commands be called without an explicit ID when the env var is active
+
+### Changed
+
+- **worklog:** Removed legacy `wl task` command group (`wl task create`); use `wl create` (or `wl create --started`) instead
+
+### Fixed
+
+- **worklog:** `wl init` now writes `index.json` with `version: 2` directly, preventing a spurious V1→V2 migration warning on the very first command after init
+
 ## [wl-v0.12.0] — 2026-02-27
 
 ### Added
