@@ -3,9 +3,13 @@ version = "0.2.82"
 backend = "aqua:nektos/act"
 
 [[tools.deno]]
-version = "2.6.6"
+version = "2.7.3"
 backend = "core:deno"
-"platforms.macos-arm64" = { checksum = "blake3:553fedd994800afb17a372db3b3c512cac33a36e1f8367c0085b669ddff93de5"}
+"platforms.linux-arm64" = { checksum = "sha256:a95cc1f29a5e82350c8b67cfcde2f3fb08591d458d75ce948c7d760e7e1ee816", url = "https://dl.deno.land/release/v2.7.3/deno-aarch64-unknown-linux-gnu.zip"}
+"platforms.linux-x64" = { checksum = "sha256:97692549c433fb2967123ee2ad1b7599f2a0b7b745f9919bb791aee1738c966a", url = "https://dl.deno.land/release/v2.7.3/deno-x86_64-unknown-linux-gnu.zip"}
+"platforms.macos-arm64" = { checksum = "sha256:2592756b13a1f19dddc0da54950d03f3127c1f3c354e87a975c33efacb322860", url = "https://dl.deno.land/release/v2.7.3/deno-aarch64-apple-darwin.zip"}
+"platforms.macos-x64" = { checksum = "sha256:916d96272ca58875e144f52fe241ccd538869ecce0e48b34977cafcf87c3daa9", url = "https://dl.deno.land/release/v2.7.3/deno-x86_64-apple-darwin.zip"}
+"platforms.windows-x64" = { checksum = "sha256:Algorithm", url = "https://dl.deno.land/release/v2.7.3/deno-x86_64-pc-windows-msvc.zip"}
 
 [[tools.task]]
 version = "3.48.0"
