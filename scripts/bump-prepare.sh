@@ -57,8 +57,10 @@ if [[ "$TOOL" == "wl" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/worklog/cli.ts | sed 's/.*"\(.*\)".*/\1/')
 elif [[ "$TOOL" == "md" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/markdown-surgeon/cli.ts | sed 's/.*"\(.*\)".*/\1/')
-else
+elif [[ "$TOOL" == "recap" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/recap/cli.ts | sed 's/.*"\(.*\)".*/\1/')
+else
+  echo "Error: unknown tool '$TOOL'" >&2; exit 1
 fi
 
 echo "Current versions:"
@@ -79,8 +81,10 @@ if [[ "$TOOL" == "wl" ]]; then
 elif [[ "$TOOL" == "md" ]]; then
   echo "  ✓ packages/tools/markdown-surgeon/cli.ts (VERSION constant)"
   echo "  ✓ plugins/tools/skills/markdown-surgeon/md (JSR import)"
-else
+elif [[ "$TOOL" == "recap" ]]; then
   echo "  ✓ packages/tools/recap/cli.ts (VERSION constant)"
+else
+  echo "Error: unknown tool '$TOOL'" >&2; exit 1
 fi
 echo ""
 echo "Files NOT updated yet (will be updated by bump-finalize.sh AFTER release):"
@@ -123,11 +127,13 @@ elif [[ "$TOOL" == "md" ]]; then
   echo "Updating plugins/tools/skills/markdown-surgeon/md import to JSR $JSR_VERSION..."
   sed -i.bak "s/@dohzya\/tools@[0-9.]*\/markdown-surgeon/@dohzya\/tools@$JSR_VERSION\/markdown-surgeon/" plugins/tools/skills/markdown-surgeon/md
   rm plugins/tools/skills/markdown-surgeon/md.bak
-else
+elif [[ "$TOOL" == "recap" ]]; then
   # Update VERSION constant in cli.ts
   echo "Updating packages/tools/recap/cli.ts VERSION to $TOOL_VERSION..."
   sed -i.bak "s/const VERSION = \".*\";/const VERSION = \"$TOOL_VERSION\";/" packages/tools/recap/cli.ts
   rm packages/tools/recap/cli.ts.bak
+else
+  echo "Error: unknown tool '$TOOL'" >&2; exit 1
 fi
 
 echo ""
