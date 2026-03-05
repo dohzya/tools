@@ -12,16 +12,20 @@
     "./markdown-surgeon/cli": "./markdown-surgeon/cli.ts",
     "./worklog": "./worklog/mod.ts",
     "./worklog/types": "./worklog/types.ts",
-    "./worklog/cli": "./worklog/cli.ts"
+    "./worklog/cli": "./worklog/cli.ts",
+    "./recap": "./recap/mod.ts",
+    "./recap/cli": "./recap/cli.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.0",
+    "@std/fmt": "jsr:@std/fmt@^1.0.0",
     "@std/fs": "jsr:@std/fs@^1.0.0",
     "@std/path": "jsr:@std/path@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
     "@zod/zod": "jsr:@zod/zod@^4.3.6",
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
-    "@cliffy/command/completions": "jsr:@cliffy/command@^1.0.0-rc.8/completions"
+    "@cliffy/command/completions": "jsr:@cliffy/command@^1.0.0-rc.8/completions",
+    "@david/dax": "jsr:@david/dax@^0.42.0"
   },
   "tasks": {
     "fmt": "deno fmt",

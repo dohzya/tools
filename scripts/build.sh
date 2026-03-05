@@ -17,6 +17,7 @@ mkdir -p "${DIST_DIR}"
 declare -A TOOLS=(
   ["md"]="jsr:@dohzya/tools@${VERSION}/markdown-surgeon/cli"
   ["wl"]="jsr:@dohzya/tools@${VERSION}/worklog/cli"
+  ["recap"]="jsr:@dohzya/tools@${VERSION}/recap/cli"
 )
 
 # Target platforms
@@ -46,12 +47,22 @@ for tool in "${!TOOLS[@]}"; do
     echo "  → ${platform} (${target})"
 
     # md only needs read/write, wl also needs run for git and claude commands and env access
+    # recap needs read/write/env/run for shell commands and git
     if [[ "${tool}" == "wl" ]]; then
       deno compile \
         --allow-read \
         --allow-write \
         --allow-env \
         --allow-run=git,claude \
+        --target "${target}" \
+        --output "${output}" \
+        "${entry}"
+    elif [[ "${tool}" == "recap" ]]; then
+      deno compile \
+        --allow-read \
+        --allow-write \
+        --allow-env \
+        --allow-run \
         --target "${target}" \
         --output "${output}" \
         "${entry}"

@@ -27,6 +27,11 @@ tasks:
     dir: packages/tools
     cmds:
       - WORKLOG_TASK_ID= deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot worklog/cli.test.ts {{.CLI_ARGS}}
+  test:recap:
+    desc: "Run recap CLI tests"
+    dir: packages/tools
+    cmds:
+      - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot recap/cli.test.ts {{.CLI_ARGS}}
 
   check:
     desc: "Check the code (format & type & lint)"

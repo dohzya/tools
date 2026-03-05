@@ -1,0 +1,10 @@
+# recap project configuration
+# See: https://github.com/dohzya/dz-tools
+#
+# Sections from the global config (~/.config/recap.yaml) or hardcoded defaults
+# can be included with:
+#   - ref: "*"         (all parent sections)
+#   - ref: "<id>"      (specific section, with optional overrides)
+#
+sections:
+  - ref: "*"
