@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [recap-v0.1.0] — 2026-03-05
+
+### Added
+
+- **recap:** Initial release — configurable project status dashboard for AI assistants
+- **recap:** Three-level cascading config: hardcoded defaults → `~/.config/recap.yaml` (global) → `.config/recap.yaml` (local)
+- **recap:** `ref: "*"` includes all parent sections; `ref: "id"` picks one with optional field overrides
+- **recap:** Section types: `sh:` (shell via dax, cross-platform), `builtin:` (`git-ops`, `git-log`), `value:` (static with `${VAR}` interpolation)
+- **recap:** `git-ops` built-in: detects in-progress git operations (rebase, merge, cherry-pick, revert) by reading `.git/` sentinel files
+- **recap:** `git-log` built-in: smart upstream detection (`@{u}` → `origin/HEAD` → recent commits fallback)
+- **recap:** `recap init [--global]` generates a starter config using `ref:` syntax
+- **recap:** `recap -C <dir>` changes working directory (like `git -C`)
+- **recap:** `recap completions` for shell autocompletion
+- **recap:** `recap --json`, `--no-color`, `--config <path>` flags
+- **recap:** `MAX_COMMITS` / `MAX_WORKTASKS` / `NO_COLOR` environment variable overrides
+
 ## [wl-v0.13.0] — 2026-03-03
 
 ### Added
