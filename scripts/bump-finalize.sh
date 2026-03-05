@@ -23,8 +23,8 @@ if [[ -z "$TOOL" ]] || [[ -z "$VERSION" ]]; then
   exit 1
 fi
 
-if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]]; then
-  echo "Error: tool must be 'wl' or 'md'"
+if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]] && [[ "$TOOL" != "recap" ]]; then
+  echo "Error: tool must be 'wl', 'md', or 'recap'"
   exit 1
 fi
 

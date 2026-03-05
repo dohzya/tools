@@ -17,7 +17,7 @@ Before starting ANY release:
 ### 1. JSR Package Version (`packages/tools/deno.json`)
 
 - Version of the `@dohzya/tools` package published to JSR
-- **Shared across ALL tools** (wl + md combined in one package)
+- **Shared across ALL tools** (wl + md + recap combined in one package)
 - **MUST be bumped EVERY time ANY tool is released**
 - This is what GitHub Actions downloads when building binaries
 
@@ -25,6 +25,7 @@ Before starting ANY release:
 
 - `packages/tools/worklog/cli.ts` → `wl` version (what `wl --version` shows)
 - `packages/tools/markdown-surgeon/cli.ts` → `md` version (what `md --version` shows)
+- `packages/tools/recap/cli.ts` → `recap` version (what `recap --version` shows)
 - Can differ from each other and from the JSR package version
 - These are independent version numbers for each CLI tool
 
@@ -171,6 +172,12 @@ Updates ONLY files needed BEFORE the GitHub release:
 
 - Same pattern with `markdown-surgeon` paths
 
+**For recap:**
+
+- `packages/tools/deno.json` (JSR package version - always increments)
+- `packages/tools/recap/cli.ts` (VERSION constant - tool version)
+- No skill import to update (recap has no plugin skill yet)
+
 **Always (manual step 1b):**
 
 - `packages/tools/CHANGELOG.md` (add new `[wl-vX.Y.Z] — YYYY-MM-DD` section)
@@ -194,7 +201,7 @@ Updates files that depend on the GitHub release existing:
 
 ## Bundle Releases (mise)
 
-Bundle releases combine wl + md for the mise backend (`dohzya/mise-tools`).
+Bundle releases combine wl + md + recap for the mise backend (`dohzya/mise-tools`).
 
 ```bash
 # 1. Verify latest tool releases exist
@@ -352,7 +359,7 @@ task build VERSION=0.5.0
 
 After successful release:
 
-- [ ] `wl --version` (or `md --version`) shows correct version
+- [ ] `wl --version` (or `md --version` or `recap --version`) shows correct version
 - [ ] GitHub release exists with all platform binaries
 - [ ] Homebrew formula updated and installable
 - [ ] (Optional) mise backend updated if doing bundle release

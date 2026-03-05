@@ -26,14 +26,14 @@ if [[ -z "$TOOL" ]] || [[ -z "$TOOL_VERSION" ]] || [[ -z "$JSR_VERSION" ]]; then
   echo "Example: $0 md 0.5.2 0.6.2"
   echo ""
   echo "Arguments:"
-  echo "  tool         - 'wl' or 'md'"
+  echo "  tool         - 'wl', 'md', or 'recap'"
   echo "  tool-version - Version for the specific tool (what --version shows)"
   echo "  jsr-version  - Version for JSR package @dohzya/tools (must increment every release)"
   exit 1
 fi
 
-if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]]; then
-  echo "Error: tool must be 'wl' or 'md'"
+if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]] && [[ "$TOOL" != "recap" ]]; then
+  echo "Error: tool must be 'wl', 'md', or 'recap'"
   exit 1
 fi
 
@@ -55,8 +55,10 @@ echo ""
 CURRENT_JSR=$(grep '"version":' packages/tools/deno.json | sed 's/.*"version": "\(.*\)".*/\1/')
 if [[ "$TOOL" == "wl" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/worklog/cli.ts | sed 's/.*"\(.*\)".*/\1/')
-else
+elif [[ "$TOOL" == "md" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/markdown-surgeon/cli.ts | sed 's/.*"\(.*\)".*/\1/')
+else
+  CURRENT_TOOL=$(grep 'const VERSION' packages/tools/recap/cli.ts | sed 's/.*"\(.*\)".*/\1/')
 fi
 
 echo "Current versions:"
@@ -74,9 +76,11 @@ echo "  ✓ packages/tools/deno.json (JSR version)"
 if [[ "$TOOL" == "wl" ]]; then
   echo "  ✓ packages/tools/worklog/cli.ts (VERSION constant)"
   echo "  ✓ plugins/tools/skills/worklog/wl (JSR import)"
-else
+elif [[ "$TOOL" == "md" ]]; then
   echo "  ✓ packages/tools/markdown-surgeon/cli.ts (VERSION constant)"
   echo "  ✓ plugins/tools/skills/markdown-surgeon/md (JSR import)"
+else
+  echo "  ✓ packages/tools/recap/cli.ts (VERSION constant)"
 fi
 echo ""
 echo "Files NOT updated yet (will be updated by bump-finalize.sh AFTER release):"
@@ -109,7 +113,7 @@ if [[ "$TOOL" == "wl" ]]; then
   echo "Updating plugins/tools/skills/worklog/wl import to JSR $JSR_VERSION..."
   sed -i.bak "s/@dohzya\/tools@[0-9.]*\/worklog/@dohzya\/tools@$JSR_VERSION\/worklog/" plugins/tools/skills/worklog/wl
   rm plugins/tools/skills/worklog/wl.bak
-else
+elif [[ "$TOOL" == "md" ]]; then
   # Update VERSION constant in cli.ts
   echo "Updating packages/tools/markdown-surgeon/cli.ts VERSION to $TOOL_VERSION..."
   sed -i.bak "s/const VERSION = \".*\";/const VERSION = \"$TOOL_VERSION\";/" packages/tools/markdown-surgeon/cli.ts
@@ -119,6 +123,11 @@ else
   echo "Updating plugins/tools/skills/markdown-surgeon/md import to JSR $JSR_VERSION..."
   sed -i.bak "s/@dohzya\/tools@[0-9.]*\/markdown-surgeon/@dohzya\/tools@$JSR_VERSION\/markdown-surgeon/" plugins/tools/skills/markdown-surgeon/md
   rm plugins/tools/skills/markdown-surgeon/md.bak
+else
+  # Update VERSION constant in cli.ts
+  echo "Updating packages/tools/recap/cli.ts VERSION to $TOOL_VERSION..."
+  sed -i.bak "s/const VERSION = \".*\";/const VERSION = \"$TOOL_VERSION\";/" packages/tools/recap/cli.ts
+  rm packages/tools/recap/cli.ts.bak
 fi
 
 echo ""
