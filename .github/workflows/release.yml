@@ -5,6 +5,7 @@ on:
     tags:
       - "md-v*"
       - "wl-v*"
+      - "recap-v*"
 
 jobs:
   build:
@@ -49,6 +50,9 @@ jobs:
           if [ "$TOOL" = "md" ]; then
             ENTRY="jsr:@dohzya/tools@${JSR_VERSION}/markdown-surgeon/cli"
             PERMS="--allow-read --allow-write"
+          elif [ "$TOOL" = "recap" ]; then
+            ENTRY="jsr:@dohzya/tools@${JSR_VERSION}/recap/cli"
+            PERMS="--allow-read --allow-write --allow-env --allow-run=git"
           else
             ENTRY="jsr:@dohzya/tools@${JSR_VERSION}/worklog/cli"
             PERMS="--allow-read --allow-write --allow-env --allow-run=git,claude"
