@@ -7,20 +7,20 @@ class Recap < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/dohzya/tools/releases/download/recap-v0.1.0/recap-darwin-arm64"
-      sha256 "abd5b7d0442ada0c2f87637f9b8feb1c0a3bda8ac3fba88726e49fc11f12cc17"
+      sha256 "00ec77bf446f8524299af6e3f59f4fea6514468bab640b6e36bd88123f13f35c"
     elsif Hardware::CPU.intel?
       url "https://github.com/dohzya/tools/releases/download/recap-v0.1.0/recap-darwin-x86_64"
-      sha256 "1ac3ba5f1871c16560e514f506c3d67c3c659ce6ded6369ce88c61a00e95cb7e"
+      sha256 "2f879572ef30f2f9987e596280fd0559e1cfe53b33a3cacaf91b042915fab4ec"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/dohzya/tools/releases/download/recap-v0.1.0/recap-linux-arm64"
-      sha256 "79b715a2656435b772bbdfedda5770bd383d02597fd89e9acf823b936ccc7c70"
+      sha256 "070d0577a5cbdf2f3752e2a4046399b62efa209d87b1ac92e6d1d999c8dff7bb"
     elsif Hardware::CPU.intel?
       url "https://github.com/dohzya/tools/releases/download/recap-v0.1.0/recap-linux-x86_64"
-      sha256 "908f584f73440e9f4ae06f5f6b66ee2fab793166b38873dc6c6b450a4dd7018e"
+      sha256 "51510bf208ba315a50eb1aa1ed2aa8db057c53038b7b29b722b47feecc153005"
     end
   end
 
