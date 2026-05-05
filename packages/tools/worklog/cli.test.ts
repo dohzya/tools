@@ -1,5 +1,15 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { parse as parseYaml } from "@std/yaml";
 import { WtError } from "./domain/entities/errors.ts";
+import { ExplicitCast } from "../explicit-cast.ts";
+
+/** Extract and parse YAML frontmatter from a task file string. */
+function parseFrontmatter(content: string): Record<string, unknown> {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) throw new Error("No frontmatter found");
+  return ExplicitCast.from<unknown>(parseYaml(match[1]))
+    .dangerousCast<Record<string, unknown>>();
+}
 
 // WtError tests
 Deno.test("WtError - creates error with code and message", () => {
@@ -1579,10 +1589,8 @@ Deno.test("worklog create - accepts custom timestamp in ISO format", async () =>
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
 
     // Should contain the custom timestamp in the created field
-    assertStringIncludes(
-      taskContent,
-      'created_at: "2024-12-15T14:30:00+01:00"',
-    );
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.created_at, "2024-12-15T14:30:00+01:00");
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -1609,10 +1617,8 @@ Deno.test("worklog create - accepts -t as alias for --timestamp", async () => {
     // Read task file to verify timestamp
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
 
-    assertStringIncludes(
-      taskContent,
-      'created_at: "2024-11-20T09:00:00+01:00"',
-    );
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.created_at, "2024-11-20T09:00:00+01:00");
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -1639,13 +1645,18 @@ Deno.test("worklog create - accepts flexible timestamp T format", async () => {
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
 
     // Should contain today's date at 16:45
+    const fm = parseFrontmatter(taskContent);
+    const createdAt = String(fm.created_at);
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
-    const expectedPrefix = `created_at: "${year}-${month}-${day}T16:45:00`;
+    const expectedPrefix = `${year}-${month}-${day}T16:45:00`;
 
-    assertStringIncludes(taskContent, expectedPrefix);
+    assert(
+      createdAt.startsWith(expectedPrefix),
+      `Expected created_at to start with ${expectedPrefix}, got ${createdAt}`,
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -1677,10 +1688,15 @@ Deno.test("worklog create - adds local timezone when missing", async () => {
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
 
     // Should contain the date/time with a timezone appended
-    assertStringIncludes(taskContent, 'created_at: "2024-12-15T10:45:00');
+    const fm = parseFrontmatter(taskContent);
+    const createdAt = String(fm.created_at);
+    assert(
+      createdAt.startsWith("2024-12-15T10:45:00"),
+      `Expected created_at to start with 2024-12-15T10:45:00, got ${createdAt}`,
+    );
     // Should have a timezone (+ or - followed by HH:MM)
     assert(
-      /created_at: "2024-12-15T10:45:00[+-]\d{2}:\d{2}"/.test(taskContent),
+      /^2024-12-15T10:45:00[+-]\d{2}:\d{2}$/.test(createdAt),
       "Timestamp should have timezone",
     );
   } finally {
@@ -2071,11 +2087,12 @@ Deno.test("create - creates task in 'created' state by default", async () => {
 
     // Check task file
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
-    assertStringIncludes(taskContent, 'name: "Fix login bug"');
-    assertStringIncludes(taskContent, 'desc: ""');
-    assertStringIncludes(taskContent, "status: created");
-    assertStringIncludes(taskContent, "ready_at: null");
-    assertStringIncludes(taskContent, "started_at: null");
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.name, "Fix login bug");
+    assertEquals(fm.desc, "");
+    assertEquals(fm.status, "created");
+    assertEquals(fm.ready_at, null);
+    assertEquals(fm.started_at, null);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -2105,12 +2122,10 @@ Deno.test("create - accepts name and detailed description", async () => {
 
     // Check task file
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
-    assertStringIncludes(taskContent, 'name: "Fix bug"');
-    assertStringIncludes(
-      taskContent,
-      'desc: "User cannot login to the system"',
-    );
-    assertStringIncludes(taskContent, "status: created");
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.name, "Fix bug");
+    assertEquals(fm.desc, "User cannot login to the system");
+    assertEquals(fm.status, "created");
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -3490,9 +3505,13 @@ Deno.test("create --ready - sets ready_at, not started_at", async () => {
     const id = JSON.parse(_ls).tasks[0].id;
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
-    assertStringIncludes(taskContent, "status: ready");
-    assert(taskContent.match(/ready_at: "\d{4}-\d{2}-\d{2}/));
-    assertStringIncludes(taskContent, "started_at: null");
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.status, "ready");
+    assert(
+      /^\d{4}-\d{2}-\d{2}/.test(String(fm.ready_at)),
+      "ready_at should be a timestamp",
+    );
+    assertEquals(fm.started_at, null);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -3511,9 +3530,13 @@ Deno.test("create --started - sets started_at, not ready_at", async () => {
     const id = JSON.parse(_ls).tasks[0].id;
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
-    assertStringIncludes(taskContent, "status: started");
-    assertStringIncludes(taskContent, "ready_at: null");
-    assert(taskContent.match(/started_at: "\d{4}-\d{2}-\d{2}/));
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.status, "started");
+    assertEquals(fm.ready_at, null);
+    assert(
+      /^\d{4}-\d{2}-\d{2}/.test(String(fm.started_at)),
+      "started_at should be a timestamp",
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });

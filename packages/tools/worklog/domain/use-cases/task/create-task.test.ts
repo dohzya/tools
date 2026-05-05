@@ -1,11 +1,13 @@
 // deno-lint-ignore-file require-await no-explicit-any
 import { assertEquals, assertRejects } from "@std/assert";
+import { parse as parseYaml } from "@std/yaml";
 import { CreateTaskUseCase } from "./create-task.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 import type { MarkdownService } from "../../ports/markdown-service.ts";
 import type { Index, IndexEntry } from "../../entities/index.ts";
 import { WtError } from "../../entities/errors.ts";
+import { ExplicitCast } from "../../../../explicit-cast.ts";
 
 // --- Mock implementations ---
 
@@ -91,6 +93,16 @@ function createMockMarkdownService(): MarkdownService {
   };
 }
 
+// --- Helpers ---
+
+/** Extract and parse YAML frontmatter from a task file string. */
+function parseFrontmatter(content: string): Record<string, unknown> {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) throw new Error("No frontmatter found");
+  return ExplicitCast.from<unknown>(parseYaml(match[1]))
+    .dangerousCast<Record<string, unknown>>();
+}
+
 // --- Tests ---
 
 Deno.test("CreateTaskUseCase - creates task with default status", async () => {
@@ -116,16 +128,14 @@ Deno.test("CreateTaskUseCase - creates task with default status", async () => {
   assertEquals(typeof result.id, "string");
   assertEquals(result.id.length > 0, true);
 
-  // Should save content
+  // Should save content with correct frontmatter
   assertEquals(taskRepo.savedContent.size, 1);
   const savedContent = taskRepo.savedContent.get("test_id_1234567890abcdef")!;
-  assertEquals(savedContent.includes('name: "Test task"'), true);
-  assertEquals(savedContent.includes('desc: "Test description"'), true);
-  assertEquals(savedContent.includes("status: created"), true);
-  assertEquals(
-    savedContent.includes('created_at: "2025-01-15T10:00:00+01:00"'),
-    true,
-  );
+  const fm = parseFrontmatter(savedContent);
+  assertEquals(fm.name, "Test task");
+  assertEquals(fm.desc, "Test description");
+  assertEquals(fm.status, "created");
+  assertEquals(fm.created_at, "2025-01-15T10:00:00+01:00");
 
   // Should add to index
   assertEquals("test_id_1234567890abcdef" in indexRepo.index.tasks, true);
@@ -163,12 +173,10 @@ Deno.test("CreateTaskUseCase - creates task with started status", async () => {
   const savedContent = taskRepo.savedContent.get(
     "test_id_started_abcdef01",
   )!;
-  assertEquals(savedContent.includes("status: started"), true);
-  assertEquals(
-    savedContent.includes('started_at: "2025-01-15T10:00:00+01:00"'),
-    true,
-  );
-  assertEquals(savedContent.includes("ready_at: null"), true);
+  const fm = parseFrontmatter(savedContent);
+  assertEquals(fm.status, "started");
+  assertEquals(fm.started_at, "2025-01-15T10:00:00+01:00");
+  assertEquals(fm.ready_at, null);
 
   assertEquals(
     indexRepo.index.tasks["test_id_started_abcdef01"].status,
@@ -198,12 +206,10 @@ Deno.test("CreateTaskUseCase - creates task with ready status", async () => {
   const savedContent = taskRepo.savedContent.get(
     "test_id_ready_abcdefgh01",
   )!;
-  assertEquals(savedContent.includes("status: ready"), true);
-  assertEquals(
-    savedContent.includes('ready_at: "2025-01-15T10:00:00+01:00"'),
-    true,
-  );
-  assertEquals(savedContent.includes("started_at: null"), true);
+  const fm = parseFrontmatter(savedContent);
+  assertEquals(fm.status, "ready");
+  assertEquals(fm.ready_at, "2025-01-15T10:00:00+01:00");
+  assertEquals(fm.started_at, null);
 });
 
 Deno.test("CreateTaskUseCase - creates task with tags", async () => {
@@ -310,9 +316,11 @@ Deno.test("CreateTaskUseCase - creates task with metadata", async () => {
   const savedContent = taskRepo.savedContent.get(
     "test_id_meta_abcdefgh012",
   )!;
-  assertEquals(savedContent.includes("metadata:"), true);
-  assertEquals(savedContent.includes("  priority: high"), true);
-  assertEquals(savedContent.includes("  sprint: 3"), true);
+  const fm = parseFrontmatter(savedContent);
+  const metadata = ExplicitCast.from<unknown>(fm.metadata)
+    .dangerousCast<Record<string, string>>();
+  assertEquals(metadata.priority, "high");
+  assertEquals(metadata.sprint, "3");
 });
 
 Deno.test("CreateTaskUseCase - uses custom timestamp", async () => {
@@ -337,13 +345,51 @@ Deno.test("CreateTaskUseCase - uses custom timestamp", async () => {
   const savedContent = taskRepo.savedContent.get(
     "test_id_timestamp_abcdef",
   )!;
-  assertEquals(
-    savedContent.includes('created_at: "2024-12-25T08:30:00+01:00"'),
-    true,
-  );
+  const fm = parseFrontmatter(savedContent);
+  assertEquals(fm.created_at, "2024-12-25T08:30:00+01:00");
 
   assertEquals(
     indexRepo.index.tasks["test_id_timestamp_abcdef"].created,
     "2024-12-25T08:30:00+01:00",
   );
+});
+
+Deno.test("CreateTaskUseCase - roundtrips complex description with newlines, colons, quotes, backslashes", async () => {
+  const indexRepo = createMockIndexRepo();
+  const taskRepo = createMockTaskRepo();
+  const markdownService = createMockMarkdownService();
+
+  const useCase = new CreateTaskUseCase({
+    indexRepo,
+    taskRepo,
+    markdownService,
+    generateId: () => "test_id_complex_desc_abcde",
+    generateUid: () => "00000000-0000-0000-0000-000000000009",
+    getTimestamp: () => "2025-01-15T10:00:00+01:00",
+  });
+
+  const complexDesc =
+    'line1: has colon\nline2 has "quotes"\nline3 has \\backslash';
+
+  await useCase.execute({
+    name: 'Task with "special" chars',
+    desc: complexDesc,
+  });
+
+  const savedContent = taskRepo.savedContent.get(
+    "test_id_complex_desc_abcde",
+  )!;
+
+  // Extract YAML between --- delimiters and parse it back
+  const yamlMatch = savedContent.match(/^---\n([\s\S]*?)\n---/);
+  assertEquals(yamlMatch !== null, true, "Should have frontmatter delimiters");
+
+  const parsed = ExplicitCast.from<unknown>(parseYaml(yamlMatch![1]))
+    .dangerousCast<Record<string, unknown>>();
+
+  // Roundtrip: parsed values must match original inputs exactly
+  assertEquals(parsed.name, 'Task with "special" chars');
+  assertEquals(parsed.desc, complexDesc);
+  assertEquals(parsed.status, "created");
+  assertEquals(parsed.id, "test_id_complex_desc_abcde");
 });

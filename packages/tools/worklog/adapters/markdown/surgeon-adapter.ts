@@ -19,6 +19,7 @@
  *   - YamlService (markdown-surgeon port, for frontmatter parsing)
  */
 
+import { stringify as stringifyYaml } from "@std/yaml";
 import type { Checkpoint } from "../../domain/entities/checkpoint.ts";
 import type { Entry } from "../../domain/entities/entry.ts";
 import { WtError } from "../../domain/entities/errors.ts";
@@ -270,54 +271,32 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
     checkpoints: readonly Checkpoint[],
     todos: readonly Todo[],
   ): string {
-    // Build frontmatter
-    const escapedName = meta.name.replace(/"/g, '\\"');
-    const escapedDesc = meta.desc.replace(/"/g, '\\"');
+    // Build frontmatter object — key insertion order = YAML field order
+    const frontmatter: Record<string, unknown> = {
+      id: meta.id,
+      uid: meta.uid,
+      name: meta.name,
+      desc: meta.desc,
+      status: meta.status,
+      created_at: meta.created_at,
+      ready_at: meta.ready_at ?? null,
+      started_at: meta.started_at ?? null,
+      done_at: meta.done_at ?? null,
+      last_checkpoint: meta.last_checkpoint ?? null,
+      has_uncheckpointed_entries: meta.has_uncheckpointed_entries,
+    };
 
-    let metadataYaml = "";
     if (meta.metadata && Object.keys(meta.metadata).length > 0) {
-      metadataYaml = "\nmetadata:\n";
-      for (const [key, value] of Object.entries(meta.metadata)) {
-        const escapedValue =
-          value.includes(":") || value.includes("#") || value.includes('"')
-            ? `"${value.replace(/"/g, '\\"')}"`
-            : value;
-        metadataYaml += `  ${key}: ${escapedValue}\n`;
-      }
+      frontmatter.metadata = meta.metadata;
     }
 
-    let tagsYaml = "";
     if (meta.tags && meta.tags.length > 0) {
-      tagsYaml = "\ntags:\n";
-      for (const tag of meta.tags) {
-        tagsYaml += `  - ${tag}\n`;
-      }
+      frontmatter.tags = [...meta.tags];
     }
 
-    // Format nullable timestamp fields
-    const readyAt = meta.ready_at ? `"${meta.ready_at}"` : "null";
-    const startedAt = meta.started_at ? `"${meta.started_at}"` : "null";
-    const doneAt = meta.done_at ? `"${meta.done_at}"` : "null";
-    const lastCheckpoint = meta.last_checkpoint
-      ? `"${meta.last_checkpoint}"`
-      : "null";
+    const yaml = stringifyYaml(frontmatter, { lineWidth: -1 }).trim();
 
-    let content = `---
-id: ${meta.id}
-uid: ${meta.uid}
-name: "${escapedName}"
-desc: "${escapedDesc}"
-status: ${meta.status}
-created_at: "${meta.created_at}"
-ready_at: ${readyAt}
-started_at: ${startedAt}
-done_at: ${doneAt}
-last_checkpoint: ${lastCheckpoint}
-has_uncheckpointed_entries: ${meta.has_uncheckpointed_entries}${metadataYaml}${tagsYaml}
----
-
-# Entries
-`;
+    let content = `---\n${yaml}\n---\n\n# Entries\n`;
 
     // Add entries
     for (const entry of entries) {

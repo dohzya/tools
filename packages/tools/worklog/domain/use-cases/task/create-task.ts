@@ -1,5 +1,6 @@
 // CreateTaskUseCase - Create a new task
 
+import { stringify as stringifyYaml } from "@std/yaml";
 import type { AddOutput } from "../../entities/outputs.ts";
 import type { TaskStatus } from "../../entities/task.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
@@ -81,36 +82,43 @@ export class CreateTaskUseCase {
       }
     }
 
-    // Build metadata YAML section
-    let metadataYaml = "";
-    if (input.metadata && Object.keys(input.metadata).length > 0) {
-      metadataYaml = "\nmetadata:\n";
-      for (const [key, value] of Object.entries(input.metadata)) {
-        const escapedValue =
-          value.includes(":") || value.includes("#") || value.includes('"')
-            ? `"${value.replace(/"/g, '\\"')}"`
-            : value;
-        metadataYaml += `  ${key}: ${escapedValue}\n`;
-      }
-    }
-
-    // Build tags YAML section
-    let tagsYaml = "";
-    if (input.tags && input.tags.length > 0) {
-      tagsYaml = "\ntags:\n";
-      for (const tag of input.tags) {
-        tagsYaml += `  - ${tag}\n`;
-      }
-    }
-
     // Set timestamps based on initial status
-    let readyAt = "null";
-    let startedAt = "null";
+    let readyAt: string | null = null;
+    let startedAt: string | null = null;
     if (status === "ready") {
-      readyAt = `"${now}"`;
+      readyAt = now;
     } else if (status === "started") {
-      startedAt = `"${now}"`;
+      startedAt = now;
     }
+
+    // Build frontmatter object — key insertion order = YAML field order
+    const frontmatter: Record<string, unknown> = {
+      id,
+      uid,
+      name: input.name,
+      desc: taskDesc,
+      status,
+      created_at: now,
+      ready_at: readyAt,
+      started_at: startedAt,
+      done_at: null,
+      last_checkpoint: null,
+      has_uncheckpointed_entries: false,
+    };
+
+    if (input.metadata && Object.keys(input.metadata).length > 0) {
+      frontmatter.metadata = input.metadata;
+    }
+
+    if (input.tags && input.tags.length > 0) {
+      frontmatter.tags = [...input.tags];
+    }
+
+    if (input.parent) {
+      frontmatter.parent = input.parent;
+    }
+
+    const yaml = stringifyYaml(frontmatter, { lineWidth: -1 }).trim();
 
     // Build TODO section
     let todoSection = "";
@@ -121,26 +129,8 @@ export class CreateTaskUseCase {
       }
     }
 
-    const parentYaml = input.parent ? `\nparent: "${input.parent}"` : "";
-
-    const content = `---
-id: ${id}
-uid: ${uid}
-name: "${input.name.replace(/"/g, '\\"')}"
-desc: "${taskDesc.replace(/"/g, '\\"')}"
-status: ${status}
-created_at: "${now}"
-ready_at: ${readyAt}
-started_at: ${startedAt}
-done_at: null
-last_checkpoint: null
-has_uncheckpointed_entries: false${metadataYaml}${tagsYaml}${parentYaml}
----
-
-# Entries
-
-# Checkpoints${todoSection}
-`;
+    const content =
+      `---\n${yaml}\n---\n\n# Entries\n\n# Checkpoints${todoSection}\n`;
 
     await this.deps.taskRepo.saveContent(id, content);
 
