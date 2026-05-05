@@ -140,9 +140,13 @@ Transitions: `ready` allows `created → ready` and `started → ready`. `start`
 
 ```bash
 wl create <name> [desc] [--ready|--started]  # Create task → outputs ID
+wl create <name> --desc-src <file>           # Description from file
+wl create <name> --desc-src -                # Description from stdin
 wl ready <id>                                # Transition to ready
 wl start <id>                                # Transition to started (or reopen done)
 wl update <id> [--name <name>] [--desc <d>]  # Update task name or description
+wl update <id> --desc-src <file>             # Description from file
+wl update <id> --desc-src -                  # Description from stdin
 wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
 wl logs <id>                                 # Get context (last checkpoint + recent entries)
 wl checkpoint --claude                       # Claude synthesizes checkpoint from all traces
@@ -187,6 +191,7 @@ Creates a new task. The `name` is displayed in list views, `desc` is the detaile
 - `--todo <text>`: Add a TODO item (repeatable)
 - `--meta <key=value>`: Set metadata (repeatable)
 - `-t, --timestamp <ts>`: Custom creation timestamp
+- `--desc-src <source>`: Read description from file path, or `-` for stdin
 
 **Examples:**
 
@@ -197,6 +202,12 @@ wl create "Fix login bug"
 # With description
 wl create "Fix login bug" "Users can't login after session timeout"
 
+# Description from file (multiline, rich context)
+wl create "Investigate auth" --desc-src ~/notes/auth-context.md
+
+# Description from stdin
+cat briefing.md | wl create "Deploy v2" --desc-src -
+
 # Start immediately
 wl create --started "Urgent hotfix"
 
@@ -206,6 +217,8 @@ wl create --parent <parent-id> --started "Analyze existing API"
 # With TODOs
 wl create "Feature X" --todo "Analyze" --todo "Implement" --todo "Test"
 ```
+
+**Conflicts:** positional `desc` and `--desc-src` cannot be used together.
 
 ## State transition commands
 
@@ -231,9 +244,11 @@ Updates task name and/or description.
 wl update <id> --name "New name"
 wl update <id> --desc "New description"
 wl update <id> --name "New name" --desc "New description"
+wl update <id> --desc-src context.md           # from file
+pbpaste | wl update <id> --desc-src -          # from stdin
 ```
 
-Must provide at least one of `--name` or `--desc`.
+Must provide at least one of `--name`, `--desc`, or `--desc-src`. `--desc` and `--desc-src` cannot be used together.
 
 ## List command
 

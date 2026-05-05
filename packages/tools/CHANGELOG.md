@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.14.1] — 2026-05-05
+
+### Added
+
+- **worklog:** `--desc-src <source>` option on `create` and `update` — reads the task description from a file path or from stdin (`--desc-src -`). Errors on conflict with positional desc or `--desc`.
+
+### Fixed
+
+- **worklog:** YAML frontmatter now serialized via `@std/yaml` instead of manual template strings — descriptions with newlines, colons, quotes, or backslashes no longer break the task file. Multiline descriptions get proper YAML block scalar (`|`) treatment.
+
 ## [wl-v0.14.0] — 2026-05-05
 
 ### Added
