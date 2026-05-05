@@ -44,7 +44,7 @@ Deno.test("WtError - handles different error codes", () => {
 });
 
 // Integration tests for wl trace with timestamp
-import { main } from "./cli.ts";
+import { _setStdinReadable, main } from "./cli.ts";
 
 Deno.test("worklog - shows help when no arguments provided", async () => {
   const output = await captureOutput(() => main([]));
@@ -5320,4 +5320,217 @@ Deno.test("help - shows wl create step 1 when no env task ID", async () => {
 Deno.test("help - description contains Subtasks mention", async () => {
   const output = await captureOutput(() => main([]));
   assertStringIncludes(output, "Subtasks");
+});
+
+// ============================================================================
+// --desc-src tests
+// ============================================================================
+
+Deno.test("create --desc-src <file> - reads description from file", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    // Write a description file
+    const descFile = `${tempDir}/desc.txt`;
+    await Deno.writeTextFile(descFile, "Description from file");
+
+    await main(["create", "Task from file", "--desc-src", descFile]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, "Description from file");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create --desc-src - reads description from stdin", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    _setStdinReadable(
+      ReadableStream.from([
+        new TextEncoder().encode("Description from stdin"),
+      ]),
+    );
+    try {
+      await main(["create", "Stdin task", "--desc-src", "-"]);
+    } finally {
+      _setStdinReadable(undefined);
+    }
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, "Description from stdin");
+  } finally {
+    _setStdinReadable(undefined);
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create <name> <desc> --desc-src - errors on conflict", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+
+    const descFile = `${tempDir}/desc.txt`;
+    await Deno.writeTextFile(descFile, "File desc");
+
+    try {
+      await main([
+        "create",
+        "Task",
+        "Positional desc",
+        "--desc-src",
+        descFile,
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Cannot specify both");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create --desc-src nonexistent - errors on missing file", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+
+    try {
+      await main(["create", "Task", "--desc-src", "/nonexistent/path.txt"]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "File not found");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update --desc-src <file> - updates description from file", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "Task to update"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    const descFile = `${tempDir}/new-desc.txt`;
+    await Deno.writeTextFile(descFile, "Updated desc from file");
+
+    await main(["update", taskId, "--desc-src", descFile]);
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    assert(taskContent.match(/desc:.*Updated desc from file/));
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update --desc --desc-src - errors on conflict", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+    await main(["create", "Task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    const descFile = `${tempDir}/desc.txt`;
+    await Deno.writeTextFile(descFile, "File desc");
+
+    try {
+      await main([
+        "update",
+        taskId,
+        "--desc",
+        "Inline desc",
+        "--desc-src",
+        descFile,
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Cannot specify both");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
 });

@@ -716,6 +716,46 @@ async function readFile(path: string): Promise<string> {
   }
 }
 
+/** Overridable stdin stream — tests inject a custom ReadableStream here. */
+let _stdinReadable: ReadableStream<Uint8Array> | undefined;
+
+/**
+ * Set the stdin stream used by resolveDescSrc("-").
+ * Pass undefined to restore the default (Deno.stdin.readable).
+ */
+export function _setStdinReadable(
+  stream: ReadableStream<Uint8Array> | undefined,
+): void {
+  _stdinReadable = stream;
+}
+
+async function readStdinFully(): Promise<string> {
+  const readable = _stdinReadable ?? Deno.stdin.readable;
+  const decoder = new TextDecoder();
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of readable) {
+    chunks.push(chunk);
+  }
+  const total = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    total.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return decoder.decode(total);
+}
+
+/**
+ * Resolve a --desc-src value to the actual description string.
+ * "-" reads stdin; anything else is a file path.
+ */
+async function resolveDescSrc(source: string): Promise<string> {
+  if (source === "-") {
+    return await readStdinFully();
+  }
+  return await readFile(source);
+}
+
 async function writeFile(path: string, content: string): Promise<void> {
   try {
     await Deno.writeTextFile(path, content);
@@ -4388,6 +4428,10 @@ const createCmd = new Command()
     collect: true,
   })
   .option("--parent <taskId:string>", "Set parent task (creates a subtask)")
+  .option(
+    "--desc-src <source:string>",
+    'Read description from file path, or "-" for stdin',
+  )
   .option("--claude", "Launch Claude after creation with WORKLOG_TASK_ID set")
   .action(async function (options, name, desc) {
     try {
@@ -4396,6 +4440,19 @@ const createCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
+
+      // Validate: can't have both positional desc and --desc-src
+      if (desc !== undefined && options.descSrc !== undefined) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both positional desc and --desc-src",
+        );
+      }
+
+      // Resolve --desc-src if provided
+      if (options.descSrc !== undefined) {
+        desc = await resolveDescSrc(options.descSrc);
+      }
 
       // Validate: can't have both --ready and --started
       if (options.ready && options.started) {
@@ -4967,6 +5024,10 @@ const updateCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .option("--name <name:string>", "New name for the task")
   .option("--desc <desc:string>", "New description for the task")
+  .option(
+    "--desc-src <source:string>",
+    'Read description from file path, or "-" for stdin',
+  )
   .action(async (options, taskId?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -4974,6 +5035,21 @@ const updateCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
+
+      // Validate: can't have both --desc and --desc-src
+      if (options.desc !== undefined && options.descSrc !== undefined) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --desc and --desc-src",
+        );
+      }
+
+      // Resolve --desc-src if provided
+      let resolvedDesc = options.desc;
+      if (options.descSrc !== undefined) {
+        resolvedDesc = await resolveDescSrc(options.descSrc);
+      }
+
       const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
         taskId,
         options.scope ? null : gitRoot,
@@ -4981,7 +5057,7 @@ const updateCmd = new Command()
       const output = await cmdUpdate(
         resolvedTaskId,
         options.name,
-        options.desc,
+        resolvedDesc,
       );
       console.log(options.json ? JSON.stringify(output) : formatStatus(output));
     } catch (e) {
