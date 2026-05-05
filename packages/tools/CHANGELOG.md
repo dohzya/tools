@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.14.0] — 2026-05-05
+
+### Added
+
+- **worklog:** `checkpoint --claude` now injects all traces since last checkpoint into the prompt (not just the 5-trace cap), with quality guidelines, good/bad examples, previous checkpoint as style reference, and an empty-entries guard
+- **worklog:** `done --claude` mirrors the same behavior for the final checkpoint that closes the task
+- **worklog:** `wl claude` system prompt now recommends `checkpoint --claude` to spawned agents
+
+### Fixed
+
+- **test:** Disable GPG signing in compat test git repos (avoids 1Password prompts)
+
 ## [recap-v0.1.0] — 2026-03-05
 
 ### Added
