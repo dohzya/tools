@@ -1402,6 +1402,13 @@ function createGitWorkspaceWithWorktree(): {
     stderr: "null",
   }).outputSync();
 
+  new Deno.Command("git", {
+    args: ["config", "commit.gpgsign", "false"],
+    cwd: mainDir,
+    stdout: "null",
+    stderr: "null",
+  }).outputSync();
+
   // Create initial commit (required for worktrees)
   Deno.writeTextFileSync(join(mainDir, "README.md"), "# Test");
   new Deno.Command("git", {
