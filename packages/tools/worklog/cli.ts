@@ -51,6 +51,7 @@ import {
 import { basename, dirname, isAbsolute, join, resolve } from "@std/path";
 import { z } from "@zod/zod/mini";
 import { ExplicitCast } from "../explicit-cast.ts";
+import { buildClaudeCheckpointPrompt } from "./checkpoint-prompt.ts";
 
 // ============================================================================
 // Hexagonal Architecture Imports
@@ -4618,7 +4619,10 @@ const checkpointCmd = new Command()
   .option("-f, --force", "Force checkpoint on completed tasks")
   .option("-t, --timestamp <ts:string>", "Timestamp (currently ignored)")
   .option("-q, --quiet", "Silently exit if no task ID (for hooks)")
-  .option("--claude", "Delegate checkpoint synthesis to Claude agent")
+  .option(
+    "--claude",
+    "Let Claude synthesize the checkpoint (injects all traces + quality guidelines)",
+  )
   .action(
     async (options, taskId?: string, changes?: string, learnings?: string) => {
       if (options.quiet && !taskId && !ENV_TASK_ID) return;
@@ -4633,13 +4637,17 @@ const checkpointCmd = new Command()
             taskId,
             options.scope ? null : gitRoot,
           );
-          const prompt =
-            `Review the "Recent Traces" in your context and create a checkpoint by running this command:\n\n` +
-            `  wl checkpoint ${resolvedTaskId} "<changes>" "<learnings>"\n\n` +
-            `Guidelines:\n` +
-            `- changes: 1-2 sentences synthesizing what was accomplished (not a list of traces)\n` +
-            `- learnings: 1-2 sentences on what was learned or should be remembered\n\n` +
-            `Run the command directly without asking for confirmation.`;
+          const showOutput = await cmdShow(resolvedTaskId);
+          if (showOutput.entries_since_checkpoint.length === 0) {
+            throw new WtError(
+              "no_uncheckpointed_entries",
+              "No uncheckpointed entries. Nothing to checkpoint.",
+            );
+          }
+          const prompt = buildClaudeCheckpointPrompt(
+            resolvedTaskId,
+            showOutput,
+          );
           const result = await cmdClaude(resolvedTaskId, ["-p", prompt]);
           if (result.exitCode !== 0) {
             console.log(`Claude exited with code ${result.exitCode}`);
@@ -4707,6 +4715,10 @@ const doneCmd = new Command()
   .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
     collect: true,
   })
+  .option(
+    "--claude",
+    "Let Claude synthesize the final checkpoint (injects all traces + quality guidelines)",
+  )
   .action(
     async (options, taskId?: string, changes?: string, learnings?: string) => {
       try {
@@ -4716,45 +4728,68 @@ const doneCmd = new Command()
           asGlobal(options).worklogDir,
         );
 
-        // Smart argument resolution:
-        // If WORKLOG_TASK_ID is set and learnings not provided, args shift
-        let resolvedTaskId: string;
-        let resolvedChanges: string | undefined;
-        let resolvedLearnings: string | undefined;
-        if (HAS_ENV_TASK_ID && !learnings) {
-          // With env and not all 3 args: args shift (taskId→changes, changes→learnings)
-          resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-            undefined,
-            options.scope ? null : gitRoot,
-          );
-          resolvedChanges = taskId;
-          resolvedLearnings = changes;
-        } else {
-          if (!taskId) {
-            throw new WtError(
-              "invalid_args",
-              "taskId is required (or set WORKLOG_TASK_ID)",
-            );
-          }
-          resolvedTaskId = await resolveTaskIdAcrossScopes(
+        if (options.claude) {
+          const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
             taskId,
             options.scope ? null : gitRoot,
           );
-          resolvedChanges = changes;
-          resolvedLearnings = learnings;
-        }
+          const showOutput = await cmdShow(resolvedTaskId);
+          if (showOutput.entries_since_checkpoint.length === 0) {
+            throw new WtError(
+              "no_uncheckpointed_entries",
+              "No uncheckpointed entries. Nothing to checkpoint.",
+            );
+          }
+          const prompt = buildClaudeCheckpointPrompt(
+            resolvedTaskId,
+            showOutput,
+            "done",
+          );
+          const result = await cmdClaude(resolvedTaskId, ["-p", prompt]);
+          if (result.exitCode !== 0) {
+            console.log(`Claude exited with code ${result.exitCode}`);
+          }
+        } else {
+          // Smart argument resolution:
+          // If WORKLOG_TASK_ID is set and learnings not provided, args shift
+          let resolvedTaskId: string;
+          let resolvedChanges: string | undefined;
+          let resolvedLearnings: string | undefined;
+          if (HAS_ENV_TASK_ID && !learnings) {
+            // With env and not all 3 args: args shift (taskId→changes, changes→learnings)
+            resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+              undefined,
+              options.scope ? null : gitRoot,
+            );
+            resolvedChanges = taskId;
+            resolvedLearnings = changes;
+          } else {
+            if (!taskId) {
+              throw new WtError(
+                "invalid_args",
+                "taskId is required (or set WORKLOG_TASK_ID)",
+              );
+            }
+            resolvedTaskId = await resolveTaskIdAcrossScopes(
+              taskId,
+              options.scope ? null : gitRoot,
+            );
+            resolvedChanges = changes;
+            resolvedLearnings = learnings;
+          }
 
-        const metadata = parseMetaOption(options.meta);
-        const output = await cmdDone(
-          resolvedTaskId,
-          resolvedChanges,
-          resolvedLearnings,
-          options.force ?? false,
-          metadata,
-        );
-        console.log(
-          options.json ? JSON.stringify(output) : formatStatus(output),
-        );
+          const metadata = parseMetaOption(options.meta);
+          const output = await cmdDone(
+            resolvedTaskId,
+            resolvedChanges,
+            resolvedLearnings,
+            options.force ?? false,
+            metadata,
+          );
+          console.log(
+            options.json ? JSON.stringify(output) : formatStatus(output),
+          );
+        }
       } catch (e) {
         handleError(e, options.json ?? false);
       }

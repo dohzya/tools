@@ -76,6 +76,10 @@ Commands that work **without taskId** (uses WORKLOG_TASK_ID automatically):
 Commands that still **require taskId as first argument** (ambiguous with other args):
   wl trace <id> "msg", wl checkpoint <id> ..., wl done <id> ...
 
+## Checkpoints
+
+When it's time to consolidate traces, prefer **\`wl checkpoint --claude\`** — it feeds all your traces to a fresh Claude instance with quality guidelines, so you don't have to write the synthesis yourself. It preserves your context window.
+
 ## Subtasks
 
 To delegate sub-work to another agent, create a subtask linked to this task:

@@ -29,13 +29,13 @@ wl trace <id> -t T15:15 "Found root cause"
 When `wl trace` says "checkpoint recommended":
 
 ```bash
-wl logs <id>    # 1. Review traces first
+# Preferred: let Claude synthesize from all traces (preserves your context)
+wl checkpoint --claude
+
+# Manual: write the synthesis yourself
 wl checkpoint <id> \
-  "- Implemented CurrencyBucket pattern
-- Initial direct field approach failed (broke tests)
-- Pivot to CurrencyBucket → all tests pass" \
-  "- Direct field broke validators (wrong abstraction)
-- Bucket pattern isolates concerns better"
+  "Implemented CurrencyBucket pattern after pivot from direct fields" \
+  "Direct field approach broke validators — bucket pattern isolates concerns better"
 ```
 
 ### Reopening a task
@@ -57,6 +57,11 @@ This transitions the task back to `started`, clears the `done_at`/`cancelled_at`
 ```bash
 git commit -m "feat: multi-currency support"
 wl show <id>      # check pending TODOs + traces to consolidate
+
+# Preferred: let Claude synthesize the final checkpoint
+wl done --claude
+
+# Manual: write the synthesis yourself
 wl done <id> \
   "Changes narrative (all actions including failed attempts)" \
   "1. Direct field broke validators - wrong abstraction
@@ -140,8 +145,10 @@ wl start <id>                                # Transition to started (or reopen 
 wl update <id> [--name <name>] [--desc <d>]  # Update task name or description
 wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
 wl logs <id>                                 # Get context (last checkpoint + recent entries)
-wl checkpoint <id> "changes" "learnings"     # Create checkpoint
-wl done <id> ["changes" "learnings"]         # Final checkpoint + close task (args optional)
+wl checkpoint --claude                       # Claude synthesizes checkpoint from all traces
+wl checkpoint <id> "changes" "learnings"     # Create checkpoint manually
+wl done --claude                             # Claude synthesizes final checkpoint + closes task
+wl done <id> ["changes" "learnings"]         # Final checkpoint + close task manually
 wl cancel <id> [reason]                      # Cancel/abandon task (marks as cancelled)
 wl list [--created] [--ready] [--started] [--done] [--cancelled]  # Filter tasks
 wl show <id>                                 # Detailed task view with history
@@ -322,13 +329,16 @@ Available options:
 ## Done command
 
 ```bash
-wl done <id> ["changes" "learnings"] [--force] [--meta key=value]
+wl done <id> ["changes" "learnings"] [--force] [--meta key=value] [--claude]
 ```
 
 **Arguments are optional** when there are no uncheckpointed entries (no new traces since last checkpoint). If there are uncheckpointed entries, `changes` and `learnings` are required.
 
 ```bash
-# With final checkpoint (when traces exist)
+# Preferred: let Claude synthesize the final checkpoint + close task
+wl done --claude
+
+# Manual: write the synthesis yourself
 wl done <id> "What changed" "What we learned"
 
 # Without args (when no new traces since last checkpoint)
