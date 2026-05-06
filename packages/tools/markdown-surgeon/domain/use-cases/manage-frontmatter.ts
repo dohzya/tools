@@ -12,22 +12,33 @@ import type { Document } from "../entities/document.ts";
 import { MdError } from "../entities/document.ts";
 import type { YamlService } from "../ports/yaml-service.ts";
 
+/** Input for getting frontmatter data */
 export interface GetFrontmatterInput {
+  /** Parsed document to read from */
   readonly doc: Document;
+  /** Dot-notation key to retrieve, or undefined for all frontmatter */
   readonly key?: string;
 }
 
+/** Input for setting a frontmatter field */
 export interface SetFrontmatterInput {
+  /** Parsed document to modify */
   readonly doc: Document;
+  /** Dot-notation key to set */
   readonly key: string;
+  /** Value to assign (parsed as YAML if possible) */
   readonly value: string;
 }
 
+/** Input for deleting a frontmatter field */
 export interface DeleteFrontmatterInput {
+  /** Parsed document to modify */
   readonly doc: Document;
+  /** Dot-notation key to delete */
   readonly key: string;
 }
 
+/** Result of reading frontmatter (all or a single field) */
 export interface FrontmatterGetResult {
   /** The raw YAML content (without delimiters), or a specific field value */
   readonly value: unknown;
@@ -35,12 +46,17 @@ export interface FrontmatterGetResult {
   readonly formatted: string;
 }
 
+/** Result of a frontmatter set or delete operation */
 export interface FrontmatterMutationResult {
+  /** The full document lines after the mutation */
   readonly updatedLines: readonly string[];
+  /** Human-readable description of what was changed */
   readonly message: string;
 }
 
+/** Gets, sets, and deletes YAML frontmatter fields */
 export class ManageFrontmatterUseCase {
+  /** Create a ManageFrontmatterUseCase with the given YAML service */
   constructor(private readonly yamlService: YamlService) {}
 
   /**

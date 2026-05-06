@@ -12,27 +12,37 @@ import { resolveConfig } from "./resolve-config.ts";
 import { collectSections } from "./collect-sections.ts";
 import { renderRecap } from "./render-recap.ts";
 
+/** Options for a full recap run. */
 export type RunRecapOptions = {
-  /** Explicit config path (skips auto-discovery) */
+  /** Explicit config path (skips auto-discovery). */
   readonly configPath?: string;
-  /** Disable color output */
+  /** Disable color output. */
   readonly noColor?: boolean;
-  /** Output as JSON instead of formatted text */
+  /** Output as JSON instead of formatted text. */
   readonly json?: boolean;
-  /** Override working directory for config discovery and shell commands */
+  /** Override working directory for config discovery and shell commands. */
   readonly cwd?: string;
 };
 
+/** Injected dependencies (ports) required by runRecap. */
 export type RunRecapDependencies = {
+  /** Shell command executor. */
   readonly shell: ShellRunner;
+  /** Git built-in provider. */
   readonly git: GitInfoProvider;
+  /** Process environment access. */
   readonly env: Environment;
+  /** File system operations. */
   readonly fs: FileSystem;
+  /** YAML config loader. */
   readonly configResolver: ConfigResolver;
 };
 
+/** Result of a full recap run, containing collected sections and rendered text. */
 export type RunRecapResult = {
+  /** Collected section data from all configured sections. */
   readonly sections: readonly SectionData[];
+  /** Rendered text output (formatted or plain). */
   readonly text: string;
 };
 

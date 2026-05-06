@@ -18,16 +18,25 @@ import { ReadSectionUseCase } from "./read-section.ts";
 
 const HEADER_REGEX = /^(#{1,6})\s+(.+)$/;
 
+/** Input for the AppendSection use case */
 export interface AppendSectionInput {
+  /** Parsed document to append to */
   readonly doc: Document;
+  /** Section ID to append relative to, or null for document-level */
   readonly id: string | null;
+  /** Content to append */
   readonly content: string;
+  /** Whether to consider nested subsections for insertion point */
   readonly deep: boolean;
+  /** If true, insert before the target instead of after */
   readonly before: boolean;
 }
 
+/** Output of appending content to a section */
 export interface AppendSectionOutput {
+  /** Mutation metadata (action, line counts) */
   readonly result: MutationResult;
+  /** The full document lines after the append */
   readonly updatedLines: readonly string[];
 }
 
@@ -46,15 +55,18 @@ function startsWithHeader(
   return null;
 }
 
+/** Appends content to a section or to the document */
 export class AppendSectionUseCase {
   private readonly readSection: ReadSectionUseCase;
   private readonly parseDocument: ParseDocumentUseCase;
 
+  /** Create an AppendSectionUseCase with the given hash service */
   constructor(private readonly hashService: HashService) {
     this.readSection = new ReadSectionUseCase();
     this.parseDocument = new ParseDocumentUseCase(hashService);
   }
 
+  /** Append content relative to a section or at document boundaries */
   async execute(input: AppendSectionInput): Promise<AppendSectionOutput> {
     const { doc, id, content, deep, before } = input;
 

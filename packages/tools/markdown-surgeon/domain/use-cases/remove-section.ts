@@ -14,25 +14,37 @@ import type { Document, MutationResult } from "../entities/document.ts";
 import { MdError } from "../entities/document.ts";
 import { ReadSectionUseCase } from "./read-section.ts";
 
+/** Input for the remove operation */
 export interface RemoveSectionInput {
+  /** Parsed document to modify */
   readonly doc: Document;
+  /** Section ID to remove */
   readonly id: string;
 }
 
+/** Input for the empty operation */
 export interface EmptySectionInput {
+  /** Parsed document to modify */
   readonly doc: Document;
+  /** Section ID to empty */
   readonly id: string;
+  /** Whether to include nested subsections when emptying */
   readonly deep: boolean;
 }
 
+/** Output of a remove or empty operation */
 export interface RemoveSectionOutput {
+  /** Mutation metadata (action, line counts) */
   readonly result: MutationResult;
+  /** The full document lines after the operation */
   readonly updatedLines: readonly string[];
 }
 
+/** Removes or empties a section (header + content + subsections) */
 export class RemoveSectionUseCase {
   private readonly readSection: ReadSectionUseCase;
 
+  /** Create a RemoveSectionUseCase */
   constructor() {
     this.readSection = new ReadSectionUseCase();
   }

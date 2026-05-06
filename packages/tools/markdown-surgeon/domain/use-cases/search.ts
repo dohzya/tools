@@ -14,23 +14,32 @@ import type {
 } from "../entities/document.ts";
 import { ReadSectionUseCase } from "./read-section.ts";
 
+/** Input for the Search use case */
 export interface SearchInput {
+  /** Parsed document to search within */
   readonly doc: Document;
+  /** Plain-text pattern to search for */
   readonly pattern: string;
 }
 
+/** Result of a search operation */
 export interface SearchResult {
+  /** Individual line-level matches */
   readonly matches: SearchMatch[];
+  /** Matches grouped by section */
   readonly summaries: SearchSummary[];
 }
 
+/** Searches for a text pattern across a parsed document */
 export class SearchUseCase {
   private readonly readSection: ReadSectionUseCase;
 
+  /** Create a SearchUseCase */
   constructor() {
     this.readSection = new ReadSectionUseCase();
   }
 
+  /** Search the document for all lines containing the pattern */
   execute(input: SearchInput): SearchResult {
     const { doc, pattern } = input;
 

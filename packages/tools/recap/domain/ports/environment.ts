@@ -1,5 +1,6 @@
 // Environment port — interface for process environment access
 
+/** Port for accessing process environment, working directory, and dotenv files. */
 export interface Environment {
   /** Get an environment variable value. Returns undefined if not set. */
   getEnv(name: string): string | undefined;

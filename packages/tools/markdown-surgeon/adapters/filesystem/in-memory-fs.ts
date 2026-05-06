@@ -9,11 +9,13 @@
 
 import type { FileSystem } from "../../domain/ports/filesystem.ts";
 
+/** In-memory FileSystem implementation for testing */
 export class InMemoryFileSystem implements FileSystem {
   private files = new Map<string, string>();
 
   // --- FileSystem interface ---
 
+  /** Read a file from the in-memory store */
   readFile(path: string): Promise<string> {
     const content = this.files.get(path);
     if (content === undefined) {
@@ -22,15 +24,18 @@ export class InMemoryFileSystem implements FileSystem {
     return Promise.resolve(content);
   }
 
+  /** Write a file to the in-memory store */
   writeFile(path: string, content: string): Promise<void> {
     this.files.set(path, content);
     return Promise.resolve();
   }
 
+  /** Check whether a file exists in the in-memory store */
   exists(path: string): Promise<boolean> {
     return Promise.resolve(this.files.has(path));
   }
 
+  /** Expand a glob pattern against in-memory file paths */
   glob(pattern: string): Promise<string[]> {
     // Simple glob: convert pattern to a regex.
     // Supports basic *, **, and ? wildcards.

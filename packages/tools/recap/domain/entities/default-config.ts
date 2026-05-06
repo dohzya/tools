@@ -2,6 +2,7 @@
 
 import type { RecapConfig, ResolvedSection } from "./config.ts";
 
+/** Built-in default sections baked into the binary (git branch, ops, log, status). */
 export const HARDCODED_SECTIONS: readonly ResolvedSection[] = [
   {
     id: "git-branch-track",

@@ -12,18 +12,27 @@
 import type { Document, Section } from "../entities/document.ts";
 import { MdError } from "../entities/document.ts";
 
+/** Input for the ReadSection use case */
 export interface ReadSectionInput {
+  /** Parsed document to read from */
   readonly doc: Document;
+  /** Section ID to look up */
   readonly id: string;
+  /** Whether to include nested subsections */
   readonly deep: boolean;
 }
 
+/** Result of reading a section */
 export interface ReadSectionResult {
+  /** The matched section metadata */
   readonly section: Section;
+  /** The section body text (without header) */
   readonly content: string;
+  /** 1-indexed end line of the returned content */
   readonly endLine: number;
 }
 
+/** Finds a section by ID and returns its content */
 export class ReadSectionUseCase {
   /**
    * Find a section by ID and return its content.

@@ -1,3 +1,9 @@
+/**
+ * Worklog CLI — Cliffy command definitions for the `wl` tool.
+ *
+ * @module
+ */
+
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import {
@@ -5622,6 +5628,7 @@ const cli = new Command()
   .command("scopes", scopesCmd)
   .command("completions", new CompletionsCommand());
 
+/** CLI entry point — parses args and dispatches to the appropriate subcommand. */
 export async function main(args: string[]): Promise<void> {
   // Show help when no arguments provided
   if (args.length === 0) {

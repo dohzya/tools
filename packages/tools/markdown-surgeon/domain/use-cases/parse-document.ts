@@ -14,13 +14,18 @@ import { ExplicitCast } from "../../../explicit-cast.ts";
 const HEADER_REGEX = /^(#{1,6})\s+(.+)$/;
 const FRONTMATTER_DELIMITER = "---";
 
+/** Input for the ParseDocument use case */
 export interface ParseDocumentInput {
+  /** Raw markdown content to parse */
   readonly content: string;
 }
 
+/** Parses raw markdown into an immutable Document entity */
 export class ParseDocumentUseCase {
+  /** Create a ParseDocumentUseCase with the given hash service */
   constructor(private readonly hashService: HashService) {}
 
+  /** Parse markdown content into a structured Document with sections */
   async execute(input: ParseDocumentInput): Promise<Document> {
     const lines = input.content.split("\n");
     const sections: Section[] = [];

@@ -1,5 +1,8 @@
-// @dz/tools - Root module
-// Re-exports all submodules
+/**
+ * @dohzya/tools — root module re-exporting markdown-surgeon, worklog, and recap.
+ *
+ * @module
+ */
 
 export * from "./markdown-surgeon/mod.ts";
 export * as worklog from "./worklog/mod.ts";

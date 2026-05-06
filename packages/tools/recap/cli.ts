@@ -1,4 +1,8 @@
-// recap CLI — context snapshot for AI assistants
+/**
+ * Recap CLI — command-line interface for generating context snapshots.
+ *
+ * @module
+ */
 
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
@@ -44,6 +48,7 @@ function getCwdOption(options: GlobalOptions): string | undefined {
   return options[""];
 }
 
+/** CLI entry point — parses args and runs the recap command. */
 export async function main(args: string[]): Promise<void> {
   const program = new Command()
     .name("recap")

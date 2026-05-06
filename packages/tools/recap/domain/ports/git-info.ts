@@ -1,15 +1,18 @@
 // GitInfo port — interface for git-specific built-in providers
 
+/** Result of detecting active git operations. */
 export type GitOpsResult = {
   /** Human-readable description of current git operation, or null if none. */
   readonly operation: string | null;
 };
 
+/** Result of fetching recent git log entries. */
 export type GitLogResult = {
   /** Lines of git log output. */
   readonly lines: readonly string[];
 };
 
+/** Port for querying git repository state. */
 export interface GitInfoProvider {
   /**
    * Detect active git operations (rebase, merge, cherry-pick, etc.).

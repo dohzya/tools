@@ -11,25 +11,36 @@ import type { Document, MutationResult } from "../entities/document.ts";
 import { MdError } from "../entities/document.ts";
 import { ReadSectionUseCase } from "./read-section.ts";
 
+/** Input for the WriteSection use case */
 export interface WriteSectionInput {
+  /** Parsed document to modify */
   readonly doc: Document;
+  /** Section ID to replace content of */
   readonly id: string;
+  /** New content to write (replaces existing body) */
   readonly content: string;
+  /** Whether to replace nested subsections too */
   readonly deep: boolean;
 }
 
+/** Output of writing a section */
 export interface WriteSectionOutput {
+  /** Mutation metadata (action, line counts) */
   readonly result: MutationResult;
+  /** The full document lines after the write */
   readonly updatedLines: readonly string[];
 }
 
+/** Replaces the body content of a section identified by ID */
 export class WriteSectionUseCase {
   private readonly readSection: ReadSectionUseCase;
 
+  /** Create a WriteSectionUseCase */
   constructor() {
     this.readSection = new ReadSectionUseCase();
   }
 
+  /** Replace the content of a section, keeping its header */
   execute(input: WriteSectionInput): WriteSectionOutput {
     const { doc, id, content, deep } = input;
 

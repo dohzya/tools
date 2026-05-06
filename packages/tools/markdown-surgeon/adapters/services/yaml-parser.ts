@@ -15,7 +15,9 @@ import { parse as parseYaml, stringify as stringifyYaml } from "@std/yaml";
 import type { YamlService } from "../../domain/ports/yaml-service.ts";
 import { ExplicitCast } from "../../../explicit-cast.ts";
 
+/** YamlService implementation using @std/yaml */
 export class YamlParserService implements YamlService {
+  /** Parse a YAML string into a plain object */
   parse(yaml: string): Record<string, unknown> {
     if (!yaml.trim()) {
       return {};
@@ -30,6 +32,7 @@ export class YamlParserService implements YamlService {
     }
   }
 
+  /** Serialize a plain object to a YAML string */
   stringify(obj: Record<string, unknown>): string {
     if (Object.keys(obj).length === 0) {
       return "";
@@ -37,6 +40,7 @@ export class YamlParserService implements YamlService {
     return stringifyYaml(obj, { lineWidth: -1 }).trim();
   }
 
+  /** Retrieve a nested value using dot-notation path */
   getNestedValue(obj: unknown, path: string): unknown {
     const parts = path.split(".");
     let current: unknown = obj;
@@ -57,6 +61,7 @@ export class YamlParserService implements YamlService {
     return current;
   }
 
+  /** Set a nested value using dot-notation path, creating intermediates */
   setNestedValue(
     obj: Record<string, unknown>,
     path: string,
@@ -85,6 +90,7 @@ export class YamlParserService implements YamlService {
     current[lastPart] = value;
   }
 
+  /** Delete a nested value using dot-notation path, returning true if found */
   deleteNestedValue(obj: Record<string, unknown>, path: string): boolean {
     const parts = path.split(".");
     let current: Record<string, unknown> = obj;
@@ -110,6 +116,7 @@ export class YamlParserService implements YamlService {
     return false;
   }
 
+  /** Format a value for human-readable display */
   formatValue(value: unknown): string {
     if (value === undefined || value === null) {
       return "";

@@ -49,6 +49,7 @@ const cli = new Command()
   .command("create", commands.createCmd)
   .command("completions", new CompletionsCommand());
 
+/** Run the markdown-surgeon CLI with the given arguments */
 export async function main(args: string[]): Promise<void> {
   await cli.parse(args);
 }

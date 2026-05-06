@@ -1,4 +1,8 @@
-// recap module — public API
+/**
+ * Recap — generate context snapshots for AI assistants from project state.
+ *
+ * @module
+ */
 
 export * from "./types.ts";
 export { resolveConfig } from "./domain/use-cases/resolve-config.ts";

@@ -5,10 +5,15 @@ import type { SectionData } from "../entities/section-data.ts";
 import type { ShellRunner } from "../ports/shell-runner.ts";
 import type { GitInfoProvider } from "../ports/git-info.ts";
 
+/** External dependencies needed to execute sections during collection. */
 export type CollectSectionsProviders = {
+  /** Shell command executor. */
   readonly shell: ShellRunner;
+  /** Git built-in provider. */
   readonly git: GitInfoProvider;
+  /** Working directory for shell commands. */
   readonly cwd: string;
+  /** Additional environment variables injected into every command. */
   readonly globalEnv?: Readonly<Record<string, string>>;
 };
 

@@ -2,6 +2,7 @@
 
 import { bold, cyan, dim, green, red } from "@std/fmt/colors";
 
+/** Set of color/formatting functions for rendering recap output. */
 export type Palette = {
   /** Section title color */
   readonly title: (s: string) => string;

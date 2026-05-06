@@ -1,4 +1,11 @@
-// Main module exports for markdown-surgeon
+/**
+ * Markdown-surgeon — parse, query, and mutate Markdown documents by section.
+ *
+ * Exports the hexagonal domain (entities, use cases, ports) plus adapter
+ * implementations and a backward-compatible functional API.
+ *
+ * @module
+ */
 
 // ============================================================================
 // Domain entities
@@ -27,12 +34,38 @@ export type { YamlService } from "./domain/ports/yaml-service.ts";
 // ============================================================================
 
 export { ParseDocumentUseCase } from "./domain/use-cases/parse-document.ts";
+export type { ParseDocumentInput } from "./domain/use-cases/parse-document.ts";
 export { ReadSectionUseCase } from "./domain/use-cases/read-section.ts";
+export type {
+  ReadSectionInput,
+  ReadSectionResult,
+} from "./domain/use-cases/read-section.ts";
 export { WriteSectionUseCase } from "./domain/use-cases/write-section.ts";
+export type {
+  WriteSectionInput,
+  WriteSectionOutput,
+} from "./domain/use-cases/write-section.ts";
 export { AppendSectionUseCase } from "./domain/use-cases/append-section.ts";
+export type {
+  AppendSectionInput,
+  AppendSectionOutput,
+} from "./domain/use-cases/append-section.ts";
 export { RemoveSectionUseCase } from "./domain/use-cases/remove-section.ts";
+export type {
+  EmptySectionInput,
+  RemoveSectionInput,
+  RemoveSectionOutput,
+} from "./domain/use-cases/remove-section.ts";
 export { SearchUseCase } from "./domain/use-cases/search.ts";
+export type { SearchInput, SearchResult } from "./domain/use-cases/search.ts";
 export { ManageFrontmatterUseCase } from "./domain/use-cases/manage-frontmatter.ts";
+export type {
+  DeleteFrontmatterInput,
+  FrontmatterGetResult,
+  FrontmatterMutationResult,
+  GetFrontmatterInput,
+  SetFrontmatterInput,
+} from "./domain/use-cases/manage-frontmatter.ts";
 
 // ============================================================================
 // Adapters
@@ -65,11 +98,12 @@ const _yamlService = new YamlParserService();
 const _parseDocUseCase = new ParseDocumentUseCase(_hashService);
 const _manageFrontmatterUseCase = new ManageFrontmatterUseCase(_yamlService);
 
-// Export compatibility functions
+/** Parse a markdown string into a Document with sections and frontmatter */
 export async function parseDocument(content: string): Promise<Document> {
   return await _parseDocUseCase.execute({ content });
 }
 
+/** Parse the YAML frontmatter of a markdown string into a plain object */
 export async function parseFrontmatter(
   content: string,
 ): Promise<Record<string, unknown>> {
@@ -78,12 +112,14 @@ export async function parseFrontmatter(
   return _yamlService.parse(yamlContent);
 }
 
+/** Serialize a frontmatter object back to a YAML string */
 export function stringifyFrontmatter(
   frontmatter: Record<string, unknown>,
 ): string {
   return _yamlService.stringify(frontmatter);
 }
 
+/** Get the full text (header + body) of a section by ID */
 export async function getSectionContent(
   content: string,
   id: string,
@@ -94,6 +130,7 @@ export async function getSectionContent(
   return doc.lines.slice(section.line - 1, section.lineEnd).join("\n");
 }
 
+/** Find a section by its ID, returning its metadata or undefined */
 export async function findSection(
   content: string,
   id: string,
@@ -102,6 +139,7 @@ export async function findSection(
   return doc.sections.find((s) => s.id === id);
 }
 
+/** Find the section containing a given 1-indexed line number */
 export async function findSectionAtLine(
   content: string,
   line: number,
@@ -110,6 +148,7 @@ export async function findSectionAtLine(
   return doc.sections.find((s) => line >= s.line && line <= s.lineEnd);
 }
 
+/** Get the 1-indexed end line of a section, or -1 if not found */
 export async function getSectionEndLine(
   content: string,
   id: string,
@@ -118,6 +157,7 @@ export async function getSectionEndLine(
   return section?.lineEnd ?? -1;
 }
 
+/** Compute the deterministic hash ID for a section given its title and level */
 export async function sectionHash(
   title: string,
   level: number,
@@ -125,11 +165,12 @@ export async function sectionHash(
   return await _hashService.hash(level, title, 0);
 }
 
+/** Check whether a string is a valid section ID (lowercase hex) */
 export function isValidId(id: string): boolean {
   return /^[a-z0-9-]+$/.test(id);
 }
 
-// Magic/YAML helpers - these were utility functions, implement as needed
+/** Retrieve a nested value from an object using dot-notation path */
 export function getNestedValue(
   obj: Record<string, unknown>,
   path: string,
@@ -137,6 +178,7 @@ export function getNestedValue(
   return _yamlService.getNestedValue(obj, path);
 }
 
+/** Set a nested value in an object using dot-notation path */
 export function setNestedValue(
   obj: Record<string, unknown>,
   path: string,
@@ -147,6 +189,7 @@ export function setNestedValue(
   return result;
 }
 
+/** Delete a nested value from an object using dot-notation path */
 export function deleteNestedValue(
   obj: Record<string, unknown>,
   path: string,
@@ -156,11 +199,13 @@ export function deleteNestedValue(
   return result;
 }
 
+/** Extract raw YAML content from frontmatter (without delimiters) */
 export async function getFrontmatterContent(content: string): Promise<string> {
   const doc = await _parseDocUseCase.execute({ content });
   return _manageFrontmatterUseCase.getFrontmatterContent(doc);
 }
 
+/** Replace or add YAML frontmatter in a markdown string */
 export async function setFrontmatter(
   content: string,
   frontmatter: Record<string, unknown>,
@@ -180,20 +225,24 @@ export async function setFrontmatter(
   return updatedLines.join("\n");
 }
 
+/** Format a value for human-readable display */
 export function formatValue(value: unknown): string {
   return _yamlService.formatValue(value);
 }
 
+/** Expand magic placeholders in content (currently a no-op) */
 export function expandMagic(content: string): string {
   // Magic expansion was in magic.ts - for now return as-is
   return content;
 }
 
+/** Reconstruct a markdown string from a Document's lines */
 export function serializeDocument(doc: Document): string {
   // Reconstruct document from lines
   return doc.lines.join("\n");
 }
 
+/** Check whether a string begins with a markdown header line */
 export function startsWithHeader(content: string): boolean {
   return /^#+ /.test(content.trimStart());
 }

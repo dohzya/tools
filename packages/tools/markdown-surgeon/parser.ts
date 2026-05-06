@@ -9,19 +9,29 @@ import { MdError } from "./domain/entities/document.ts";
 import { Blake3HashService } from "./adapters/services/blake3-hash.ts";
 import { ParseDocumentUseCase } from "./domain/use-cases/parse-document.ts";
 
-// Mutable interfaces matching the old types.ts (before hexagonal refactoring)
+/** Mutable representation of a section in a Markdown document */
 export interface Section {
+  /** Unique hash-based identifier for this section */
   id: string;
+  /** Header level (1-6) */
   level: number;
+  /** Header title text (without the leading `#` marks) */
   title: string;
+  /** 1-indexed line number of the header */
   line: number;
+  /** 1-indexed line number of the last content line */
   lineEnd: number;
 }
 
+/** Mutable parsed document with sections and raw lines */
 export interface Document {
+  /** Ordered list of parsed sections */
   sections: Section[];
+  /** Raw lines of the entire document */
   lines: string[];
+  /** Raw frontmatter including delimiters, or null if absent */
   frontmatter: string | null;
+  /** Line after closing `---` (0 if no frontmatter) */
   frontmatterEndLine: number;
 }
 

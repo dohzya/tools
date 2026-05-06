@@ -16,7 +16,9 @@
 
 import type { HashService } from "../../domain/ports/hash-service.ts";
 
+/** SHA-256-based hash service for generating deterministic section IDs */
 export class Blake3HashService implements HashService {
+  /** Generate an 8-character hex hash from level, title, and occurrence index */
   async hash(
     level: number,
     title: string,

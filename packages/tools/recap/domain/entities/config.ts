@@ -5,7 +5,9 @@
 // TypeScript types
 // ============================================================================
 
+/** How sections are visually separated in rendered output. */
 export type SeparatorKind = "blank_line" | "none" | "line";
+/** Identifier for a built-in section provider. */
 export type BuiltinKind = "git-ops" | "git-log";
 
 /** A section entry that references another section from the parent config level. */

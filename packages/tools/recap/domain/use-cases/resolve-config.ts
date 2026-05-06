@@ -15,7 +15,7 @@ import {
 import { HARDCODED_SECTIONS } from "../entities/default-config.ts";
 import { RecapError } from "../entities/errors.ts";
 
-// Options for resolveConfig
+/** Options controlling how config files are discovered and merged. */
 export type ResolveConfigOptions = {
   /** Explicit config path — skips global/local resolution */
   readonly configPath?: string;

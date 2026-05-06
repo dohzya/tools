@@ -2,6 +2,7 @@
 
 import type { RawConfig } from "../entities/config.ts";
 
+/** Port for loading and parsing YAML config files. */
 export interface ConfigResolver {
   /**
    * Load and parse a YAML config file.
