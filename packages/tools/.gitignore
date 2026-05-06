@@ -1,0 +1,4 @@
+# npm artifacts for Node/Bun cross-runtime testing
+node_modules/
+package-lock.json
+.npmrc

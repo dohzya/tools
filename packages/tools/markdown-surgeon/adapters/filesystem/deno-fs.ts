@@ -3,11 +3,11 @@
  *
  * Concrete FileSystem implementation backed by the Deno runtime.
  *
- * Dependencies: Deno built-ins, @std/fs (expandGlob), @std/path (dirname).
+ * Dependencies: Deno built-ins, @std/fs (expandGlob), node:path (dirname).
  */
 
 import { expandGlob } from "@std/fs";
-import { dirname } from "@std/path";
+import { dirname } from "node:path";
 import type { FileSystem } from "../../domain/ports/filesystem.ts";
 
 /** FileSystem implementation backed by the Deno runtime */

@@ -1,5 +1,5 @@
 import { assertEquals, assertMatch, assertStringIncludes } from "@std/assert";
-import { join } from "@std/path";
+import { join } from "node:path";
 
 const CLI_PATH = new URL("../markdown-surgeon/cli.ts", import.meta.url)
   .pathname;

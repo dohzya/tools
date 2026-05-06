@@ -2,7 +2,7 @@
 // Tests use Deno.makeTempDir() for isolation
 
 import { assertEquals, assertStringIncludes } from "@std/assert";
-import { join } from "@std/path";
+import { join } from "node:path";
 import { resolveConfig } from "./domain/use-cases/resolve-config.ts";
 import { renderRecap } from "./domain/use-cases/render-recap.ts";
 import { createPalette } from "./domain/entities/color.ts";

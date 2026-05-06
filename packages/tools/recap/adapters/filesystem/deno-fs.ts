@@ -1,6 +1,6 @@
 // DenoFileSystem adapter — concrete FileSystem backed by Deno runtime
 
-import { ensureDir } from "@std/fs";
+import { mkdir } from "node:fs/promises";
 import type { FileSystem } from "../../domain/ports/filesystem.ts";
 import { RecapError } from "../../domain/entities/errors.ts";
 
@@ -37,7 +37,7 @@ export class DenoFileSystem implements FileSystem {
   }
 
   async ensureDir(path: string): Promise<void> {
-    await ensureDir(path);
+    await mkdir(path, { recursive: true });
   }
 
   async *readDir(path: string): AsyncIterable<string> {

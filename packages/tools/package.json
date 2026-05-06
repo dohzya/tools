@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@std/yaml": "npm:@jsr/std__yaml@^1.1.0",
+    "@zod/zod": "npm:@jsr/zod__zod@^4.4.3"
+  }
+}

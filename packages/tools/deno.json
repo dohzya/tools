@@ -21,7 +21,6 @@
     "@std/assert": "jsr:@std/assert@^1.0.0",
     "@std/fmt": "jsr:@std/fmt@^1.0.0",
     "@std/fs": "jsr:@std/fs@^1.0.0",
-    "@std/path": "jsr:@std/path@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
     "@zod/zod": "jsr:@zod/zod@^4.3.6",
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
@@ -36,6 +35,7 @@
     "test": "env -u WORKLOG_TASK_ID deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot",
     "validate": "deno task fmt:check && deno task lint && deno task check && deno task test"
   },
+  "nodeModulesDir": "none",
   "fmt": {
     "proseWrap": "never"
   },

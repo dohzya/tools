@@ -5,10 +5,10 @@
  * Wraps standard Deno file operations with error handling matching
  * the original cli.ts behavior.
  *
- * Dependencies: Deno built-ins, @std/fs (ensureDir).
+ * Dependencies: Deno built-ins, node:fs/promises (mkdir).
  */
 
-import { ensureDir } from "@std/fs";
+import { mkdir } from "node:fs/promises";
 import type { FileSystem } from "../../domain/ports/filesystem.ts";
 import { WtError } from "../../domain/entities/errors.ts";
 
@@ -45,7 +45,7 @@ export class DenoFileSystem implements FileSystem {
   }
 
   async ensureDir(path: string): Promise<void> {
-    await ensureDir(path);
+    await mkdir(path, { recursive: true });
   }
 
   async *readDir(path: string): AsyncIterable<string> {

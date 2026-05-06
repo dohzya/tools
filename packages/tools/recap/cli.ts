@@ -15,7 +15,7 @@ import { DaxShellRunner } from "./adapters/shell/dax-shell-runner.ts";
 import { DenoGitInfo } from "./adapters/git/deno-git-info.ts";
 import { YamlConfigResolver } from "./adapters/config/yaml-config-resolver.ts";
 import { formatRecapJson } from "./adapters/cli/formatter.ts";
-import { join, resolve } from "@std/path";
+import { join, resolve } from "node:path";
 import { RecapError } from "./domain/entities/errors.ts";
 import { ExplicitCast } from "../explicit-cast.ts";
 

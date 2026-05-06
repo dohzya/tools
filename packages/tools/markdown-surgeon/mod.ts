@@ -71,7 +71,8 @@ export type {
 // Adapters
 // ============================================================================
 
-export { DenoFileSystem } from "./adapters/filesystem/deno-fs.ts";
+// DenoFileSystem deliberately excluded: it depends on @std/fs (expandGlob)
+// which is Deno-only. Import from "./adapters/filesystem/deno-fs.ts" directly.
 export { InMemoryFileSystem } from "./adapters/filesystem/in-memory-fs.ts";
 export { Blake3HashService } from "./adapters/services/blake3-hash.ts";
 export { YamlParserService } from "./adapters/services/yaml-parser.ts";

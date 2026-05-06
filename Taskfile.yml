@@ -32,6 +32,25 @@ tasks:
     dir: packages/tools
     cmds:
       - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot recap/cli.test.ts {{.CLI_ARGS}}
+  compat:install:
+    desc: "Install npm deps for Node/Bun compat tests"
+    dir: packages/tools
+    sources:
+      - package.json
+    cmds:
+      - npm install --silent
+  test:node:
+    desc: "Run Node.js cross-runtime compat tests"
+    dir: packages/tools
+    deps: [compat:install]
+    cmds:
+      - node --experimental-transform-types compat-tests/node-bun-compat.ts
+  test:bun:
+    desc: "Run Bun cross-runtime compat tests"
+    dir: packages/tools
+    deps: [compat:install]
+    cmds:
+      - bun run compat-tests/node-bun-compat.ts
 
   check:
     desc: "Check the code (format & type & lint)"
