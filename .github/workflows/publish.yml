@@ -1,0 +1,37 @@
+name: Publish to JSR
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run (validate without publishing)"
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Publish to JSR
+        working-directory: packages/tools
+        env:
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            deno publish --dry-run
+          else
+            deno publish
+          fi
