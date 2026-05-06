@@ -1,6 +1,8 @@
 /**
  * Backward-compatible shim for yaml.ts.
  * Delegates to YamlParserService adapter.
+ *
+ * @module
  */
 
 import { YamlParserService } from "./adapters/services/yaml-parser.ts";

@@ -3,6 +3,8 @@
  *
  * All types and classes are now defined in domain/entities/document.ts.
  * This file exists for backward compatibility with existing imports.
+ *
+ * @module
  */
 
 export type {

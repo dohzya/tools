@@ -1,6 +1,8 @@
 /**
  * Backward-compatible shim for hash.ts.
  * Delegates to Blake3HashService adapter.
+ *
+ * @module
  */
 
 import { Blake3HashService } from "./adapters/services/blake3-hash.ts";

@@ -3,6 +3,8 @@
  *
  * Provides the same mutable Document/Section API that worklog/cli.ts depends on.
  * Delegates parsing to ParseDocumentUseCase but returns mutable objects.
+ *
+ * @module
  */
 
 import { MdError } from "./domain/entities/document.ts";

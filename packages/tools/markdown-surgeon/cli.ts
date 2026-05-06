@@ -2,6 +2,8 @@
  * CLI entry point for markdown-surgeon.
  *
  * Thin wire/DI layer: instantiates adapters, creates commands, builds CLI.
+ *
+ * @module
  */
 
 import { Command } from "@cliffy/command";
