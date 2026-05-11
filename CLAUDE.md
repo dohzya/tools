@@ -124,6 +124,12 @@ For external data (files, APIs, user input). Let validation errors bubble up.
 
 ---
 
+## Skills
+
+**Skills source code lives in `./plugins/tools/skills/`.** Never modify `~/.claude/plugins/` or `~/.claude/skills/` — those are installed copies managed by the plugin system.
+
+---
+
 ## Architecture
 
 → See [ARCHI.md](ARCHI.md) for architecture rules (hexagonal, layer dependencies, forbidden patterns).
