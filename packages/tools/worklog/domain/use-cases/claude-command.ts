@@ -70,11 +70,14 @@ ${todos ? `## TODO\n${todos}` : ""}
 
 The environment variable is set to: ${resolvedTaskId}
 
-Commands that work **without taskId** (uses WORKLOG_TASK_ID automatically):
+**All commands work without taskId** — the env var is used automatically:
+  wl trace "msg", wl checkpoint "changes" "learnings", wl done "changes" "learnings",
   wl show, wl start, wl ready, wl traces, wl update, wl cancel, wl meta, wl todo next
 
-Commands that still **require taskId as first argument** (ambiguous with other args):
-  wl trace <id> "msg", wl checkpoint <id> ..., wl done <id> ...
+To trace in a **different** task (e.g. a subtask), pass its ID as first argument:
+  wl trace <other-id> "msg"
+
+**Never** prefix a command with \`WORKLOG_TASK_ID=... wl ...\` — the variable is already set.
 
 ## Checkpoints
 
