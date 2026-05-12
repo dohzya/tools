@@ -72,18 +72,18 @@ task validate  # ✅ Must pass
 # 2. Commit (don't push yet)
 git add -A && git commit -m "chore(wl): bump to v0.6.1"
 
-# 3. Publish to JSR (interactive - requires manual auth)
-#    CRITICAL: This must happen with the correct committed code
-cd packages/tools && deno publish && cd ../..
-
-# 4. Push ONLY the commit (NOT tags yet!)
+# 3. Push to main
 git push origin main
 
-# 5. Wait for CI to pass on main (MANDATORY GATE)
+# 4. Wait for CI to pass on main (MANDATORY GATE)
 gh run watch
 # ✅ Confirm all checks are GREEN before proceeding
 
-# 6. Tag and push tag ONLY after CI is green
+# 5. Publish to JSR via GitHub Actions (OIDC provenance)
+gh workflow run publish.yml
+gh run watch  # wait for publish to complete
+
+# 6. Tag and push tag ONLY after CI + JSR publish are green
 git tag wl-v0.6.1 && git push origin wl-v0.6.1
 
 # 7. Wait for release workflow to build binaries (~2-3 min)
@@ -117,9 +117,9 @@ git tag v0.6.2 && git push origin v0.6.2
 | 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section             | Document what changed — read actual diffs, not just commit subjects                                              |
 | 1c   | `task validate` ✅        | Must pass                                                                  | Verify bump didn't break anything                                                                                |
 | 2    | N/A                       | `git commit` (no push!)                                                    | Commit version changes locally                                                                                   |
-| 3    | Manual test               | `deno publish`                                                             | **JSR MUST have correct code** - binaries built from JSR                                                         |
-| 4    | N/A                       | `git push origin main`                                                     | Push commit (NOT tag yet!)                                                                                       |
-| 5    | **CI GREEN** ✅ (GATE)    | `gh run watch`                                                             | **MUST pass before tagging** - never tag failed CI                                                               |
+| 3    | N/A                       | `git push origin main`                                                     | Push commit (NOT tag yet!)                                                                                       |
+| 4    | **CI GREEN** ✅ (GATE)    | `gh run watch`                                                             | **MUST pass before publishing** - never publish or tag failed CI                                                 |
+| 5    | JSR publish green ✅      | `gh workflow run publish.yml` then `gh run watch`                          | Publish to JSR via GitHub Actions with OIDC provenance                                                           |
 | 6    | N/A                       | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z`                           | Trigger release workflow (builds from JSR)                                                                       |
 | 7    | Release workflow green ✅ | `gh run watch`                                                             | GitHub Actions builds binaries from JSR                                                                          |
 | 8    | N/A                       | `task bump-finalize TOOL=wl VERSION=X.Y.Z`                                 | Updates homebrew checksums, docs, plugin (post-release)                                                          |
@@ -131,14 +131,15 @@ git tag v0.6.2 && git push origin v0.6.2
 
 - ✅ Step 0: Clean validation before starting
 - ✅ Step 1c: Validation after version bump
-- ✅ Step 5: **CI MUST BE GREEN** before creating any tags
+- ✅ Step 4: **CI MUST BE GREEN** before publishing to JSR or tagging
+- ✅ Step 5: JSR publish must succeed before tagging
 - ✅ Step 7: Release workflow must succeed before updating homebrew
 
 **Key rules:**
 
-- JSR publish (step 3) MUST happen before git push (step 4)
-- Git push (step 4) MUST happen before git tag (step 6)
-- CI on main (step 5) MUST be green before creating tags (step 6)
+- Git push (step 3) MUST happen before JSR publish (step 5)
+- CI on main (step 4) MUST be green before JSR publish (step 5)
+- JSR publish (step 5) MUST succeed before git tag (step 6)
 - Checksums calculated from **downloaded GitHub release binaries**, never from local builds
 - `task update-tap` handles everything: download, checksum, formula update, tap push
 
@@ -150,7 +151,7 @@ When assisting with releases, Claude should:
 2. **NEVER create tasks with TaskCreate** - use worklog for tracing
 3. Create a checklist showing each step from "Order of Operations"
 4. Mark steps as in_progress/completed as they execute
-5. Remember that `deno publish` requires user interaction (can't be automated)
+5. JSR publish is done via `gh workflow run publish.yml` (CI with OIDC provenance), not locally
 6. **ALWAYS update CHANGELOG.md** (step 1b) before committing — add a new dated section with notable changes (`git log prev-tag..HEAD --oneline --no-merges`) — **read actual diffs to verify each change, never infer from commit subjects alone**
 7. **ALWAYS run `task validate`** before ANY commit
 8. **ALWAYS verify CI is green** before creating tags
@@ -226,9 +227,9 @@ Use this when only the **compiled binary** changes but the TypeScript library co
 
 **Key difference:** No JSR publish needed — the CI will recompile from the same JSR version already published.
 
-**What to skip:** Steps 1 (`bump-prepare`), 1b, and 3 (`deno publish`). No `deno.json` bump.
+**What to skip:** Steps 1 (`bump-prepare`), 1b, and 5 (`gh workflow run publish.yml`). No `deno.json` bump.
 
-**What still applies:** CI gate (step 5), release workflow (step 7), and finalization (steps 8–11).
+**What still applies:** CI gate (step 4), release workflow (step 7), and finalization (steps 8–11).
 
 ```bash
 # 0. Validate
@@ -272,18 +273,18 @@ brew upgrade wl && wl --version
 
 ## Common Pitfalls
 
-| Problem                                | Cause                                 | Fix                                                  |
-| -------------------------------------- | ------------------------------------- | ---------------------------------------------------- |
-| Published JSR with wrong version       | Didn't validate before commit/publish | Always `task validate` before commit AND publish     |
-| Binary shows wrong version             | JSR published with stale code         | Re-bump, re-validate, re-publish with correct code   |
-| Tag triggered build failure            | CI wasn't green on main               | **Never tag until CI passes** - delete tag and retry |
-| deno.json at wrong version             | Only bumped tool version              | deno.json MUST bump every release (it's the JSR pkg) |
-| Homebrew checksum mismatch             | Checksums from local build            | Re-run `task update-tap` (downloads from GH release) |
-| Homebrew/docs point to missing release | bump script ran too early             | These files updated AFTER release exists             |
-| "Package not found" during build       | JSR publish missing or wrong version  | Check JSR has correct version, republish if needed   |
-| Can't republish to JSR                 | Same version exists                   | Bump to new version number                           |
-| brew upgrade shows old version         | Tap not updated                       | Run `task update-tap`                                |
-| Workflow fails "version mismatch"      | Tag version doesn't match any tool    | Tag must match a tool version (wl or md cli.ts)      |
+| Problem                                | Cause                                | Fix                                                      |
+| -------------------------------------- | ------------------------------------ | -------------------------------------------------------- |
+| Published JSR with wrong version       | Didn't validate before commit        | Always `task validate` before commit                     |
+| Binary shows wrong version             | JSR published from wrong commit      | Ensure CI is green, re-run `gh workflow run publish.yml` |
+| Tag triggered build failure            | CI wasn't green on main              | **Never tag until CI passes** - delete tag and retry     |
+| deno.json at wrong version             | Only bumped tool version             | deno.json MUST bump every release (it's the JSR pkg)     |
+| Homebrew checksum mismatch             | Checksums from local build           | Re-run `task update-tap` (downloads from GH release)     |
+| Homebrew/docs point to missing release | bump script ran too early            | These files updated AFTER release exists                 |
+| "Package not found" during build       | JSR publish missing or wrong version | Check JSR has correct version, republish if needed       |
+| Can't republish to JSR                 | Same version exists                  | Bump to new version number                               |
+| brew upgrade shows old version         | Tap not updated                      | Run `task update-tap`                                    |
+| Workflow fails "version mismatch"      | Tag version doesn't match any tool   | Tag must match a tool version (wl or md cli.ts)          |
 
 ## Troubleshooting
 
@@ -348,7 +349,7 @@ Test CI before pushing:
 mise exec -- act push --container-architecture linux/amd64
 ```
 
-Test binary locally (after JSR publish):
+Test binary locally (after JSR publish via CI):
 
 ```bash
 task build VERSION=0.5.0
@@ -371,7 +372,7 @@ Historical context - what went wrong and how this process was improved:
 
 1. **Validation was skipped** → Now mandatory at steps 0, 1b
 2. **Tags created before CI passed** → Now CI is a mandatory gate (step 5)
-3. **JSR published with wrong code** → Now explicit commit-before-publish (step 2→3)
+3. **JSR published with wrong code** → Now published via CI from committed code on main (step 5)
 4. **Version confusion** → Now explicit "Version Semantics" section
 5. **Workflow read wrong version** → Now reads from deno.json, not tag
 6. **Bump script too eager** → Homebrew checksums only updated after release exists
