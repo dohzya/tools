@@ -4,6 +4,7 @@ import type {
   RawConfig,
   RawSectionEntry,
   RecapConfig,
+  RefSectionEntry,
   ResolvedSection,
 } from "../entities/config.ts";
 import {
@@ -99,9 +100,11 @@ function resolveEntry(
   const merged: ResolvedSection = {
     id: parent.id,
     sh: overrides.sh ?? parent.sh,
-    builtin: overrides.builtin === "git-ops" || overrides.builtin === "git-log"
-      ? overrides.builtin
-      : parent.builtin,
+    builtin:
+      overrides.builtin === "git-ops" || overrides.builtin === "git-log" ||
+        overrides.builtin === "git-subdir"
+        ? overrides.builtin
+        : parent.builtin,
     value: overrides.value ?? parent.value,
     title: overrides.title ?? parent.title,
     max_lines: overrides.max_lines ?? parent.max_lines,
@@ -124,11 +127,20 @@ function expandEntries(
 ): ResolvedSection[] {
   const result: ResolvedSection[] = [];
 
+  // Collect IDs explicitly referenced elsewhere so ref:* can skip them
+  const explicitRefIds = new Set(
+    entries
+      .filter((e): e is RefSectionEntry => isRefEntry(e) && e.ref !== "*")
+      .map((e) => e.ref),
+  );
+
   for (const entry of entries) {
     if (isRefEntry(entry) && entry.ref === "*") {
       // Expand all parent sections, applying any overrides from this ref entry
+      // Skip sections explicitly referenced elsewhere in the entries list
       const { ref: _ref, ...overrides } = entry;
       for (const parentSection of parentOrder) {
+        if (explicitRefIds.has(parentSection.id)) continue;
         const merged: ResolvedSection = {
           id: parentSection.id,
           sh: overrides.sh ?? parentSection.sh,

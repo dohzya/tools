@@ -9,6 +9,11 @@ export const HARDCODED_SECTIONS: readonly ResolvedSection[] = [
     sh: "git status --short --branch --ahead-behind | head -1 | cut -c4-",
   },
   {
+    id: "git-subdir",
+    builtin: "git-subdir",
+    separator: "none",
+  },
+  {
     id: "git-ops",
     builtin: "git-ops",
   },

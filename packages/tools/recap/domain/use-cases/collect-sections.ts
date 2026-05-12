@@ -84,6 +84,19 @@ async function executeSection(
       };
     }
 
+    if (section.builtin === "git-subdir") {
+      const { display } = await providers.git.getGitSubdir(
+        section.cwd ?? providers.cwd,
+      );
+      const lines = display ? [display] : [];
+      return {
+        id: section.id,
+        title: section.title,
+        lines,
+        separator,
+      };
+    }
+
     if (section.builtin === "git-ops") {
       const { operation } = await providers.git.getGitOps(
         section.cwd ?? providers.cwd,

@@ -4,6 +4,7 @@ import type {
   GitInfoProvider,
   GitLogResult,
   GitOpsResult,
+  GitSubdirResult,
 } from "../../domain/ports/git-info.ts";
 
 type GitResult = { success: boolean; stdout: string };
@@ -109,6 +110,16 @@ export class DenoGitInfo implements GitInfoProvider {
     }
 
     return { operation: null };
+  }
+
+  async getGitSubdir(cwd: string): Promise<GitSubdirResult> {
+    const result = await runGit(["-C", cwd, "rev-parse", "--show-prefix"]);
+    if (!result.success) return { display: null };
+    const prefix = result.stdout.trim();
+    if (prefix === "") return { display: null };
+    // Strip trailing slash, prepend "./"
+    const clean = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
+    return { display: `(in ./${clean})` };
   }
 
   async getGitLog(cwd: string, maxLines: number): Promise<GitLogResult> {

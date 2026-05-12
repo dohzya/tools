@@ -5,9 +5,13 @@ import { assertEquals, assertStringIncludes } from "@std/assert";
 import { join } from "node:path";
 import { resolveConfig } from "./domain/use-cases/resolve-config.ts";
 import { renderRecap } from "./domain/use-cases/render-recap.ts";
+import { collectSections } from "./domain/use-cases/collect-sections.ts";
 import { createPalette } from "./domain/entities/color.ts";
 import { HARDCODED_SECTIONS } from "./domain/entities/default-config.ts";
 import type { SectionData } from "./domain/entities/section-data.ts";
+import type { GitInfoProvider } from "./domain/ports/git-info.ts";
+import type { ShellRunner } from "./domain/ports/shell-runner.ts";
+import { DenoGitInfo } from "./adapters/git/deno-git-info.ts";
 import { main } from "./cli.ts";
 
 // ============================================================================
@@ -59,8 +63,9 @@ Deno.test("resolveConfig - returns hardcoded defaults when no config provided", 
   const config = resolveConfig({});
   assertEquals(config.sections.length, HARDCODED_SECTIONS.length);
   assertEquals(config.sections[0].id, "git-branch-track");
-  assertEquals(config.sections[2].id, "git-log");
-  assertEquals(config.sections[2].max_lines, 6);
+  assertEquals(config.sections[1].id, "git-subdir");
+  assertEquals(config.sections[3].id, "git-log");
+  assertEquals(config.sections[3].max_lines, 6);
 });
 
 Deno.test("resolveConfig - ref:* expands all parent sections", () => {
@@ -72,7 +77,28 @@ Deno.test("resolveConfig - ref:* expands all parent sections", () => {
   // Should include all hardcoded sections
   assertEquals(config.sections.length, HARDCODED_SECTIONS.length);
   assertEquals(config.sections[0].id, "git-branch-track");
-  assertEquals(config.sections[3].id, "git-status");
+  assertEquals(config.sections[4].id, "git-status");
+});
+
+Deno.test("resolveConfig - ref:* excludes IDs referenced explicitly elsewhere", () => {
+  const config = resolveConfig({
+    rawLocalConfig: {
+      sections: [
+        { ref: "*" },
+        { id: "custom", sh: "echo hello" },
+        { ref: "git-log" },
+      ],
+    },
+  });
+  // ref:* should NOT include git-log (it appears explicitly later)
+  const starIds = config.sections.slice(0, -2).map((s) => s.id);
+  assertEquals(starIds.includes("git-log"), false);
+  // git-log should be at the end (explicitly placed)
+  assertEquals(config.sections[config.sections.length - 1].id, "git-log");
+  assertEquals(config.sections[config.sections.length - 1].builtin, "git-log");
+  // custom section should be second-to-last
+  assertEquals(config.sections[config.sections.length - 2].id, "custom");
+  // Total = hardcoded minus git-log + custom + git-log = hardcoded + 1
 });
 
 Deno.test("resolveConfig - ref:id includes specific parent section", () => {
@@ -361,4 +387,109 @@ Deno.test("recap CLI - value section with interpolation", () => {
     },
   });
   assertEquals(config.sections[0].value, "Project: ${PROJECT_NAME}");
+});
+
+// ============================================================================
+// DenoGitInfo.getGitSubdir adapter tests
+// ============================================================================
+
+Deno.test("DenoGitInfo.getGitSubdir - returns display string in subdirectory", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    // Init a git repo
+    const init = new Deno.Command("git", {
+      args: ["init", tempDir],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    await init.output();
+
+    // Create a subdirectory
+    const subDir = join(tempDir, "src", "lib");
+    await Deno.mkdir(subDir, { recursive: true });
+
+    const adapter = new DenoGitInfo();
+    const result = await adapter.getGitSubdir(subDir);
+    assertEquals(result.display, "(in ./src/lib)");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("DenoGitInfo.getGitSubdir - returns null at repo root", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    const init = new Deno.Command("git", {
+      args: ["init", tempDir],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    await init.output();
+
+    const adapter = new DenoGitInfo();
+    const result = await adapter.getGitSubdir(tempDir);
+    assertEquals(result.display, null);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("DenoGitInfo.getGitSubdir - returns null outside git repo", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    const adapter = new DenoGitInfo();
+    const result = await adapter.getGitSubdir(tempDir);
+    assertEquals(result.display, null);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+// ============================================================================
+// collectSections - git-subdir builtin tests
+// ============================================================================
+
+Deno.test("collectSections - git-subdir builtin returns display when in subdir", async () => {
+  const mockGit: GitInfoProvider = {
+    getGitOps: () => Promise.resolve({ operation: null }),
+    getGitLog: () => Promise.resolve({ lines: [] }),
+    getGitSubdir: () => Promise.resolve({ display: "(in ./src/lib)" }),
+  };
+  const mockShell: ShellRunner = {
+    run: () => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }),
+  };
+
+  const result = await collectSections(
+    {
+      sections: [{ id: "git-subdir", builtin: "git-subdir" }],
+      envVars: {},
+    },
+    { shell: mockShell, git: mockGit, cwd: "/tmp" },
+  );
+
+  assertEquals(result.length, 1);
+  assertEquals(result[0].lines, ["(in ./src/lib)"]);
+});
+
+Deno.test("collectSections - git-subdir builtin returns empty lines at repo root", async () => {
+  const mockGit: GitInfoProvider = {
+    getGitOps: () => Promise.resolve({ operation: null }),
+    getGitLog: () => Promise.resolve({ lines: [] }),
+    getGitSubdir: () => Promise.resolve({ display: null }),
+  };
+  const mockShell: ShellRunner = {
+    run: () => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }),
+  };
+
+  const result = await collectSections(
+    {
+      sections: [{ id: "git-subdir", builtin: "git-subdir" }],
+      envVars: {},
+    },
+    { shell: mockShell, git: mockGit, cwd: "/tmp" },
+  );
+
+  assertEquals(result.length, 1);
+  assertEquals(result[0].lines, []);
+  assertEquals(result[0].error, undefined);
 });

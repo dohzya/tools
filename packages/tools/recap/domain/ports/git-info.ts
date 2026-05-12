@@ -12,6 +12,12 @@ export type GitLogResult = {
   readonly lines: readonly string[];
 };
 
+/** Result of detecting subdirectory position within a git repo. */
+export type GitSubdirResult = {
+  /** Human-readable "(in ./sub/path)" string, or null if at repo root / not in a repo. */
+  readonly display: string | null;
+};
+
 /** Port for querying git repository state. */
 export interface GitInfoProvider {
   /**
@@ -25,4 +31,10 @@ export interface GitInfoProvider {
    * Returns empty lines when not in a git repo.
    */
   getGitLog(cwd: string, maxLines: number): Promise<GitLogResult>;
+
+  /**
+   * Detect whether cwd is in a subdirectory of a git repo.
+   * Returns a display string like "(in ./sub/path)" or null if at root / not in a repo.
+   */
+  getGitSubdir(cwd: string): Promise<GitSubdirResult>;
 }
