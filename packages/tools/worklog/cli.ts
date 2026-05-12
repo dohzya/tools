@@ -57,7 +57,7 @@ import {
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "@zod/zod/mini";
 import { ExplicitCast } from "../explicit-cast.ts";
-import { buildClaudeCheckpointPrompt } from "./checkpoint-prompt.ts";
+import { buildCheckpointPrompt } from "./checkpoint-prompt.ts";
 
 // ============================================================================
 // Hexagonal Architecture Imports
@@ -105,7 +105,14 @@ import { AssignByTagUseCase } from "./domain/use-cases/scope/assign-by-tag.ts";
 import { ImportTasksUseCase } from "./domain/use-cases/import/import-tasks.ts";
 import { ImportScopeToTagUseCase } from "./domain/use-cases/import/import-scope-to-tag.ts";
 import { RunCommandUseCase } from "./domain/use-cases/run-command.ts";
-import { ClaudeCommandUseCase } from "./domain/use-cases/claude-command.ts";
+import { AgentCommandUseCase } from "./domain/use-cases/agent-command.ts";
+import {
+  type AgentType,
+  claudeAgentConfig,
+  codexAgentConfig,
+  detectAgentType,
+  getAgentConfig,
+} from "./domain/entities/agent-config.ts";
 import { GenerateSummaryUseCase } from "./domain/use-cases/summary.ts";
 import {
   type ListTagsOutput,
@@ -247,7 +254,8 @@ let assignByTagUseCase: AssignByTagUseCase;
 let importTasksUseCase: ImportTasksUseCase;
 let importScopeToTagUseCase: ImportScopeToTagUseCase;
 let runCommandUseCase: RunCommandUseCase;
-let claudeCommandUseCase: ClaudeCommandUseCase;
+let claudeCommandUseCase: AgentCommandUseCase;
+let codexCommandUseCase: AgentCommandUseCase;
 let summaryUseCase: GenerateSummaryUseCase;
 let listTagsUseCase: ListTagsUseCase;
 
@@ -362,7 +370,7 @@ function initializeUseCases(): void {
     taskRepo,
     processRunner,
   });
-  claudeCommandUseCase = new ClaudeCommandUseCase({
+  const agentDeps = {
     indexRepo,
     processRunner,
     // deno-lint-ignore require-await
@@ -370,9 +378,11 @@ function initializeUseCases(): void {
       showTaskUseCase.execute({
         taskId,
         worklogDir: WORKLOG_DIR,
-        gitRoot: null, // Will be determined by the use case
+        gitRoot: null,
       }),
-  });
+  };
+  claudeCommandUseCase = new AgentCommandUseCase(agentDeps, claudeAgentConfig);
+  codexCommandUseCase = new AgentCommandUseCase(agentDeps, codexAgentConfig);
 
   // Other use cases
   summaryUseCase = new GenerateSummaryUseCase(indexRepo, taskRepo);
@@ -2817,14 +2827,88 @@ async function cmdClaude(
   claudeArgs: string[] = [],
 ): Promise<RunOutput> {
   await purge();
-
-  // Resolve taskId with env fallback
   const resolvedTaskId = await resolveTaskIdWithEnvFallback(taskId);
-
   return await claudeCommandUseCase.execute({
     taskId: resolvedTaskId,
-    claudeArgs,
+    agentArgs: claudeArgs,
   });
+}
+
+async function cmdCodex(
+  taskId?: string,
+  codexArgs: string[] = [],
+): Promise<RunOutput> {
+  await purge();
+  const resolvedTaskId = await resolveTaskIdWithEnvFallback(taskId);
+  return await codexCommandUseCase.execute({
+    taskId: resolvedTaskId,
+    agentArgs: codexArgs,
+  });
+}
+
+async function cmdAgent(
+  taskId?: string,
+  agentArgs: string[] = [],
+): Promise<RunOutput> {
+  const detected = detectAgentType(Deno.env);
+  if (!detected) {
+    throw new WtError(
+      "no_agent_detected",
+      "No AI agent detected in environment. Use 'wl claude' or 'wl codex' explicitly.",
+    );
+  }
+  await purge();
+  const resolvedTaskId = await resolveTaskIdWithEnvFallback(taskId);
+  const useCase = detected === "claude"
+    ? claudeCommandUseCase
+    : codexCommandUseCase;
+  return await useCase.execute({
+    taskId: resolvedTaskId,
+    agentArgs,
+  });
+}
+
+async function cmdAgentSynthesis(
+  agentType: AgentType,
+  taskId: string,
+  synthesisPrompt: string,
+): Promise<RunOutput> {
+  const useCase = agentType === "claude"
+    ? claudeCommandUseCase
+    : codexCommandUseCase;
+  return await useCase.execute({
+    taskId,
+    synthesisPrompt,
+  });
+}
+
+function resolveAgentFlag(
+  options: { claude?: boolean; codex?: boolean; agent?: boolean },
+): AgentType | null {
+  const flags = [
+    options.claude && "claude",
+    options.codex && "codex",
+    options.agent && "agent",
+  ].filter(Boolean);
+  if (flags.length > 1) {
+    throw new WtError(
+      "invalid_args",
+      "Only one of --claude, --codex, --agent can be specified",
+    );
+  }
+  if (options.claude) return "claude";
+  if (options.codex) return "codex";
+  if (options.agent) {
+    const detected = detectAgentType(Deno.env);
+    if (!detected) {
+      throw new WtError(
+        "no_agent_detected",
+        "No AI agent detected in environment. Use --claude or --codex explicitly.",
+      );
+    }
+    return detected;
+  }
+  return null;
 }
 
 async function cmdUpdate(
@@ -4411,9 +4495,11 @@ const createCmd = new Command()
   .description(
     "Create a new task with lifecycle states\n" +
       "Default state is 'created' (not started yet)\n\n" +
-      "With --claude:\n" +
+      "With --claude / --codex / --agent:\n" +
       '  wl create --claude "task name"           # Create and launch Claude\n' +
-      '  wl create --claude "task name" -- -c     # Pass args to Claude',
+      '  wl create --codex "task name"            # Create and launch Codex\n' +
+      '  wl create --agent "task name"            # Auto-detect agent\n' +
+      '  wl create --claude "task name" -- -c     # Pass args to agent',
   )
   .arguments("<name:string> [desc:string]")
   .option("--json", "Output as JSON")
@@ -4439,6 +4525,8 @@ const createCmd = new Command()
     'Read description from file path, or "-" for stdin',
   )
   .option("--claude", "Launch Claude after creation with WORKLOG_TASK_ID set")
+  .option("--codex", "Launch Codex after creation with WORKLOG_TASK_ID set")
+  .option("--agent", "Auto-detect and launch AI agent after creation")
   .action(async function (options, name, desc) {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -4446,6 +4534,9 @@ const createCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
+
+      // Validate agent flags early (before creating the task)
+      const agentType = resolveAgentFlag(options);
 
       // Validate: can't have both positional desc and --desc-src
       if (desc !== undefined && options.descSrc !== undefined) {
@@ -4532,11 +4623,17 @@ const createCmd = new Command()
         parentId,
       );
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
-      if (options.claude) {
-        const claudeArgs = this.getLiteralArgs();
-        const result = await cmdClaude(output.id, claudeArgs);
+      if (agentType) {
+        const extraArgs = this.getLiteralArgs();
+        const result = agentType === "claude"
+          ? await cmdClaude(output.id, extraArgs)
+          : await cmdCodex(output.id, extraArgs);
         if (result.exitCode !== 0) {
-          console.log(`Claude exited with code ${result.exitCode}`);
+          console.log(
+            `${
+              getAgentConfig(agentType).name
+            } exited with code ${result.exitCode}`,
+          );
         }
       }
     } catch (e) {
@@ -4686,6 +4783,14 @@ const checkpointCmd = new Command()
     "--claude",
     "Let Claude synthesize the checkpoint (injects all traces + quality guidelines)",
   )
+  .option(
+    "--codex",
+    "Let Codex synthesize the checkpoint (injects all traces + quality guidelines)",
+  )
+  .option(
+    "--agent",
+    "Auto-detect AI agent for synthesis (injects all traces + quality guidelines)",
+  )
   .action(
     async (options, taskId?: string, changes?: string, learnings?: string) => {
       if (options.quiet && !taskId && !ENV_TASK_ID) return;
@@ -4695,7 +4800,8 @@ const checkpointCmd = new Command()
           asGlobal(options).cwd,
           asGlobal(options).worklogDir,
         );
-        if (options.claude) {
+        const agentType = resolveAgentFlag(options);
+        if (agentType) {
           const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
             taskId,
             options.scope ? null : gitRoot,
@@ -4707,13 +4813,18 @@ const checkpointCmd = new Command()
               "No uncheckpointed entries. Nothing to checkpoint.",
             );
           }
-          const prompt = buildClaudeCheckpointPrompt(
+          const prompt = buildCheckpointPrompt(resolvedTaskId, showOutput);
+          const result = await cmdAgentSynthesis(
+            agentType,
             resolvedTaskId,
-            showOutput,
+            prompt,
           );
-          const result = await cmdClaude(resolvedTaskId, ["-p", prompt]);
           if (result.exitCode !== 0) {
-            console.log(`Claude exited with code ${result.exitCode}`);
+            console.log(
+              `${
+                getAgentConfig(agentType).name
+              } exited with code ${result.exitCode}`,
+            );
           }
         } else {
           // Smart argument resolution:
@@ -4782,6 +4893,14 @@ const doneCmd = new Command()
     "--claude",
     "Let Claude synthesize the final checkpoint (injects all traces + quality guidelines)",
   )
+  .option(
+    "--codex",
+    "Let Codex synthesize the final checkpoint (injects all traces + quality guidelines)",
+  )
+  .option(
+    "--agent",
+    "Auto-detect AI agent for final synthesis (injects all traces + quality guidelines)",
+  )
   .action(
     async (options, taskId?: string, changes?: string, learnings?: string) => {
       try {
@@ -4791,7 +4910,8 @@ const doneCmd = new Command()
           asGlobal(options).worklogDir,
         );
 
-        if (options.claude) {
+        const agentType = resolveAgentFlag(options);
+        if (agentType) {
           const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
             taskId,
             options.scope ? null : gitRoot,
@@ -4803,14 +4923,22 @@ const doneCmd = new Command()
               "No uncheckpointed entries. Nothing to checkpoint.",
             );
           }
-          const prompt = buildClaudeCheckpointPrompt(
+          const prompt = buildCheckpointPrompt(
             resolvedTaskId,
             showOutput,
             "done",
           );
-          const result = await cmdClaude(resolvedTaskId, ["-p", prompt]);
+          const result = await cmdAgentSynthesis(
+            agentType,
+            resolvedTaskId,
+            prompt,
+          );
           if (result.exitCode !== 0) {
-            console.log(`Claude exited with code ${result.exitCode}`);
+            console.log(
+              `${
+                getAgentConfig(agentType).name
+              } exited with code ${result.exitCode}`,
+            );
           }
         } else {
           // Smart argument resolution:
@@ -5017,6 +5145,103 @@ const claudeCmd = new Command()
         console.log(JSON.stringify(output));
       } else if (output.exitCode !== 0) {
         console.log(`Claude exited with code ${output.exitCode}`);
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const codexCmd = new Command()
+  .description(
+    "Launch Codex with task context injected via initial prompt\n\n" +
+      "Examples:\n" +
+      "  wl codex              # Launch Codex with current task (from WORKLOG_TASK_ID)\n" +
+      "  wl codex <taskId>     # Launch Codex with specific task\n" +
+      "  wl codex <taskId> -m gpt-5  # Pass Codex args when taskId provided\n\n" +
+      "For complex args, use 'wl run':\n" +
+      "  wl run <taskId> codex -m gpt-5",
+  )
+  .arguments("[taskId:string] [args...:string]")
+  .stopEarly()
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId?: string, ...args: string[]) => {
+    try {
+      const { gitRoot } = await resolveScopeContext(
+        options.scope,
+        asGlobal(options).cwd,
+        asGlobal(options).worklogDir,
+      );
+
+      let actualTaskId: string | undefined = taskId;
+      let codexArgs: string[] = args;
+
+      if (taskId && taskId.startsWith("-")) {
+        actualTaskId = undefined;
+        codexArgs = [taskId, ...args];
+      }
+
+      if (actualTaskId) {
+        actualTaskId = await resolveTaskIdAcrossScopes(
+          actualTaskId,
+          options.scope ? null : gitRoot,
+        );
+      }
+
+      const output = await cmdCodex(actualTaskId, codexArgs);
+      if (options.json) {
+        console.log(JSON.stringify(output));
+      } else if (output.exitCode !== 0) {
+        console.log(`Codex exited with code ${output.exitCode}`);
+      }
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
+const agentCmd = new Command()
+  .description(
+    "Auto-detect AI agent and launch with task context\n\n" +
+      "Detects Claude (CLAUDECODE env) or Codex (AGENT=codex env).\n" +
+      "Fails with an error in a plain terminal — use 'wl claude' or 'wl codex' instead.\n\n" +
+      "Examples:\n" +
+      "  wl agent              # Launch detected agent with current task\n" +
+      "  wl agent <taskId>     # Launch detected agent with specific task",
+  )
+  .arguments("[taskId:string] [args...:string]")
+  .stopEarly()
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, taskId?: string, ...args: string[]) => {
+    try {
+      const { gitRoot } = await resolveScopeContext(
+        options.scope,
+        asGlobal(options).cwd,
+        asGlobal(options).worklogDir,
+      );
+
+      let actualTaskId: string | undefined = taskId;
+      let agentArgs: string[] = args;
+
+      if (taskId && taskId.startsWith("-")) {
+        actualTaskId = undefined;
+        agentArgs = [taskId, ...args];
+      }
+
+      if (actualTaskId) {
+        actualTaskId = await resolveTaskIdAcrossScopes(
+          actualTaskId,
+          options.scope ? null : gitRoot,
+        );
+      }
+
+      const output = await cmdAgent(actualTaskId, agentArgs);
+      if (options.json) {
+        console.log(JSON.stringify(output));
+      } else if (output.exitCode !== 0) {
+        const detected = detectAgentType(Deno.env);
+        const name = detected ? getAgentConfig(detected).name : "Agent";
+        console.log(`${name} exited with code ${output.exitCode}`);
       }
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -5612,6 +5837,8 @@ const cli = new Command()
   .command("start", startCmd)
   .command("run", runCmd)
   .command("claude", claudeCmd)
+  .command("codex", codexCmd)
+  .command("agent", agentCmd)
   .command("update", updateCmd)
   .command("trace", traceCmd)
   .command("traces", tracesCmd)

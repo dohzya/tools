@@ -1,7 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import type { ShowOutput } from "./domain/entities/outputs.ts";
 import {
-  buildClaudeCheckpointPrompt,
+  buildCheckpointPrompt,
   type CheckpointPromptMode,
 } from "./checkpoint-prompt.ts";
 
@@ -34,7 +34,7 @@ Deno.test("checkpoint prompt — with entries + previous checkpoint", () => {
     ],
   };
 
-  const prompt = buildClaudeCheckpointPrompt("abc123def456", show);
+  const prompt = buildCheckpointPrompt("abc123def456", show);
 
   // Task identity
   assertStringIncludes(prompt, "Test task");
@@ -71,7 +71,7 @@ Deno.test("checkpoint prompt — with entries but no previous checkpoint", () =>
     ],
   };
 
-  const prompt = buildClaudeCheckpointPrompt("abc123def456", show);
+  const prompt = buildCheckpointPrompt("abc123def456", show);
 
   // Entry present
   assertStringIncludes(prompt, "Started work on feature");
@@ -93,7 +93,7 @@ Deno.test("checkpoint prompt — with empty entries", () => {
     entries_since_checkpoint: [],
   };
 
-  const prompt = buildClaudeCheckpointPrompt("abc123def456", show);
+  const prompt = buildCheckpointPrompt("abc123def456", show);
 
   // Still produces a valid string
   assertEquals(typeof prompt, "string");
@@ -138,7 +138,7 @@ Deno.test("checkpoint prompt — with active TODOs", () => {
     ],
   };
 
-  const prompt = buildClaudeCheckpointPrompt("abc123def456", show);
+  const prompt = buildCheckpointPrompt("abc123def456", show);
 
   // Active TODOs (todo, wip, blocked) appear
   assertStringIncludes(prompt, "Write unit tests");
@@ -159,7 +159,7 @@ Deno.test("checkpoint prompt — command format includes exact taskId", () => {
   };
 
   const taskId = "xyz789unique42";
-  const prompt = buildClaudeCheckpointPrompt(taskId, show);
+  const prompt = buildCheckpointPrompt(taskId, show);
 
   assertStringIncludes(prompt, `wl checkpoint ${taskId}`);
   // Verify it tells Claude to run directly
@@ -178,7 +178,7 @@ Deno.test("done mode — uses wl done command", () => {
 
   const taskId = "abc123def456";
   const mode: CheckpointPromptMode = "done";
-  const prompt = buildClaudeCheckpointPrompt(taskId, show, mode);
+  const prompt = buildCheckpointPrompt(taskId, show, mode);
 
   assertStringIncludes(prompt, `wl done ${taskId}`);
   assertEquals(prompt.includes("wl checkpoint"), false);
@@ -192,7 +192,7 @@ Deno.test("done mode — opening directive mentions closing", () => {
     ],
   };
 
-  const prompt = buildClaudeCheckpointPrompt("abc123def456", show, "done");
+  const prompt = buildCheckpointPrompt("abc123def456", show, "done");
 
   // Should mention final/closing in the opening directive
   assertStringIncludes(prompt, "final");
@@ -209,7 +209,7 @@ Deno.test("default mode — still uses checkpoint command", () => {
 
   const taskId = "abc123def456";
   // No mode argument — defaults to "checkpoint"
-  const prompt = buildClaudeCheckpointPrompt(taskId, show);
+  const prompt = buildCheckpointPrompt(taskId, show);
 
   assertStringIncludes(prompt, `wl checkpoint ${taskId}`);
   assertEquals(prompt.includes("wl done"), false);

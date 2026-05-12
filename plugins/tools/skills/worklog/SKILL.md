@@ -30,7 +30,7 @@ Output: `<id>  <status>  "<name>"  <date>`
 
 ## Essential Workflow
 
-> **Delegating to sub-agents?** Create a subtask: `wl create --parent <id> --started "Sub-task"`, then launch with `wl claude <subtask-id>`.
+> **Delegating to sub-agents?** Create a subtask: `wl create --parent <id> --started "Sub-task"`, then launch with `wl claude <subtask-id>` (or `wl codex <subtask-id>`, or `wl agent <subtask-id>` to auto-detect).
 
 1. **Create & start**: `wl create --started "Task name"`
 2. **Trace** with context: `wl trace <id> "Goal / action (cause: why failed) (piste: what next)"`
@@ -68,7 +68,7 @@ See [reference.md](reference.md) for full reference (TODOs, state transitions, m
 Inject task context on session start, auto-checkpoint before compaction. Add to `~/.claude/settings.json`:
 
 ```json
-"PreCompact": [{"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --claude -q"}]}],
+"PreCompact": [{"matcher": "*", "hooks": [{"type": "command", "command": "wl checkpoint --agent -q"}]}],
 "SessionStart": [
   {"matcher": "startup", "hooks": [{"type": "command", "command": "wl show -q"}]},
   {"matcher": "compact", "hooks": [{"type": "command", "command": "wl show -q"}]}

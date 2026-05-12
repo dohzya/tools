@@ -245,7 +245,10 @@ Main agent delegates scoped work to a sub-agent via subtasks:
 wl create --started "Implement payment integration" "Stripe + webhooks"  # → <parent-id>
 wl create --parent <parent-id> --ready "Audit existing payment code" "Map current endpoints and SDK usage"  # → <subtask-id>
 
-# Human launches sub-agent with subtask context: wl claude <subtask-id>
+# Launch sub-agent with subtask context:
+# wl claude <subtask-id>   — Claude Code
+# wl codex <subtask-id>    — Codex
+# wl agent <subtask-id>    — auto-detect agent from env
 
 # Sub-agent starts its subtask and traces independently
 wl start <subtask-id>
@@ -265,7 +268,7 @@ wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook au
 
 - Use `--ready` (not `--started`) for subtasks planned but not yet assigned to a sub-agent
 - Sub-agent creates traces on its own subtask — main agent sees progress via `wl show <parent-id>`
-- Main agent's context injection via `wl claude` sets `WORKLOG_TASK_ID` so sub-agent commands work without specifying `<id>`
+- Context injection via `wl claude`, `wl codex`, or `wl agent` sets `WORKLOG_TASK_ID` so sub-agent commands work without specifying `<id>`
 
 ## Tips for Better Worklogs
 

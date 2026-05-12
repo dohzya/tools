@@ -5534,3 +5534,176 @@ Deno.test("update --desc --desc-src - errors on conflict", async () => {
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+Deno.test(
+  "create --codex - creates task and sets up for codex launch",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+      try {
+        await main(["create", "--codex", "Task for codex"]);
+      } catch (_e) {
+        // Codex launch may fail in test env
+      }
+      const listOut = await captureOutput(() =>
+        main(["list", "--all", "--json"])
+      );
+      const { tasks } = JSON.parse(listOut);
+      assertEquals(tasks.length, 1);
+      assertEquals(tasks[0].name, "Task for codex");
+    } finally {
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "create --agent - creates task and sets up for agent launch",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+      try {
+        await main(["create", "--agent", "Task for agent"]);
+      } catch (_e) {
+        // Agent launch may fail in test env (detection or exec)
+      }
+      const listOut = await captureOutput(() =>
+        main(["list", "--all", "--json"])
+      );
+      const { tasks } = JSON.parse(listOut);
+      assertEquals(tasks.length, 1);
+      assertEquals(tasks[0].name, "Task for agent");
+    } finally {
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "create --agent rejects when no agent detected in environment",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    const originalExit = Deno.exit;
+    const originalError = console.error;
+    const savedClaudeCode = Deno.env.get("CLAUDECODE");
+    const savedAgent = Deno.env.get("AGENT");
+    let exitCode = 0;
+    let errorOutput = "";
+    Deno.env.delete("CLAUDECODE");
+    Deno.env.delete("AGENT");
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+      try {
+        await main(["create", "--agent", "should not be created"]);
+      } catch (_e) {
+        // Expected EXIT
+      }
+      assertEquals(exitCode, 1);
+      assertStringIncludes(errorOutput, "No AI agent detected");
+      // Task should NOT have been created (error is thrown before creation)
+      const listOut = await captureOutput(() =>
+        main(["list", "--all", "--json"])
+      );
+      const { tasks } = JSON.parse(listOut);
+      assertEquals(tasks.length, 0);
+    } finally {
+      if (savedClaudeCode !== undefined) {
+        Deno.env.set("CLAUDECODE", savedClaudeCode);
+      }
+      if (savedAgent !== undefined) Deno.env.set("AGENT", savedAgent);
+      Deno.exit = originalExit;
+      console.error = originalError;
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test("create rejects multiple agent flags", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    try {
+      await main(["create", "--claude", "--codex", "conflicting flags"]);
+    } catch (_e) {
+      // Expected EXIT or error
+    }
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Only one of");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test(
+  "wl checkpoint --codex -q without taskId exits silently",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+      const output = await captureOutput(() =>
+        main(["checkpoint", "--codex", "-q"])
+      );
+      assertEquals(output, "");
+    } finally {
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);
+
+Deno.test(
+  "wl checkpoint --agent -q without taskId exits silently",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+      const output = await captureOutput(() =>
+        main(["checkpoint", "--agent", "-q"])
+      );
+      assertEquals(output, "");
+    } finally {
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);

@@ -29,8 +29,10 @@ wl trace <id> -t T15:15 "Found root cause"
 When `wl trace` says "checkpoint recommended":
 
 ```bash
-# Preferred: let Claude synthesize from all traces (preserves your context)
-wl checkpoint --claude
+# Preferred: let the agent synthesize from all traces (preserves your context)
+wl checkpoint --claude          # Claude Code
+wl checkpoint --codex           # Codex
+wl checkpoint --agent           # auto-detect (CLAUDECODE=1 → claude, AGENT=codex → codex)
 
 # Manual: write the synthesis yourself
 wl checkpoint <id> \
@@ -58,8 +60,10 @@ This transitions the task back to `started`, clears the `done_at`/`cancelled_at`
 git commit -m "feat: multi-currency support"
 wl show <id>      # check pending TODOs + traces to consolidate
 
-# Preferred: let Claude synthesize the final checkpoint
-wl done --claude
+# Preferred: let the agent synthesize the final checkpoint
+wl done --claude                # Claude Code
+wl done --codex                 # Codex
+wl done --agent                 # auto-detect
 
 # Manual: write the synthesis yourself
 wl done <id> \
@@ -76,7 +80,9 @@ REX quality: ❌ "Tests pass" (result) · ❌ "Used CurrencyBucket" (action) · 
 ```bash
 # Main agent
 wl create --started "Implement feature X"  # → <parent-id>
-wl claude <parent-id>                       # launch sub-agent with task context
+wl claude <parent-id>                       # launch Claude sub-agent with task context
+wl codex <parent-id>                        # launch Codex sub-agent
+wl agent <parent-id>                        # auto-detect agent from env
 
 # Sub-agent creates its own scoped subtask
 wl create --parent <parent-id> --started "Analyze existing API"
@@ -90,7 +96,7 @@ wl list --parent <parent-id> # only children of this parent
 
 Use `ready` (not `started`) for subtasks planned but not yet assigned to a sub-agent.
 
-### `wl run` and `wl claude`
+### `wl run` / `wl claude` / `wl codex` / `wl agent`
 
 ```bash
 wl run <id> npm test             # run with WORKLOG_TASK_ID injected
@@ -98,10 +104,13 @@ wl run --create "Run tests" npm test   # create task on-the-fly + run
 wl claude              # uses WORKLOG_TASK_ID if already set
 wl claude <id>         # explicit task
 wl claude <id> -c      # pass Claude args after taskId
+wl codex <id>          # launch Codex with task context
+wl agent               # auto-detect agent (CLAUDECODE=1 → claude, AGENT=codex → codex)
+wl agent <id>          # auto-detect with explicit task
 wl run <id> claude -c --model opus    # complex Claude args
 ```
 
-`WORKLOG_TASK_ID` is picked up automatically by **all commands** including `trace`, `checkpoint`, `done` — no need to specify `<id>` when running inside `wl run` or `wl claude`. Pass an explicit `<id>` only to target a **different** task (e.g. a subtask). Never prefix with `WORKLOG_TASK_ID=... wl ...` — the variable is already set.
+`WORKLOG_TASK_ID` is picked up automatically by **all commands** including `trace`, `checkpoint`, `done` — no need to specify `<id>` when running inside `wl run`, `wl claude`, `wl codex`, or `wl agent`. Pass an explicit `<id>` only to target a **different** task (e.g. a subtask). Never prefix with `WORKLOG_TASK_ID=... wl ...` — the variable is already set.
 
 ### Common mistakes
 
@@ -149,9 +158,9 @@ wl update <id> --desc-src <file>             # Description from file
 wl update <id> --desc-src -                  # Description from stdin
 wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
 wl logs <id>                                 # Get context (last checkpoint + recent entries)
-wl checkpoint --claude                       # Claude synthesizes checkpoint from all traces
+wl checkpoint --claude|--codex|--agent        # Agent synthesizes checkpoint from all traces
 wl checkpoint <id> "changes" "learnings"     # Create checkpoint manually
-wl done --claude                             # Claude synthesizes final checkpoint + closes task
+wl done --claude|--codex|--agent             # Agent synthesizes final checkpoint + closes task
 wl done <id> ["changes" "learnings"]         # Final checkpoint + close task manually
 wl cancel <id> [reason]                      # Cancel/abandon task (marks as cancelled)
 wl list [--created] [--ready] [--started] [--done] [--cancelled]  # Filter tasks
@@ -344,14 +353,16 @@ Available options:
 ## Done command
 
 ```bash
-wl done <id> ["changes" "learnings"] [--force] [--meta key=value] [--claude]
+wl done <id> ["changes" "learnings"] [--force] [--meta key=value] [--claude|--codex|--agent]
 ```
 
 **Arguments are optional** when there are no uncheckpointed entries (no new traces since last checkpoint). If there are uncheckpointed entries, `changes` and `learnings` are required.
 
 ```bash
-# Preferred: let Claude synthesize the final checkpoint + close task
-wl done --claude
+# Preferred: let the agent synthesize the final checkpoint + close task
+wl done --claude                # Claude Code
+wl done --codex                 # Codex
+wl done --agent                 # auto-detect
 
 # Manual: write the synthesis yourself
 wl done <id> "What changed" "What we learned"
@@ -466,7 +477,7 @@ Configure `wl` as Claude Code hooks for automatic checkpoints on context compact
     "PreCompact": [
       {
         "matcher": "*",
-        "hooks": [{ "type": "command", "command": "wl checkpoint --claude -q" }]
+        "hooks": [{ "type": "command", "command": "wl checkpoint --agent -q" }]
       }
     ],
     "SessionStart": [
@@ -483,7 +494,7 @@ Configure `wl` as Claude Code hooks for automatic checkpoints on context compact
 }
 ```
 
-- **`PreCompact`**: Before compaction, synthesizes a checkpoint via Claude (`--claude`) so no trace is lost.
+- **`PreCompact`**: Before compaction, synthesizes a checkpoint via the active agent (`--agent` auto-detects claude or codex) so no trace is lost.
 - **`SessionStart startup`**: On fresh session start, injects task context if `WORKLOG_TASK_ID` is set.
 - **`SessionStart compact`**: After compaction, reprints task context into the new window.
 

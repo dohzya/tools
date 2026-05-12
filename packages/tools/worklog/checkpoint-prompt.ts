@@ -1,11 +1,11 @@
-// Pure function that builds the Claude prompt for checkpoint synthesis.
+// Pure function that builds the agent prompt for checkpoint synthesis.
 // No I/O, no side effects — all data comes from ShowOutput.
 
 import type { ShowOutput } from "./domain/entities/outputs.ts";
 
 export type CheckpointPromptMode = "checkpoint" | "done";
 
-export function buildClaudeCheckpointPrompt(
+export function buildCheckpointPrompt(
   taskId: string,
   show: ShowOutput,
   mode: CheckpointPromptMode = "checkpoint",

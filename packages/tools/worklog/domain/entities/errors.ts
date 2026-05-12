@@ -23,7 +23,8 @@ export type WtErrorCode =
   | "scope_created"
   | "scope_renamed"
   | "todo_not_found"
-  | "task_has_pending_todos";
+  | "task_has_pending_todos"
+  | "no_agent_detected";
 
 export class WtError extends Error {
   constructor(

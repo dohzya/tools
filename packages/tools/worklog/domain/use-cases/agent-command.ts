@@ -1,27 +1,32 @@
-// ClaudeCommandUseCase - Run claude with task context
+// AgentCommandUseCase - Run an AI agent with task context
 
+import type { AgentConfig } from "../entities/agent-config.ts";
 import type { RunOutput, ShowOutput } from "../entities/outputs.ts";
 import { WtError } from "../entities/errors.ts";
 import type { IndexRepository } from "../ports/index-repository.ts";
 import type { ProcessRunner } from "../ports/process-runner.ts";
 
-export interface ClaudeCommandInput {
+export interface AgentCommandInput {
   readonly taskId?: string;
-  readonly claudeArgs?: readonly string[];
+  readonly agentArgs?: readonly string[];
   readonly envTaskId?: string;
   readonly env?: Readonly<Record<string, string>>;
+  readonly synthesisPrompt?: string;
 }
 
-export interface ClaudeCommandDeps {
+export interface AgentCommandDeps {
   readonly indexRepo: IndexRepository;
   readonly processRunner: ProcessRunner;
   readonly showTaskFn: (taskId: string) => Promise<ShowOutput>;
 }
 
-export class ClaudeCommandUseCase {
-  constructor(private readonly deps: ClaudeCommandDeps) {}
+export class AgentCommandUseCase {
+  constructor(
+    private readonly deps: AgentCommandDeps,
+    private readonly agentConfig: AgentConfig,
+  ) {}
 
-  async execute(input: ClaudeCommandInput): Promise<RunOutput> {
+  async execute(input: AgentCommandInput): Promise<RunOutput> {
     const id = input.taskId ?? input.envTaskId;
     if (!id) {
       throw new WtError(
@@ -32,10 +37,37 @@ export class ClaudeCommandUseCase {
 
     const resolvedTaskId = await this.resolveTaskId(id);
 
-    // Load task details
     const taskInfo = await this.deps.showTaskFn(resolvedTaskId);
 
-    // Build system prompt with task context
+    const systemPrompt = this.buildSystemPrompt(taskInfo, resolvedTaskId);
+
+    const cmd = input.synthesisPrompt
+      ? this.agentConfig.buildSynthesisCmd(systemPrompt, input.synthesisPrompt)
+      : this.agentConfig.buildInteractiveCmd(
+        systemPrompt,
+        input.agentArgs ?? [],
+      );
+
+    const result = await this.deps.processRunner.run(cmd, {
+      env: {
+        ...(input.env ?? {}),
+        WORKLOG_TASK_ID: resolvedTaskId,
+      },
+    });
+
+    return {
+      taskId: resolvedTaskId,
+      exitCode: result.exitCode,
+      created: false,
+    };
+  }
+
+  private buildSystemPrompt(
+    taskInfo: ShowOutput,
+    resolvedTaskId: string,
+  ): string {
+    const agentType = this.agentConfig.type;
+
     const recentTraces = taskInfo.entries_since_checkpoint
       .slice(-5)
       .map((e) => `  - [${e.ts}] ${e.msg}`)
@@ -46,7 +78,7 @@ export class ClaudeCommandUseCase {
       .map((t) => `  - [ ] ${t.text}`)
       .join("\n");
 
-    const systemPrompt = `
+    return `
 # Current Worktask Context
 
 You are working on the following task:
@@ -81,7 +113,7 @@ To trace in a **different** task (e.g. a subtask), pass its ID as first argument
 
 ## Checkpoints
 
-When it's time to consolidate traces, prefer **\`wl checkpoint --claude\`** — it feeds all your traces to a fresh Claude instance with quality guidelines, so you don't have to write the synthesis yourself. It preserves your context window.
+When it's time to consolidate traces, prefer **\`wl checkpoint --${agentType}\`** — it feeds all your traces to a fresh ${this.agentConfig.name} instance with quality guidelines, so you don't have to write the synthesis yourself. It preserves your context window.
 
 ## Subtasks
 
@@ -89,30 +121,12 @@ To delegate sub-work to another agent, create a subtask linked to this task:
   wl create --parent ${resolvedTaskId} --started "Sub-task name"
 
 Then launch the sub-agent with its own context:
-  wl claude <subtask-id>
+  wl ${agentType} <subtask-id>
 
 Check subtask progress:
   wl show ${resolvedTaskId}   # shows subtasks-since-checkpoint section
   wl list --parent ${resolvedTaskId}   # only children of this task
 `.trim();
-
-    // Launch Claude with appended system prompt
-    const claudeArgs = input.claudeArgs ?? [];
-    const result = await this.deps.processRunner.run(
-      ["claude", "--append-system-prompt", systemPrompt, ...claudeArgs],
-      {
-        env: {
-          ...(input.env ?? {}),
-          WORKLOG_TASK_ID: resolvedTaskId,
-        },
-      },
-    );
-
-    return {
-      taskId: resolvedTaskId,
-      exitCode: result.exitCode,
-      created: false,
-    };
   }
 
   private async resolveTaskId(prefix: string): Promise<string> {
