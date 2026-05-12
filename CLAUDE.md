@@ -66,6 +66,8 @@ wl traces <id>             # All traces
 wl done <id> "..." "..."   # Complete (after commit)
 ```
 
+**Spawning a new `claude` CLI session?** Use `wl claude <taskid>` instead of raw `claude` — it sets `WORKLOG_TASK_ID` and injects task context (recent traces, TODOs, description) into the system prompt. The built-in Agent tool ("subagent") doesn't need this — it stays in-process and inherits the environment.
+
 `.worklog/` is local, never committed.
 
 ---
