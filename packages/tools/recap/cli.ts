@@ -19,7 +19,7 @@ import { join, resolve } from "node:path";
 import { RecapError } from "./domain/entities/errors.ts";
 import { ExplicitCast } from "../explicit-cast.ts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 const fs = new DenoFileSystem();
 const env = new DenoEnvironment();

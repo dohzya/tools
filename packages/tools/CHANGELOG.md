@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [recap-v0.2.0] — 2026-05-13
+
+### Added
+
+- **recap:** Color forwarding to subcommands — when `recap` itself emits colors (TTY + `!NO_COLOR`), it injects `FORCE_COLOR=1`, `CLICOLOR_FORCE=1`, and `GIT_CONFIG_COUNT/KEY_0/VALUE_0` (forcing `color.ui=always`) into every shell section's env. Section-level `env:` still overrides. When recap suppresses colors, `NO_COLOR=1` is propagated instead.
+- **recap:** `git-log` builtin now emits ANSI colors when the run is colored — prepends `-c color.ui=always` and uses `--pretty=format:%C(auto)%h%Creset %s` (a plain `%h %s` format ignores `color.ui`, so explicit `%C` tokens are required).
+- **recap:** `git-subdir` builtin — shows `(in ./sub/path)` when invoked from a subdirectory of a git repo; silent at the repo root.
+- **recap:** `ref: "*"` now excludes IDs that appear elsewhere in the same entries list as explicit `ref: <id>` — lets you reposition a single inherited section without duplicating it.
+
 ## [wl-v0.14.2] — 2026-05-11
 
 ### Fixed
