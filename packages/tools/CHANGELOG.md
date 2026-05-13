@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.15.0] — 2026-05-13
+
+### Added
+
+- **worklog:** Colored output with the Catppuccin Latte palette by default. Statuses (`done`/`started`/`ready`/`created`/`cancelled`), short IDs, timestamps, tags (`#name`, `[scope]`), and field labels are now colorized in `list`, `show`, and `traces` output when stdout is a TTY. `FORCE_COLOR=1` forces colors when piped (e.g. inside `recap`); `NO_COLOR=1` disables.
+- **worklog:** New `Theme` and `Palette` entities (semantic role → hex tokens) under `worklog/domain/entities/` — designed to be swappable so future config-driven theming is non-invasive.
+- **worklog:** `wl codex` command and `--codex` flag mirroring the existing `wl claude` / `--claude` integration.
+- **worklog:** `wl agent` / `--agent` auto-detects the running AI agent from environment (`CLAUDECODE` → claude, `AGENT=codex` → codex) and errors out from a plain terminal.
+
+### Changed
+
+- **worklog (internal):** `ClaudeCommandUseCase` refactored into `AgentCommandUseCase` parameterized by `AgentConfig` (strategy pattern); `buildClaudeCheckpointPrompt` renamed to `buildCheckpointPrompt`.
+
 ## [recap-v0.2.0] — 2026-05-13
 
 ### Added
