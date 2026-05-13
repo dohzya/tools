@@ -5566,13 +5566,18 @@ Deno.test(
   async () => {
     const tempDir = await Deno.makeTempDir();
     const originalCwd = Deno.cwd();
+    // Force agent detection so the action reaches task creation. Without this,
+    // `--agent` rejects up-front when neither CLAUDECODE nor AGENT is set
+    // (CI environment), and no task is ever created.
+    const savedClaudeCode = Deno.env.get("CLAUDECODE");
+    Deno.env.set("CLAUDECODE", "1");
     try {
       Deno.chdir(tempDir);
       await main(["init"]);
       try {
         await main(["create", "--agent", "Task for agent"]);
       } catch (_e) {
-        // Agent launch may fail in test env (detection or exec)
+        // Agent launch (claude exec) may fail in test env — task is still created
       }
       const listOut = await captureOutput(() =>
         main(["list", "--all", "--json"])
@@ -5581,6 +5586,11 @@ Deno.test(
       assertEquals(tasks.length, 1);
       assertEquals(tasks[0].name, "Task for agent");
     } finally {
+      if (savedClaudeCode === undefined) {
+        Deno.env.delete("CLAUDECODE");
+      } else {
+        Deno.env.set("CLAUDECODE", savedClaudeCode);
+      }
       Deno.chdir(originalCwd);
       await Deno.remove(tempDir, { recursive: true });
     }
