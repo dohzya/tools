@@ -29,8 +29,14 @@ export interface GitInfoProvider {
   /**
    * Get recent git log entries, using upstream detection.
    * Returns empty lines when not in a git repo.
+   * When useColor is true, the implementation should request ANSI-colored output
+   * (e.g. via `git -c color.ui=always`) so colors survive the piped stdout.
    */
-  getGitLog(cwd: string, maxLines: number): Promise<GitLogResult>;
+  getGitLog(
+    cwd: string,
+    maxLines: number,
+    useColor: boolean,
+  ): Promise<GitLogResult>;
 
   /**
    * Detect whether cwd is in a subdirectory of a git repo.

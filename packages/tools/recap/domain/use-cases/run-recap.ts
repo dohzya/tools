@@ -22,6 +22,12 @@ export type RunRecapOptions = {
   readonly json?: boolean;
   /** Override working directory for config discovery and shell commands. */
   readonly cwd?: string;
+  /**
+   * Whether colors are enabled for this run. Propagated down to subcommands
+   * (via FORCE_COLOR / CLICOLOR_FORCE or NO_COLOR env vars) and to the git-log
+   * built-in (via `git -c color.ui=always`).
+   */
+  readonly useColor: boolean;
 };
 
 /** Injected dependencies (ports) required by runRecap. */
@@ -92,6 +98,7 @@ export async function runRecap(
     shell: deps.shell,
     git: deps.git,
     cwd,
+    useColor: options.useColor,
   });
 
   const text = renderRecap(sections, palette);

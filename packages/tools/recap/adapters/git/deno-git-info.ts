@@ -122,7 +122,11 @@ export class DenoGitInfo implements GitInfoProvider {
     return { display: `(in ./${clean})` };
   }
 
-  async getGitLog(cwd: string, maxLines: number): Promise<GitLogResult> {
+  async getGitLog(
+    cwd: string,
+    maxLines: number,
+    useColor: boolean,
+  ): Promise<GitLogResult> {
     const gitArgs = (extraArgs: string[]) => runGit(["-C", cwd, ...extraArgs]);
 
     // Try to resolve upstream: git rev-parse --abbrev-ref @{u}
@@ -154,9 +158,18 @@ export class DenoGitInfo implements GitInfoProvider {
       }
     }
 
+    // `-c color.ui=always` must precede the `log` subcommand, and only on the
+    // final log call — the rev-parse probes above produce no user-visible output.
+    // The `%C(auto)` token wraps the hash with git's standard "auto" colorization
+    // (yellow), but git only emits the ANSI when color.ui resolves to "always".
+    const colorPrefix = useColor ? ["-c", "color.ui=always"] : [];
+    const prettyFormat = useColor
+      ? "--pretty=format:%C(auto)%h%Creset %s"
+      : "--pretty=format:%h %s";
     const logResult = await gitArgs([
+      ...colorPrefix,
       ...logBaseArgs,
-      "--pretty=format:%h %s",
+      prettyFormat,
     ]);
     if (!logResult.success && logResult.stdout.trim() === "") {
       return { lines: [] };

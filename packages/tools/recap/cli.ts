@@ -79,6 +79,7 @@ export async function main(args: string[]): Promise<void> {
           {
             configPath: options.config,
             noColor,
+            useColor,
             json: options.json,
             cwd,
           },

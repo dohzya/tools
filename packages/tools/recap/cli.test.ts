@@ -464,7 +464,7 @@ Deno.test("collectSections - git-subdir builtin returns display when in subdir",
       sections: [{ id: "git-subdir", builtin: "git-subdir" }],
       envVars: {},
     },
-    { shell: mockShell, git: mockGit, cwd: "/tmp" },
+    { shell: mockShell, git: mockGit, cwd: "/tmp", useColor: false },
   );
 
   assertEquals(result.length, 1);
@@ -486,10 +486,243 @@ Deno.test("collectSections - git-subdir builtin returns empty lines at repo root
       sections: [{ id: "git-subdir", builtin: "git-subdir" }],
       envVars: {},
     },
-    { shell: mockShell, git: mockGit, cwd: "/tmp" },
+    { shell: mockShell, git: mockGit, cwd: "/tmp", useColor: false },
   );
 
   assertEquals(result.length, 1);
   assertEquals(result[0].lines, []);
   assertEquals(result[0].error, undefined);
+});
+
+// ============================================================================
+// Color forwarding tests
+// ============================================================================
+
+// Helper: spy ShellRunner that records every invocation.
+function makeSpyShell(): {
+  shell: ShellRunner;
+  calls: Array<
+    { command: string; env?: Readonly<Record<string, string>>; cwd?: string }
+  >;
+} {
+  const calls: Array<
+    { command: string; env?: Readonly<Record<string, string>>; cwd?: string }
+  > = [];
+  const shell: ShellRunner = {
+    run: (command, options) => {
+      calls.push({ command, env: options?.env, cwd: options?.cwd });
+      return Promise.resolve({ stdout: "out", stderr: "", exitCode: 0 });
+    },
+  };
+  return { shell, calls };
+}
+
+const noopGit: GitInfoProvider = {
+  getGitOps: () => Promise.resolve({ operation: null }),
+  getGitLog: () => Promise.resolve({ lines: [] }),
+  getGitSubdir: () => Promise.resolve({ display: null }),
+};
+
+Deno.test("collectSections - injects FORCE_COLOR and CLICOLOR_FORCE when useColor=true", async () => {
+  const { shell, calls } = makeSpyShell();
+  await collectSections(
+    {
+      sections: [{ id: "s1", sh: "echo hi" }],
+      envVars: {},
+    },
+    { shell, git: noopGit, cwd: "/tmp", useColor: true },
+  );
+
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].env?.FORCE_COLOR, "1");
+  assertEquals(calls[0].env?.CLICOLOR_FORCE, "1");
+  // NO_COLOR must NOT be set when colors are enabled
+  assertEquals(calls[0].env?.NO_COLOR, undefined);
+});
+
+Deno.test("collectSections - injects NO_COLOR when useColor=false", async () => {
+  const { shell, calls } = makeSpyShell();
+  await collectSections(
+    {
+      sections: [{ id: "s1", sh: "echo hi" }],
+      envVars: {},
+    },
+    { shell, git: noopGit, cwd: "/tmp", useColor: false },
+  );
+
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].env?.NO_COLOR, "1");
+  // FORCE_COLOR must NOT be set when colors are disabled
+  assertEquals(calls[0].env?.FORCE_COLOR, undefined);
+  assertEquals(calls[0].env?.CLICOLOR_FORCE, undefined);
+});
+
+Deno.test("collectSections - injects GIT_CONFIG_* for color.ui=always when useColor=true", async () => {
+  // git ignores FORCE_COLOR/CLICOLOR_FORCE; it uses its own color.ui config.
+  // GIT_CONFIG_COUNT/KEY_*/VALUE_* tells git ≥ 2.31 to add config entries for
+  // the invocation, making ANY `git` subcommand in a user shell section colorize.
+  const { shell, calls } = makeSpyShell();
+  await collectSections(
+    {
+      sections: [{ id: "s1", sh: "git status --short" }],
+      envVars: {},
+    },
+    { shell, git: noopGit, cwd: "/tmp", useColor: true },
+  );
+
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].env?.GIT_CONFIG_COUNT, "1");
+  assertEquals(calls[0].env?.GIT_CONFIG_KEY_0, "color.ui");
+  assertEquals(calls[0].env?.GIT_CONFIG_VALUE_0, "always");
+});
+
+Deno.test("collectSections - does NOT inject GIT_CONFIG_* when useColor=false", async () => {
+  // When colors disabled, NO_COLOR=1 is enough — git ≥ 2.27 honors it natively.
+  const { shell, calls } = makeSpyShell();
+  await collectSections(
+    {
+      sections: [{ id: "s1", sh: "git status --short" }],
+      envVars: {},
+    },
+    { shell, git: noopGit, cwd: "/tmp", useColor: false },
+  );
+
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].env?.GIT_CONFIG_COUNT, undefined);
+  assertEquals(calls[0].env?.GIT_CONFIG_KEY_0, undefined);
+  assertEquals(calls[0].env?.GIT_CONFIG_VALUE_0, undefined);
+});
+
+Deno.test("collectSections - section env overrides injected color vars", async () => {
+  const { shell, calls } = makeSpyShell();
+  await collectSections(
+    {
+      sections: [{ id: "s1", sh: "echo hi", env: { FORCE_COLOR: "0" } }],
+      envVars: {},
+    },
+    { shell, git: noopGit, cwd: "/tmp", useColor: true },
+  );
+
+  assertEquals(calls.length, 1);
+  // Section-level env wins over injected defaults.
+  assertEquals(calls[0].env?.FORCE_COLOR, "0");
+  // CLICOLOR_FORCE was not overridden in section.env, still injected.
+  assertEquals(calls[0].env?.CLICOLOR_FORCE, "1");
+});
+
+Deno.test("collectSections - section env can override injected GIT_CONFIG_VALUE_0", async () => {
+  const { shell, calls } = makeSpyShell();
+  await collectSections(
+    {
+      sections: [{
+        id: "s1",
+        sh: "git status --short",
+        env: { GIT_CONFIG_VALUE_0: "never" },
+      }],
+      envVars: {},
+    },
+    { shell, git: noopGit, cwd: "/tmp", useColor: true },
+  );
+
+  assertEquals(calls.length, 1);
+  // Section-level env wins.
+  assertEquals(calls[0].env?.GIT_CONFIG_VALUE_0, "never");
+  // The other injected git keys are still in place.
+  assertEquals(calls[0].env?.GIT_CONFIG_COUNT, "1");
+  assertEquals(calls[0].env?.GIT_CONFIG_KEY_0, "color.ui");
+});
+
+Deno.test("collectSections - git-log forwards useColor to GitInfoProvider", async () => {
+  const calls: Array<{ cwd: string; maxLines: number; useColor: boolean }> = [];
+  const mockGit: GitInfoProvider = {
+    getGitOps: () => Promise.resolve({ operation: null }),
+    getGitSubdir: () => Promise.resolve({ display: null }),
+    getGitLog: (cwd, maxLines, useColor) => {
+      calls.push({ cwd, maxLines, useColor });
+      return Promise.resolve({ lines: [] });
+    },
+  };
+  const { shell } = makeSpyShell();
+
+  await collectSections(
+    {
+      sections: [{ id: "git-log", builtin: "git-log", max_lines: 4 }],
+      envVars: {},
+    },
+    { shell, git: mockGit, cwd: "/tmp", useColor: true },
+  );
+
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].useColor, true);
+  assertEquals(calls[0].maxLines, 4);
+
+  // Now with useColor=false
+  calls.length = 0;
+  await collectSections(
+    {
+      sections: [{ id: "git-log", builtin: "git-log", max_lines: 4 }],
+      envVars: {},
+    },
+    { shell, git: mockGit, cwd: "/tmp", useColor: false },
+  );
+  assertEquals(calls[0].useColor, false);
+});
+
+// ============================================================================
+// DenoGitInfo.getGitLog color flag tests
+// ============================================================================
+
+async function runIn(cwd: string, args: string[]): Promise<void> {
+  const cmd = new Deno.Command(args[0], {
+    args: args.slice(1),
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+    env: { GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_SYSTEM: "/dev/null" },
+  });
+  const { success, stderr } = await cmd.output();
+  if (!success) {
+    throw new Error(
+      `command failed: ${args.join(" ")} — ${new TextDecoder().decode(stderr)}`,
+    );
+  }
+}
+
+async function makeTempRepoWithCommit(): Promise<string> {
+  const tempDir = await Deno.makeTempDir();
+  await runIn(tempDir, ["git", "init", "-q"]);
+  await runIn(tempDir, ["git", "config", "user.email", "test@test"]);
+  await runIn(tempDir, ["git", "config", "user.name", "Test"]);
+  await runIn(tempDir, ["git", "config", "commit.gpgsign", "false"]);
+  await Deno.writeTextFile(join(tempDir, "f.txt"), "hello");
+  await runIn(tempDir, ["git", "add", "f.txt"]);
+  await runIn(tempDir, ["git", "commit", "-q", "-m", "initial commit"]);
+  return tempDir;
+}
+
+Deno.test("DenoGitInfo.getGitLog - emits ANSI when useColor=true", async () => {
+  const tempDir = await makeTempRepoWithCommit();
+  try {
+    const adapter = new DenoGitInfo();
+    const result = await adapter.getGitLog(tempDir, 5, true);
+    assertEquals(result.lines.length > 0, true);
+    // At least one line should contain an ANSI escape sequence
+    const hasAnsi = result.lines.some((l) => l.includes("\x1b["));
+    assertEquals(hasAnsi, true);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("DenoGitInfo.getGitLog - no ANSI when useColor=false", async () => {
+  const tempDir = await makeTempRepoWithCommit();
+  try {
+    const adapter = new DenoGitInfo();
+    const result = await adapter.getGitLog(tempDir, 5, false);
+    assertEquals(result.lines.length > 0, true);
+    const hasAnsi = result.lines.some((l) => l.includes("\x1b["));
+    assertEquals(hasAnsi, false);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
 });

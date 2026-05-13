@@ -15,7 +15,37 @@ export type CollectSectionsProviders = {
   readonly cwd: string;
   /** Additional environment variables injected into every command. */
   readonly globalEnv?: Readonly<Record<string, string>>;
+  /**
+   * Whether color output is enabled for this run.
+   * - true  → inject FORCE_COLOR=1 / CLICOLOR_FORCE=1 into every shell section
+   *           and ask the git-log builtin to emit ANSI colors.
+   * - false → inject NO_COLOR=1 into every shell section (and skip color flags).
+   * Section-level `env:` always wins over these defaults.
+   */
+  readonly useColor: boolean;
 };
+
+/**
+ * Build the color-forcing env injected into every shell section.
+ * Two de-facto standards are emitted simultaneously:
+ *   - FORCE_COLOR (Node and many JS tools)
+ *   - CLICOLOR_FORCE (BSD/macOS coreutils)
+ * git ignores both, so GIT_CONFIG_COUNT/KEY_0/VALUE_0 are also injected
+ * to set `color.ui=always` for any `git` subcommand (requires git ≥ 2.31).
+ * When colors are disabled, NO_COLOR is propagated instead — git ≥ 2.27
+ * honors it natively, so no git-specific override is needed on that path.
+ */
+function colorEnvFor(useColor: boolean): Record<string, string> {
+  return useColor
+    ? {
+      FORCE_COLOR: "1",
+      CLICOLOR_FORCE: "1",
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: "color.ui",
+      GIT_CONFIG_VALUE_0: "always",
+    }
+    : { NO_COLOR: "1" };
+}
 
 /**
  * Interpolate ${VAR} placeholders in a string using the given env map.
@@ -54,10 +84,18 @@ async function executeSection(
 ): Promise<SectionData> {
   const separator = section.separator ?? "blank_line";
 
+  // Precedence (lowest → highest): colorEnv → globalEnv → section.env.
+  // Section-level `env:` is always allowed to override the injected defaults.
+  const colorEnv = colorEnvFor(providers.useColor);
+
   try {
     if (section.sh !== undefined) {
       // Shell command section
-      const envForCommand = { ...globalEnv, ...(section.env ?? {}) };
+      const envForCommand = {
+        ...colorEnv,
+        ...globalEnv,
+        ...(section.env ?? {}),
+      };
       const result = await providers.shell.run(section.sh, {
         env: envForCommand,
         cwd: section.cwd ?? providers.cwd,
@@ -115,6 +153,7 @@ async function executeSection(
       const { lines: rawLines } = await providers.git.getGitLog(
         section.cwd ?? providers.cwd,
         maxLines,
+        providers.useColor,
       );
       const lines = applyMaxLines(rawLines, section.max_lines);
       return {
