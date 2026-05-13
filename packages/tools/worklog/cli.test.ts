@@ -5707,3 +5707,128 @@ Deno.test(
     }
   },
 );
+
+// ============================================================================
+// Color / palette integration in formatters
+// ============================================================================
+
+import {
+  _formatList,
+  _formatShow,
+  _formatStatus,
+  _formatTraces,
+} from "./cli.ts";
+import { createPalette } from "./domain/entities/palette.ts";
+import { catppuccinLatte } from "./domain/entities/theme.ts";
+
+/** Strip ANSI SGR escapes (`ESC [ ... m`) to compare semantic content. */
+function stripAnsi(s: string): string {
+  // deno-lint-ignore no-control-regex
+  return s.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+Deno.test("formatStatus - no color: plain status", () => {
+  const palette = createPalette(false, catppuccinLatte);
+  const out = _formatStatus({ status: "done" }, palette);
+  assertEquals(out, "done");
+});
+
+Deno.test("formatStatus - with color: ANSI present, content preserved", () => {
+  const palette = createPalette(true, catppuccinLatte);
+  const out = _formatStatus({ status: "done" }, palette);
+  assertStringIncludes(out, "\x1b[");
+  assertEquals(stripAnsi(out), "done");
+});
+
+Deno.test("formatList - no color: byte-for-byte identical to today's output", () => {
+  const palette = createPalette(false, catppuccinLatte);
+  const out = _formatList(
+    {
+      tasks: [
+        {
+          id: "c96mqj3ws11xhjmb3k4gzzyfj",
+          name: "ajouter les couleurs",
+          desc: "",
+          status: "started",
+          created: "2026-05-12 14:45",
+          tags: ["recap"],
+        },
+      ],
+    },
+    false,
+    palette,
+  );
+  assertEquals(
+    out,
+    `#recap  c96mqj  started  "ajouter les couleurs"  2026-05-12 14:45`,
+  );
+});
+
+Deno.test("formatList - with color: ANSI wraps status/id/tag/timestamp", () => {
+  const palette = createPalette(true, catppuccinLatte);
+  const out = _formatList(
+    {
+      tasks: [
+        {
+          id: "c96mqj3ws11xhjmb3k4gzzyfj",
+          name: "ajouter les couleurs",
+          desc: "",
+          status: "started",
+          created: "2026-05-12 14:45",
+          tags: ["recap"],
+        },
+      ],
+    },
+    false,
+    palette,
+  );
+  assertStringIncludes(out, "\x1b[");
+  assertEquals(
+    stripAnsi(out),
+    `#recap  c96mqj  started  "ajouter les couleurs"  2026-05-12 14:45`,
+  );
+  // statusStarted = #df8e1d → rgb 223,142,29
+  assertStringIncludes(out, "\x1b[38;2;223;142;29m");
+});
+
+Deno.test("formatTraces - with color: header label colored", () => {
+  const palette = createPalette(true, catppuccinLatte);
+  const out = _formatTraces(
+    {
+      task: "c96mqj",
+      desc: "demo",
+      entries: [{ ts: "2026-05-12 16:36", msg: "Plan défini" }],
+    },
+    palette,
+  );
+  assertStringIncludes(out, "\x1b[");
+  const plain = stripAnsi(out);
+  assertStringIncludes(plain, "task: c96mqj");
+  assertStringIncludes(plain, "traces: 1");
+  assertStringIncludes(plain, "2026-05-12 16:36: Plan défini");
+});
+
+Deno.test("formatShow - with color: section labels and status colored", () => {
+  const palette = createPalette(true, catppuccinLatte);
+  const out = _formatShow(
+    {
+      task: "c96mqj",
+      fullId: "c96mqj3ws11xhjmb3k4gzzyfj",
+      name: "demo",
+      status: "started",
+      created: "2026-05-12 14:45",
+      ready: null,
+      started: "2026-05-12 14:50",
+      last_checkpoint: null,
+      desc: "hello",
+      entries_since_checkpoint: [],
+      todos: [],
+    },
+    palette,
+  );
+  assertStringIncludes(out, "\x1b[");
+  const plain = stripAnsi(out);
+  assertStringIncludes(plain, "id: c96mqj");
+  assertStringIncludes(plain, "status: started");
+  assertStringIncludes(plain, "desc:");
+});

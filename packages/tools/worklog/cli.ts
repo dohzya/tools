@@ -41,6 +41,8 @@ import {
   type TracesOutput,
 } from "./types.ts";
 import { WtError } from "./domain/entities/errors.ts";
+import { catppuccinLatte } from "./domain/entities/theme.ts";
+import { createPalette, type Palette } from "./domain/entities/palette.ts";
 import {
   findSection,
   getFrontmatterContent,
@@ -2108,6 +2110,19 @@ function _getLastCheckpoint(checkpoints: Checkpoint[]): Checkpoint | null {
 // Output formatters (text)
 // ============================================================================
 
+/**
+ * Build a {@link Palette} from the current env / stdout state.
+ *
+ * `Deno.noColor` honors the NO_COLOR convention. `FORCE_COLOR` overrides
+ * the TTY check — this is how `recap` enables colors when piping into wl.
+ * Called per-action (not at module load) so tests can vary env per call.
+ */
+function computePalette(): Palette {
+  const useColor = !Deno.noColor &&
+    (!!Deno.env.get("FORCE_COLOR") || Deno.stdout.isTerminal());
+  return createPalette(useColor, catppuccinLatte);
+}
+
 function formatAdd(output: AddOutput): string {
   return output.id;
 }
@@ -2238,8 +2253,30 @@ function formatTrace(output: TraceOutput): string {
   return "ok";
 }
 
-function formatStatus(output: StatusOutput): string {
-  return output.status.replace(/_/g, " ");
+function formatStatus(
+  output: StatusOutput,
+  palette: Palette = createPalette(false, catppuccinLatte),
+): string {
+  const text = output.status.replace(/_/g, " ");
+  return colorStatus(text, palette);
+}
+
+/** Map a status string to its semantic palette role. */
+function colorStatus(status: string, palette: Palette): string {
+  switch (status) {
+    case "done":
+      return palette.statusDone(status);
+    case "started":
+      return palette.statusStarted(status);
+    case "ready":
+      return palette.statusReady(status);
+    case "created":
+      return palette.statusCreated(status);
+    case "cancelled":
+      return palette.statusCancelled(status);
+    default:
+      return status;
+  }
 }
 
 function formatMeta(output: { metadata: Record<string, string> }): string {
@@ -2253,36 +2290,46 @@ function formatMeta(output: { metadata: Record<string, string> }): string {
   return lines.join("\n");
 }
 
-function formatShow(output: ShowOutput): string {
+function formatShow(
+  output: ShowOutput,
+  palette: Palette = createPalette(false, catppuccinLatte),
+): string {
   const lines: string[] = [];
 
-  // Header
-  lines.push(`id: ${output.task}`);
-  lines.push(`full id: ${output.fullId}`);
-  lines.push(`name: ${output.name}`);
-  lines.push(`status: ${output.status}`);
+  // Header: labels in `header` color, id/timestamp in their roles.
+  const h = palette.header;
+  lines.push(`${h("id:")} ${palette.id(output.task)}`);
+  lines.push(`${h("full id:")} ${palette.id(output.fullId)}`);
+  lines.push(`${h("name:")} ${output.name}`);
+  lines.push(`${h("status:")} ${colorStatus(output.status, palette)}`);
   if (output.parent) {
     lines.push(
-      `parent: ${output.parent.shortId}  "${output.parent.name}"  (${output.parent.status})`,
+      `${h("parent:")} ${
+        palette.id(output.parent.shortId)
+      }  "${output.parent.name}"  (${
+        colorStatus(output.parent.status, palette)
+      })`,
     );
   }
   if (output.tags && output.tags.length > 0) {
-    lines.push(`tags: ${output.tags.map((t) => `#${t}`).join(" ")}`);
+    lines.push(
+      `${h("tags:")} ${output.tags.map((t) => palette.tag(`#${t}`)).join(" ")}`,
+    );
   }
 
   // History
-  lines.push("history:");
-  lines.push(`  created: ${output.created}`);
+  lines.push(h("history:"));
+  lines.push(`  ${h("created:")} ${palette.timestamp(output.created)}`);
   if (output.ready) {
-    lines.push(`  ready: ${output.ready}`);
+    lines.push(`  ${h("ready:")} ${palette.timestamp(output.ready)}`);
   }
   if (output.started) {
-    lines.push(`  started: ${output.started}`);
+    lines.push(`  ${h("started:")} ${palette.timestamp(output.started)}`);
   }
 
   // Description (multiline with 2-space indent)
   lines.push("");
-  lines.push("desc:");
+  lines.push(h("desc:"));
   for (const line of output.desc.split("\n")) {
     lines.push(`  ${line}`);
   }
@@ -2290,12 +2337,16 @@ function formatShow(output: ShowOutput): string {
   // Last checkpoint
   if (output.last_checkpoint) {
     lines.push("");
-    lines.push(`last checkpoint: ${output.last_checkpoint.ts}`);
-    lines.push("  CHANGES");
+    lines.push(
+      `${h("last checkpoint:")} ${
+        palette.timestamp(output.last_checkpoint.ts)
+      }`,
+    );
+    lines.push(`  ${h("CHANGES")}`);
     for (const line of output.last_checkpoint.changes.split("\n")) {
       lines.push(`    ${line}`);
     }
-    lines.push("  LEARNINGS");
+    lines.push(`  ${h("LEARNINGS")}`);
     for (const line of output.last_checkpoint.learnings.split("\n")) {
       lines.push(`    ${line}`);
     }
@@ -2305,10 +2356,12 @@ function formatShow(output: ShowOutput): string {
   if (output.entries_since_checkpoint.length > 0) {
     lines.push("");
     lines.push(
-      `entries since checkpoint: ${output.entries_since_checkpoint.length}`,
+      `${
+        h("entries since checkpoint:")
+      } ${output.entries_since_checkpoint.length}`,
     );
     for (const entry of output.entries_since_checkpoint) {
-      lines.push(`  ${entry.ts}`);
+      lines.push(`  ${palette.timestamp(entry.ts)}`);
       for (const line of entry.msg.split("\n")) {
         lines.push(`    ${line}`);
       }
@@ -2318,7 +2371,7 @@ function formatShow(output: ShowOutput): string {
   // Todos
   if (output.todos.length > 0) {
     lines.push("");
-    lines.push(`todos: ${output.todos.length}`);
+    lines.push(`${h("todos:")} ${output.todos.length}`);
 
     const statusChars: Record<TodoStatus, string> = {
       "todo": " ",
@@ -2333,7 +2386,7 @@ function formatShow(output: ShowOutput): string {
     for (const todo of output.todos) {
       const statusChar = statusChars[todo.status];
       const shortTodoId = getShortId(todo.id, allTodoIds);
-      let line = `  ${shortTodoId} [${statusChar}] ${todo.text}`;
+      let line = `  ${palette.id(shortTodoId)} [${statusChar}] ${todo.text}`;
 
       // Add metadata
       const metadata = Object.entries(todo.metadata)
@@ -2351,8 +2404,10 @@ function formatShow(output: ShowOutput): string {
   // Subtasks section
   if (output.subtasks && output.subtasks.length > 0) {
     lines.push("");
-    lines.push(`subtasks since checkpoint: ${output.subtasks.length}`);
-    for (const line of renderSubtasks(output.subtasks, "  ")) {
+    lines.push(
+      `${h("subtasks since checkpoint:")} ${output.subtasks.length}`,
+    );
+    for (const line of renderSubtasks(output.subtasks, "  ", palette)) {
       lines.push(line);
     }
   }
@@ -2363,16 +2418,22 @@ function formatShow(output: ShowOutput): string {
 function renderSubtasks(
   subtasks: readonly SubtaskSummary[],
   indent: string,
+  palette: Palette = createPalette(false, catppuccinLatte),
 ): string[] {
   const lines: string[] = [];
+  const h = palette.header;
   for (const sub of subtasks) {
-    lines.push(`${indent}${sub.shortId}  ${sub.status}  "${sub.name}"`);
+    lines.push(
+      `${indent}${palette.id(sub.shortId)}  ${
+        colorStatus(sub.status, palette)
+      }  "${sub.name}"`,
+    );
     if (sub.lastCheckpoint) {
-      lines.push(`${indent}  CHANGES`);
+      lines.push(`${indent}  ${h("CHANGES")}`);
       for (const l of sub.lastCheckpoint.changes.split("\n")) {
         lines.push(`${indent}    ${l}`);
       }
-      lines.push(`${indent}  LEARNINGS`);
+      lines.push(`${indent}  ${h("LEARNINGS")}`);
       for (const l of sub.lastCheckpoint.learnings.split("\n")) {
         lines.push(`${indent}    ${l}`);
       }
@@ -2389,15 +2450,15 @@ function renderSubtasks(
       for (const todo of sub.activeTodos) {
         const shortTodoId = getShortId(todo.id, allTodoIds);
         lines.push(
-          `${indent}  ${shortTodoId} [${
+          `${indent}  ${palette.id(shortTodoId)} [${
             statusChars[todo.status]
           }] ${todo.text}`,
         );
       }
     }
     if (sub.subtasks && sub.subtasks.length > 0) {
-      lines.push(`${indent}  subtasks: ${sub.subtasks.length}`);
-      for (const l of renderSubtasks(sub.subtasks, indent + "  ")) {
+      lines.push(`${indent}  ${h("subtasks:")} ${sub.subtasks.length}`);
+      for (const l of renderSubtasks(sub.subtasks, indent + "  ", palette)) {
         lines.push(l);
       }
     }
@@ -2405,26 +2466,34 @@ function renderSubtasks(
   return lines;
 }
 
-function formatTraces(output: TracesOutput): string {
+function formatTraces(
+  output: TracesOutput,
+  palette: Palette = createPalette(false, catppuccinLatte),
+): string {
   const lines: string[] = [];
-  lines.push(`task: ${output.task}`);
-  lines.push(`desc: ${output.desc}`);
+  const h = palette.header;
+  lines.push(`${h("task:")} ${palette.id(output.task)}`);
+  lines.push(`${h("desc:")} ${output.desc}`);
 
   if (output.entries.length === 0) {
     lines.push("");
     lines.push("no traces");
   } else {
     lines.push("");
-    lines.push(`traces: ${output.entries.length}`);
+    lines.push(`${h("traces:")} ${output.entries.length}`);
     for (const entry of output.entries) {
-      lines.push(`  ${entry.ts}: ${entry.msg}`);
+      lines.push(`  ${palette.timestamp(entry.ts)}: ${entry.msg}`);
     }
   }
 
   return lines.join("\n");
 }
 
-function formatList(output: ListOutput, showAll = false): string {
+function formatList(
+  output: ListOutput,
+  showAll = false,
+  palette: Palette = createPalette(false, catppuccinLatte),
+): string {
   if (output.tasks.length === 0) {
     return showAll ? "no tasks" : "no active tasks";
   }
@@ -2448,7 +2517,8 @@ function formatList(output: ListOutput, showAll = false): string {
     if (
       t.scopePrefix && (!t.filterPattern || t.scopePrefix !== t.filterPattern)
     ) {
-      prefix += `[${t.scopePrefix}]  `;
+      // [scopePrefix] is rendered with the same role as tags (per spec).
+      prefix += `${palette.tag(`[${t.scopePrefix}]`)}  `;
     }
 
     // Filter tags - exclude the exact match of filterPattern, but keep children
@@ -2462,10 +2532,12 @@ function formatList(output: ListOutput, showAll = false): string {
     }
 
     const tagsStr = tagsToShow.length > 0
-      ? tagsToShow.map((tag) => `#${tag}`).join(" ") + "  "
+      ? tagsToShow.map((tag) => palette.tag(`#${tag}`)).join(" ") + "  "
       : "";
 
-    return `${prefix}${tagsStr}${shortId}  ${t.status}  "${t.name}"  ${t.created}`;
+    return `${prefix}${tagsStr}${palette.id(shortId)}  ${
+      colorStatus(t.status, palette)
+    }  "${t.name}"  ${palette.timestamp(t.created)}`;
   };
 
   if (isSubtasksMode) {
@@ -4121,7 +4193,11 @@ const todoSetCmd = new Command()
         );
       }
       const output = await cmdTodoSet(todoId, updates);
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4227,7 +4303,11 @@ const scopesAddCmd = new Command()
         options.ref,
         cwd,
       );
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
       if (options.assign) {
         const assignOutput = await cmdScopesAssignByTag(scopeId, scopeId, cwd);
         console.log(
@@ -4254,7 +4334,11 @@ const scopesAddParentCmd = new Command()
       );
       const cwd = Deno.cwd();
       const output = await cmdScopesAddParent(parentPath, options.id, cwd);
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4272,7 +4356,11 @@ const scopesRenameCmd = new Command()
       );
       const cwd = Deno.cwd();
       const output = await cmdScopesRename(scopeId, newId, cwd);
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4300,7 +4388,11 @@ const scopesDeleteCmd = new Command()
         options.deleteTasks ?? false,
         cwd,
       );
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4485,7 +4577,11 @@ const initCmd = new Command()
         asGlobal(options).worklogDir,
       );
       const output = await cmdInit();
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4742,7 +4838,11 @@ const showCmd = new Command()
         options.scope ? null : gitRoot,
       );
       const output = await cmdShow(resolvedTaskId, options.active ?? false);
-      console.log(options.json ? JSON.stringify(output) : formatShow(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatShow(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4765,7 +4865,11 @@ const tracesCmd = new Command()
         options.scope ? null : gitRoot,
       );
       const output = await cmdTraces(resolvedTaskId);
-      console.log(options.json ? JSON.stringify(output) : formatTraces(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatTraces(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -4863,7 +4967,9 @@ const checkpointCmd = new Command()
             options.force ?? false,
           );
           console.log(
-            options.json ? JSON.stringify(output) : formatStatus(output),
+            options.json
+              ? JSON.stringify(output)
+              : formatStatus(output, computePalette()),
           );
         }
       } catch (e) {
@@ -4978,7 +5084,9 @@ const doneCmd = new Command()
             metadata,
           );
           console.log(
-            options.json ? JSON.stringify(output) : formatStatus(output),
+            options.json
+              ? JSON.stringify(output)
+              : formatStatus(output, computePalette()),
           );
         }
       } catch (e) {
@@ -5004,7 +5112,11 @@ const readyCmd = new Command()
         options.scope ? null : gitRoot,
       );
       const output = await cmdReady(resolvedTaskId);
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -5032,7 +5144,11 @@ const startCmd = new Command()
       if (options.name !== undefined || options.desc !== undefined) {
         output = await cmdUpdate(resolvedTaskId, options.name, options.desc);
       }
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -5290,7 +5406,11 @@ const updateCmd = new Command()
         options.name,
         resolvedDesc,
       );
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -5335,7 +5455,11 @@ const cancelCmd = new Command()
       }
 
       const output = await cmdCancel(resolvedTaskId, resolvedReason);
-      console.log(options.json ? JSON.stringify(output) : formatStatus(output));
+      console.log(
+        options.json
+          ? JSON.stringify(output)
+          : formatStatus(output, computePalette()),
+      );
     } catch (e) {
       handleError(e, options.json ?? false);
     }
@@ -5639,7 +5763,7 @@ const listCmd = new Command()
         console.log(
           options.json
             ? JSON.stringify(output)
-            : formatList(output, options.all),
+            : formatList(output, options.all, computePalette()),
         );
         return;
       }
@@ -5668,7 +5792,9 @@ const listCmd = new Command()
         resolvedParentFilter,
       );
       console.log(
-        options.json ? JSON.stringify(output) : formatList(output, options.all),
+        options.json
+          ? JSON.stringify(output)
+          : formatList(output, options.all, computePalette()),
       );
     } catch (e) {
       handleError(e, options.json ?? false);
@@ -5869,3 +5995,11 @@ export async function main(args: string[]): Promise<void> {
 if (import.meta.main) {
   await main(Deno.args);
 }
+
+// Underscore-prefixed exports for tests only — internal API, not stable.
+export {
+  formatList as _formatList,
+  formatShow as _formatShow,
+  formatStatus as _formatStatus,
+  formatTraces as _formatTraces,
+};
