@@ -15,6 +15,9 @@ export interface AgentConfig {
   ): readonly string[];
 }
 
+/** Claude subcommands that reject --append-system-prompt */
+export const CLAUDE_SUBCOMMANDS: ReadonlySet<string> = new Set(["agents"]);
+
 export const claudeAgentConfig: AgentConfig = {
   type: "claude",
   name: "Claude",
@@ -22,6 +25,9 @@ export const claudeAgentConfig: AgentConfig = {
     systemPrompt: string,
     extraArgs: readonly string[],
   ): readonly string[] {
+    if (extraArgs.length > 0 && CLAUDE_SUBCOMMANDS.has(extraArgs[0])) {
+      return ["claude", ...extraArgs];
+    }
     return ["claude", "--append-system-prompt", systemPrompt, ...extraArgs];
   },
   buildSynthesisCmd(

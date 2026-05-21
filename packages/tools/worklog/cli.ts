@@ -110,6 +110,7 @@ import { RunCommandUseCase } from "./domain/use-cases/run-command.ts";
 import { AgentCommandUseCase } from "./domain/use-cases/agent-command.ts";
 import {
   type AgentType,
+  CLAUDE_SUBCOMMANDS,
   claudeAgentConfig,
   codexAgentConfig,
   detectAgentType,
@@ -5221,7 +5222,8 @@ const claudeCmd = new Command()
       "Examples:\n" +
       "  wl claude              # Launch Claude with current task (from WORKLOG_TASK_ID)\n" +
       "  wl claude <taskId>     # Launch Claude with specific task\n" +
-      "  wl claude <taskId> -c  # Pass Claude args when taskId provided\n\n" +
+      "  wl claude <taskId> -c  # Pass Claude args when taskId provided\n" +
+      "  wl claude agents       # Open Claude agents subcommand (no system prompt)\n\n" +
       "For complex args, use 'wl run':\n" +
       "  wl run <taskId> claude -c --model opus",
   )
@@ -5237,13 +5239,15 @@ const claudeCmd = new Command()
         asGlobal(options).worklogDir,
       );
 
-      // If first arg looks like a taskId (not starting with -), use it as taskId
-      // Otherwise, treat it as a Claude arg
+      // If first arg looks like a taskId (not starting with - and not a known
+      // Claude subcommand), use it as taskId. Otherwise treat it as a Claude arg.
       let actualTaskId: string | undefined = taskId;
       let claudeArgs: string[] = args;
 
-      if (taskId && taskId.startsWith("-")) {
-        // taskId is actually a Claude arg
+      if (
+        taskId &&
+        (taskId.startsWith("-") || CLAUDE_SUBCOMMANDS.has(taskId))
+      ) {
         actualTaskId = undefined;
         claudeArgs = [taskId, ...args];
       }

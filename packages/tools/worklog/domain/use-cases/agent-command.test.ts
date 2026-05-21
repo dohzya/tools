@@ -191,6 +191,76 @@ Deno.test("AgentCommandUseCase (claude) - resolves task by prefix", async () => 
   );
 });
 
+// --- Claude "agents" subcommand tests ---
+
+Deno.test("AgentCommandUseCase (claude) - agents subcommand skips --append-system-prompt", async () => {
+  const indexRepo = createMockIndexRepo({ [FULL_TASK_ID]: MOCK_INDEX_ENTRY });
+  const processRunner = createMockProcessRunner();
+  const showTaskFn = createMockShowTaskFn(FULL_TASK_ID);
+
+  const useCase = new AgentCommandUseCase(
+    { indexRepo, processRunner, showTaskFn },
+    claudeAgentConfig,
+  );
+
+  await useCase.execute({
+    taskId: FULL_TASK_ID,
+    agentArgs: ["agents"],
+  });
+
+  assertEquals(processRunner.calls.length, 1);
+  const [call] = processRunner.calls;
+  // Should be ["claude", "agents"] with NO --append-system-prompt
+  assertEquals(call.cmd[0], "claude");
+  assertEquals(call.cmd[1], "agents");
+  assertEquals(call.cmd.length, 2);
+});
+
+Deno.test("AgentCommandUseCase (claude) - agents subcommand with extra args skips --append-system-prompt", async () => {
+  const indexRepo = createMockIndexRepo({ [FULL_TASK_ID]: MOCK_INDEX_ENTRY });
+  const processRunner = createMockProcessRunner();
+  const showTaskFn = createMockShowTaskFn(FULL_TASK_ID);
+
+  const useCase = new AgentCommandUseCase(
+    { indexRepo, processRunner, showTaskFn },
+    claudeAgentConfig,
+  );
+
+  await useCase.execute({
+    taskId: FULL_TASK_ID,
+    agentArgs: ["agents", "--model", "opus"],
+  });
+
+  assertEquals(processRunner.calls.length, 1);
+  const [call] = processRunner.calls;
+  // Should be ["claude", "agents", "--model", "opus"] with NO --append-system-prompt
+  assertEquals(call.cmd[0], "claude");
+  assertEquals(call.cmd[1], "agents");
+  assertEquals(call.cmd[2], "--model");
+  assertEquals(call.cmd[3], "opus");
+  assertEquals(call.cmd.length, 4);
+});
+
+Deno.test("AgentCommandUseCase (claude) - agents subcommand still sets WORKLOG_TASK_ID", async () => {
+  const indexRepo = createMockIndexRepo({ [FULL_TASK_ID]: MOCK_INDEX_ENTRY });
+  const processRunner = createMockProcessRunner();
+  const showTaskFn = createMockShowTaskFn(FULL_TASK_ID);
+
+  const useCase = new AgentCommandUseCase(
+    { indexRepo, processRunner, showTaskFn },
+    claudeAgentConfig,
+  );
+
+  await useCase.execute({
+    taskId: FULL_TASK_ID,
+    agentArgs: ["agents"],
+  });
+
+  assertEquals(processRunner.calls.length, 1);
+  const [call] = processRunner.calls;
+  assertEquals(call.options?.env?.["WORKLOG_TASK_ID"], FULL_TASK_ID);
+});
+
 // --- Tests with Codex config ---
 
 Deno.test("AgentCommandUseCase (codex) - interactive command uses codex format", async () => {
