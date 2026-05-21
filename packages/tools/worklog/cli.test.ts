@@ -5842,3 +5842,66 @@ Deno.test("formatShow - with color: section labels and status colored", () => {
   assertStringIncludes(plain, "status: started");
   assertStringIncludes(plain, "desc:");
 });
+
+Deno.test(
+  "done --claude with no uncheckpointed entries marks task as done without error",
+  async () => {
+    const tempDir = await Deno.makeTempDir();
+    const originalCwd = Deno.cwd();
+    const originalExit = Deno.exit;
+    const originalError = console.error;
+    let exitCode = -1;
+    let errorOutput = "";
+
+    try {
+      Deno.chdir(tempDir);
+      await main(["init"]);
+
+      await main(["create", "--started", "Task for done-claude"]);
+      const listOut = await captureOutput(() =>
+        main(["list", "--all", "--json"])
+      );
+      const id = JSON.parse(listOut).tasks[0].id;
+
+      await main(["trace", id, "Some work done"]);
+      await main(["checkpoint", id, "changes", "learnings"]);
+
+      // Now entries_since_checkpoint is empty.
+      // done --claude should NOT throw — it should skip synthesis and mark done.
+
+      // deno-lint-ignore dz-tools/no-type-assertion
+      Deno.exit = ((code: number) => {
+        exitCode = code;
+        throw new Error("EXIT");
+      }) as typeof Deno.exit;
+      console.error = (...args: unknown[]) => {
+        errorOutput += args.map(String).join(" ");
+      };
+
+      try {
+        await main(["done", "--claude", id]);
+      } catch (_e) {
+        // Claude launch may fail in test env — that's OK as long as task is done
+      }
+
+      // The command must NOT have exited with error code 1
+      // (which is what handleError does for WtError)
+      if (exitCode === 1) {
+        throw new Error(
+          `Command exited with code 1. stderr: ${errorOutput}`,
+        );
+      }
+
+      const taskContent = await Deno.readTextFile(
+        `.worklog/tasks/${id}.md`,
+      );
+      assertStringIncludes(taskContent, "status: done");
+      assertStringIncludes(errorOutput, "skipping agent synthesis");
+    } finally {
+      Deno.exit = originalExit;
+      console.error = originalError;
+      Deno.chdir(originalCwd);
+      await Deno.remove(tempDir, { recursive: true });
+    }
+  },
+);

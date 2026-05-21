@@ -5018,78 +5018,85 @@ const doneCmd = new Command()
         );
 
         const agentType = resolveAgentFlag(options);
+        let agentResolvedTaskId: string | null = null;
         if (agentType) {
-          const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+          agentResolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
             taskId,
             options.scope ? null : gitRoot,
           );
-          const showOutput = await cmdShow(resolvedTaskId);
-          if (showOutput.entries_since_checkpoint.length === 0) {
-            throw new WtError(
-              "no_uncheckpointed_entries",
-              "No uncheckpointed entries. Nothing to checkpoint.",
+          const showOutput = await cmdShow(agentResolvedTaskId);
+          if (showOutput.entries_since_checkpoint.length > 0) {
+            const prompt = buildCheckpointPrompt(
+              agentResolvedTaskId,
+              showOutput,
+              "done",
             );
-          }
-          const prompt = buildCheckpointPrompt(
-            resolvedTaskId,
-            showOutput,
-            "done",
-          );
-          const result = await cmdAgentSynthesis(
-            agentType,
-            resolvedTaskId,
-            prompt,
-          );
-          if (result.exitCode !== 0) {
-            console.log(
-              `${
-                getAgentConfig(agentType).name
-              } exited with code ${result.exitCode}`,
+            const result = await cmdAgentSynthesis(
+              agentType,
+              agentResolvedTaskId,
+              prompt,
             );
-          }
-        } else {
-          // Smart argument resolution:
-          // If WORKLOG_TASK_ID is set and learnings not provided, args shift
-          let resolvedTaskId: string;
-          let resolvedChanges: string | undefined;
-          let resolvedLearnings: string | undefined;
-          if (HAS_ENV_TASK_ID && !learnings) {
-            // With env and not all 3 args: args shift (taskId→changes, changes→learnings)
-            resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-              undefined,
-              options.scope ? null : gitRoot,
-            );
-            resolvedChanges = taskId;
-            resolvedLearnings = changes;
-          } else {
-            if (!taskId) {
-              throw new WtError(
-                "invalid_args",
-                "taskId is required (or set WORKLOG_TASK_ID)",
+            if (result.exitCode !== 0) {
+              console.log(
+                `${
+                  getAgentConfig(agentType).name
+                } exited with code ${result.exitCode}`,
               );
             }
-            resolvedTaskId = await resolveTaskIdAcrossScopes(
-              taskId,
-              options.scope ? null : gitRoot,
-            );
-            resolvedChanges = changes;
-            resolvedLearnings = learnings;
+            return;
           }
-
-          const metadata = parseMetaOption(options.meta);
-          const output = await cmdDone(
-            resolvedTaskId,
-            resolvedChanges,
-            resolvedLearnings,
-            options.force ?? false,
-            metadata,
-          );
-          console.log(
-            options.json
-              ? JSON.stringify(output)
-              : formatStatus(output, computePalette()),
+          // No uncheckpointed entries — skip agent synthesis, fall through to manual done
+          console.error(
+            "No uncheckpointed entries — skipping agent synthesis.",
           );
         }
+
+        // Normal done path (no agent flag, or agent skipped due to no entries)
+        let resolvedTaskId: string;
+        let resolvedChanges: string | undefined;
+        let resolvedLearnings: string | undefined;
+        if (agentResolvedTaskId) {
+          // Agent branch already resolved the ID; positional args are unchanged
+          resolvedTaskId = agentResolvedTaskId;
+          resolvedChanges = changes;
+          resolvedLearnings = learnings;
+        } else if (HAS_ENV_TASK_ID && !learnings) {
+          // Smart argument resolution:
+          // With env and not all 3 args: args shift (taskId→changes, changes→learnings)
+          resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+            undefined,
+            options.scope ? null : gitRoot,
+          );
+          resolvedChanges = taskId;
+          resolvedLearnings = changes;
+        } else {
+          if (!taskId) {
+            throw new WtError(
+              "invalid_args",
+              "taskId is required (or set WORKLOG_TASK_ID)",
+            );
+          }
+          resolvedTaskId = await resolveTaskIdAcrossScopes(
+            taskId,
+            options.scope ? null : gitRoot,
+          );
+          resolvedChanges = changes;
+          resolvedLearnings = learnings;
+        }
+
+        const metadata = parseMetaOption(options.meta);
+        const output = await cmdDone(
+          resolvedTaskId,
+          resolvedChanges,
+          resolvedLearnings,
+          options.force ?? false,
+          metadata,
+        );
+        console.log(
+          options.json
+            ? JSON.stringify(output)
+            : formatStatus(output, computePalette()),
+        );
       } catch (e) {
         handleError(e, options.json ?? false);
       }
