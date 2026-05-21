@@ -103,7 +103,7 @@ ${todos ? `## TODO\n${todos}` : ""}
 The environment variable is set to: ${resolvedTaskId}
 
 **All commands work without taskId** — the env var is used automatically:
-  wl trace "msg", wl checkpoint "changes" "learnings", wl done "changes" "learnings",
+  wl trace "msg", wl checkpoint "changes" "insights", wl done "changes" "insights",
   wl show, wl start, wl ready, wl traces, wl update, wl cancel, wl meta, wl todo next
 
 To trace in a **different** task (e.g. a subtask), pass its ID as first argument:

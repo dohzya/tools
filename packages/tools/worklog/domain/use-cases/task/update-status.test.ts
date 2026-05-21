@@ -392,7 +392,7 @@ Deno.test("UpdateStatusUseCase - toStarted from done (reopening) returns task_re
   assertEquals(markdownService.lastFrontmatterUpdates[0].status, "started");
 });
 
-Deno.test("UpdateStatusUseCase - toDone with changes and learnings", async () => {
+Deno.test("UpdateStatusUseCase - toDone with changes and insights", async () => {
   const indexRepo = createMockIndexRepo({
     [TASK_ID]: makeIndexEntry({ status: "started" }),
   });
@@ -415,7 +415,7 @@ Deno.test("UpdateStatusUseCase - toDone with changes and learnings", async () =>
     taskId: TASK_ID,
     targetStatus: "done",
     changes: "Implemented the feature",
-    learnings: "Learned about hexagonal architecture",
+    insights: "Learned about hexagonal architecture",
   });
 
   assertEquals(result.status, "task_completed");

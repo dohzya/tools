@@ -266,11 +266,11 @@ Deno.test("worklog: Checkpoint type structure", () => {
   const checkpoint: Checkpoint = {
     ts: "2026-01-23 10:00",
     changes: "Changes made",
-    learnings: "Things learned",
+    insights: "Things learned",
   };
   assertEquals(checkpoint.ts, "2026-01-23 10:00");
   assertEquals(checkpoint.changes, "Changes made");
-  assertEquals(checkpoint.learnings, "Things learned");
+  assertEquals(checkpoint.insights, "Things learned");
 });
 
 Deno.test("worklog: AddOutput type structure", () => {

@@ -165,35 +165,33 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
         const nextSection = checkpointSections[i + 1];
         const cpEnd = nextSection ? nextSection.line - 1 : checkpointsEnd;
 
-        // Scan raw lines for ### Changes and ### Learnings headers
+        // Scan raw lines for ### Changes and ### Insights/Learnings headers
         let changesHeaderIdx = -1;
-        let learningsHeaderIdx = -1;
+        let insightsHeaderIdx = -1;
 
         for (let lineIdx = section.line; lineIdx < cpEnd; lineIdx++) {
           const line = doc.lines[lineIdx];
           if (/^###\s+Changes\s*$/.test(line)) changesHeaderIdx = lineIdx;
-          else if (/^###\s+Learnings\s*$/.test(line)) {
-            learningsHeaderIdx = lineIdx;
+          else if (/^###\s+(Insights|Learnings)\s*$/.test(line)) {
+            insightsHeaderIdx = lineIdx;
           }
         }
 
         let changes = "";
-        let learnings = "";
+        let insights = "";
 
         if (changesHeaderIdx >= 0) {
-          const contentEnd = learningsHeaderIdx >= 0
-            ? learningsHeaderIdx
-            : cpEnd;
+          const contentEnd = insightsHeaderIdx >= 0 ? insightsHeaderIdx : cpEnd;
           changes = doc.lines.slice(changesHeaderIdx + 1, contentEnd).join("\n")
             .trim();
         }
 
-        if (learningsHeaderIdx >= 0) {
-          learnings = doc.lines.slice(learningsHeaderIdx + 1, cpEnd).join("\n")
+        if (insightsHeaderIdx >= 0) {
+          insights = doc.lines.slice(insightsHeaderIdx + 1, cpEnd).join("\n")
             .trim();
         }
 
-        checkpoints.push({ ts: section.title, changes, learnings });
+        checkpoints.push({ ts: section.title, changes, insights });
       }
     }
 
@@ -308,7 +306,7 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
     // Add checkpoints
     for (const cp of checkpoints) {
       content +=
-        `\n\n## ${cp.ts}\n\n### Changes\n${cp.changes}\n\n### Learnings\n${cp.learnings}\n`;
+        `\n\n## ${cp.ts}\n\n### Changes\n${cp.changes}\n\n### Insights\n${cp.insights}\n`;
     }
 
     // Add todos if any
@@ -403,8 +401,8 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
 ### Changes
 ${checkpoint.changes}
 
-### Learnings
-${checkpoint.learnings}
+### Insights
+${checkpoint.insights}
 `;
 
     // Copy to mutable array (doc.lines is readonly)

@@ -100,8 +100,8 @@ export interface Checkpoint {
   ts: string;
   /** Summary of changes since the previous checkpoint. */
   changes: string;
-  /** Learnings or insights captured during the checkpoint. */
-  learnings: string;
+  /** Insights captured during the checkpoint. */
+  insights: string;
 }
 
 /** Lifecycle status of a todo item within a task. */

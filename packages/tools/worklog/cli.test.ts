@@ -3020,7 +3020,7 @@ Deno.test("show - displays multiline checkpoint formatting", async () => {
     assertStringIncludes(showOutput, "  CHANGES");
     assertStringIncludes(showOutput, "    Line 1");
     assertStringIncludes(showOutput, "    Line 2");
-    assertStringIncludes(showOutput, "  LEARNINGS");
+    assertStringIncludes(showOutput, "  INSIGHTS");
     assertStringIncludes(showOutput, "    Learning 1");
     assertStringIncludes(showOutput, "    Learning 2");
   } finally {
@@ -3055,7 +3055,7 @@ Added new feature with ports & adapters
 ## Metrics
 - Tests: 100%`;
 
-    const learnings = `Key discoveries
+    const insights = `Key discoveries
 
 ## Performance
 System is 2x faster
@@ -3066,7 +3066,7 @@ Added LRU cache
 ### 2. Lazy loading
 Reduced startup time`;
 
-    await main(["checkpoint", id, changes, learnings]);
+    await main(["checkpoint", id, changes, insights]);
 
     const showOutput = await captureOutput(() => main(["show", id]));
 
@@ -3085,6 +3085,36 @@ Reduced startup time`;
     assertStringIncludes(showOutput, "System is 2x faster");
     assertStringIncludes(showOutput, "### 1. Caching helped");
     assertStringIncludes(showOutput, "### 2. Lazy loading");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("show - backward compat: parses old ### Learnings header as insights", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "--started", "Task with old learnings header"]);
+    const _ls = await captureOutput(() => main(["list", "--all", "--json"]));
+    const id = JSON.parse(_ls).tasks[0].id;
+
+    await main(["trace", id, "Some work"]);
+    await main(["checkpoint", id, "Changes made", "Old learnings content"]);
+
+    // Replace ### Insights with old ### Learnings in the task file
+    const taskPath = `.worklog/tasks/${id}.md`;
+    let content = await Deno.readTextFile(taskPath);
+    content = content.replace("### Insights", "### Learnings");
+    await Deno.writeTextFile(taskPath, content);
+
+    const showOutput = await captureOutput(() => main(["show", id]));
+
+    assertStringIncludes(showOutput, "Changes made");
+    assertStringIncludes(showOutput, "Old learnings content");
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -5269,7 +5299,7 @@ Deno.test("regression - wl done with explicit taskId still works", async () => {
     const { tasks } = JSON.parse(listOutput);
     const taskId = tasks[0].id;
 
-    // Should work with explicit taskId, changes, learnings
+    // Should work with explicit taskId, changes, insights
     await main(["done", taskId, "Things done", "Things learned"]);
 
     const listOutput2 = await captureOutput(() =>
@@ -5300,7 +5330,7 @@ Deno.test("regression - wl checkpoint with explicit taskId still works", async (
 
     await main(["trace", taskId, "Some trace"]);
 
-    // Should work with explicit taskId, changes, learnings
+    // Should work with explicit taskId, changes, insights
     const output = await captureOutput(() =>
       main(["checkpoint", taskId, "Some changes", "Some learnings"])
     );

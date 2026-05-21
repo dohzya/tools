@@ -14,7 +14,7 @@ export interface UpdateStatusInput {
   readonly taskId: string;
   readonly targetStatus: TaskStatus;
   readonly changes?: string;
-  readonly learnings?: string;
+  readonly insights?: string;
   readonly force?: boolean;
   readonly reason?: string;
   readonly metadata?: Readonly<Record<string, string>>;
@@ -169,26 +169,26 @@ export class UpdateStatusUseCase {
         );
       }
 
-      // If no changes/learnings provided, check for uncheckpointed entries
-      if (!input.changes && !input.learnings) {
+      // If no changes/insights provided, check for uncheckpointed entries
+      if (!input.changes && !input.insights) {
         if (meta.has_uncheckpointed_entries) {
           throw new WtError(
             "no_uncheckpointed_entries",
-            "Cannot mark done: uncheckpointed entries exist. Provide changes and learnings.",
+            "Cannot mark done: uncheckpointed entries exist. Provide changes and insights.",
           );
         }
       }
     }
 
-    // Create final checkpoint only if changes/learnings provided
-    if (input.changes || input.learnings) {
+    // Create final checkpoint only if changes/insights provided
+    if (input.changes || input.insights) {
       const now = this.getTimestamp();
       const shortTs = now.slice(0, 16).replace("T", " ");
       let content = await this.taskRepo.loadContent(taskId);
       content = await this.markdownService.appendCheckpoint(content, {
         ts: shortTs,
         changes: input.changes ?? "",
-        learnings: input.learnings ?? "",
+        insights: input.insights ?? "",
       });
       content = await this.markdownService.updateFrontmatter(content, {
         last_checkpoint: now,

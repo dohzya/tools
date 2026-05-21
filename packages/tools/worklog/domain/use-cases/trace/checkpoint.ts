@@ -9,7 +9,7 @@ import type { MarkdownService } from "../../ports/markdown-service.ts";
 export interface CreateCheckpointInput {
   readonly taskId: string;
   readonly changes: string;
-  readonly learnings: string;
+  readonly insights: string;
   readonly force?: boolean;
 }
 
@@ -88,7 +88,7 @@ export class CreateCheckpointUseCase {
     content = await this.markdownService.appendCheckpoint(content, {
       ts: shortTs,
       changes: input.changes,
-      learnings: input.learnings,
+      insights: input.insights,
     });
     content = await this.markdownService.updateFrontmatter(content, {
       last_checkpoint: now,

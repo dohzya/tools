@@ -14,7 +14,7 @@ Track work with traces and checkpoints. **Always work within a worktask.**
 - **created**: defined, not ready yet
 - **ready**: fully scoped, queued (use for backlog / future sub-agents)
 - **started**: actively working NOW — always `start` before tracing
-- **done**: completed with final checkpoint + REX learnings
+- **done**: completed with final checkpoint + insights
 
 ## Orient Yourself
 
@@ -34,11 +34,21 @@ Output: `<id>  <status>  "<name>"  <date>`
 
 1. **Create & start**: `wl create --started "Task name"`
 2. **Trace** with context: `wl trace <id> "Goal / action (cause: why failed) (piste: what next)"`
-3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "learnings"`
+3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "insights"`
 4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces)
-5. **Close**: `wl done <id> "changes" "REX learnings"` (args optional if no new traces since last checkpoint)
+5. **Close**: `wl done <id> "changes" "insights"` (args optional if no new traces since last checkpoint)
 
-**Critical:** commit before `done` · `wl show` before done · include causes & pistes in traces · REX = reusable insights (not a summary)
+**Critical:** commit before `done` · `wl show` before done · include causes & pistes in traces · insights = reusable discoveries (not a summary)
+
+## Tracing Insights
+
+When you discover something educational or non-obvious about the codebase, technology, or patterns during your work, **trace it** so checkpoints can capture it:
+
+```bash
+wl trace <id> "Insight: <your observation>"
+```
+
+Don't just display insights in the conversation — trace them. Checkpoints synthesize from traces only; untraceable conversation content is lost on compaction.
 
 ## Quick Reference
 
@@ -57,7 +67,7 @@ wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent del
 wl trace <id> "msg"         # flags before message: wl trace <id> -t T14:30 "msg"
 
 # Consolidate
-wl checkpoint <id> "narrative (actions + pivots, incl. failures)" "REX (reusable insights, not a summary)"
+wl checkpoint <id> "narrative (actions + pivots, incl. failures)" "insights (reusable discoveries, not a summary)"
 wl done <id> ["same as checkpoint"]  # args optional if no new traces since last checkpoint
 ```
 
@@ -85,4 +95,4 @@ The `-q` flag silently no-ops when no task is active — safe to configure globa
 
 ## Language
 
-Write traces, checkpoints, and REX in the user's language — follow their choice throughout the session.
+Write traces, checkpoints, and insights in the user's language — follow their choice throughout the session.
