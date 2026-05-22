@@ -33,12 +33,12 @@ Output: `<id>  <status>  "<name>"  <date>`
 > **Delegating to sub-agents?** Create a subtask: `wl create --parent <id> --started "Sub-task"`, then launch with `wl claude <subtask-id>` (or `wl codex <subtask-id>`, or `wl agent <subtask-id>` to auto-detect).
 
 1. **Create & start**: `wl create --started "Task name"`
-2. **Trace** with context: `wl trace <id> "Goal / action (cause: why failed) (piste: what next)"`
+2. **Trace** every event: `wl trace <id> "action taken / problem hit / idea / lead explored / finding / insight"`
 3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "insights"`
 4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces)
 5. **Close**: `wl done <id> "changes" "insights"` (args optional if no new traces since last checkpoint)
 
-**Critical:** commit before `done` · `wl show` before done · include causes & pistes in traces · insights = reusable discoveries (not a summary)
+**Critical:** commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, insights · include causes & pistes in traces · insights = reusable discoveries (not a summary)
 
 ## Tracing Insights
 
@@ -63,7 +63,7 @@ wl create --started "name" "desc"                    # create + start (desc = sc
 wl create --started "name" --desc-src file.md        # desc from file (multiline context)
 wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent delegation
 
-# Trace — one entry per event: action done / result observed / problem hit / pivot decided
+# Trace — one entry per event: action taken / problem hit / idea / lead explored / finding / insight
 wl trace <id> "msg"         # flags before message: wl trace <id> -t T14:30 "msg"
 
 # Consolidate

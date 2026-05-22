@@ -116,13 +116,14 @@ wl run <id> claude -c --model opus    # complex Claude args
 
 1. **Working without worktask** → always create worktask first
 2. **Vague traces** → include causes (why failed) & pistes (what next)
-3. **Missing timestamps on batch traces** → use `-t`
-4. **Checkpoint = conclusion** → NO: consolidate traces into narrative
-5. **Done before commit** → commit first
-6. **Done without reviewing** → always `wl show <id>` first
-7. **Insights = summary** → insights need critical distance, reusable discoveries
-8. **Tracing without starting** → `wl start <id>` before tracing
-9. **Using --force on a task you need to rework** → reopen with `wl start <id>` instead
+3. **Narrow traces** → trace all events: actions, problems, ideas, leads, findings, insights
+4. **Missing timestamps on batch traces** → use `-t`
+5. **Checkpoint = conclusion** → NO: consolidate traces into narrative
+6. **Done before commit** → commit first
+7. **Done without reviewing** → always `wl show <id>` first
+8. **Insights = summary** → insights need critical distance, reusable discoveries
+9. **Tracing without starting** → `wl start <id>` before tracing
+10. **Using --force on a task you need to rework** → reopen with `wl start <id>` instead
 
 ## Task Lifecycle
 

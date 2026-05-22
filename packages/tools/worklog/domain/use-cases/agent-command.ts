@@ -98,6 +98,11 @@ ${todos ? `## TODO\n${todos}` : ""}
 
 ---
 
+## Tracing
+
+Trace every event: action taken / problem hit / idea / lead explored / finding / insight.
+Include causes (why failed) and pistes (what next) for context.
+
 ## WORKLOG_TASK_ID
 
 The environment variable is set to: ${resolvedTaskId}

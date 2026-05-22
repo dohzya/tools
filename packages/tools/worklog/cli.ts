@@ -4739,7 +4739,9 @@ const createCmd = new Command()
   });
 
 const traceCmd = new Command()
-  .description("Log an entry (include causes for failures, pistes for pivots)")
+  .description(
+    "Log an entry: action taken, problem hit, idea, lead explored, finding, or insight",
+  )
   .arguments(
     HAS_ENV_TASK_ID
       ? "[taskId:string] [message:string]"
@@ -5934,11 +5936,12 @@ const cli = new Command()
     HAS_ENV_TASK_ID
       ? "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow (WORKLOG_TASK_ID is set):\n" +
-        '  2. wl trace [taskId] "msg"        # Log with causes/pistes + timestamps\n' +
+        '  2. wl trace [taskId] "msg"        # Log: actions, problems, ideas, findings, insights\n' +
         "  3. wl checkpoint [taskId] ...      # Consolidate traces into narrative\n" +
         "  4. wl done [taskId] ...            # Final insights (after git commit!)\n\n" +
         "Key principles:\n" +
         "  - WORKLOG_TASK_ID is set: [taskId] is optional in most commands\n" +
+        "  - What to trace: actions, problems, ideas, leads, findings, insights\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
         "  - Done = final consolidation + insights with critical distance\n" +
@@ -5948,11 +5951,12 @@ const cli = new Command()
       : "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow:\n" +
         '  1. wl create "task"           # Create worktask (returns ID)\n' +
-        '  2. wl trace taskId "msg"        # Log with causes/pistes + timestamps\n' +
+        '  2. wl trace taskId "msg"        # Log: actions, problems, ideas, findings, insights\n' +
         "  3. wl checkpoint taskId ...      # Consolidate traces into narrative\n" +
         "  4. wl done taskId ...            # Final insights (after git commit!)\n\n" +
         "Key principles:\n" +
         "  - Always work within a worktask (create with 'wl create' first)\n" +
+        "  - What to trace: actions, problems, ideas, leads, findings, insights\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
         "  - Done = final consolidation + insights with critical distance\n" +

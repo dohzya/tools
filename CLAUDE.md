@@ -49,7 +49,7 @@ task validate                                   # 5. Validate (MANDATORY)
 
 ## Worklog (MANDATORY)
 
-Create a worktask at the start, trace each significant action, complete after commit.
+Create a worktask at the start. Trace every action taken, problem hit, idea, lead explored, finding, and insight. Complete after commit.
 
 **Good traces = causes + next steps:**
 

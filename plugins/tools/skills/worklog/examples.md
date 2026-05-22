@@ -279,3 +279,4 @@ wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook au
 5. **Review before done** - Use `wl logs` to see full picture
 6. **Insights need distance** - Not "what we did" but "what we learned"
 7. **Done after commit** - Link work to code via commit SHA
+8. **Trace everything** - Actions, problems, ideas, leads, findings, insights -- not just results
