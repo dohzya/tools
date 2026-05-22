@@ -43,7 +43,7 @@ export class ShowTaskUseCase {
     const entriesSinceCheckpoint = this.getEntriesAfterCheckpoint(
       entries,
       meta.last_checkpoint,
-    );
+    ).sort((a, b) => a.ts.localeCompare(b.ts));
 
     // Filter todos if activeOnly
     const filteredTodos = input.activeOnly
@@ -244,7 +244,8 @@ export class ShowTaskUseCase {
       this.formatShort(lastCheckpointTs).replace(" ", "T") + ":00",
     );
     return entries.filter((e) => {
-      const entryDate = new Date(e.ts.replace(" ", "T") + ":00");
+      const effectiveTs = e.added_at ?? e.ts;
+      const entryDate = new Date(effectiveTs.replace(" ", "T") + ":00");
       return entryDate > checkpointDate;
     });
   }

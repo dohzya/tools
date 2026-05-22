@@ -88,7 +88,10 @@ export class AddTraceUseCase {
       nowShort = this.getTimestamp();
     }
 
-    const entry: Entry = { ts: nowShort, msg: input.message };
+    const wallclock = this.getTimestamp();
+    const entry: Entry = nowShort !== wallclock
+      ? { ts: nowShort, msg: input.message, added_at: wallclock }
+      : { ts: nowShort, msg: input.message };
 
     let content = await this.taskRepo.loadContent(taskId);
     content = await this.markdownService.appendEntry(content, entry);
@@ -131,7 +134,8 @@ export class AddTraceUseCase {
     const checkpointStr = lastCheckpointTs.slice(0, 16).replace("T", " ");
     const checkpointDate = new Date(checkpointStr.replace(" ", "T") + ":00");
     return entries.filter((e) => {
-      const entryDate = new Date(e.ts.replace(" ", "T") + ":00");
+      const effectiveTs = e.added_at ?? e.ts;
+      const entryDate = new Date(effectiveTs.replace(" ", "T") + ":00");
       return entryDate > checkpointDate;
     });
   }

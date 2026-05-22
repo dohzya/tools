@@ -63,7 +63,8 @@ export class CreateCheckpointUseCase {
       let needsCheckpoint = meta.has_uncheckpointed_entries;
 
       if (!needsCheckpoint && entries.length > 0) {
-        const lastEntryTs = entries[entries.length - 1].ts;
+        const lastEntry = entries[entries.length - 1];
+        const lastEntryTs = lastEntry.added_at ?? lastEntry.ts;
         if (meta.last_checkpoint) {
           const lastCheckpointDate = this.parseDate(meta.last_checkpoint);
           const lastEntryDate = this.parseDate(lastEntryTs);

@@ -2099,7 +2099,7 @@ function _getEntriesAfterCheckpoint(
   if (!lastCheckpointTs) return entries;
 
   const checkpointDate = parseDate(formatShort(lastCheckpointTs));
-  return entries.filter((e) => parseDate(e.ts) > checkpointDate);
+  return entries.filter((e) => parseDate(e.added_at ?? e.ts) > checkpointDate);
 }
 
 function _getLastCheckpoint(checkpoints: Checkpoint[]): Checkpoint | null {

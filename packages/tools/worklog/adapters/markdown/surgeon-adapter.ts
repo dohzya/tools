@@ -136,8 +136,20 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
             false,
           );
           const contentLines = doc.lines.slice(section.line, sectionEnd);
-          const msg = contentLines.join("\n").trim();
-          entries.push({ ts: section.title, msg });
+          const rawMsg = contentLines.join("\n").trim();
+          // Extract optional [added:: YYYY-MM-DD HH:mm] metadata from first line
+          const addedMatch = rawMsg.match(
+            /^\[added::\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\]\n?([\s\S]*)$/,
+          );
+          if (addedMatch) {
+            entries.push({
+              ts: section.title,
+              msg: addedMatch[2].trim(),
+              added_at: addedMatch[1],
+            });
+          } else {
+            entries.push({ ts: section.title, msg: rawMsg });
+          }
         }
       }
     }
@@ -298,7 +310,8 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
 
     // Add entries
     for (const entry of entries) {
-      content += `\n## ${entry.ts}\n${entry.msg}\n`;
+      const addedLine = entry.added_at ? `[added:: ${entry.added_at}]\n` : "";
+      content += `\n## ${entry.ts}\n${addedLine}${entry.msg}\n`;
     }
 
     content += `\n# Checkpoints`;
@@ -362,7 +375,8 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
       ? checkpointsSection.line - 2 // Before blank line before # Checkpoints
       : this.readSectionUC.getSectionEndLine(doc, entriesSection, true);
 
-    const entryText = `\n## ${entry.ts}\n${entry.msg}\n`;
+    const addedLine = entry.added_at ? `[added:: ${entry.added_at}]\n` : "";
+    const entryText = `\n## ${entry.ts}\n${addedLine}${entry.msg}\n`;
     const entryLines = entryText.split("\n");
 
     // Copy to mutable array (doc.lines is readonly)

@@ -5935,3 +5935,132 @@ Deno.test(
     }
   },
 );
+
+// --- Integration tests for added_at feature ---
+
+Deno.test("worklog trace - backdated trace after checkpoint appears in entries_since_checkpoint", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["create", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Add a trace and checkpoint
+    await main(["trace", taskId, "Before checkpoint"]);
+    await main(["checkpoint", taskId, "Changes", "Insights"]);
+
+    // Move the checkpoint timestamp back so the next added_at is clearly after it
+    const taskPath = `.worklog/tasks/${taskId}.md`;
+    let taskContent = await Deno.readTextFile(taskPath);
+    taskContent = taskContent.replace(
+      /last_checkpoint: '[^']+'/,
+      "last_checkpoint: '2020-01-01T00:00:00+01:00'",
+    );
+    await Deno.writeTextFile(taskPath, taskContent);
+
+    // Add a backdated trace (ts before checkpoint, but added_at = NOW > checkpoint)
+    await main([
+      "trace",
+      taskId,
+      "Backdated entry",
+      "-t",
+      "2019-06-15T10:00:00+01:00",
+    ]);
+
+    // Show --json and verify the backdated trace appears in entries_since_checkpoint
+    const showOutput = await captureOutput(() =>
+      main(["show", taskId, "--json"])
+    );
+    const result = JSON.parse(showOutput);
+
+    // The backdated entry's ts (2019) is before checkpoint (2020),
+    // but its added_at (now, 2026) is after → it should appear.
+    const backdatedEntries = result.entries_since_checkpoint.filter(
+      (e: { msg: string }) => e.msg === "Backdated entry",
+    );
+    assertEquals(backdatedEntries.length, 1);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog trace - backdated trace stores added_at metadata in task file", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["create", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Add a backdated trace
+    await main([
+      "trace",
+      taskId,
+      "Historical entry",
+      "-t",
+      "2020-06-15T10:00:00+02:00",
+    ]);
+
+    // Read the raw task file and verify [added:: ...] metadata is present
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    assertStringIncludes(taskContent, "[added:: ");
+    assertStringIncludes(taskContent, "## 2020-06-15 10:00");
+    assertStringIncludes(taskContent, "Historical entry");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog show - entries sorted by event timestamp", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["create", "Test task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    // Add a normal trace (current time)
+    await main(["trace", taskId, "Recent entry"]);
+
+    // Add a backdated trace (event time before the first trace)
+    await main([
+      "trace",
+      taskId,
+      "Older entry",
+      "-t",
+      "2020-01-01T09:00:00+01:00",
+    ]);
+
+    // Show --json and verify entries are sorted by ts (event time)
+    const showOutput = await captureOutput(() =>
+      main(["show", taskId, "--json"])
+    );
+    const result = JSON.parse(showOutput);
+
+    assertEquals(result.entries_since_checkpoint.length, 2);
+    // Backdated entry (2020) should come first
+    assertEquals(result.entries_since_checkpoint[0].msg, "Older entry");
+    assertEquals(result.entries_since_checkpoint[1].msg, "Recent entry");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});

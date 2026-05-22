@@ -92,6 +92,8 @@ export interface Entry {
   ts: string;
   /** Trace message content. */
   msg: string;
+  /** Wall-clock time when trace was invoked (set only when ts differs from current time). */
+  added_at?: string;
 }
 
 /** A checkpoint that consolidates recent trace entries. */

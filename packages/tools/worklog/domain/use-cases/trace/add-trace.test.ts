@@ -354,3 +354,119 @@ Deno.test("AddTraceUseCase - cancelled error message includes short ID and reope
     true,
   );
 });
+
+// --- Tests for added_at feature ---
+
+Deno.test("AddTraceUseCase - sets added_at when custom timestamp is provided", async () => {
+  const indexRepo = createMockIndexRepo({
+    [TASK_ID]: makeIndexEntry({ status: "started" }),
+  });
+  const taskRepo = createMockTaskRepo({
+    [TASK_ID]: makeTaskFileData({ status: "started" }),
+  });
+  const markdownService = createMockMarkdownService();
+
+  const useCase = new AddTraceUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+    () => "2026-05-22 14:00",
+  );
+
+  await useCase.execute({
+    taskId: TASK_ID,
+    message: "Backdated entry",
+    timestamp: "2026-05-20T10:00:00+02:00",
+  });
+
+  assertEquals(markdownService.appendedEntries.length, 1);
+  // deno-lint-ignore dz-tools/no-type-assertion
+  const appended = markdownService.appendedEntries[0] as {
+    ts: string;
+    msg: string;
+    added_at?: string;
+  };
+  assertEquals(appended.ts, "2026-05-20 10:00");
+  assertEquals(appended.added_at, "2026-05-22 14:00");
+});
+
+Deno.test("AddTraceUseCase - does not set added_at when no custom timestamp", async () => {
+  const indexRepo = createMockIndexRepo({
+    [TASK_ID]: makeIndexEntry({ status: "started" }),
+  });
+  const taskRepo = createMockTaskRepo({
+    [TASK_ID]: makeTaskFileData({ status: "started" }),
+  });
+  const markdownService = createMockMarkdownService();
+
+  const useCase = new AddTraceUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+    () => "2026-05-22 14:00",
+  );
+
+  await useCase.execute({
+    taskId: TASK_ID,
+    message: "Normal entry",
+  });
+
+  assertEquals(markdownService.appendedEntries.length, 1);
+  // deno-lint-ignore dz-tools/no-type-assertion
+  const appended = markdownService.appendedEntries[0] as {
+    ts: string;
+    msg: string;
+    added_at?: string;
+  };
+  assertEquals(appended.ts, "2026-05-22 14:00");
+  assertEquals(appended.added_at, undefined);
+});
+
+Deno.test("AddTraceUseCase - getEntriesAfterCheckpoint uses added_at for filtering", async () => {
+  // Checkpoint at 2026-05-21 12:00.
+  // 50 entries all have ts BEFORE checkpoint (2026-05-20) but added_at AFTER (2026-05-22).
+  // Old code filters by ts → 0 entries → status "ok".
+  // New code filters by (added_at ?? ts) → 50 entries → status "checkpoint_recommended".
+  const backdatedEntries = Array.from({ length: 50 }, (_, i) => ({
+    ts: `2026-05-20 ${String(Math.floor(i / 60)).padStart(2, "0")}:${
+      String(i % 60).padStart(2, "0")
+    }`,
+    msg: `entry ${i}`,
+    added_at: "2026-05-22 14:00",
+  }));
+
+  const indexRepo = createMockIndexRepo({
+    [TASK_ID]: makeIndexEntry({ status: "started" }),
+  });
+  const taskRepo = createMockTaskRepo({
+    [TASK_ID]: makeTaskFileData({
+      status: "started",
+      last_checkpoint: "2026-05-21T12:00:00+02:00",
+    }),
+  });
+  const markdownService = createMockMarkdownService();
+  // Override parseTaskFile to return our backdated entries
+  markdownService.parseTaskFile = async () => ({
+    // deno-lint-ignore dz-tools/no-type-assertion
+    meta: {} as any,
+    entries: backdatedEntries,
+    checkpoints: [],
+    todos: [],
+  });
+
+  const useCase = new AddTraceUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+    () => "2026-05-22 14:00",
+  );
+
+  const result = await useCase.execute({
+    taskId: TASK_ID,
+    message: "One more backdated entry",
+    timestamp: "2026-05-20T10:00:00+02:00",
+  });
+
+  assertEquals(result.status, "checkpoint_recommended");
+  assertEquals(result.entries_since_checkpoint, 50);
+});

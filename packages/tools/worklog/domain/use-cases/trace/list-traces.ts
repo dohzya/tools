@@ -27,7 +27,7 @@ export class ListTracesUseCase {
     return {
       task: taskId,
       desc: taskData.meta.desc,
-      entries: taskData.entries,
+      entries: [...taskData.entries].sort((a, b) => a.ts.localeCompare(b.ts)),
     };
   }
 
