@@ -1,7 +1,7 @@
 // Integration tests for recap CLI
 // Tests use Deno.makeTempDir() for isolation
 
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertMatch, assertStringIncludes } from "@std/assert";
 import { join } from "node:path";
 import { resolveConfig } from "./domain/use-cases/resolve-config.ts";
 import { renderRecap } from "./domain/use-cases/render-recap.ts";
@@ -722,6 +722,21 @@ Deno.test("DenoGitInfo.getGitLog - no ANSI when useColor=false", async () => {
     assertEquals(result.lines.length > 0, true);
     const hasAnsi = result.lines.some((l) => l.includes("\x1b["));
     assertEquals(hasAnsi, false);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("DenoGitInfo.getGitLog - includes ref decorations (branch names)", async () => {
+  const tempDir = await makeTempRepoWithCommit();
+  try {
+    const adapter = new DenoGitInfo();
+    // HEAD commit should show branch decoration in no-color mode
+    const result = await adapter.getGitLog(tempDir, 5, false);
+    assertEquals(result.lines.length > 0, true);
+    // The HEAD commit line should contain a ref decoration like (HEAD -> main)
+    const headLine = result.lines[0];
+    assertMatch(headLine, /\(HEAD/);
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }

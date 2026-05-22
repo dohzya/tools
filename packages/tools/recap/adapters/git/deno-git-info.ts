@@ -164,8 +164,8 @@ export class DenoGitInfo implements GitInfoProvider {
     // (yellow), but git only emits the ANSI when color.ui resolves to "always".
     const colorPrefix = useColor ? ["-c", "color.ui=always"] : [];
     const prettyFormat = useColor
-      ? "--pretty=format:%C(auto)%h%Creset %s"
-      : "--pretty=format:%h %s";
+      ? "--pretty=format:%C(auto)%h%d%Creset %s"
+      : "--pretty=format:%h%d %s";
     const logResult = await gitArgs([
       ...colorPrefix,
       ...logBaseArgs,
