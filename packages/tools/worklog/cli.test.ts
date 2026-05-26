@@ -1366,6 +1366,63 @@ Deno.test("worklog purge - preserves tasks with uncheckpointed entries", async (
   }
 });
 
+Deno.test("worklog run - uses WORKLOG_TASK_ID when taskId is omitted", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["create", "Run task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = ExplicitCast.fromAny(JSON.parse(listOutput))
+      .dangerousCast<{ tasks: Array<{ id: string }> }>();
+    const taskId = tasks[0].id;
+
+    const cliUrl = new URL("./cli.ts", import.meta.url).href;
+    const expectedEnvKey = "EXPECTED_WORKLOG_TASK_ID";
+    const checkEnvScript =
+      `if (Deno.env.get("WORKLOG_TASK_ID") !== Deno.env.get("${expectedEnvKey}")) Deno.exit(42);`;
+
+    const process = new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        cliUrl,
+        "run",
+        "--json",
+        Deno.execPath(),
+        "eval",
+        checkEnvScript,
+      ],
+      cwd: tempDir,
+      env: {
+        WORKLOG_TASK_ID: taskId,
+        [expectedEnvKey]: taskId,
+      },
+    });
+
+    const result = await process.output();
+    const stderr = new TextDecoder().decode(result.stderr);
+    assertEquals(result.code, 0, stderr);
+
+    const stdout = new TextDecoder().decode(result.stdout).trim();
+    const output = ExplicitCast.fromAny(JSON.parse(stdout)).dangerousCast<{
+      taskId: string;
+      exitCode: number;
+      created: boolean;
+    }>();
+
+    assertEquals(output.taskId, taskId);
+    assertEquals(output.exitCode, 0);
+    assertEquals(output.created, false);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("worklog - JSON output for list command", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

@@ -49,7 +49,7 @@ deno install -g --allow-read --allow-write -n md \
   jsr:@dohzya/tools/markdown-surgeon/cli
 
 # Install wl
-deno install -g --allow-read --allow-write --allow-run=git -n wl \
+deno install -g --allow-read --allow-write --allow-env --allow-run=git,claude,codex -n wl \
   jsr:@dohzya/tools/worklog/cli
 ```
 

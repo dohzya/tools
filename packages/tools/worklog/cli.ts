@@ -5190,6 +5190,37 @@ const runCmd = new Command()
       if (options.create) {
         // wl run --create "name" <cmd...>
         cmd = args;
+      } else if (HAS_ENV_TASK_ID) {
+        // wl run <cmd...> inside an agent session uses WORKLOG_TASK_ID.
+        // Preserve explicit task id support when the first argument resolves.
+        if (args.length === 0) {
+          throw new WtError("invalid_args", "No command provided to execute");
+        }
+        if (args.length >= 2) {
+          try {
+            const resolved = await resolveTaskIdAcrossScopes(
+              args[0],
+              options.scope ? null : gitRoot,
+            );
+            taskId = resolved;
+            cmd = args.slice(1);
+          } catch (e) {
+            if (!(e instanceof WtError) || e.code !== "task_not_found") {
+              throw e;
+            }
+            taskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+              undefined,
+              options.scope ? null : gitRoot,
+            );
+            cmd = args;
+          }
+        } else {
+          taskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+            undefined,
+            options.scope ? null : gitRoot,
+          );
+          cmd = args;
+        }
       } else {
         // wl run <taskId> <cmd...>
         if (args.length < 2) {
