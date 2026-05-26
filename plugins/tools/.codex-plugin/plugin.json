@@ -1,0 +1,22 @@
+{
+  "name": "tools",
+  "version": "0.15.0",
+  "description": "Markdown manipulation and productivity skills for Codex",
+  "author": {
+    "name": "Etienne Vallette d'Osia"
+  },
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Tools",
+    "shortDescription": "Markdown and worklog skills for Codex",
+    "developerName": "Etienne Vallette d'Osia",
+    "category": "Productivity",
+    "capabilities": ["Write"],
+    "defaultPrompt": [
+      "Edit a Markdown section surgically.",
+      "Track this development task with worklog.",
+      "Generate a concise REX from this session."
+    ]
+  }
+}

@@ -73,6 +73,19 @@ wl done <id> ["same as checkpoint"]  # args optional if no new traces since last
 
 See [reference.md](reference.md) for full reference (TODOs, state transitions, metadata, etc.).
 
+## Agent Support
+
+`wl` supports Claude Code and Codex explicitly:
+
+```bash
+wl claude <task-id>
+wl codex <task-id>
+wl agent <task-id>          # auto-detect
+wl checkpoint --agent -q    # auto-detect active agent
+```
+
+Codex support is CLI-based through `wl codex`, `--codex`, and `--agent`. Claude Code hooks below do not configure Codex automatically unless the Codex environment provides an equivalent hook mechanism.
+
 ## Claude Code Hooks
 
 Inject task context on session start, auto-checkpoint before compaction. Add to `~/.claude/settings.json`:

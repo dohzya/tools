@@ -73,7 +73,18 @@ tasks:
       - cd packages/tools && deno task validate
 
   validate:plugin:
-    desc: "Validate plugin manifests (requires claude CLI)"
+    desc: "Validate plugin manifests"
+    cmds:
+      - task: validate:plugin:codex
+      - task: validate:plugin:claude
+
+  validate:plugin:codex:
+    desc: "Validate Codex plugin metadata"
+    cmds:
+      - deno run --allow-read scripts/validate-codex-plugin.ts
+
+  validate:plugin:claude:
+    desc: "Validate Claude plugin manifests (requires claude CLI)"
     cmds:
       - claude plugin validate .
       - claude plugin validate ./plugins/tools

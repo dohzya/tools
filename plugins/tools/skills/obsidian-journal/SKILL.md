@@ -29,7 +29,7 @@ Journal/2026/2026-01/2026-01-05/202601051447.md
 ---
 Date: YYYY-MM-DD
 Day: "[[YYYY-MM-DD|YYYY-MM-DD]]"
-tags: [Journal, Claude]
+tags: [Journal, AI]
 ---
 
 # Title
@@ -40,7 +40,7 @@ Summary and content here...
 ## Guidelines
 
 1. **Timestamp**: Use current date/time for the path and frontmatter
-2. **Tags**: Always include `Journal` and `Claude`. Add `REX` when storing a REX/post-mortem. Only add other tags if explicitly provided by the user
+2. **Tags**: Always include `Journal` and an agent tag. Use `Claude` under Claude Code, `Codex` under Codex, and `AI` when the agent is unknown. Add `REX` when storing a REX/post-mortem. Only add other tags if explicitly provided by the user
 3. **Title**: Generate a concise, descriptive title based on the content
 4. **Content**: Structure as clean markdown with:
    - A generated summary when saving conversation context

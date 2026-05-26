@@ -9,7 +9,13 @@ user-invocable: false
 CLI `md` to manipulate Markdown by section. Each section has an 8-char hex ID based on level + title + occurrence.
 
 ```bash
-~/.claude/skills/markdown-surgeon/md <command> [options]
+md <command> [options]
+```
+
+For repository development, use the local entrypoint so you test this checkout instead of the installed JSR version:
+
+```bash
+deno -A packages/tools/markdown-surgeon/cli.ts <command>
 ```
 
 ## Examples

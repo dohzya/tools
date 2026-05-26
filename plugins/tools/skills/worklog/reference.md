@@ -466,7 +466,20 @@ wl cancel <id> "Requirements changed, no longer needed"
 
 Cancelled tasks appear in `wl list --cancelled` but not in default `wl list`.
 
-## Claude Code Hooks
+## Agent Hooks
+
+`wl` supports Claude Code and Codex through explicit agent commands:
+
+```bash
+wl claude <task-id>
+wl codex <task-id>
+wl agent <task-id>
+wl checkpoint --agent -q
+```
+
+Use the Claude Code hook configuration below for Claude Code. Codex support is available through `wl codex`, `--codex`, and `--agent`, but these hooks do not install a Codex hook unless the Codex environment provides an equivalent mechanism.
+
+### Claude Code Hooks
 
 Configure `wl` as Claude Code hooks for automatic checkpoints on context compaction and context injection on session start.
 

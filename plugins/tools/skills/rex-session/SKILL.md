@@ -1,6 +1,6 @@
 ---
 name: rex-session
-description: Generate a structured REX (Retour d'EXpérience / Post-Mortem) from technical conversations. Use when the user explicitly requests a REX, recap, post-mortem, or learning summary of a conversation - typically after completing a technical task, debugging session, or development work. Particularly useful for long claude-code sessions that need to be condensed into actionable insights.
+description: Generate a structured REX (Retour d'EXpérience / Post-Mortem) from technical conversations. Use when the user explicitly requests a REX, recap, post-mortem, or learning summary of a conversation - typically after completing a technical task, debugging session, or development work. Particularly useful for long coding-agent sessions that need to be condensed into actionable insights.
 ---
 
 # REX Session Generator

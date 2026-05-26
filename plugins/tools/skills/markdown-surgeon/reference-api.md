@@ -5,8 +5,11 @@ Complete reference for building tools on top of `md`.
 ## Installation
 
 ```bash
-# CLI (requires Deno)
-~/.claude/skills/markdown-surgeon/md <command> [options]
+# CLI
+md <command> [options]
+
+# Local repository development
+deno -A packages/tools/markdown-surgeon/cli.ts <command>
 
 # TypeScript import
 import { main } from "./src/mod.ts";
