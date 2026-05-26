@@ -1471,6 +1471,46 @@ Deno.test("worklog - handles missing index.json", async () => {
   }
 });
 
+Deno.test("worklog list - missing .worklog suggests wl init", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+
+    try {
+      await main(["list"]);
+    } catch (_e) {
+      // Expected: main exits after reporting the missing worklog.
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Worklog not initialized");
+    assertStringIncludes(errorOutput, "wl init");
+    assertEquals(errorOutput.includes("Worktrack"), false);
+    assertEquals(errorOutput.includes("wt init"), false);
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("worklog - handles corrupted frontmatter gracefully", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

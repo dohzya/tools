@@ -40,7 +40,7 @@ export class JsonIndexRepository implements IndexRepository {
     if (!(await this.fs.exists(this.indexPath))) {
       throw new WtError(
         "not_initialized",
-        "Worktrack not initialized. Run 'wt init' first.",
+        "Worklog not initialized. Run 'wl init' first.",
       );
     }
 

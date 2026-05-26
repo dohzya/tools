@@ -799,7 +799,7 @@ async function loadIndex(): Promise<Index> {
   if (!(await exists(INDEX_FILE))) {
     throw new WtError(
       "not_initialized",
-      "Worktrack not initialized. Run 'wt init' first.",
+      "Worklog not initialized. Run 'wl init' first.",
     );
   }
   const content = await readFile(INDEX_FILE);
