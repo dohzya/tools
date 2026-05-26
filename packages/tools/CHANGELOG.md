@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [wl-v0.16.0] — 2026-05-26
+
+### Added
+
+- **worklog:** Codex agent support via `wl codex`, `--codex`, and `wl agent` auto-detection, including environment-backed task resolution for agent sessions.
+- **worklog:** `wl claude` now supports the `agents` subcommand shape, alongside existing Claude command forms.
+- **plugins:** Codex plugin metadata and validation, with `task validate:plugin:codex` included in the standard plugin validation flow.
+- **docs:** Codex setup documentation and agent-neutral worklog guidance across repo and skill docs.
+
+### Changed
+
+- **worklog:** Checkpoint terminology is now `insights` instead of `learnings`, with legacy `### Learnings` headings still readable from existing task files.
+- **worklog:** Agent prompts and skill docs now explicitly require tracing actions, problems, ideas, leads, findings, and insights so checkpoints have complete source material.
+
+### Fixed
+
+- **worklog:** Backdated traces are no longer skipped by checkpoint detection when their event timestamp predates an existing checkpoint but their add time is newer.
+- **worklog:** `done --claude` falls through to normal completion when there are no uncheckpointed entries, instead of requiring unnecessary synthesis.
+- **worklog:** Missing worklog initialization errors now correctly tell users to run `wl init`.
+
 ## [wl-v0.15.0] — 2026-05-13
 
 ### Added
