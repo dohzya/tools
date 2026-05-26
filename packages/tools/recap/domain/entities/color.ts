@@ -1,6 +1,4 @@
-// Color palette — wraps @std/fmt/colors with on/off switch
-
-import { bold, cyan, dim, green, red } from "@std/fmt/colors";
+// Color palette — wraps ANSI styles with an on/off switch.
 
 /** Set of color/formatting functions for rendering recap output. */
 export type Palette = {
@@ -17,6 +15,30 @@ export type Palette = {
   /** Success / normal output */
   readonly normal: (s: string) => string;
 };
+
+function ansi(open: string, close: string, s: string): string {
+  return `\x1b[${open}m${s}\x1b[${close}m`;
+}
+
+function bold(s: string): string {
+  return ansi("1", "22", s);
+}
+
+function cyan(s: string): string {
+  return ansi("36", "39", s);
+}
+
+function dim(s: string): string {
+  return ansi("2", "22", s);
+}
+
+function green(s: string): string {
+  return ansi("32", "39", s);
+}
+
+function red(s: string): string {
+  return ansi("31", "39", s);
+}
 
 /** Returns a palette with ANSI colors. When useColor=false, all functions are identity. */
 export function createPalette(useColor: boolean): Palette {
@@ -36,8 +58,8 @@ export function createPalette(useColor: boolean): Palette {
     title: (s: string) => bold(cyan(s)),
     separator: (s: string) => dim(s),
     error: (s: string) => red(s),
-    bold: (s: string) => bold(s),
-    dim: (s: string) => dim(s),
+    bold,
+    dim,
     normal: (s: string) => green(s),
   };
 }

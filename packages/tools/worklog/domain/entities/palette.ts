@@ -5,14 +5,12 @@
  * and pass it here. When `useColor=false`, every function is the identity,
  * so formatters can call them blindly without branching on color support.
  *
- * Why this exists: `@std/fmt/colors` only checks `Deno.noColor` — it does NOT
- * auto-detect a piped stdout. Without our own gate, `wl | less` would emit
- * raw ANSI escapes.
+ * Why this exists: the CLI owns color policy. Without our own gate,
+ * `wl | less` would emit raw ANSI escapes.
  *
  * @module
  */
 
-import { bold, rgb24 } from "@std/fmt/colors";
 import type { Theme } from "./theme.ts";
 
 /** Render functions for each {@link Theme} semantic role. */
@@ -35,6 +33,18 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   // validation is needed beyond what the type already implies.
   const n = parseInt(hex.slice(1), 16);
   return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff };
+}
+
+function ansi(open: string, close: string, s: string): string {
+  return `\x1b[${open}m${s}\x1b[${close}m`;
+}
+
+function rgb24(s: string, rgb: { r: number; g: number; b: number }): string {
+  return ansi(`38;2;${rgb.r};${rgb.g};${rgb.b}`, "39", s);
+}
+
+function bold(s: string): string {
+  return ansi("1", "22", s);
 }
 
 /**
