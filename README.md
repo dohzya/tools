@@ -135,6 +135,11 @@ deno -A packages/tools/worklog/cli.ts <command>
 deno -A packages/tools/markdown-surgeon/cli.ts <command>
 ```
 
+CLI test environment notes:
+
+- Unset `NO_COLOR` when running tests that assert ANSI-colored output.
+- Unset `WORKLOG_TASK_ID` when running worklog tests so agent context does not change CLI defaults.
+
 See [AGENTS.md](AGENTS.md) for AI agent guidelines when contributing.
 
 ## Documentation

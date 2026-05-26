@@ -98,6 +98,11 @@ deno fmt        # MANDATORY — CI checks markdown formatting too
 
 **Writing tests:** Use `Deno.makeTempDir()` and `createTempFile()`, never `/tmp/test-vault`.
 
+**CLI test environment:**
+
+- Unset `NO_COLOR` when tests assert ANSI-colored output.
+- Unset `WORKLOG_TASK_ID` when running worklog tests so agent context does not change CLI defaults.
+
 ### Comments
 
 **Rule: Provide info NOT obvious from code.**
