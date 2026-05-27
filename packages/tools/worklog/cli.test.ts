@@ -4245,6 +4245,78 @@ Deno.test("cross-scope - show child task from parent scope", async () => {
   }
 });
 
+Deno.test("create --scope stores new task in the target child scope", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot } = await setupCrossScopeFixture(tempDir);
+
+    Deno.chdir(gitRoot);
+    await main(["create", "--scope", "api", "Scoped creation"]);
+
+    const parentIndex = JSON.parse(
+      await Deno.readTextFile(`${gitRoot}/.worklog/index.json`),
+    );
+    const childIndex = JSON.parse(
+      await Deno.readTextFile(`${gitRoot}/packages/api/.worklog/index.json`),
+    );
+
+    const parentNames = Object.values(parentIndex.tasks).map((task) =>
+      ExplicitCast.fromAny(task).dangerousCast<{ name: string }>().name
+    );
+    const childNames = Object.values(childIndex.tasks).map((task) =>
+      ExplicitCast.fromAny(task).dangerousCast<{ name: string }>().name
+    );
+
+    assertEquals(parentNames.includes("Scoped creation"), false);
+    assertEquals(childNames.includes("Scoped creation"), true);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create --scope does not fall back to current scope when target is missing", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  Object.assign(Deno, {
+    exit(code: number) {
+      exitCode = code;
+      throw new Error("EXIT");
+    },
+  });
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    await new Deno.Command("git", { args: ["init"], cwd: tempDir }).output();
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    try {
+      await main(["create", "--scope", "missing", "Wrong place"]);
+    } catch {
+      // Deno.exit is mocked to throw so the test can inspect the result.
+    }
+
+    const index = JSON.parse(await Deno.readTextFile(".worklog/index.json"));
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Scope not found: missing");
+    assertEquals(Object.keys(index.tasks).length, 0);
+  } finally {
+    Object.assign(Deno, { exit: originalExit });
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("cross-scope - explicit scope:prefix syntax resolves child task", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

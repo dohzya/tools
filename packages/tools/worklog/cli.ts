@@ -4080,8 +4080,11 @@ async function resolveScopeContext(
       if (scopeDir && scopeDir !== cwd) {
         Deno.chdir(scopeDir);
       }
-    } catch {
-      // If scope resolution fails, continue with current directory (backward compat)
+    } catch (error) {
+      if (scopeFlag) {
+        throw error;
+      }
+      // If implicit scope discovery fails, continue with current directory.
     }
   }
 
