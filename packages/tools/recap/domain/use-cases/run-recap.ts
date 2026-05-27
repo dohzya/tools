@@ -1,6 +1,6 @@
 // run-recap use case — orchestrates resolve → collect → render
 
-import type { RecapConfig } from "../entities/config.ts";
+import type { RawConfig, RecapConfig } from "../entities/config.ts";
 import type { SectionData } from "../entities/section-data.ts";
 import type { Palette } from "../entities/color.ts";
 import type { ShellRunner } from "../ports/shell-runner.ts";
@@ -44,6 +44,20 @@ export type RunRecapDependencies = {
   readonly configResolver: ConfigResolver;
 };
 
+/** Config file source loaded during discovery. */
+export type LoadedConfigSource = {
+  readonly kind: "explicit" | "global" | "local";
+  readonly path: string;
+  readonly config: RawConfig;
+};
+
+/** Result of loading config files before resolving refs and env overrides. */
+export type LoadedRecapConfig = {
+  readonly rawGlobalConfig: RawConfig | null;
+  readonly rawLocalConfig: RawConfig | null;
+  readonly sources: readonly LoadedConfigSource[];
+};
+
 /** Result of a full recap run, containing collected sections and rendered text. */
 export type RunRecapResult = {
   /** Collected section data from all configured sections. */
@@ -51,6 +65,90 @@ export type RunRecapResult = {
   /** Rendered text output (formatted or plain). */
   readonly text: string;
 };
+
+const CONFIG_FILENAMES = ["recap.yaml", "recap.yml"] as const;
+
+function configCandidates(root: string): string[] {
+  return CONFIG_FILENAMES.map((filename) => `${root}/.config/${filename}`);
+}
+
+async function loadFirstExistingConfig(
+  kind: LoadedConfigSource["kind"],
+  paths: readonly string[],
+  configResolver: ConfigResolver,
+): Promise<LoadedConfigSource | null> {
+  for (const path of paths) {
+    const config = await configResolver.loadConfig(path);
+    if (config !== null) {
+      return { kind, path, config };
+    }
+  }
+  return null;
+}
+
+/**
+ * Load config files using the same discovery rules as a normal recap run.
+ */
+export async function loadRecapConfig(
+  options: Pick<RunRecapOptions, "configPath" | "cwd">,
+  deps: Pick<RunRecapDependencies, "env" | "configResolver">,
+): Promise<LoadedRecapConfig> {
+  const cwd = options.cwd ?? deps.env.cwd();
+  const home = deps.env.home();
+  const sources: LoadedConfigSource[] = [];
+
+  let rawGlobalConfig: RawConfig | null = null;
+  let rawLocalConfig: RawConfig | null = null;
+
+  if (options.configPath) {
+    const config = await deps.configResolver.loadConfig(options.configPath);
+    if (config !== null) {
+      rawLocalConfig = config;
+      sources.push({
+        kind: "explicit",
+        path: options.configPath,
+        config,
+      });
+    }
+  } else {
+    if (home) {
+      const globalSource = await loadFirstExistingConfig(
+        "global",
+        configCandidates(home),
+        deps.configResolver,
+      );
+      if (globalSource !== null) {
+        rawGlobalConfig = globalSource.config;
+        sources.push(globalSource);
+      }
+    }
+
+    const localSource = await loadFirstExistingConfig(
+      "local",
+      configCandidates(cwd),
+      deps.configResolver,
+    );
+    if (localSource !== null) {
+      rawLocalConfig = localSource.config;
+      sources.push(localSource);
+    }
+  }
+
+  return {
+    rawGlobalConfig,
+    rawLocalConfig,
+    sources,
+  };
+}
+
+function envOverridesFrom(env: Environment): Record<string, string> {
+  const envOverrides: Record<string, string> = {};
+  const maxCommits = env.getEnv("MAX_COMMITS");
+  if (maxCommits) envOverrides["MAX_COMMITS"] = maxCommits;
+  const maxWorktasks = env.getEnv("MAX_WORKTASKS");
+  if (maxWorktasks) envOverrides["MAX_WORKTASKS"] = maxWorktasks;
+  return envOverrides;
+}
 
 /**
  * Full recap run: resolve config → collect sections → render.
@@ -62,36 +160,12 @@ export async function runRecap(
 ): Promise<RunRecapResult> {
   // Use explicit cwd if provided, otherwise fall back to the env cwd
   const cwd = options.cwd ?? deps.env.cwd();
-  const home = deps.env.home();
-
-  // Determine config paths
-  let rawGlobalConfig = null;
-  let rawLocalConfig = null;
-
-  if (options.configPath) {
-    // Explicit config path — treat as local
-    rawLocalConfig = await deps.configResolver.loadConfig(options.configPath);
-  } else {
-    // Auto-discovery
-    if (home) {
-      const globalPath = `${home}/.config/recap.yaml`;
-      rawGlobalConfig = await deps.configResolver.loadConfig(globalPath);
-    }
-    const localPath = `${cwd}/.config/recap.yaml`;
-    rawLocalConfig = await deps.configResolver.loadConfig(localPath);
-  }
-
-  // Resolve env overrides
-  const envOverrides: Record<string, string> = {};
-  const maxCommits = deps.env.getEnv("MAX_COMMITS");
-  if (maxCommits) envOverrides["MAX_COMMITS"] = maxCommits;
-  const maxWorktasks = deps.env.getEnv("MAX_WORKTASKS");
-  if (maxWorktasks) envOverrides["MAX_WORKTASKS"] = maxWorktasks;
+  const loadedConfig = await loadRecapConfig(options, deps);
 
   const config: RecapConfig = resolveConfig({
-    rawGlobalConfig,
-    rawLocalConfig,
-    envOverrides,
+    rawGlobalConfig: loadedConfig.rawGlobalConfig,
+    rawLocalConfig: loadedConfig.rawLocalConfig,
+    envOverrides: envOverridesFrom(deps.env),
   });
 
   const sections = await collectSections(config, {

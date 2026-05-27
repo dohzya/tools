@@ -378,6 +378,182 @@ sections:
   }
 });
 
+Deno.test("recap CLI - discovers .config/recap.yml", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yml"),
+      `
+sections:
+  - id: yml-marker
+    value: "YML_FOUND"
+`,
+    );
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "yml-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "YML_FOUND");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - config show emits flat resolved YAML", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yaml"),
+      `
+sections:
+  - ref: git-log
+    max_lines: 2
+  - id: local-marker
+    value: "LOCAL_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "config", "show"]);
+    });
+
+    assertEquals(output.includes("local:"), false);
+    assertEquals(output.includes("global:"), false);
+    assertEquals(output.includes("default:"), false);
+    assertStringIncludes(output, "sections:");
+    assertStringIncludes(output, "id: git-log");
+    assertStringIncludes(output, "builtin: git-log");
+    assertStringIncludes(output, "max_lines: 2");
+    assertStringIncludes(output, "id: local-marker");
+    assertStringIncludes(output, "value: LOCAL_FOUND");
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - config files lists loaded config files from local to global", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    const localPath = join(tempDir, ".config", "recap.yaml");
+    const globalPath = join(homeDir, ".config", "recap.yaml");
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      localPath,
+      `
+sections:
+  - id: local-marker
+    value: "LOCAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      globalPath,
+      `
+sections:
+  - id: global-marker
+    value: "GLOBAL_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "config", "files"]);
+    });
+
+    const localIndex = output.indexOf(localPath);
+    const globalIndex = output.indexOf(globalPath);
+    assertEquals(localIndex >= 0, true);
+    assertEquals(globalIndex > localIndex, true);
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - config files -v shows configs from local to default", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    const localPath = join(tempDir, ".config", "recap.yaml");
+    const globalPath = join(homeDir, ".config", "recap.yaml");
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      localPath,
+      `
+sections:
+  - id: local-marker
+    value: "LOCAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      globalPath,
+      `
+sections:
+  - id: global-marker
+    value: "GLOBAL_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "config", "files", "-v"]);
+    });
+
+    const localIndex = output.indexOf(`local: ${localPath}`);
+    const globalIndex = output.indexOf(`global: ${globalPath}`);
+    const defaultIndex = output.indexOf("default: built-in");
+    assertEquals(localIndex >= 0, true);
+    assertEquals(globalIndex > localIndex, true);
+    assertEquals(defaultIndex > globalIndex, true);
+    assertStringIncludes(output, "id: local-marker");
+    assertStringIncludes(output, "value: LOCAL_FOUND");
+    assertStringIncludes(output, "id: global-marker");
+    assertStringIncludes(output, "value: GLOBAL_FOUND");
+    assertStringIncludes(output, "id: git-log");
+    assertStringIncludes(output, "builtin: git-log");
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
 Deno.test("recap CLI - value section with interpolation", () => {
   const config = resolveConfig({
     rawLocalConfig: {

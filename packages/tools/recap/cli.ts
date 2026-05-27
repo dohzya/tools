@@ -6,9 +6,21 @@
 
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
+import { stringify as stringifyYaml } from "@std/yaml";
 import { createPalette } from "./domain/entities/color.ts";
-import { runRecap } from "./domain/use-cases/run-recap.ts";
+import type {
+  RawConfig,
+  RecapConfig,
+  ResolvedSection,
+} from "./domain/entities/config.ts";
+import {
+  type LoadedConfigSource,
+  loadRecapConfig,
+  runRecap,
+} from "./domain/use-cases/run-recap.ts";
+import { resolveConfig } from "./domain/use-cases/resolve-config.ts";
 import { generateConfigContent } from "./domain/use-cases/init-config.ts";
+import { HARDCODED_SECTIONS } from "./domain/entities/default-config.ts";
 import { DenoFileSystem } from "./adapters/filesystem/deno-fs.ts";
 import { DenoEnvironment } from "./adapters/environment/deno-environment.ts";
 import { DaxShellRunner } from "./adapters/shell/dax-shell-runner.ts";
@@ -36,6 +48,7 @@ const deps = { shell, git, env, fs, configResolver };
 type GlobalOptions = {
   // Cliffy stores -C (short-only) as key "" in the options object
   "": string | undefined;
+  config: string | undefined;
 };
 
 /** Downcast Cliffy's local options to include inherited global options */
@@ -48,6 +61,153 @@ function getCwdOption(options: GlobalOptions): string | undefined {
   return options[""];
 }
 
+function readStringProperty(value: unknown, key: string): string | undefined {
+  if (typeof value !== "object" || value === null || !(key in value)) {
+    return undefined;
+  }
+  const record = ExplicitCast.from<unknown>(value)
+    .dangerousCast<Record<string, unknown>>();
+  const property = record[key];
+  return typeof property === "string" ? property : undefined;
+}
+
+function globalOptionsFromUnknown(options: unknown): GlobalOptions {
+  return {
+    "": readStringProperty(options, ""),
+    config: readStringProperty(options, "config"),
+  };
+}
+
+function getCliContext(options: GlobalOptions): {
+  readonly cwd: string | undefined;
+  readonly configPath: string | undefined;
+} {
+  const cwdFlag = getCwdOption(options);
+  return {
+    cwd: cwdFlag ? resolve(cwdFlag) : undefined,
+    configPath: options.config,
+  };
+}
+
+function envOverrides(): Record<string, string> {
+  const overrides: Record<string, string> = {};
+  const maxCommits = env.getEnv("MAX_COMMITS");
+  if (maxCommits) overrides["MAX_COMMITS"] = maxCommits;
+  const maxWorktasks = env.getEnv("MAX_WORKTASKS");
+  if (maxWorktasks) overrides["MAX_WORKTASKS"] = maxWorktasks;
+  return overrides;
+}
+
+function addDefined(
+  output: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void {
+  if (value !== undefined) {
+    output[key] = value;
+  }
+}
+
+function sectionToYamlObject(
+  section: ResolvedSection,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = { id: section.id };
+  addDefined(output, "sh", section.sh);
+  addDefined(output, "builtin", section.builtin);
+  addDefined(output, "value", section.value);
+  addDefined(output, "title", section.title);
+  addDefined(output, "max_lines", section.max_lines);
+  addDefined(output, "separator", section.separator);
+  addDefined(output, "env", section.env);
+  addDefined(output, "cwd", section.cwd);
+  return output;
+}
+
+function removeUndefined(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(removeUndefined);
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const output: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value)) {
+      if (child !== undefined) {
+        output[key] = removeUndefined(child);
+      }
+    }
+    return output;
+  }
+
+  return value;
+}
+
+function rawConfigToYaml(config: RawConfig): string {
+  return stringifyYaml(removeUndefined(config));
+}
+
+function configToYaml(config: RecapConfig): string {
+  return stringifyYaml(removeUndefined({
+    sections: config.sections.map(sectionToYamlObject),
+  }));
+}
+
+function defaultConfigYaml(): string {
+  return stringifyYaml(removeUndefined({
+    sections: HARDCODED_SECTIONS.map(sectionToYamlObject),
+  }));
+}
+
+async function loadResolvedConfig(
+  options: GlobalOptions,
+): Promise<RecapConfig> {
+  const context = getCliContext(options);
+  const loadedConfig = await loadRecapConfig(
+    {
+      configPath: context.configPath,
+      cwd: context.cwd,
+    },
+    deps,
+  );
+  return resolveConfig({
+    rawGlobalConfig: loadedConfig.rawGlobalConfig,
+    rawLocalConfig: loadedConfig.rawLocalConfig,
+    envOverrides: envOverrides(),
+  });
+}
+
+async function loadConfigSources(
+  options: GlobalOptions,
+): Promise<readonly LoadedConfigSource[]> {
+  const context = getCliContext(options);
+  const loadedConfig = await loadRecapConfig(
+    {
+      configPath: context.configPath,
+      cwd: context.cwd,
+    },
+    deps,
+  );
+  return [...loadedConfig.sources].reverse();
+}
+
+function formatConfigSource(
+  source: LoadedConfigSource,
+  verbose: boolean,
+): string {
+  if (!verbose) {
+    return source.path;
+  }
+  const yaml = rawConfigToYaml(source.config).trimEnd();
+  return `${source.kind}: ${source.path}\n${yaml}`;
+}
+
+function formatConfigFilesVerbose(
+  sources: readonly LoadedConfigSource[],
+): string {
+  const sections = sources.map((source) => formatConfigSource(source, true));
+  sections.push(`default: built-in\n${defaultConfigYaml().trimEnd()}`);
+  return sections.join("\n\n");
+}
+
 /** CLI entry point — parses args and runs the recap command. */
 export async function main(args: string[]): Promise<void> {
   const program = new Command()
@@ -58,16 +218,15 @@ export async function main(args: string[]): Promise<void> {
       "-C <dir:string>",
       "Run as if started in <dir> (affects config discovery and shell commands)",
     )
-    .option("--no-color", "Disable ANSI color output")
-    .option(
+    .globalOption(
       "--config <path:string>",
       "Explicit config path (skip auto-discovery)",
     )
+    .globalOption("--no-color", "Disable ANSI color output")
     .option("--json", "Output as JSON instead of formatted text")
     .action(async (options) => {
       const globalOpts = asGlobal(options);
-      const cwdFlag = getCwdOption(globalOpts);
-      const cwd = cwdFlag ? resolve(cwdFlag) : undefined;
+      const context = getCliContext(globalOpts);
 
       const noColor = options.color === false ||
         !!env.getEnv("NO_COLOR");
@@ -77,11 +236,11 @@ export async function main(args: string[]): Promise<void> {
       try {
         const result = await runRecap(
           {
-            configPath: options.config,
+            configPath: context.configPath,
             noColor,
             useColor,
             json: options.json,
-            cwd,
+            cwd: context.cwd,
           },
           deps,
           palette,
@@ -102,12 +261,39 @@ export async function main(args: string[]): Promise<void> {
         throw e;
       }
     })
+    .command(
+      "config",
+      new Command()
+        .description("Inspect recap configuration")
+        .command("show", "Print the fully resolved config as YAML")
+        .action(async (options) => {
+          const config = await loadResolvedConfig(
+            globalOptionsFromUnknown(options),
+          );
+          console.log(configToYaml(config).trimEnd());
+        })
+        .command("files", "List config files loaded by recap")
+        .option("-v, --verbose", "Also print each file config")
+        .action(async (options) => {
+          const sources = await loadConfigSources(
+            globalOptionsFromUnknown(options),
+          );
+          const verbose = options.verbose === true;
+          const output = verbose
+            ? formatConfigFilesVerbose(sources)
+            : sources.map((source) => formatConfigSource(source, false)).join(
+              "\n",
+            );
+          if (output.length > 0) {
+            console.log(output);
+          }
+        }),
+    )
     .command("init", "Generate a recap config file")
     .option("--global", "Generate global config (~/.config/recap.yaml)")
     .action(async (options) => {
       const globalOpts = asGlobal(options);
-      const cwdFlag = getCwdOption(globalOpts);
-      const cwd = cwdFlag ? resolve(cwdFlag) : undefined;
+      const context = getCliContext(globalOpts);
 
       const isGlobal = options.global === true;
       const content = generateConfigContent(isGlobal);
@@ -121,7 +307,7 @@ export async function main(args: string[]): Promise<void> {
         }
         configPath = join(home, ".config", "recap.yaml");
       } else {
-        configPath = join(cwd ?? env.cwd(), ".config", "recap.yaml");
+        configPath = join(context.cwd ?? env.cwd(), ".config", "recap.yaml");
       }
 
       // Ensure directory exists
