@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [recap-v0.2.1] — 2026-05-27
+
+### Added
+
+- **recap:** `recap config show` prints the fully resolved effective configuration as YAML.
+- **recap:** `recap config files` lists the config files loaded by recap, from local to global.
+- **recap:** `recap config files -v` prints each loaded config from local to global and includes the built-in default config at the bottom.
+- **recap:** Config discovery now accepts `.config/recap.yml` alongside `.config/recap.yaml`.
+
 ## [wl-v0.16.0] — 2026-05-26
 
 ### Added

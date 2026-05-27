@@ -1,6 +1,6 @@
 {
   "name": "@dohzya/tools",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "CLI tools for markdown manipulation (markdown-surgeon), work tracking (worklog), and context snapshots (recap).",
   "license": "MIT",
   "exports": {
