@@ -14,7 +14,7 @@ Track work with traces and checkpoints. **Always work within a worktask.**
 - **created**: defined, not ready yet
 - **ready**: fully scoped, queued (use for backlog / future sub-agents)
 - **started**: actively working NOW — always `start` before tracing
-- **done**: completed with final checkpoint + insights
+- **done**: completed with final checkpoint + learnings
 
 ## Orient Yourself
 
@@ -33,22 +33,22 @@ Output: `<id>  <status>  "<name>"  <date>`
 > **Delegating to sub-agents?** Create a subtask: `wl create --parent <id> --started "Sub-task"`, then launch with `wl claude <subtask-id>` (or `wl codex <subtask-id>`, or `wl agent <subtask-id>` to auto-detect).
 
 1. **Create & start**: `wl create --started "Task name"`
-2. **Trace** every event: `wl trace <id> "action taken / problem hit / idea / lead explored / finding / insight"`
-3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "insights"`
+2. **Trace** every event: `wl trace <id> "action taken / problem hit / idea / lead explored / finding / learning"`
+3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "learnings"`
 4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces)
-5. **Close**: `wl done <id> "changes" "insights"` (args optional if no new traces since last checkpoint)
+5. **Close**: `wl done <id> "changes" "learnings"` (args optional if no new traces since last checkpoint)
 
-**Critical:** commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, insights · include causes & pistes in traces · insights = reusable discoveries (not a summary)
+**Critical:** commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, learnings · include causes & pistes in traces · learnings = reusable discoveries (not a summary)
 
-## Tracing Insights
+## Tracing Learnings
 
 When you discover something educational or non-obvious about the codebase, technology, or patterns during your work, **trace it** so checkpoints can capture it:
 
 ```bash
-wl trace <id> "Insight: <your observation>"
+wl trace <id> "Learning: <your observation>"
 ```
 
-Don't just display insights in the conversation — trace them. Checkpoints synthesize from traces only; untraceable conversation content is lost on compaction.
+Don't just display learnings in the conversation — trace them. Checkpoints synthesize from traces only; untraceable conversation content is lost on compaction.
 
 ## Quick Reference
 
@@ -63,11 +63,11 @@ wl create --started "name" "desc"                    # create + start (desc = sc
 wl create --started "name" --desc-src file.md        # desc from file (multiline context)
 wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent delegation
 
-# Trace — one entry per event: action taken / problem hit / idea / lead explored / finding / insight
+# Trace — one entry per event: action taken / problem hit / idea / lead explored / finding / learning
 wl trace <id> "msg"         # flags before message: wl trace <id> -t T14:30 "msg"
 
 # Consolidate
-wl checkpoint <id> "narrative (actions + pivots, incl. failures)" "insights (reusable discoveries, not a summary)"
+wl checkpoint <id> "narrative (actions + pivots, incl. failures)" "learnings (reusable discoveries, not a summary)"
 wl done <id> ["same as checkpoint"]  # args optional if no new traces since last checkpoint
 ```
 
@@ -108,4 +108,4 @@ The `-q` flag silently no-ops when no task is active — safe to configure globa
 
 ## Language
 
-Write traces, checkpoints, and insights in the user's language — follow their choice throughout the session.
+Write traces, checkpoints, and learnings in the user's language — follow their choice throughout the session.

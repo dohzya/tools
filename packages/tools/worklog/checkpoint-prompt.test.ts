@@ -25,7 +25,7 @@ Deno.test("checkpoint prompt — with entries + previous checkpoint", () => {
     last_checkpoint: {
       ts: "2025-01-15 11:00",
       changes: "Implemented initial parser",
-      insights: "YAML roundtrip loses quote style",
+      learnings: "YAML roundtrip loses quote style",
     },
     entries_since_checkpoint: [
       { ts: "2025-01-15 11:05", msg: "Started refactoring parser" },
@@ -56,7 +56,7 @@ Deno.test("checkpoint prompt — with entries + previous checkpoint", () => {
 
   // Quality guidelines
   assertStringIncludes(prompt, "changes");
-  assertStringIncludes(prompt, "insights");
+  assertStringIncludes(prompt, "learnings");
 
   // Command with exact taskId
   assertStringIncludes(prompt, "wl checkpoint abc123def456");
@@ -81,7 +81,7 @@ Deno.test("checkpoint prompt — with entries but no previous checkpoint", () =>
 
   // Guidelines still present
   assertStringIncludes(prompt, "changes");
-  assertStringIncludes(prompt, "insights");
+  assertStringIncludes(prompt, "learnings");
 
   // Command present
   assertStringIncludes(prompt, "wl checkpoint abc123def456");

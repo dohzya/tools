@@ -153,7 +153,7 @@ wl done 260205c "Task completed" "Everything works"
 
 - No consolidation of traces
 - No indication of what was done
-- No insights - just status update
+- No learnings - just status update
 
 ### ✅ GOOD Done
 
@@ -183,7 +183,7 @@ Résultat:
 
 - Consolidates full journey from traces
 - Shows what failed and why
-- Insights have critical distance and are reusable
+- Learnings have critical distance and are reusable
 - Future-you (or others) can learn from this
 
 ## Example 4: Multi-Step Task with TODOs
@@ -277,6 +277,6 @@ wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook au
 3. **Include reasoning** - Why did you pivot? What's the piste?
 4. **Checkpoint often** - Don't let traces pile up
 5. **Review before done** - Use `wl logs` to see full picture
-6. **Insights need distance** - Not "what we did" but "what we learned"
+6. **Learnings need distance** - Not "what we did" but "what we learned"
 7. **Done after commit** - Link work to code via commit SHA
-8. **Trace everything** - Actions, problems, ideas, leads, findings, insights -- not just results
+8. **Trace everything** - Actions, problems, ideas, leads, findings, learnings -- not just results

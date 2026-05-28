@@ -67,7 +67,7 @@ Tried approach A - failed because...
 - Pivoted to approach B
 - Approach B working
 
-### Insights
+### Learnings
 
 1. Approach A fails because...
 2. Approach B better because...
@@ -119,9 +119,9 @@ Message content
 
 Consolidated changes narrative
 
-### Insights
+### Learnings
 
-Numbered insights
+Numbered learnings
 ```
 
 ## TODO Format
@@ -252,7 +252,7 @@ Ensure format is exact:
 
 ...
 
-### Insights
+### Learnings
 
 ...
 ```
@@ -261,7 +261,7 @@ Common mistakes:
 
 - Missing space before `[checkpoint]`
 - `### Changes` instead of `### Changes` (case-sensitive)
-- Missing newline after `### Changes` or `### Insights`
+- Missing newline after `### Changes` or `### Learnings`
 
 ### TODO not appearing
 

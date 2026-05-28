@@ -73,7 +73,7 @@ wl done <id> \
   --meta commit=$(git rev-parse HEAD)
 ```
 
-Insight quality: ❌ "Tests pass" (result) · ❌ "Used CurrencyBucket" (action) · ✅ "Bucket pattern isolates concerns better than direct fields" (insight)
+Learning quality: ❌ "Tests pass" (result) · ❌ "Used CurrencyBucket" (action) · ✅ "Bucket pattern isolates concerns better than direct fields" (learning)
 
 ### Sub-agent communication via subtasks
 
@@ -116,12 +116,12 @@ wl run <id> claude -c --model opus    # complex Claude args
 
 1. **Working without worktask** → always create worktask first
 2. **Vague traces** → include causes (why failed) & pistes (what next)
-3. **Narrow traces** → trace all events: actions, problems, ideas, leads, findings, insights
+3. **Narrow traces** → trace all events: actions, problems, ideas, leads, findings, learnings
 4. **Missing timestamps on batch traces** → use `-t`
 5. **Checkpoint = conclusion** → NO: consolidate traces into narrative
 6. **Done before commit** → commit first
 7. **Done without reviewing** → always `wl show <id>` first
-8. **Insights = summary** → insights need critical distance, reusable discoveries
+8. **Learnings = summary** → learnings need critical distance, reusable discoveries
 9. **Tracing without starting** → `wl start <id>` before tracing
 10. **Using --force on a task you need to rework** → reopen with `wl start <id>` instead
 
@@ -160,9 +160,9 @@ wl update <id> --desc-src -                  # Description from stdin
 wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
 wl logs <id>                                 # Get context (last checkpoint + recent entries)
 wl checkpoint --claude|--codex|--agent        # Agent synthesizes checkpoint from all traces
-wl checkpoint <id> "changes" "insights"     # Create checkpoint manually
+wl checkpoint <id> "changes" "learnings"     # Create checkpoint manually
 wl done --claude|--codex|--agent             # Agent synthesizes final checkpoint + closes task
-wl done <id> ["changes" "insights"]         # Final checkpoint + close task manually
+wl done <id> ["changes" "learnings"]         # Final checkpoint + close task manually
 wl cancel <id> [reason]                      # Cancel/abandon task (marks as cancelled)
 wl list [--created] [--ready] [--started] [--done] [--cancelled]  # Filter tasks
 wl show <id>                                 # Detailed task view with history
@@ -321,8 +321,8 @@ last checkpoint: 2026-02-05 14:14
   CHANGES
     Consolidation des traces
     Peut être sur plusieurs lignes.
-  INSIGHTS
-    Insights de cette tâche.
+  LEARNINGS
+    Learnings de cette tâche.
     Peut être sur plusieurs lignes.
 
 entries since checkpoint: 2
@@ -354,10 +354,10 @@ Available options:
 ## Done command
 
 ```bash
-wl done <id> ["changes" "insights"] [--force] [--meta key=value] [--claude|--codex|--agent]
+wl done <id> ["changes" "learnings"] [--force] [--meta key=value] [--claude|--codex|--agent]
 ```
 
-**Arguments are optional** when there are no uncheckpointed entries (no new traces since last checkpoint). If there are uncheckpointed entries, `changes` and `insights` are required.
+**Arguments are optional** when there are no uncheckpointed entries (no new traces since last checkpoint). If there are uncheckpointed entries, `changes` and `learnings` are required.
 
 ```bash
 # Preferred: let the agent synthesize the final checkpoint + close task
@@ -372,7 +372,7 @@ wl done <id> "What changed" "What we learned"
 wl done <id>
 
 # Force completion despite pending TODOs
-wl done <id> "changes" "insights" --force
+wl done <id> "changes" "learnings" --force
 ```
 
 ## Timestamp format
@@ -461,7 +461,7 @@ wl cancel <id> "Requirements changed, no longer needed"
 
 **Difference from done:**
 
-- `done` = task completed successfully (requires changes + insights if traces exist)
+- `done` = task completed successfully (requires changes + learnings if traces exist)
 - `cancel` = task abandoned (optional reason)
 
 Cancelled tasks appear in `wl list --cancelled` but not in default `wl list`.
@@ -720,11 +720,11 @@ wl todo next <task-id>
 Tasks with pending TODOs (todo/wip/blocked) cannot be marked done:
 
 ```bash
-wl done <task-id> "changes" "insights"
+wl done <task-id> "changes" "learnings"
 # Error: Task has 3 pending todo(s). Use --force to complete anyway.
 
 # Force completion if TODOs are obsolete
-wl done <task-id> "changes" "insights" --force
+wl done <task-id> "changes" "learnings" --force
 ```
 
 ### TODO Format
@@ -865,7 +865,7 @@ Add `--json` to any command for machine-readable output.
   "last_checkpoint": {
     "ts": "2025-01-16 11:00",
     "changes": "- Added initial structure",
-    "insights": "- Pattern X works well"
+    "learnings": "- Pattern X works well"
   },
   "entries_since_checkpoint": [
     {

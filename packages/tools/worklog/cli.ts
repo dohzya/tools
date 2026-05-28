@@ -2002,34 +2002,34 @@ async function parseTaskFile(content: string): Promise<ParsedTask> {
       const nextSection = checkpointSections[i + 1];
       const cpEnd = nextSection ? nextSection.line - 1 : checkpointsEnd;
 
-      // Scan raw lines for ### Changes and ### Insights/Learnings headers
+      // Scan raw lines for ### Changes and ### Learnings/Insights headers
       // (instead of using doc.sections to be resilient to headers in content)
       let changesHeaderIdx = -1;
-      let insightsHeaderIdx = -1;
+      let learningsHeaderIdx = -1;
 
       for (let lineIdx = section.line; lineIdx < cpEnd; lineIdx++) {
         const line = doc.lines[lineIdx];
         if (/^###\s+Changes\s*$/.test(line)) changesHeaderIdx = lineIdx;
-        else if (/^###\s+(Insights|Learnings)\s*$/.test(line)) {
-          insightsHeaderIdx = lineIdx;
+        else if (/^###\s+(Learnings|Insights)\s*$/.test(line)) {
+          learningsHeaderIdx = lineIdx;
         }
       }
 
       let changes = "";
-      let insights = "";
+      let learnings = "";
 
       if (changesHeaderIdx >= 0) {
-        const contentEnd = insightsHeaderIdx >= 0 ? insightsHeaderIdx : cpEnd;
+        const contentEnd = learningsHeaderIdx >= 0 ? learningsHeaderIdx : cpEnd;
         changes = doc.lines.slice(changesHeaderIdx + 1, contentEnd).join("\n")
           .trim();
       }
 
-      if (insightsHeaderIdx >= 0) {
-        insights = doc.lines.slice(insightsHeaderIdx + 1, cpEnd).join("\n")
+      if (learningsHeaderIdx >= 0) {
+        learnings = doc.lines.slice(learningsHeaderIdx + 1, cpEnd).join("\n")
           .trim();
       }
 
-      checkpoints.push({ ts: section.title, changes, insights });
+      checkpoints.push({ ts: section.title, changes, learnings });
     }
   }
 
@@ -2347,8 +2347,8 @@ function formatShow(
     for (const line of output.last_checkpoint.changes.split("\n")) {
       lines.push(`    ${line}`);
     }
-    lines.push(`  ${h("INSIGHTS")}`);
-    for (const line of output.last_checkpoint.insights.split("\n")) {
+    lines.push(`  ${h("LEARNINGS")}`);
+    for (const line of output.last_checkpoint.learnings.split("\n")) {
       lines.push(`    ${line}`);
     }
   }
@@ -2434,8 +2434,8 @@ function renderSubtasks(
       for (const l of sub.lastCheckpoint.changes.split("\n")) {
         lines.push(`${indent}    ${l}`);
       }
-      lines.push(`${indent}  ${h("INSIGHTS")}`);
-      for (const l of sub.lastCheckpoint.insights.split("\n")) {
+      lines.push(`${indent}  ${h("LEARNINGS")}`);
+      for (const l of sub.lastCheckpoint.learnings.split("\n")) {
         lines.push(`${indent}    ${l}`);
       }
     }
@@ -2646,8 +2646,8 @@ function formatSummary(output: SummaryOutput): string {
         for (const line of cp.changes.split("\n")) {
           lines.push(`  ${line}`);
         }
-        lines.push("Insights:");
-        for (const line of cp.insights.split("\n")) {
+        lines.push("Learnings:");
+        for (const line of cp.learnings.split("\n")) {
           lines.push(`  ${line}`);
         }
       }
@@ -2774,7 +2774,7 @@ async function cmdTraces(taskId: string): Promise<TracesOutput> {
 async function cmdCheckpoint(
   taskId: string,
   changes: string,
-  insights: string,
+  learnings: string,
   force?: boolean,
 ): Promise<StatusOutput> {
   await purge();
@@ -2783,7 +2783,7 @@ async function cmdCheckpoint(
   return await createCheckpointUseCase.execute({
     taskId,
     changes,
-    insights,
+    learnings,
     force,
   });
 }
@@ -2791,7 +2791,7 @@ async function cmdCheckpoint(
 async function cmdDone(
   taskId: string,
   changes?: string,
-  insights?: string,
+  learnings?: string,
   force?: boolean,
   metadata?: Record<string, string>,
 ): Promise<StatusOutput> {
@@ -2816,23 +2816,23 @@ async function cmdDone(
       );
     }
 
-    // If no changes/insights provided, check if there are uncheckpointed entries
-    if (!changes && !insights) {
+    // If no changes/learnings provided, check if there are uncheckpointed entries
+    if (!changes && !learnings) {
       if (meta.has_uncheckpointed_entries) {
         throw new WtError(
           "no_uncheckpointed_entries",
-          "Cannot mark done: uncheckpointed entries exist. Provide changes and insights.",
+          "Cannot mark done: uncheckpointed entries exist. Provide changes and learnings.",
         );
       }
     }
   }
 
-  // Create final checkpoint if changes/insights provided
-  if (changes || insights) {
+  // Create final checkpoint if changes/learnings provided
+  if (changes || learnings) {
     await createCheckpointUseCase.execute({
       taskId,
       changes: changes ?? "",
-      insights: insights ?? "",
+      learnings: learnings ?? "",
       force: true,
     });
   }
@@ -4743,7 +4743,7 @@ const createCmd = new Command()
 
 const traceCmd = new Command()
   .description(
-    "Log an entry: action taken, problem hit, idea, lead explored, finding, or insight",
+    "Log an entry: action taken, problem hit, idea, lead explored, finding, or learning",
   )
   .arguments(
     HAS_ENV_TASK_ID
@@ -4883,7 +4883,7 @@ const tracesCmd = new Command()
 
 const checkpointCmd = new Command()
   .description("Consolidate recent traces into synthesis (not just a list)")
-  .arguments("[taskId:string] [changes:string] [insights:string]")
+  .arguments("[taskId:string] [changes:string] [learnings:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("-f, --force", "Force checkpoint on completed tasks")
@@ -4902,7 +4902,7 @@ const checkpointCmd = new Command()
     "Auto-detect AI agent for synthesis (injects all traces + quality guidelines)",
   )
   .action(
-    async (options, taskId?: string, changes?: string, insights?: string) => {
+    async (options, taskId?: string, changes?: string, learnings?: string) => {
       if (options.quiet && !taskId && !ENV_TASK_ID) return;
       try {
         const { gitRoot } = await resolveScopeContext(
@@ -4941,22 +4941,22 @@ const checkpointCmd = new Command()
           // If WORKLOG_TASK_ID is set and only 2 args provided, args shift
           let resolvedTaskId: string;
           let resolvedChanges: string;
-          let resolvedInsights: string;
+          let resolvedLearnings: string;
           const usageMsg = HAS_ENV_TASK_ID
-            ? "Usage: wl checkpoint [taskId] <changes> <insights>"
-            : "Usage: wl checkpoint <taskId> <changes> <insights>";
-          if (HAS_ENV_TASK_ID && taskId && changes && !insights) {
-            // 2 args with env: taskId=changes, changes=insights
+            ? "Usage: wl checkpoint [taskId] <changes> <learnings>"
+            : "Usage: wl checkpoint <taskId> <changes> <learnings>";
+          if (HAS_ENV_TASK_ID && taskId && changes && !learnings) {
+            // 2 args with env: taskId=changes, changes=learnings
             resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
               undefined,
               options.scope ? null : gitRoot,
             );
             resolvedChanges = taskId;
-            resolvedInsights = changes;
+            resolvedLearnings = changes;
           } else if (HAS_ENV_TASK_ID && !taskId) {
             throw new WtError("invalid_args", usageMsg);
           } else {
-            if (!taskId || !changes || !insights) {
+            if (!taskId || !changes || !learnings) {
               throw new WtError("invalid_args", usageMsg);
             }
             resolvedTaskId = await resolveTaskIdAcrossScopes(
@@ -4964,12 +4964,12 @@ const checkpointCmd = new Command()
               options.scope ? null : gitRoot,
             );
             resolvedChanges = changes;
-            resolvedInsights = insights;
+            resolvedLearnings = learnings;
           }
           const output = await cmdCheckpoint(
             resolvedTaskId,
             resolvedChanges,
-            resolvedInsights,
+            resolvedLearnings,
             options.force ?? false,
           );
           console.log(
@@ -4986,13 +4986,13 @@ const checkpointCmd = new Command()
 
 const doneCmd = new Command()
   .description(
-    "Final consolidation: synthesize ALL traces (changes + insights)\n" +
+    "Final consolidation: synthesize ALL traces (changes + learnings)\n" +
       "⚠️  ALWAYS run 'wl show <id>' first to review traces & check TODOs!",
   )
   .arguments(
     HAS_ENV_TASK_ID
-      ? "[taskId:string] [changes:string] [insights:string]"
-      : "<taskId:string> [changes:string] [insights:string]",
+      ? "[taskId:string] [changes:string] [learnings:string]"
+      : "<taskId:string> [changes:string] [learnings:string]",
   )
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
@@ -5014,7 +5014,7 @@ const doneCmd = new Command()
     "Auto-detect AI agent for final synthesis (injects all traces + quality guidelines)",
   )
   .action(
-    async (options, taskId?: string, changes?: string, insights?: string) => {
+    async (options, taskId?: string, changes?: string, learnings?: string) => {
       try {
         const { gitRoot } = await resolveScopeContext(
           options.scope,
@@ -5059,21 +5059,21 @@ const doneCmd = new Command()
         // Normal done path (no agent flag, or agent skipped due to no entries)
         let resolvedTaskId: string;
         let resolvedChanges: string | undefined;
-        let resolvedInsights: string | undefined;
+        let resolvedLearnings: string | undefined;
         if (agentResolvedTaskId) {
           // Agent branch already resolved the ID; positional args are unchanged
           resolvedTaskId = agentResolvedTaskId;
           resolvedChanges = changes;
-          resolvedInsights = insights;
-        } else if (HAS_ENV_TASK_ID && !insights) {
+          resolvedLearnings = learnings;
+        } else if (HAS_ENV_TASK_ID && !learnings) {
           // Smart argument resolution:
-          // With env and not all 3 args: args shift (taskId→changes, changes→insights)
+          // With env and not all 3 args: args shift (taskId→changes, changes→learnings)
           resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
             undefined,
             options.scope ? null : gitRoot,
           );
           resolvedChanges = taskId;
-          resolvedInsights = changes;
+          resolvedLearnings = changes;
         } else {
           if (!taskId) {
             throw new WtError(
@@ -5086,14 +5086,14 @@ const doneCmd = new Command()
             options.scope ? null : gitRoot,
           );
           resolvedChanges = changes;
-          resolvedInsights = insights;
+          resolvedLearnings = learnings;
         }
 
         const metadata = parseMetaOption(options.meta);
         const output = await cmdDone(
           resolvedTaskId,
           resolvedChanges,
-          resolvedInsights,
+          resolvedLearnings,
           options.force ?? false,
           metadata,
         );
@@ -5970,30 +5970,30 @@ const cli = new Command()
     HAS_ENV_TASK_ID
       ? "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow (WORKLOG_TASK_ID is set):\n" +
-        '  2. wl trace [taskId] "msg"        # Log: actions, problems, ideas, findings, insights\n' +
+        '  2. wl trace [taskId] "msg"        # Log: actions, problems, ideas, findings, learnings\n' +
         "  3. wl checkpoint [taskId] ...      # Consolidate traces into narrative\n" +
-        "  4. wl done [taskId] ...            # Final insights (after git commit!)\n\n" +
+        "  4. wl done [taskId] ...            # Final learnings (after git commit!)\n\n" +
         "Key principles:\n" +
         "  - WORKLOG_TASK_ID is set: [taskId] is optional in most commands\n" +
-        "  - What to trace: actions, problems, ideas, leads, findings, insights\n" +
+        "  - What to trace: actions, problems, ideas, leads, findings, learnings\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
-        "  - Done = final consolidation + insights with critical distance\n" +
+        "  - Done = final consolidation + learnings with critical distance\n" +
         '  - Use -t for batch tracing: wl trace [taskId] -t T14:30 "msg"\n' +
         '  - Subtasks: wl create --parent taskId "subtask name"\n\n' +
         "See 'wl <command> --help' for details"
       : "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow:\n" +
         '  1. wl create "task"           # Create worktask (returns ID)\n' +
-        '  2. wl trace taskId "msg"        # Log: actions, problems, ideas, findings, insights\n' +
+        '  2. wl trace taskId "msg"        # Log: actions, problems, ideas, findings, learnings\n' +
         "  3. wl checkpoint taskId ...      # Consolidate traces into narrative\n" +
-        "  4. wl done taskId ...            # Final insights (after git commit!)\n\n" +
+        "  4. wl done taskId ...            # Final learnings (after git commit!)\n\n" +
         "Key principles:\n" +
         "  - Always work within a worktask (create with 'wl create' first)\n" +
-        "  - What to trace: actions, problems, ideas, leads, findings, insights\n" +
+        "  - What to trace: actions, problems, ideas, leads, findings, learnings\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
-        "  - Done = final consolidation + insights with critical distance\n" +
+        "  - Done = final consolidation + learnings with critical distance\n" +
         '  - Use -t for batch tracing: wl trace taskId -t T14:30 "msg"\n' +
         '  - Subtasks: wl create --parent taskId "subtask name"\n\n' +
         "See 'wl <command> --help' for details",

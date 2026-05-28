@@ -237,8 +237,8 @@ export function formatShow(output: ShowOutput): string {
     for (const line of output.last_checkpoint.changes.split("\n")) {
       lines.push(`    ${line}`);
     }
-    lines.push("  INSIGHTS");
-    for (const line of output.last_checkpoint.insights.split("\n")) {
+    lines.push("  LEARNINGS");
+    for (const line of output.last_checkpoint.learnings.split("\n")) {
       lines.push(`    ${line}`);
     }
   }
@@ -416,8 +416,8 @@ export function formatSummary(output: SummaryOutput): string {
         for (const line of cp.changes.split("\n")) {
           lines.push(`  ${line}`);
         }
-        lines.push("Insights:");
-        for (const line of cp.insights.split("\n")) {
+        lines.push("Learnings:");
+        for (const line of cp.learnings.split("\n")) {
           lines.push(`  ${line}`);
         }
       }

@@ -43,7 +43,7 @@ export function buildCheckpointPrompt(
     sections.push(
       `## Previous checkpoint (style reference)\n\n` +
         `**Changes:** ${show.last_checkpoint.changes}\n` +
-        `**Insights:** ${show.last_checkpoint.insights}`,
+        `**Learnings:** ${show.last_checkpoint.learnings}`,
     );
   }
 
@@ -69,7 +69,7 @@ export function buildCheckpointPrompt(
       `condition that caused duplicate sessions."\n` +
       `- Bad: "Changed function signature, then updated tests, then fixed ` +
       `a bug, then ran lint."\n\n` +
-      `**Insights** (1-2 sentences): Capture REUSABLE insights — decisions ` +
+      `**Learnings** (1-2 sentences): Capture REUSABLE learnings — decisions ` +
       `and why, gotchas discovered, patterns identified.\n\n` +
       `- Good: "JSON.parse on streamed input fails silently for incomplete ` +
       `chunks — wrap in a length guard before parsing."\n` +
@@ -81,8 +81,8 @@ export function buildCheckpointPrompt(
   sections.push(
     `## Command\n\n` +
       `Run this command directly without asking for confirmation:\n\n` +
-      `  wl ${cmd} ${taskId} "<changes>" "<insights>"\n\n` +
-      `Replace \`<changes>\` and \`<insights>\` with your synthesis.`,
+      `  wl ${cmd} ${taskId} "<changes>" "<learnings>"\n\n` +
+      `Replace \`<changes>\` and \`<learnings>\` with your synthesis.`,
   );
 
   return sections.join("\n\n");

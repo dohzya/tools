@@ -100,7 +100,7 @@ ${todos ? `## TODO\n${todos}` : ""}
 
 ## Tracing
 
-Trace every event: action taken / problem hit / idea / lead explored / finding / insight.
+Trace every event: action taken / problem hit / idea / lead explored / finding / learning.
 Include causes (why failed) and pistes (what next) for context.
 
 ## WORKLOG_TASK_ID
@@ -108,7 +108,7 @@ Include causes (why failed) and pistes (what next) for context.
 The environment variable is set to: ${resolvedTaskId}
 
 **All commands work without taskId** — the env var is used automatically:
-  wl trace "msg", wl checkpoint "changes" "insights", wl done "changes" "insights",
+  wl trace "msg", wl checkpoint "changes" "learnings", wl done "changes" "learnings",
   wl show, wl start, wl ready, wl traces, wl update, wl cancel, wl meta, wl todo next
 
 To trace in a **different** task (e.g. a subtask), pass its ID as first argument:
