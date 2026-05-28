@@ -91,6 +91,7 @@ wl trace <subtask-id> "Found 3 endpoints to modify"
 # Main agent monitors
 wl show <parent-id>          # shows subtasks-since-checkpoint
 wl list --subtasks           # all tasks with subtasks indented
+wl list --subtasks-of-started # active tasks + children of started tasks
 wl list --parent <parent-id> # only children of this parent
 ```
 
@@ -282,12 +283,16 @@ When any status filter is specified, only those statuses are shown. Multiple fil
 
 - `--all` or `-a`: Show all tasks including completed (<30d)
 - `-p <path>`: List tasks at specific path
+- `--subtasks`: Include all subtasks, indented under their parent when present
+- `--subtasks-of-started`: Include subtasks whose parent task is `started`
+- `--parent <id>`: Show only direct children of a parent task
 
 **Examples:**
 
 ```bash
 wl list                              # created + ready + started (default)
 wl list --started                    # Only started tasks
+wl list --subtasks-of-started        # Active tasks + children of started tasks
 wl list --created --ready            # Created OR ready tasks
 wl list --done                       # Only done tasks
 wl list --all                        # Everything including done/cancelled

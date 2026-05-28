@@ -25,6 +25,7 @@ export interface ListTasksInput {
   readonly worklogDir: string;
   readonly depthLimit: number;
   readonly showSubtasks?: boolean; // Include subtasks (hidden by default)
+  readonly showSubtasksOfStarted?: boolean; // Include subtasks whose parent is started
   readonly parentFilter?: string; // Full parent task ID — show only direct children
 }
 
@@ -44,11 +45,18 @@ export class ListTasksUseCase {
     };
 
     // Helper: filter tasks based on subtask visibility settings
-    const shouldInclude = (t: IndexEntry): boolean => {
+    const shouldInclude = (
+      t: IndexEntry,
+      parentStatus?: TaskStatus,
+    ): boolean => {
       if (input.parentFilter) return t.parent === input.parentFilter;
       if (input.showSubtasks) return true;
-      return !t.parent; // by default, hide subtasks
+      if (!t.parent) return true;
+      return input.showSubtasksOfStarted === true &&
+        parentStatus === "started";
     };
+    const shouldDisplayParent = input.showSubtasks === true ||
+      input.showSubtasksOfStarted === true;
 
     const tasks: ListTaskItem[] = [];
 
@@ -62,7 +70,7 @@ export class ListTasksUseCase {
         input.depthLimit,
         matchStatus,
         shouldInclude,
-        input.showSubtasks,
+        shouldDisplayParent,
       );
     }
 
@@ -89,7 +97,12 @@ export class ListTasksUseCase {
 
         const scopeTasks = Object.entries(index.tasks)
           .filter(([_, t]) => matchStatus(t.status))
-          .filter(([_, t]) => shouldInclude(t))
+          .filter(([_, t]) =>
+            shouldInclude(
+              t,
+              t.parent ? index.tasks[t.parent]?.status : undefined,
+            )
+          )
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([id, t]) => ({
             id,
@@ -99,7 +112,7 @@ export class ListTasksUseCase {
             created: this.formatShort(t.created),
             scopePrefix: scopeId,
             tags: t.tags,
-            ...(input.showSubtasks && t.parent ? { parent: t.parent } : {}),
+            ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
           }));
 
         tasks.push(...scopeTasks);
@@ -133,7 +146,9 @@ export class ListTasksUseCase {
 
       const scopeTasks = Object.entries(index.tasks)
         .filter(([_, t]) => matchStatus(t.status))
-        .filter(([_, t]) => shouldInclude(t))
+        .filter(([_, t]) =>
+          shouldInclude(t, t.parent ? index.tasks[t.parent]?.status : undefined)
+        )
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
@@ -142,7 +157,7 @@ export class ListTasksUseCase {
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
-          ...(input.showSubtasks && t.parent ? { parent: t.parent } : {}),
+          ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
         }));
 
       return { tasks: scopeTasks };
@@ -158,7 +173,7 @@ export class ListTasksUseCase {
         input.depthLimit,
         matchStatus,
         shouldInclude,
-        input.showSubtasks,
+        shouldDisplayParent,
       );
     }
 
@@ -180,7 +195,9 @@ export class ListTasksUseCase {
 
     const singleTasks = Object.entries(index.tasks)
       .filter(([_, t]) => matchStatus(t.status))
-      .filter(([_, t]) => shouldInclude(t))
+      .filter(([_, t]) =>
+        shouldInclude(t, t.parent ? index.tasks[t.parent]?.status : undefined)
+      )
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, t]) => ({
         id,
@@ -189,7 +206,7 @@ export class ListTasksUseCase {
         status: t.status,
         created: this.formatShort(t.created),
         tags: t.tags,
-        ...(input.showSubtasks && t.parent ? { parent: t.parent } : {}),
+        ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
       }));
 
     return { tasks: singleTasks };
@@ -202,8 +219,8 @@ export class ListTasksUseCase {
     worklogDir: string,
     depthLimit: number,
     matchStatus: (status: string) => boolean,
-    shouldInclude: (t: IndexEntry) => boolean,
-    showSubtasks?: boolean,
+    shouldInclude: (t: IndexEntry, parentStatus?: TaskStatus) => boolean,
+    shouldDisplayParent: boolean,
   ): Promise<ListOutput> {
     // Try tag filtering first
     const taggedTasks = await this.findTasksByTagPattern(
@@ -217,7 +234,7 @@ export class ListTasksUseCase {
     if (taggedTasks.length > 0) {
       const filteredTasks = taggedTasks
         .filter(({ task }) => matchStatus(task.status))
-        .filter(({ task }) => shouldInclude(task))
+        .filter(({ task, parentStatus }) => shouldInclude(task, parentStatus))
         .map(({ id, task }) => ({
           id,
           name: task.name ?? task.desc,
@@ -227,7 +244,9 @@ export class ListTasksUseCase {
           scopePrefix: undefined,
           tags: task.tags,
           filterPattern,
-          ...(showSubtasks && task.parent ? { parent: task.parent } : {}),
+          ...(shouldDisplayParent && task.parent
+            ? { parent: task.parent }
+            : {}),
         }));
 
       return { tasks: filteredTasks };
@@ -252,7 +271,12 @@ export class ListTasksUseCase {
 
         const scopeTasks = Object.entries(index.tasks)
           .filter(([_, t]) => matchStatus(t.status))
-          .filter(([_, t]) => shouldInclude(t))
+          .filter(([_, t]) =>
+            shouldInclude(
+              t,
+              t.parent ? index.tasks[t.parent]?.status : undefined,
+            )
+          )
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([id, t]) => ({
             id,
@@ -263,7 +287,7 @@ export class ListTasksUseCase {
             scopePrefix: undefined,
             tags: t.tags,
             filterPattern,
-            ...(showSubtasks && t.parent ? { parent: t.parent } : {}),
+            ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
           }));
 
         return { tasks: scopeTasks };
@@ -285,8 +309,8 @@ export class ListTasksUseCase {
     worklogDir: string,
     depthLimit: number,
     matchStatus: (status: string) => boolean,
-    shouldInclude: (t: IndexEntry) => boolean,
-    showSubtasks?: boolean,
+    shouldInclude: (t: IndexEntry, parentStatus?: TaskStatus) => boolean,
+    shouldDisplayParent: boolean,
   ): Promise<ListOutput> {
     const tasks: ListTaskItem[] = [];
     const currentScopeId = await this.getScopeId(
@@ -308,7 +332,9 @@ export class ListTasksUseCase {
 
       const currentTasks = Object.entries(index.tasks)
         .filter(([_, t]) => matchStatus(t.status))
-        .filter(([_, t]) => shouldInclude(t))
+        .filter(([_, t]) =>
+          shouldInclude(t, t.parent ? index.tasks[t.parent]?.status : undefined)
+        )
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
@@ -317,7 +343,7 @@ export class ListTasksUseCase {
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
-          ...(showSubtasks && t.parent ? { parent: t.parent } : {}),
+          ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
         }));
 
       tasks.push(...currentTasks);
@@ -350,7 +376,9 @@ export class ListTasksUseCase {
             created: this.formatShort(task.created),
             scopePrefix: "\u2B06",
             tags: task.tags,
-            ...(showSubtasks && task.parent ? { parent: task.parent } : {}),
+            ...(shouldDisplayParent && task.parent
+              ? { parent: task.parent }
+              : {}),
           }));
 
         tasks.push(...activeParentTasks);
@@ -382,7 +410,12 @@ export class ListTasksUseCase {
 
             const childTasks = Object.entries(index.tasks)
               .filter(([_, t]) => matchStatus(t.status))
-              .filter(([_, t]) => shouldInclude(t))
+              .filter(([_, t]) =>
+                shouldInclude(
+                  t,
+                  t.parent ? index.tasks[t.parent]?.status : undefined,
+                )
+              )
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([id, t]) => ({
                 id,
@@ -392,7 +425,9 @@ export class ListTasksUseCase {
                 created: this.formatShort(t.created),
                 scopePrefix: child.id,
                 tags: t.tags,
-                ...(showSubtasks && t.parent ? { parent: t.parent } : {}),
+                ...(shouldDisplayParent && t.parent
+                  ? { parent: t.parent }
+                  : {}),
               }));
 
             tasks.push(...childTasks);
@@ -416,6 +451,7 @@ export class ListTasksUseCase {
     Array<{
       id: string;
       task: IndexEntry;
+      parentStatus?: TaskStatus;
       scopeId: string;
       scopePath: string;
     }>
@@ -423,6 +459,7 @@ export class ListTasksUseCase {
     const results: Array<{
       id: string;
       task: IndexEntry;
+      parentStatus?: TaskStatus;
       scopeId: string;
       scopePath: string;
     }> = [];
@@ -443,6 +480,9 @@ export class ListTasksUseCase {
           results.push({
             id,
             task,
+            parentStatus: task.parent
+              ? index.tasks[task.parent]?.status
+              : undefined,
             scopeId: scope.id,
             scopePath: scope.absolutePath,
           });

@@ -3203,6 +3203,7 @@ async function cmdList(
   statusFilters?: TaskStatus[],
   filterPattern?: string,
   showSubtasks?: boolean,
+  showSubtasksOfStarted?: boolean,
   parentFilter?: string,
 ): Promise<ListOutput> {
   if (!baseDir) {
@@ -3222,6 +3223,7 @@ async function cmdList(
     worklogDir: WORKLOG_DIR,
     depthLimit: WORKLOG_DEPTH_LIMIT,
     showSubtasks,
+    showSubtasksOfStarted,
     parentFilter,
   });
 }
@@ -5748,6 +5750,7 @@ const listCmd = new Command()
   .option("--scope <scope:string>", "Target specific scope")
   .option("--all-scopes", "Show all scopes")
   .option("--subtasks", "Include subtasks (hidden by default)")
+  .option("--subtasks-of-started", "Include subtasks of started tasks")
   .option("--parent <taskId:string>", "Show only subtasks of this parent")
   .action(async (options, pattern) => {
     try {
@@ -5805,6 +5808,7 @@ const listCmd = new Command()
           statusFilters.length > 0 ? statusFilters : undefined,
           pattern,
           options.subtasks ?? false,
+          options.subtasksOfStarted ?? false,
           resolvedParentFilter,
         );
         console.log(
@@ -5836,6 +5840,7 @@ const listCmd = new Command()
         statusFilters.length > 0 ? statusFilters : undefined,
         pattern,
         options.subtasks ?? false,
+        options.subtasksOfStarted ?? false,
         resolvedParentFilter,
       );
       console.log(

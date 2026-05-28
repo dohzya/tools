@@ -185,6 +185,63 @@ Deno.test("ListTasksUseCase - filters by status", async () => {
   assertEquals(result.tasks[0].status, "started");
 });
 
+Deno.test("ListTasksUseCase - shows subtasks whose parent is started", async () => {
+  const tasks: Record<string, IndexEntry> = {
+    startedParent: {
+      name: "Started parent",
+      desc: "Started parent",
+      status: "started",
+      created: "2025-01-15T10:00:00+01:00",
+      status_updated_at: "2025-01-15T10:00:00+01:00",
+    },
+    readyParent: {
+      name: "Ready parent",
+      desc: "Ready parent",
+      status: "ready",
+      created: "2025-01-15T10:01:00+01:00",
+      status_updated_at: "2025-01-15T10:01:00+01:00",
+    },
+    shownChild: {
+      name: "Shown child",
+      desc: "Shown child",
+      status: "created",
+      created: "2025-01-15T10:02:00+01:00",
+      status_updated_at: "2025-01-15T10:02:00+01:00",
+      parent: "startedParent",
+    },
+    hiddenChild: {
+      name: "Hidden child",
+      desc: "Hidden child",
+      status: "created",
+      created: "2025-01-15T10:03:00+01:00",
+      status_updated_at: "2025-01-15T10:03:00+01:00",
+      parent: "readyParent",
+    },
+  };
+
+  const indexRepo = createMockIndexRepo(tasks);
+  const scopeRepo = createMockScopeRepo();
+  const fs = createMockFs(new Map());
+
+  const useCase = new ListTasksUseCase(indexRepo, scopeRepo, fs);
+
+  const result = await useCase.execute({
+    showAll: false,
+    worklogDir: ".worklog",
+    depthLimit: 5,
+    showSubtasksOfStarted: true,
+  });
+
+  assertEquals(
+    result.tasks.map((t) => t.id).sort(),
+    ["readyParent", "shownChild", "startedParent"],
+  );
+  assertEquals(
+    result.tasks.find((t) => t.id === "shownChild")?.parent,
+    "startedParent",
+  );
+});
+
 Deno.test("ListTasksUseCase - lists from baseDir", async () => {
   const indexContent = JSON.stringify({
     version: 2,

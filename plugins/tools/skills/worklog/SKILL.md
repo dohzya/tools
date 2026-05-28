@@ -56,6 +56,7 @@ Don't just display learnings in the conversation — trace them. Checkpoints syn
 # Orient
 wl list                     # active tasks
 wl list --parent <id>       # sub-agent subtasks progress
+wl list --subtasks-of-started # active tasks + children of started tasks
 wl show <id>                # status, history, todos, subtasks
 
 # Create

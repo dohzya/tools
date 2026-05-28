@@ -5094,6 +5094,48 @@ Deno.test("subtasks - list --subtasks shows all tasks including subtasks, indent
   }
 });
 
+Deno.test("subtasks - list --subtasks-of-started shows children of started parents", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "--started", "started parent"]);
+    await main(["create", "--ready", "ready parent"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = JSON.parse(listOut).tasks;
+    const startedParentId = tasks.find((t: { name: string }) =>
+      t.name === "started parent"
+    ).id;
+    const readyParentId = tasks.find((t: { name: string }) =>
+      t.name === "ready parent"
+    ).id;
+
+    await main(["create", "shown child", "--parent", startedParentId]);
+    await main(["create", "hidden child", "--parent", readyParentId]);
+
+    const listSubtasksOfStarted = await captureOutput(() =>
+      main(["list", "--json", "--subtasks-of-started"])
+    );
+    const listedTasks = JSON.parse(listSubtasksOfStarted).tasks;
+
+    assert(
+      listedTasks.some((t: { name: string }) => t.name === "shown child"),
+      "child of started parent should appear",
+    );
+    assert(
+      !listedTasks.some((t: { name: string }) => t.name === "hidden child"),
+      "child of non-started parent should stay hidden",
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("subtasks - list --parent shows only direct children flat", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
