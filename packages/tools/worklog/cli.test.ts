@@ -1423,6 +1423,63 @@ Deno.test("worklog run - uses WORKLOG_TASK_ID when taskId is omitted", async () 
   }
 });
 
+Deno.test("worklog run - accepts codex as explicit one-word command", async () => {
+  const tempDir = await Deno.makeTempDir();
+  let binDir: string | null = null;
+  const originalCwd = Deno.cwd();
+  const originalPath = Deno.env.get("PATH");
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await main(["create", "Run codex task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = ExplicitCast.fromAny(JSON.parse(listOutput))
+      .dangerousCast<{ tasks: Array<{ id: string }> }>();
+    const taskId = tasks[0].id;
+
+    binDir = await Deno.makeTempDir();
+    const codexPath = Deno.build.os === "windows"
+      ? `${binDir}/codex.cmd`
+      : `${binDir}/codex`;
+    const codexShim = Deno.build.os === "windows"
+      ? "@echo off\r\nexit /b 0\r\n"
+      : "#!/usr/bin/env sh\nexit 0\n";
+    await Deno.writeTextFile(codexPath, codexShim);
+    if (Deno.build.os !== "windows") {
+      await Deno.chmod(codexPath, 0o755);
+    }
+    const pathSeparator = Deno.build.os === "windows" ? ";" : ":";
+    Deno.env.set(
+      "PATH",
+      originalPath ? `${binDir}${pathSeparator}${originalPath}` : binDir,
+    );
+
+    const output = await captureOutput(() =>
+      main(["run", "--json", taskId, "codex"])
+    );
+    const result = ExplicitCast.fromAny(JSON.parse(output)).dangerousCast<{
+      taskId: string;
+      exitCode: number;
+      created: boolean;
+    }>();
+
+    assertEquals(result.taskId, taskId);
+    assertEquals(result.exitCode, 0);
+    assertEquals(result.created, false);
+  } finally {
+    if (originalPath === undefined) {
+      Deno.env.delete("PATH");
+    } else {
+      Deno.env.set("PATH", originalPath);
+    }
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+    if (binDir) await Deno.remove(binDir, { recursive: true });
+  }
+});
+
 Deno.test("worklog - JSON output for list command", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

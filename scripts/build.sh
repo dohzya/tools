@@ -46,14 +46,14 @@ for tool in "${!TOOLS[@]}"; do
 
     echo "  → ${platform} (${target})"
 
-    # md only needs read/write, wl also needs run for git and agent commands and env access
+    # md only needs read/write, wl needs unrestricted run for `wl run`.
     # recap needs read/write/env/run for shell commands and git
     if [[ "${tool}" == "wl" ]]; then
       deno compile \
         --allow-read \
         --allow-write \
         --allow-env \
-        --allow-run=git,claude,codex \
+        --allow-run \
         --target "${target}" \
         --output "${output}" \
         "${entry}"

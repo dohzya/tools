@@ -100,9 +100,14 @@ Deno.test("codexAgentConfig - buildInteractiveCmd with empty args", () => {
   assertEquals(cmd, ["codex", "sys prompt"]);
 });
 
-Deno.test("codexAgentConfig - buildSynthesisCmd discards systemPrompt", () => {
+Deno.test("codexAgentConfig - buildSynthesisCmd allows unattended execution", () => {
   const cmd = codexAgentConfig.buildSynthesisCmd("ignored-sp", "synth prompt");
-  assertEquals(cmd, ["codex", "exec", "synth prompt"]);
+  assertEquals(cmd, [
+    "codex",
+    "exec",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "synth prompt",
+  ]);
 });
 
 // --- getAgentConfig ---

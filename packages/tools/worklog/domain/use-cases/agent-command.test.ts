@@ -335,11 +335,12 @@ Deno.test("AgentCommandUseCase (codex) - synthesis mode uses buildSynthesisCmd",
 
   assertEquals(processRunner.calls.length, 1);
   const [call] = processRunner.calls;
-  // Codex synthesis: ["codex", "exec", synthesisPrompt]
+  // Codex synthesis runs unattended so checkpoint/done automation can execute wl.
   assertEquals(call.cmd[0], "codex");
   assertEquals(call.cmd[1], "exec");
-  assertEquals(call.cmd[2], "Synthesize this");
-  assertEquals(call.cmd.length, 3);
+  assertEquals(call.cmd[2], "--dangerously-bypass-approvals-and-sandbox");
+  assertEquals(call.cmd[3], "Synthesize this");
+  assertEquals(call.cmd.length, 4);
 });
 
 // --- System prompt agent-specific content ---

@@ -57,7 +57,12 @@ export const codexAgentConfig: AgentConfig = {
     _systemPrompt: string,
     synthesisPrompt: string,
   ): readonly string[] {
-    return ["codex", "exec", synthesisPrompt];
+    return [
+      "codex",
+      "exec",
+      "--dangerously-bypass-approvals-and-sandbox",
+      synthesisPrompt,
+    ];
   },
 };
 
