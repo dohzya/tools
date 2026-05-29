@@ -1,6 +1,6 @@
 {
   "name": "tools",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Markdown manipulation and productivity skills for Codex",
   "author": {
     "name": "Etienne Vallette d'Osia"
@@ -12,7 +12,9 @@
     "shortDescription": "Markdown and worklog skills for Codex",
     "developerName": "Etienne Vallette d'Osia",
     "category": "Productivity",
-    "capabilities": ["Write"],
+    "capabilities": [
+      "Write"
+    ],
     "defaultPrompt": [
       "Edit a Markdown section surgically.",
       "Track this development task with worklog.",
