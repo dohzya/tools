@@ -4,11 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [wl-v0.17.0] — 2026-05-28
+## [wl-v0.17.0] — 2026-05-29
+
+### Added
+
+- **worklog:** `wl list --subtasks-of-started` shows subtasks whose parent task is started without showing every subtask globally.
 
 ### Changed
 
 - **worklog:** Checkpoint terminology is now `learnings` instead of `insights`, with legacy `### Insights` headings still readable from existing task files.
+- **release:** `task validate` now checks Claude/Codex plugin metadata versions stay in sync, and `bump-finalize` updates all plugin metadata version fields together.
+
+### Fixed
+
+- **worklog:** `wl create --scope <scope>` now fails when the requested scope is missing instead of silently creating the task in the current worklog.
+- **worklog:** Codex-backed checkpoint and done synthesis can run unattended through `codex exec`, and compiled `wl run` can execute arbitrary commands.
+- **worklog:** Tracing a done task now requires `--force`, warns agents to checkpoint post-completion traces, and allows checkpointing done tasks when uncheckpointed traces exist.
 
 ## [recap-v0.2.1] — 2026-05-27
 
