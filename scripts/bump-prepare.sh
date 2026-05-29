@@ -14,7 +14,7 @@ set -euo pipefail
 # Files updated AFTER release by bump-finalize.sh:
 # - homebrew formulas (checksums calculated from GH release binaries)
 # - documentation (*_SETUP.md)
-# - plugin.json
+# - plugin metadata versions
 
 TOOL="${1:-}"
 TOOL_VERSION="${2:-}"
@@ -92,6 +92,8 @@ echo "  ⏸  homebrew/Formula/$TOOL.rb (checksums)"
 echo "  ⏸  CLI_SETUP.md"
 echo "  ⏸  MISE_SETUP.md"
 echo "  ⏸  plugins/tools/.claude-plugin/plugin.json"
+echo "  ⏸  plugins/tools/.codex-plugin/plugin.json"
+echo "  ⏸  .claude-plugin/marketplace.json"
 echo ""
 
 read -p "Continue with version bump preparation? (y/N) " -n 1 -r

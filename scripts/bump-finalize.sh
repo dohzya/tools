@@ -9,7 +9,7 @@ set -euo pipefail
 # This script updates files that depend on the GitHub release existing:
 # - homebrew formulas (version, URLs, and checksums from GH release binaries)
 # - documentation (*_SETUP.md with version references)
-# - plugin.json
+# - plugin metadata versions
 #
 # IMPORTANT: This must run AFTER the GitHub release workflow completes
 # and binaries are available for download.
@@ -41,7 +41,7 @@ echo "  1. Download binaries from GitHub release $TOOL-v$VERSION"
 echo "  2. Calculate SHA256 checksums"
 echo "  3. Update homebrew/Formula/$TOOL.rb with version, URLs, and checksums"
 echo "  4. Update documentation (*_SETUP.md) with version references"
-echo "  5. Update plugin.json with version"
+echo "  5. Update Claude/Codex plugin metadata versions"
 echo ""
 
 # Verify GitHub release exists
@@ -154,10 +154,9 @@ echo "Updating MISE_SETUP.md..."
 sed -i.bak "s/$TOOL-v[0-9.]*/$TOOL-v$VERSION/g" MISE_SETUP.md
 rm MISE_SETUP.md.bak
 
-# Update plugin.json
-echo "Updating plugins/tools/.claude-plugin/plugin.json..."
-sed -i.bak "s/\"version\": \".*\"/\"version\": \"$VERSION\"/" plugins/tools/.claude-plugin/plugin.json
-rm plugins/tools/.claude-plugin/plugin.json.bak
+# Update plugin metadata
+echo "Updating plugin metadata versions..."
+deno run --allow-read --allow-write scripts/update-plugin-versions.ts "$VERSION"
 
 echo ""
 echo "✅ Release finalization complete"

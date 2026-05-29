@@ -75,8 +75,15 @@ tasks:
   validate:plugin:
     desc: "Validate plugin manifests"
     cmds:
+      - task: validate:plugin:versions
       - task: validate:plugin:codex
       - task: validate:plugin:claude
+
+  validate:plugin:versions:
+    desc: "Validate plugin metadata versions stay in sync"
+    cmds:
+      - deno test --allow-read --allow-write scripts/plugin-version-metadata.test.ts
+      - deno run --allow-read scripts/validate-plugin-versions.ts
 
   validate:plugin:codex:
     desc: "Validate Codex plugin metadata"

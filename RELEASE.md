@@ -90,7 +90,7 @@ git tag wl-v0.6.1 && git push origin wl-v0.6.1
 gh run watch
 # ✅ Confirm release workflow completed successfully
 
-# 8. Finalize release (updates homebrew checksums, docs, plugin)
+# 8. Finalize release (updates homebrew checksums, docs, plugin metadata)
 task bump-finalize TOOL=wl VERSION=0.6.1
 
 # 9. Commit and push finalization
@@ -122,7 +122,7 @@ git tag v0.6.2 && git push origin v0.6.2
 | 5    | JSR publish green ✅      | `gh workflow run publish.yml` then `gh run watch`                          | Publish to JSR via GitHub Actions with OIDC provenance                                                           |
 | 6    | N/A                       | `git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z`                           | Trigger release workflow (builds from JSR)                                                                       |
 | 7    | Release workflow green ✅ | `gh run watch`                                                             | GitHub Actions builds binaries from JSR                                                                          |
-| 8    | N/A                       | `task bump-finalize TOOL=wl VERSION=X.Y.Z`                                 | Updates homebrew checksums, docs, plugin (post-release)                                                          |
+| 8    | N/A                       | `task bump-finalize TOOL=wl VERSION=X.Y.Z`                                 | Updates homebrew checksums, docs, plugin metadata (post-release)                                                 |
 | 9    | N/A                       | `git commit && git push`                                                   | Push finalization changes                                                                                        |
 | 10   | N/A                       | `task update-tap TOOL=wl VERSION=X.Y.Z`                                    | Downloads GH release binaries, updates tap repo                                                                  |
 | 11   | Test installation         | `brew upgrade wl && wl --version`                                          | Verify users can install and get correct version                                                                 |
@@ -192,7 +192,9 @@ Updates files that depend on the GitHub release existing:
 - `homebrew/Formula/{tool}.rb` (version, URLs, and checksums from GH release)
 - `CLI_SETUP.md` (version references in examples)
 - `MISE_SETUP.md` (version references in examples)
-- `plugins/tools/.claude-plugin/plugin.json` (plugin version)
+- `plugins/tools/.claude-plugin/plugin.json` (Claude plugin version)
+- `plugins/tools/.codex-plugin/plugin.json` (Codex plugin version)
+- `.claude-plugin/marketplace.json` (Claude marketplace metadata/plugin versions)
 
 **Important:** The two-phase approach ensures:
 
@@ -253,7 +255,7 @@ git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z
 # 6. Wait for release workflow to build binaries
 gh run watch
 
-# 7. Finalize release (updates homebrew checksums, docs, plugin)
+# 7. Finalize release (updates homebrew checksums, docs, plugin metadata)
 task bump-finalize TOOL=wl VERSION=X.Y.Z
 git add -A && git commit -m "chore(wl): finalize vX.Y.Z release"
 git push origin main
