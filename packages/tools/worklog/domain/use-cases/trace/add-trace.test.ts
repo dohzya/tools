@@ -1,5 +1,5 @@
 // deno-lint-ignore-file require-await no-explicit-any
-import { assertEquals, assertRejects } from "@std/assert";
+import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { AddTraceUseCase } from "./add-trace.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type {
@@ -193,11 +193,11 @@ Deno.test("AddTraceUseCase - rejects trace on done task without force", async ()
         message: "Post-completion note",
       }),
     WtError,
-    `Task is done. Reopen it with 'wl start ${SHORT_ID}', or use --force to add post-completion traces.`,
+    `Task is done. Use --force to add post-completion traces.`,
   );
 });
 
-Deno.test("AddTraceUseCase - allows trace on done task with force", async () => {
+Deno.test("AddTraceUseCase - allows trace on done task with force and warns to checkpoint", async () => {
   const indexRepo = createMockIndexRepo({
     [TASK_ID]: makeIndexEntry({ status: "done" }),
   });
@@ -205,12 +205,14 @@ Deno.test("AddTraceUseCase - allows trace on done task with force", async () => 
     [TASK_ID]: makeTaskFileData({ status: "done" }),
   });
   const markdownService = createMockMarkdownService();
+  const warnings: string[] = [];
 
   const useCase = new AddTraceUseCase(
     indexRepo,
     taskRepo,
     markdownService,
     () => "2025-01-20 14:00",
+    (msg) => warnings.push(msg),
   );
 
   const result = await useCase.execute({
@@ -221,6 +223,9 @@ Deno.test("AddTraceUseCase - allows trace on done task with force", async () => 
 
   assertEquals(result.status, "ok");
   assertEquals(markdownService.appendedEntries.length, 1);
+  assertEquals(warnings.length, 1);
+  assertStringIncludes(warnings[0], "Task is done");
+  assertStringIncludes(warnings[0], "wl checkpoint");
 });
 
 Deno.test("AddTraceUseCase - rejects trace on cancelled task without force", async () => {
@@ -279,7 +284,7 @@ Deno.test("AddTraceUseCase - allows trace on cancelled task with force", async (
   assertEquals(markdownService.appendedEntries.length, 1);
 });
 
-Deno.test("AddTraceUseCase - done error message includes short ID and reopen hint", async () => {
+Deno.test("AddTraceUseCase - done warning includes short ID and checkpoint hint", async () => {
   const indexRepo = createMockIndexRepo({
     [TASK_ID]: makeIndexEntry({ status: "done" }),
   });
@@ -290,31 +295,21 @@ Deno.test("AddTraceUseCase - done error message includes short ID and reopen hin
     }),
   });
   const markdownService = createMockMarkdownService();
+  const warnings: string[] = [];
 
   const useCase = new AddTraceUseCase(
     indexRepo,
     taskRepo,
     markdownService,
     () => "2025-01-20 14:00",
+    (msg) => warnings.push(msg),
   );
 
-  let errorMessage = "";
-  try {
-    await useCase.execute({ taskId: TASK_ID, message: "trace" });
-  } catch (e) {
-    if (e instanceof WtError) {
-      errorMessage = e.message;
-    }
-  }
+  await useCase.execute({ taskId: TASK_ID, message: "trace", force: true });
 
-  assertEquals(
-    errorMessage.includes("wl start myshortid"),
-    true,
-  );
-  assertEquals(
-    errorMessage.includes("--force"),
-    true,
-  );
+  assertEquals(warnings.length, 1);
+  assertStringIncludes(warnings[0], "wl checkpoint myshortid");
+  assertStringIncludes(warnings[0], "post-completion traces");
 });
 
 Deno.test("AddTraceUseCase - cancelled error message includes short ID and reopen hint", async () => {

@@ -637,7 +637,7 @@ Deno.test("wl: error on task_not_found", async () => {
   }
 });
 
-Deno.test("wl: error on task_already_done without force", async () => {
+Deno.test("wl: trace on done task requires force", async () => {
   const workspace = createTestWorkspace();
   try {
     await runCli(["init"], workspace);
@@ -653,7 +653,8 @@ Deno.test("wl: error on task_already_done without force", async () => {
 
     const result = await runCli(["trace", id, "After done"], workspace);
     assertEquals(result.code !== 0, true);
-    assertStringIncludes(result.stderr, "error");
+    assertStringIncludes(result.stderr, "Task is done");
+    assertStringIncludes(result.stderr, "--force");
   } finally {
     Deno.removeSync(workspace, { recursive: true });
   }

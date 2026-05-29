@@ -474,16 +474,14 @@ Deno.test("worklog trace - rejects completed task without --force", async () => 
     // Complete the task
     await main(["done", taskId, "Done", "Learnings"]);
 
-    // Try to trace without --force
     try {
-      await main(["trace", taskId, "Should fail"]);
+      await main(["trace", taskId, "Post-completion note"]);
     } catch (_e) {
       // Expected
     }
 
     assertEquals(exitCode, 1);
-    assertStringIncludes(errorOutput, "is done");
-    assertStringIncludes(errorOutput, "wl start");
+    assertStringIncludes(errorOutput, "Task is done");
     assertStringIncludes(errorOutput, "--force");
   } finally {
     Deno.exit = originalExit;
@@ -496,8 +494,13 @@ Deno.test("worklog trace - rejects completed task without --force", async () => 
 Deno.test("worklog trace - allows completed task with --force", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
+  const originalError = console.error;
+  let errorOutput = "";
   try {
     Deno.chdir(tempDir);
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
 
     await main(["init"]);
     await main(["create", "Test task"]);
@@ -512,10 +515,14 @@ Deno.test("worklog trace - allows completed task with --force", async () => {
     // Trace with --force should succeed
     await main(["trace", taskId, "Post-completion entry", "--force"]);
 
+    assertStringIncludes(errorOutput, "Task is done");
+    assertStringIncludes(errorOutput, "wl checkpoint");
+
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     assertStringIncludes(taskContent, "Post-completion entry");
     assertStringIncludes(taskContent, "has_uncheckpointed_entries: true");
   } finally {
+    console.error = originalError;
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -595,7 +602,7 @@ Deno.test("worklog checkpoint - rejects if no uncheckpointed entries", async () 
   }
 });
 
-Deno.test("worklog checkpoint - allows force on completed task", async () => {
+Deno.test("worklog checkpoint - allows completed task with uncheckpointed entries", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   try {
@@ -614,13 +621,12 @@ Deno.test("worklog checkpoint - allows force on completed task", async () => {
     // Add entry with force
     await main(["trace", taskId, "Post-done entry", "--force"]);
 
-    // Checkpoint with force should work
+    // Checkpoint should work because the post-completion entry is not checkpointed yet
     await main([
       "checkpoint",
       taskId,
       "Post-completion changes",
       "Post-completion learnings",
-      "--force",
     ]);
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
@@ -2947,12 +2953,13 @@ Deno.test("trace - no warning when task is started", async () => {
   }
 });
 
-Deno.test("trace - throws error when task is done (without --force)", async () => {
+Deno.test("trace - throws error when task is done without force", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
   const originalExit = Deno.exit;
   const originalError = console.error;
   let exitCode = 0;
+  let errorOutput = "";
   try {
     Deno.chdir(tempDir);
     // deno-lint-ignore dz-tools/no-type-assertion
@@ -2960,7 +2967,9 @@ Deno.test("trace - throws error when task is done (without --force)", async () =
       exitCode = code;
       throw new Error("EXIT");
     }) as typeof Deno.exit;
-    console.error = () => {};
+    console.error = (...args: unknown[]) => {
+      errorOutput += args.join(" ") + "\n";
+    };
 
     await main(["init"]);
     const output = await captureOutput(() =>
@@ -2971,9 +2980,13 @@ Deno.test("trace - throws error when task is done (without --force)", async () =
 
     try {
       await main(["trace", id, "Post-done trace"]);
-    } catch (_e) { /* expected */ }
+    } catch (_e) {
+      // Expected
+    }
 
     assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Task is done");
+    assertStringIncludes(errorOutput, "--force");
   } finally {
     Deno.exit = originalExit;
     console.error = originalError;
@@ -3001,7 +3014,8 @@ Deno.test("trace --force - warns when task is done but records trace", async () 
 
     await main(["trace", id, "-f", "Post-done trace"]);
 
-    assertStringIncludes(errorOutput, "not started");
+    assertStringIncludes(errorOutput, "Task is done");
+    assertStringIncludes(errorOutput, "wl checkpoint");
 
     // Verify trace was stored
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);

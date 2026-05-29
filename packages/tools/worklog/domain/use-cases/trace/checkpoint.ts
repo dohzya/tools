@@ -48,16 +48,6 @@ export class CreateCheckpointUseCase {
 
     const { meta, entries } = taskData;
 
-    // Check if task is active (unless forcing)
-    if (!input.force) {
-      if (meta.status === "done") {
-        throw new WtError(
-          "task_already_done",
-          `Task ${meta.id} is already completed`,
-        );
-      }
-    }
-
     // Check if checkpoint is needed (unless forced)
     if (!input.force) {
       let needsCheckpoint = meta.has_uncheckpointed_entries;
