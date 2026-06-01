@@ -263,7 +263,7 @@ Deno.test("AgentCommandUseCase (claude) - agents subcommand still sets WORKLOG_T
 
 // --- Tests with Codex config ---
 
-Deno.test("AgentCommandUseCase (codex) - interactive command uses codex format", async () => {
+Deno.test("AgentCommandUseCase (codex) - interactive command injects context as developer instructions", async () => {
   const indexRepo = createMockIndexRepo({ [FULL_TASK_ID]: MOCK_INDEX_ENTRY });
   const processRunner = createMockProcessRunner();
   const showTaskFn = createMockShowTaskFn(FULL_TASK_ID);
@@ -280,16 +280,16 @@ Deno.test("AgentCommandUseCase (codex) - interactive command uses codex format",
 
   assertEquals(processRunner.calls.length, 1);
   const [call] = processRunner.calls;
-  // Codex: ["codex", ...extraArgs, systemPrompt]
+  // Codex: ["codex", ...extraArgs, "-c", developer_instructions=<systemPrompt>]
   assertEquals(call.cmd[0], "codex");
   assertEquals(call.cmd[1], "--model");
   assertEquals(call.cmd[2], "o3");
-  // systemPrompt is the last element
-  assertEquals(typeof call.cmd[call.cmd.length - 1], "string");
+  assertEquals(call.cmd[3], "-c");
   assertStringIncludes(
-    call.cmd[call.cmd.length - 1].toString(),
+    call.cmd[4].toString(),
     "Current Worktask Context",
   );
+  assertEquals(call.cmd.length, 5);
 });
 
 // --- Synthesis mode tests ---
@@ -381,7 +381,7 @@ Deno.test("AgentCommandUseCase (codex) - system prompt contains codex-specific r
   await useCase.execute({ taskId: FULL_TASK_ID });
 
   const [call] = processRunner.calls;
-  // Codex interactive: system prompt is the last element
+  // Codex interactive: system prompt is injected via developer_instructions
   const systemPrompt = call.cmd[call.cmd.length - 1].toString();
 
   assertStringIncludes(systemPrompt, "wl checkpoint --codex");
@@ -389,4 +389,28 @@ Deno.test("AgentCommandUseCase (codex) - system prompt contains codex-specific r
   // Must NOT contain claude references
   assertEquals(systemPrompt.includes("wl checkpoint --claude"), false);
   assertEquals(systemPrompt.includes("wl claude <subtask-id>"), false);
+});
+
+Deno.test("AgentCommandUseCase (codex) - concatenates configured developer instructions", async () => {
+  const indexRepo = createMockIndexRepo({ [FULL_TASK_ID]: MOCK_INDEX_ENTRY });
+  const processRunner = createMockProcessRunner();
+  const showTaskFn = createMockShowTaskFn(FULL_TASK_ID);
+
+  const useCase = new AgentCommandUseCase(
+    {
+      indexRepo,
+      processRunner,
+      showTaskFn,
+      loadCodexDeveloperInstructions: () =>
+        Promise.resolve("existing instructions"),
+    },
+    codexAgentConfig,
+  );
+
+  await useCase.execute({ taskId: FULL_TASK_ID });
+
+  const [call] = processRunner.calls;
+  const configOverride = call.cmd[call.cmd.length - 1].toString();
+  assertStringIncludes(configOverride, "existing instructions");
+  assertStringIncludes(configOverride, "Current Worktask Context");
 });

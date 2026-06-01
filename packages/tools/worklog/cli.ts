@@ -116,6 +116,7 @@ import {
   detectAgentType,
   getAgentConfig,
 } from "./domain/entities/agent-config.ts";
+import { loadCodexDeveloperInstructions } from "./domain/entities/codex-config.ts";
 import { GenerateSummaryUseCase } from "./domain/use-cases/summary.ts";
 import {
   type ListTagsOutput,
@@ -382,6 +383,11 @@ function initializeUseCases(): void {
         taskId,
         worklogDir: WORKLOG_DIR,
         gitRoot: null,
+      }),
+    loadCodexDeveloperInstructions: (agentArgs: readonly string[]) =>
+      loadCodexDeveloperInstructions(agentArgs, {
+        env: Deno.env,
+        readTextFile: (path: string) => Deno.readTextFile(path),
       }),
   };
   claudeCommandUseCase = new AgentCommandUseCase(agentDeps, claudeAgentConfig);
@@ -5318,7 +5324,7 @@ const claudeCmd = new Command()
 
 const codexCmd = new Command()
   .description(
-    "Launch Codex with task context injected via initial prompt\n\n" +
+    "Launch Codex with task context injected via developer instructions\n\n" +
       "Examples:\n" +
       "  wl codex              # Launch Codex with current task (from WORKLOG_TASK_ID)\n" +
       "  wl codex <taskId>     # Launch Codex with specific task\n" +

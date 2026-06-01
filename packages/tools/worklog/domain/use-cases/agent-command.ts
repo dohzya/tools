@@ -18,6 +18,9 @@ export interface AgentCommandDeps {
   readonly indexRepo: IndexRepository;
   readonly processRunner: ProcessRunner;
   readonly showTaskFn: (taskId: string) => Promise<ShowOutput>;
+  readonly loadCodexDeveloperInstructions?: (
+    agentArgs: readonly string[],
+  ) => Promise<string | undefined>;
 }
 
 export class AgentCommandUseCase {
@@ -41,11 +44,17 @@ export class AgentCommandUseCase {
 
     const systemPrompt = this.buildSystemPrompt(taskInfo, resolvedTaskId);
 
+    const agentArgs = input.agentArgs ?? [];
+    const existingDeveloperInstructions = this.agentConfig.type === "codex"
+      ? await this.deps.loadCodexDeveloperInstructions?.(agentArgs)
+      : undefined;
+
     const cmd = input.synthesisPrompt
       ? this.agentConfig.buildSynthesisCmd(systemPrompt, input.synthesisPrompt)
       : this.agentConfig.buildInteractiveCmd(
         systemPrompt,
-        input.agentArgs ?? [],
+        agentArgs,
+        { existingDeveloperInstructions },
       );
 
     const result = await this.deps.processRunner.run(cmd, {
