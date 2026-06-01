@@ -313,6 +313,13 @@ export class ListTasksUseCase {
     shouldDisplayParent: boolean,
   ): Promise<ListOutput> {
     const tasks: ListTaskItem[] = [];
+    const seenTasks = new Set<string>();
+    const pushTask = (task: ListTaskItem) => {
+      const key = `${task.scopePrefix ?? "."}:${task.id}`;
+      if (seenTasks.has(key)) return;
+      seenTasks.add(key);
+      tasks.push(task);
+    };
     const currentScopeId = await this.getScopeId(
       currentScope,
       gitRoot,
@@ -328,6 +335,30 @@ export class ListTasksUseCase {
       }
       : undefined;
 
+    const relatedTaskStatuses = new Map<string, TaskStatus>();
+    const parentScopeTasks = new Map<string, IndexEntry>();
+    let parentScopeDir: string | undefined;
+    let parentWorklogPath: string | undefined;
+
+    if (isChild && currentScopeId && currentScopeId !== ".") {
+      try {
+        parentScopeDir = await this.getParentScope(currentScope);
+        parentWorklogPath = `${parentScopeDir}/${worklogDir}`;
+        const parentIndexPath = `${parentWorklogPath}/index.json`;
+        if (await this.fs.exists(parentIndexPath)) {
+          const content = await this.fs.readFile(parentIndexPath);
+          const parentIndex = ExplicitCast.fromAny(JSON.parse(content))
+            .dangerousCast<Index>();
+          for (const [id, task] of Object.entries(parentIndex.tasks)) {
+            relatedTaskStatuses.set(id, task.status);
+            parentScopeTasks.set(id, task);
+          }
+        }
+      } catch {
+        // Ignore parent scope errors
+      }
+    }
+
     // Load current scope tasks (no prefix)
     const currentIndexPath = `${currentScope}/index.json`;
     if (await this.fs.exists(currentIndexPath)) {
@@ -335,12 +366,40 @@ export class ListTasksUseCase {
       const index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
         Index
       >();
+      for (const [id, task] of Object.entries(index.tasks)) {
+        relatedTaskStatuses.set(id, task.status);
+      }
 
-      const currentTasks = Object.entries(index.tasks)
+      const visibleEntries = Object.entries(index.tasks)
         .filter(([_, t]) => matchStatus(t.status))
         .filter(([_, t]) =>
-          shouldInclude(t, t.parent ? index.tasks[t.parent]?.status : undefined)
-        )
+          shouldInclude(
+            t,
+            t.parent
+              ? index.tasks[t.parent]?.status ??
+                relatedTaskStatuses.get(t.parent)
+              : undefined,
+          )
+        );
+
+      if (isChild && shouldDisplayParent) {
+        for (const [_, task] of visibleEntries) {
+          if (!task.parent) continue;
+          const parentTask = parentScopeTasks.get(task.parent);
+          if (!parentTask || !matchStatus(parentTask.status)) continue;
+          pushTask({
+            id: task.parent,
+            name: parentTask.name ?? parentTask.desc,
+            desc: parentTask.desc,
+            status: parentTask.status,
+            created: this.formatShort(parentTask.created),
+            scopePrefix: "^",
+            tags: parentTask.tags,
+          });
+        }
+      }
+
+      const currentTasks = visibleEntries
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
@@ -352,13 +411,16 @@ export class ListTasksUseCase {
           ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
         }));
 
-      tasks.push(...currentTasks);
+      for (const task of currentTasks) {
+        pushTask(task);
+      }
     }
 
     // Parent tag pull: if child, include parent tasks with matching tags
     if (isChild && currentScopeId && currentScopeId !== ".") {
       try {
-        const parentScope = await this.getParentScope(currentScope);
+        parentScopeDir ??= await this.getParentScope(currentScope);
+        parentWorklogPath ??= `${parentScopeDir}/${worklogDir}`;
         const parentTasks = await this.findTasksByTagPattern(
           currentScopeId,
           gitRoot,
@@ -367,7 +429,6 @@ export class ListTasksUseCase {
           depthLimit,
         );
 
-        const parentWorklogPath = `${parentScope}/${worklogDir}`;
         const activeParentTasks = parentTasks
           .filter(({ task, scopePath }) =>
             matchStatus(task.status) &&
@@ -380,14 +441,16 @@ export class ListTasksUseCase {
             desc: task.desc,
             status: task.status,
             created: this.formatShort(task.created),
-            scopePrefix: "\u2B06",
+            scopePrefix: "^",
             tags: task.tags,
             ...(shouldDisplayParent && task.parent
               ? { parent: task.parent }
               : {}),
           }));
 
-        tasks.push(...activeParentTasks);
+        for (const task of activeParentTasks) {
+          pushTask(task);
+        }
       } catch {
         // Ignore parent scope errors
       }
@@ -419,7 +482,10 @@ export class ListTasksUseCase {
               .filter(([_, t]) =>
                 shouldInclude(
                   t,
-                  t.parent ? index.tasks[t.parent]?.status : undefined,
+                  t.parent
+                    ? index.tasks[t.parent]?.status ??
+                      relatedTaskStatuses.get(t.parent)
+                    : undefined,
                 )
               )
               .sort(([a], [b]) => a.localeCompare(b))
@@ -436,7 +502,9 @@ export class ListTasksUseCase {
                   : {}),
               }));
 
-            tasks.push(...childTasks);
+            for (const task of childTasks) {
+              pushTask(task);
+            }
           }
         }
       } catch {

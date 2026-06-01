@@ -4307,6 +4307,57 @@ async function setupCrossScopeFixture(
   };
 }
 
+async function setupCrossScopeParentWithChildScope(
+  tempDir: string,
+  parentInitialStatus: "ready" | "started" = "started",
+): Promise<{
+  gitRoot: string;
+  childDir: string;
+  parentTaskId: string;
+  childScopeId: string;
+}> {
+  await new Deno.Command("git", { args: ["init"], cwd: tempDir }).output();
+  await new Deno.Command("git", {
+    args: ["config", "user.email", "test@example.com"],
+    cwd: tempDir,
+  }).output();
+  await new Deno.Command("git", {
+    args: ["config", "user.name", "Test User"],
+    cwd: tempDir,
+  }).output();
+
+  Deno.chdir(tempDir);
+  await main(["init"]);
+  const createParentArgs = parentInitialStatus === "started"
+    ? ["create", "--started", "Parent A"]
+    : ["create", "--ready", "Parent A"];
+  await main(createParentArgs);
+
+  const parentListOutput = await captureOutput(() =>
+    main(["list", "--all", "--json"])
+  );
+  const parentTasks = ExplicitCast.fromAny(JSON.parse(parentListOutput))
+    .dangerousCast<{ tasks: Array<{ id: string; name: string }> }>().tasks;
+  const parentTask = parentTasks.find((task) => task.name === "Parent A");
+  if (!parentTask) {
+    throw new Error("Parent A should exist");
+  }
+  const parentTaskId = parentTask.id;
+
+  const childDir = `${tempDir}/packages/api`;
+  await Deno.mkdir(childDir, { recursive: true });
+  Deno.chdir(childDir);
+  await main(["init"]);
+  await main(["scopes", "add-parent", tempDir, "--id", "api"]);
+
+  return {
+    gitRoot: tempDir,
+    childDir,
+    parentTaskId,
+    childScopeId: "api",
+  };
+}
+
 Deno.test("cross-scope - show child task from parent scope", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -4389,6 +4440,238 @@ Deno.test("create --scope stores new task in the target child scope", async () =
 
     assertEquals(parentNames.includes("Scoped creation"), false);
     assertEquals(childNames.includes("Scoped creation"), true);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("cross-scope subtasks - parent scope can create child-scope subtask of local parent", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot, parentTaskId } = await setupCrossScopeParentWithChildScope(
+      tempDir,
+    );
+
+    Deno.chdir(gitRoot);
+    await main([
+      "create",
+      "Child B",
+      "--scope",
+      "api",
+      "--parent",
+      parentTaskId,
+    ]);
+
+    const parentIndex = ExplicitCast.fromAny(
+      JSON.parse(await Deno.readTextFile(`${gitRoot}/.worklog/index.json`)),
+    ).dangerousCast<{ tasks: Record<string, { name: string }> }>();
+    const childIndex = ExplicitCast.fromAny(
+      JSON.parse(
+        await Deno.readTextFile(`${gitRoot}/packages/api/.worklog/index.json`),
+      ),
+    ).dangerousCast<
+      { tasks: Record<string, { name: string; parent?: string }> }
+    >();
+
+    assertEquals(
+      Object.values(parentIndex.tasks).some((task) => task.name === "Child B"),
+      false,
+    );
+    const childTask = Object.values(childIndex.tasks).find((task) =>
+      task.name === "Child B"
+    );
+    if (!childTask) {
+      throw new Error("Child B should be created in the child scope");
+    }
+    assertEquals(childTask.parent, parentTaskId);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("cross-scope subtasks - child scope can create subtask of parent-scope task", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { childDir, parentTaskId } =
+      await setupCrossScopeParentWithChildScope(tempDir);
+
+    Deno.chdir(childDir);
+    await main([
+      "create",
+      "Child B",
+      "--parent",
+      `^:${parentTaskId.slice(0, 6)}`,
+    ]);
+
+    const childIndex = ExplicitCast.fromAny(
+      JSON.parse(await Deno.readTextFile(`${childDir}/.worklog/index.json`)),
+    ).dangerousCast<
+      { tasks: Record<string, { name: string; parent?: string }> }
+    >();
+    const childTask = Object.values(childIndex.tasks).find((task) =>
+      task.name === "Child B"
+    );
+    if (!childTask) {
+      throw new Error("Child B should be created in the child scope");
+    }
+    assertEquals(childTask.parent, parentTaskId);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("cross-scope subtasks - parent list shows child-scope subtask of started parent", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot, parentTaskId } = await setupCrossScopeParentWithChildScope(
+      tempDir,
+    );
+
+    Deno.chdir(gitRoot);
+    await main([
+      "create",
+      "Child B",
+      "--scope",
+      "api",
+      "--parent",
+      parentTaskId,
+    ]);
+    Deno.chdir(gitRoot);
+
+    const listJson = await captureOutput(() =>
+      main(["list", "--json", "--subtasks-of-started"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listJson)).dangerousCast<
+      {
+        tasks: Array<{
+          name: string;
+          parent?: string;
+          scopePrefix?: string;
+        }>;
+      }
+    >().tasks;
+
+    const childTask = tasks.find((task) => task.name === "Child B");
+    if (!childTask) {
+      throw new Error("Child B should be visible under started Parent A");
+    }
+    assertEquals(childTask.parent, parentTaskId);
+    assertEquals(childTask.scopePrefix, "api");
+
+    const listText = await captureOutput(() =>
+      main(["list", "--subtasks-of-started"])
+    );
+    assertStringIncludes(listText, "Parent A");
+    assertStringIncludes(listText, "[api]");
+    assertStringIncludes(listText, "Child B");
+    const lines = listText.split("\n");
+    const parentLine = lines.findIndex((line) => line.includes("Parent A"));
+    const childLine = lines.findIndex((line) => line.includes("Child B"));
+    assert(childLine > parentLine, "Child B should render below Parent A");
+    assert(lines[childLine].startsWith("  "), "Child B should be indented");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("cross-scope subtasks - child list shows parent-scope task and local subtask", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { childDir, parentTaskId } =
+      await setupCrossScopeParentWithChildScope(tempDir);
+
+    Deno.chdir(childDir);
+    await main([
+      "create",
+      "Child B",
+      "--parent",
+      `^:${parentTaskId.slice(0, 6)}`,
+    ]);
+
+    const listJson = await captureOutput(() =>
+      main(["list", "--json", "--subtasks-of-started"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listJson)).dangerousCast<
+      {
+        tasks: Array<{
+          name: string;
+          parent?: string;
+          scopePrefix?: string;
+        }>;
+      }
+    >().tasks;
+
+    const parentTask = tasks.find((task) => task.name === "Parent A");
+    if (!parentTask) {
+      throw new Error("Parent A should be visible from the child scope");
+    }
+    assertEquals(parentTask.scopePrefix, "^");
+
+    const childTask = tasks.find((task) => task.name === "Child B");
+    if (!childTask) {
+      throw new Error("Child B should be visible from the child scope");
+    }
+    assertEquals(childTask.parent, parentTaskId);
+    assertEquals(childTask.scopePrefix, undefined);
+
+    const listText = await captureOutput(() =>
+      main(["list", "--subtasks-of-started"])
+    );
+    assertStringIncludes(listText, "[^]");
+    assertStringIncludes(listText, "Parent A");
+    assertStringIncludes(listText, "Child B");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("cross-scope subtasks - child-scope subtask stays hidden when parent is not started", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot, childDir, parentTaskId } =
+      await setupCrossScopeParentWithChildScope(tempDir, "ready");
+
+    Deno.chdir(gitRoot);
+    await main([
+      "create",
+      "Child B",
+      "--scope",
+      "api",
+      "--parent",
+      parentTaskId,
+    ]);
+
+    Deno.chdir(gitRoot);
+    const parentListJson = await captureOutput(() =>
+      main(["list", "--json", "--subtasks-of-started"])
+    );
+    const parentTasks = ExplicitCast.fromAny(JSON.parse(parentListJson))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(
+      parentTasks.some((task) => task.name === "Child B"),
+      false,
+    );
+
+    Deno.chdir(childDir);
+    const childListJson = await captureOutput(() =>
+      main(["list", "--json", "--subtasks-of-started"])
+    );
+    const childTasks = ExplicitCast.fromAny(JSON.parse(childListJson))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(
+      childTasks.some((task) => task.name === "Child B"),
+      false,
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });

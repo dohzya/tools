@@ -1055,7 +1055,7 @@ async function resolveTaskIdWithEnvFallback(
  * Parse a potentially scope-qualified task ID.
  * "api:def2" → { scopeHint: "api", taskPrefix: "def2" }
  * "def2"     → { scopeHint: undefined, taskPrefix: "def2" }
- * "⬆:def2"   → { scopeHint: "⬆", taskPrefix: "def2" }
+ * "^:def2"   → { scopeHint: "^", taskPrefix: "def2" }
  */
 function parseScopedTaskId(
   input: string,
@@ -1189,7 +1189,7 @@ async function resolveTaskIdAcrossScopes(
       if (!scopesToSearch.has(parentScopePath)) {
         scopesToSearch.set(parentScopePath, {
           absPath: parentScopePath,
-          id: "⬆",
+          id: "^",
         });
       }
     } catch {
@@ -4716,17 +4716,22 @@ const createCmd = new Command()
       // Resolve parent task ID if provided
       let parentId: string | undefined;
       if (options.parent) {
-        parentId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-          options.parent,
-          options.scope ? null : gitRoot,
-        );
-        // Validate parent exists in index
-        const index = await loadIndex();
-        if (!index.tasks[parentId]) {
-          throw new WtError(
-            "task_not_found",
-            `Parent task not found: ${options.parent}`,
+        const targetScopeDir = Deno.cwd();
+        try {
+          parentId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+            options.parent,
+            gitRoot,
           );
+          // Validate parent exists in the scope where it resolved.
+          const index = await loadIndex();
+          if (!index.tasks[parentId]) {
+            throw new WtError(
+              "task_not_found",
+              `Parent task not found: ${options.parent}`,
+            );
+          }
+        } finally {
+          Deno.chdir(targetScopeDir);
         }
       }
 
