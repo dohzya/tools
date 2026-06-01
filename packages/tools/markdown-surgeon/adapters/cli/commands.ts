@@ -8,6 +8,7 @@
 import { Command } from "@cliffy/command";
 import { expandGlob } from "@std/fs";
 import { MdError } from "../../domain/entities/document.ts";
+import type { Document, Section } from "../../domain/entities/document.ts";
 import type { HashService } from "../../domain/ports/hash-service.ts";
 import type { YamlService } from "../../domain/ports/yaml-service.ts";
 import { ParseDocumentUseCase } from "../../domain/use-cases/parse-document.ts";
@@ -122,6 +123,91 @@ function expandMagic(
 /** Check if a string looks like a valid section ID (8 hex chars) */
 function isValidId(id: string): boolean {
   return /^[0-9a-f]{8}$/i.test(id);
+}
+
+function isHeadingSelector(selector: string): boolean {
+  return selector.startsWith("#");
+}
+
+function parseHeadingSelector(
+  selector: string,
+  file: string,
+): { level: number; title: string } {
+  const hashes = selector.match(/^#+/)?.[0] ?? "";
+  if (hashes.length === 0 || hashes.length > 6) {
+    throw new MdError(
+      "invalid_id",
+      `Invalid heading selector: ${selector}`,
+      file,
+      selector,
+    );
+  }
+
+  const title = selector.slice(hashes.length).trim();
+  if (title.length === 0) {
+    throw new MdError(
+      "invalid_id",
+      `Invalid heading selector: ${selector}`,
+      file,
+      selector,
+    );
+  }
+
+  return { level: hashes.length, title };
+}
+
+function resolveSectionSelector(
+  doc: Document,
+  selector: string,
+  file: string,
+): Section {
+  if (!isHeadingSelector(selector)) {
+    if (!isValidId(selector)) {
+      throw new MdError(
+        "invalid_id",
+        `Invalid section ID: ${selector}`,
+        file,
+        selector,
+      );
+    }
+
+    const section = doc.sections.find((s) => s.id === selector);
+    if (!section) {
+      throw new MdError(
+        "section_not_found",
+        `No section with id '${selector}' in ${file}`,
+        file,
+        selector,
+      );
+    }
+
+    return section;
+  }
+
+  const { level, title } = parseHeadingSelector(selector, file);
+  const matches = doc.sections.filter((s) =>
+    s.level === level && s.title === title
+  );
+
+  if (matches.length === 0) {
+    throw new MdError(
+      "section_not_found",
+      `No section matching heading '${selector}' in ${file}`,
+      file,
+      selector,
+    );
+  }
+
+  if (matches.length > 1) {
+    throw new MdError(
+      "ambiguous_section",
+      `Multiple sections match heading '${selector}' in ${file}`,
+      file,
+      selector,
+    );
+  }
+
+  return matches[0];
 }
 
 function handleError(e: unknown): never {
@@ -270,24 +356,7 @@ export function createCommands(deps: CommandDeps) {
     let sections = [...doc.sections];
 
     if (afterId) {
-      if (!isValidId(afterId)) {
-        throw new MdError(
-          "invalid_id",
-          `Invalid section ID: ${afterId}`,
-          file,
-          afterId,
-        );
-      }
-      const parentSection = readSection.findSection(doc, afterId);
-      if (!parentSection) {
-        throw new MdError(
-          "section_not_found",
-          `No section with id '${afterId}' in ${file}`,
-          file,
-          afterId,
-        );
-      }
-
+      const parentSection = resolveSectionSelector(doc, afterId, file);
       const parentEndLine = readSection.getSectionEndLine(
         doc,
         parentSection,
@@ -331,27 +400,14 @@ export function createCommands(deps: CommandDeps) {
 
   async function cmdRead(
     file: string,
-    id: string,
+    selector: string,
     deep: boolean,
     json: boolean,
   ): Promise<string> {
-    if (!isValidId(id)) {
-      throw new MdError("invalid_id", `Invalid section ID: ${id}`, file, id);
-    }
-
     const content = await readFile(file);
     const doc = await parseDocument.execute({ content });
 
-    const section = readSection.findSection(doc, id);
-    if (!section) {
-      throw new MdError(
-        "section_not_found",
-        `No section with id '${id}' in ${file}`,
-        file,
-        id,
-      );
-    }
-
+    const section = resolveSectionSelector(doc, selector, file);
     const endLine = readSection.getSectionEndLine(doc, section, deep);
     const sectionContent = doc.lines.slice(section.line, endLine).join("\n");
     return json
@@ -361,17 +417,14 @@ export function createCommands(deps: CommandDeps) {
 
   async function cmdWrite(
     file: string,
-    id: string,
+    selector: string,
     newContent: string,
     deep: boolean,
     json: boolean,
   ): Promise<string> {
-    if (!isValidId(id)) {
-      throw new MdError("invalid_id", `Invalid section ID: ${id}`, file, id);
-    }
-
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
+    const section = resolveSectionSelector(doc, selector, file);
 
     // Expand magic expressions
     const fmContent = manageFrontmatter.getFrontmatterContent(doc);
@@ -380,7 +433,7 @@ export function createCommands(deps: CommandDeps) {
 
     const { result, updatedLines } = writeSection.execute({
       doc,
-      id,
+      id: section.id,
       content: expandedContent,
       deep,
     });
@@ -392,7 +445,7 @@ export function createCommands(deps: CommandDeps) {
 
   async function cmdAppend(
     file: string,
-    id: string | null,
+    selector: string | null,
     newContent: string,
     deep: boolean,
     before: boolean,
@@ -400,6 +453,9 @@ export function createCommands(deps: CommandDeps) {
   ): Promise<string> {
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
+    const id = selector === null
+      ? null
+      : resolveSectionSelector(doc, selector, file).id;
 
     // Expand magic expressions
     const fmContent = manageFrontmatter.getFrontmatterContent(doc);
@@ -421,28 +477,20 @@ export function createCommands(deps: CommandDeps) {
 
   async function cmdEmpty(
     file: string,
-    id: string,
+    selector: string,
     deep: boolean,
     json: boolean,
   ): Promise<string> {
-    if (!isValidId(id)) {
-      throw new MdError("invalid_id", `Invalid section ID: ${id}`, file, id);
-    }
-
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
 
-    const section = readSection.findSection(doc, id);
-    if (!section) {
-      throw new MdError(
-        "section_not_found",
-        `No section with id '${id}' in ${file}`,
-        file,
-        id,
-      );
-    }
+    const section = resolveSectionSelector(doc, selector, file);
 
-    const { result, updatedLines } = removeSection.empty({ doc, id, deep });
+    const { result, updatedLines } = removeSection.empty({
+      doc,
+      id: section.id,
+      deep,
+    });
 
     await writeFile(file, updatedLines.join("\n"));
 
@@ -451,27 +499,18 @@ export function createCommands(deps: CommandDeps) {
 
   async function cmdRemove(
     file: string,
-    id: string,
+    selector: string,
     json: boolean,
   ): Promise<string> {
-    if (!isValidId(id)) {
-      throw new MdError("invalid_id", `Invalid section ID: ${id}`, file, id);
-    }
-
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
 
-    const section = readSection.findSection(doc, id);
-    if (!section) {
-      throw new MdError(
-        "section_not_found",
-        `No section with id '${id}' in ${file}`,
-        file,
-        id,
-      );
-    }
+    const section = resolveSectionSelector(doc, selector, file);
 
-    const { result, updatedLines } = removeSection.remove({ doc, id });
+    const { result, updatedLines } = removeSection.remove({
+      doc,
+      id: section.id,
+    });
 
     await writeFile(file, updatedLines.join("\n"));
 
@@ -846,8 +885,8 @@ export function createCommands(deps: CommandDeps) {
     .description("List sections in a Markdown file")
     .arguments("<file:string>")
     .option(
-      "--after <id:string>",
-      "Show only subsections after this section ID",
+      "--after <selector:string>",
+      "Show only subsections after this section",
     )
     .option("--last", "Show only the last subsection")
     .option("--count", "Show count only")
@@ -869,7 +908,7 @@ export function createCommands(deps: CommandDeps) {
 
   const readCmd = new Command()
     .description("Read section content")
-    .arguments("<file:string> <id:string>")
+    .arguments("<file:string> <selector:string>")
     .option("--deep", "Include subsections")
     .option("--json", "Output as JSON")
     .action(async (options, file, id) => {
@@ -888,7 +927,7 @@ export function createCommands(deps: CommandDeps) {
 
   const writeCmdObj = new Command()
     .description("Update section content")
-    .arguments("<file:string> <id:string> [content:string]")
+    .arguments("<file:string> <selector:string> [content:string]")
     .option("--deep", "Replace including subsections")
     .option("--json", "Output as JSON")
     .action(async (options, file, id, content) => {
@@ -915,14 +954,16 @@ export function createCommands(deps: CommandDeps) {
     .option("--json", "Output as JSON")
     .action(async (options, file, idOrContent, content) => {
       try {
-        const hasId = idOrContent !== undefined && isValidId(idOrContent);
-        const id = hasId ? idOrContent : null;
-        const actualContent = hasId
+        const hasSelector = idOrContent !== undefined &&
+          (isValidId(idOrContent) ||
+            (content !== undefined && isHeadingSelector(idOrContent)));
+        const selector = hasSelector ? idOrContent : null;
+        const actualContent = hasSelector
           ? (content ?? await readStdin())
           : (idOrContent ?? await readStdin());
         const output = await cmdAppend(
           file,
-          id,
+          selector,
           actualContent,
           options.deep ?? false,
           options.before ?? false,
@@ -936,7 +977,7 @@ export function createCommands(deps: CommandDeps) {
 
   const emptyCmdObj = new Command()
     .description("Empty a section (keep header)")
-    .arguments("<file:string> <id:string>")
+    .arguments("<file:string> <selector:string>")
     .option("--deep", "Also empty subsections")
     .option("--json", "Output as JSON")
     .action(async (options, file, id) => {
@@ -955,7 +996,7 @@ export function createCommands(deps: CommandDeps) {
 
   const removeCmdObj = new Command()
     .description("Remove a section and its subsections")
-    .arguments("<file:string> <id:string>")
+    .arguments("<file:string> <selector:string>")
     .option("--json", "Output as JSON")
     .action(async (options, file, id) => {
       try {

@@ -157,6 +157,49 @@ Deno.test("md read - reads section content", async () => {
   }
 });
 
+Deno.test("md read - reads section by heading selector", async () => {
+  const file = await createTempFile(`# Intro\n\nNope\n\n## Test\n\nWanted`);
+  try {
+    const output = await captureOutput(() => main(["read", file, "## Test"]));
+    assertStringIncludes(output, "## Test");
+    assertStringIncludes(output, "Wanted");
+    assertEquals(output.includes("Nope"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md read - errors on ambiguous heading selector", async () => {
+  const file = await createTempFile(`# Test\n\nOne\n\n# Test\n\nTwo`);
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    await main(["read", file, "# Test"]);
+  } catch (_e) {
+    // Expected
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    await Deno.remove(file);
+  }
+
+  assertEquals(exitCode, 1);
+  assertStringIncludes(errorOutput, "ambiguous_section");
+});
+
 Deno.test("md read --deep - includes subsections", async () => {
   const file = await createTempFile(
     `# Parent\n\nContent\n\n## Child\n\nChild content`,
@@ -265,6 +308,19 @@ Deno.test("md append - adds content to section", async () => {
     const content = await Deno.readTextFile(file);
     assertStringIncludes(content, "Original");
     assertStringIncludes(content, "Appended");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md append - adds content to section by heading selector", async () => {
+  const file = await createTempFile(`# One\n\nA\n\n## Two\n\nB`);
+  try {
+    await main(["append", file, "## Two", "C"]);
+
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "## Two\n\nB\n\nC");
+    assertEquals(content.includes("# One\n\nA\n\nC"), false);
   } finally {
     await Deno.remove(file);
   }

@@ -73,6 +73,7 @@ export interface SearchSummary {
 
 /** Error codes for structured error handling */
 export type ErrorCode =
+  | "ambiguous_section"
   | "file_not_found"
   | "section_not_found"
   | "parse_error"
