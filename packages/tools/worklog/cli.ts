@@ -2501,9 +2501,17 @@ function formatList(
   output: ListOutput,
   showAll = false,
   palette: Palette = createPalette(false, catppuccinLatte),
+  showHeader = true,
 ): string {
+  const header = showHeader && output.childWorklog
+    ? `${
+      palette.tag(`[${output.childWorklog.scope}]`)
+    } · child of ${output.childWorklog.childOf}`
+    : "";
+
   if (output.tasks.length === 0) {
-    return showAll ? "no tasks" : "no active tasks";
+    const emptyMessage = showAll ? "no tasks" : "no active tasks";
+    return header ? `${header}\n${emptyMessage}` : emptyMessage;
   }
 
   // Detect --subtasks mode: any item has parent set
@@ -2571,10 +2579,12 @@ function formatList(
         lines.push(renderTask(child, "  "));
       }
     }
-    return lines.join("\n");
+    const body = lines.join("\n");
+    return header ? `${header}\n${body}` : body;
   }
 
-  return sortedTasks.map((t) => renderTask(t, "")).join("\n");
+  const body = sortedTasks.map((t) => renderTask(t, "")).join("\n");
+  return header ? `${header}\n${body}` : body;
 }
 
 function formatScopes(output: ScopesOutput): string {
@@ -5765,6 +5775,7 @@ const listCmd = new Command()
   .option("--subtasks", "Include subtasks (hidden by default)")
   .option("--subtasks-of-started", "Include subtasks of started tasks")
   .option("--parent <taskId:string>", "Show only subtasks of this parent")
+  .option("--no-header", "Hide contextual header lines")
   .action(async (options, pattern) => {
     try {
       // Build status filter from flags
@@ -5825,9 +5836,12 @@ const listCmd = new Command()
           resolvedParentFilter,
         );
         console.log(
-          options.json
-            ? JSON.stringify(output)
-            : formatList(output, options.all, computePalette()),
+          options.json ? JSON.stringify(output) : formatList(
+            output,
+            options.all,
+            computePalette(),
+            options.header !== false,
+          ),
         );
         return;
       }
@@ -5857,9 +5871,12 @@ const listCmd = new Command()
         resolvedParentFilter,
       );
       console.log(
-        options.json
-          ? JSON.stringify(output)
-          : formatList(output, options.all, computePalette()),
+        options.json ? JSON.stringify(output) : formatList(
+          output,
+          options.all,
+          computePalette(),
+          options.header !== false,
+        ),
       );
     } catch (e) {
       handleError(e, options.json ?? false);

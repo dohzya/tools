@@ -312,9 +312,18 @@ export function formatTraces(output: TracesOutput): string {
   return lines.join("\n");
 }
 
-export function formatList(output: ListOutput, showAll = false): string {
+export function formatList(
+  output: ListOutput,
+  showAll = false,
+  showHeader = true,
+): string {
+  const header = showHeader && output.childWorklog
+    ? `[${output.childWorklog.scope}] · child of ${output.childWorklog.childOf}`
+    : "";
+
   if (output.tasks.length === 0) {
-    return showAll ? "no tasks" : "no active tasks";
+    const emptyMessage = showAll ? "no tasks" : "no active tasks";
+    return header ? `${header}\n${emptyMessage}` : emptyMessage;
   }
 
   // Sort tasks by creation date (newest first)
@@ -325,7 +334,7 @@ export function formatList(output: ListOutput, showAll = false): string {
   // Calculate short IDs
   const allIds = sortedTasks.map((t) => t.id);
 
-  return sortedTasks
+  const body = sortedTasks
     .map((t) => {
       const shortId = getShortId(t.id, allIds);
 
@@ -357,6 +366,7 @@ export function formatList(output: ListOutput, showAll = false): string {
       return `${prefix}${tagsStr}${shortId}  ${t.status}  "${t.name}"  ${t.created}`;
     })
     .join("\n");
+  return header ? `${header}\n${body}` : body;
 }
 
 export function formatScopes(output: ScopesOutput): string {

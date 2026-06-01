@@ -236,6 +236,13 @@ export interface ListTaskItem {
 
 /** Output of the list command. */
 export interface ListOutput {
+  /** Current worklog context when listing from a child worklog. */
+  childWorklog?: {
+    /** Display ID of the current child scope. */
+    scope: string;
+    /** Parent path from the child worklog's scope configuration. */
+    childOf: string;
+  };
   /** Ordered list of matching tasks. */
   tasks: readonly ListTaskItem[];
 }

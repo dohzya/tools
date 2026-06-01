@@ -4330,6 +4330,40 @@ Deno.test("cross-scope - show child task from parent scope", async () => {
   }
 });
 
+Deno.test("list from child worklog shows child context header", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot } = await setupCrossScopeFixture(tempDir);
+    Deno.chdir(`${gitRoot}/packages/api`);
+
+    const output = await captureOutput(() => main(["list"]));
+
+    assertStringIncludes(output, "[api] · child of ../..");
+    assertEquals(output.split("\n")[0], "[api] · child of ../..");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("list --no-header from child worklog hides child context header", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot } = await setupCrossScopeFixture(tempDir);
+    Deno.chdir(`${gitRoot}/packages/api`);
+
+    const output = await captureOutput(() => main(["list", "--no-header"]));
+
+    assertEquals(output.includes("[api] · child of ../.."), false);
+    assertEquals(output.split("\n")[0].includes("Child API task"), true);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create --scope stores new task in the target child scope", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -6097,6 +6131,56 @@ Deno.test("formatList - no color: byte-for-byte identical to today's output", ()
   assertEquals(
     out,
     `#recap  c96mqj  started  "ajouter les couleurs"  2026-05-12 14:45`,
+  );
+});
+
+Deno.test("formatList - child worklog context header", () => {
+  const palette = createPalette(false, catppuccinLatte);
+  const out = _formatList(
+    {
+      childWorklog: { scope: "lib", childOf: "../.." },
+      tasks: [
+        {
+          id: "c96mqj3ws11xhjmb3k4gzzyfj",
+          name: "ajouter les couleurs",
+          desc: "",
+          status: "started",
+          created: "2026-05-12 14:45",
+        },
+      ],
+    },
+    false,
+    palette,
+  );
+  assertEquals(
+    out,
+    `[lib] · child of ../..\n` +
+      `c96mqj  started  "ajouter les couleurs"  2026-05-12 14:45`,
+  );
+});
+
+Deno.test("formatList - child worklog context header can be hidden", () => {
+  const palette = createPalette(false, catppuccinLatte);
+  const out = _formatList(
+    {
+      childWorklog: { scope: "lib", childOf: "../.." },
+      tasks: [
+        {
+          id: "c96mqj3ws11xhjmb3k4gzzyfj",
+          name: "ajouter les couleurs",
+          desc: "",
+          status: "started",
+          created: "2026-05-12 14:45",
+        },
+      ],
+    },
+    false,
+    palette,
+    false,
+  );
+  assertEquals(
+    out,
+    `c96mqj  started  "ajouter les couleurs"  2026-05-12 14:45`,
   );
 });
 

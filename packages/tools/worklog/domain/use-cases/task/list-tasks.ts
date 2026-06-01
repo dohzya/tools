@@ -321,6 +321,12 @@ export class ListTasksUseCase {
 
     // Check if child worklog
     const isChild = await this.isChildWorklog(currentScope);
+    const childWorklog = isChild && currentScopeId && currentScopeId !== "."
+      ? {
+        scope: currentScopeId,
+        childOf: await this.getChildOfDisplay(currentScope),
+      }
+      : undefined;
 
     // Load current scope tasks (no prefix)
     const currentIndexPath = `${currentScope}/index.json`;
@@ -438,7 +444,7 @@ export class ListTasksUseCase {
       }
     }
 
-    return { tasks };
+    return { ...(childWorklog ? { childWorklog } : {}), tasks };
   }
 
   private async findTasksByTagPattern(
@@ -594,6 +600,23 @@ export class ListTasksUseCase {
     // Resolve relative parent path
     const childDir = childPath.split("/").slice(0, -1).join("/");
     return this.resolveRelativePath(childDir, config.parent);
+  }
+
+  private async getChildOfDisplay(childPath: string): Promise<string> {
+    const scopeJsonPath = `${childPath}/scope.json`;
+    const content = await this.fs.readFile(scopeJsonPath);
+    const config = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
+      { parent: string }
+    >();
+    return this.stripTrailingSlashes(config.parent);
+  }
+
+  private stripTrailingSlashes(path: string): string {
+    let displayPath = path;
+    while (displayPath.length > 1 && displayPath.endsWith("/")) {
+      displayPath = displayPath.slice(0, -1);
+    }
+    return displayPath;
   }
 
   private resolveRelativePath(base: string, relative: string): string {

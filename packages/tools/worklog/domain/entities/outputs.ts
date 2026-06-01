@@ -67,6 +67,10 @@ export type ListTaskItem = {
 };
 
 export type ListOutput = {
+  readonly childWorklog?: {
+    readonly scope: string;
+    readonly childOf: string;
+  };
   readonly tasks: readonly ListTaskItem[];
 };
 
