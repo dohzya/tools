@@ -60,6 +60,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "@zod/zod/mini";
 import { ExplicitCast } from "../explicit-cast.ts";
 import { buildCheckpointPrompt } from "./checkpoint-prompt.ts";
+import { agentInstructions } from "../agent-instructions.ts";
 
 // ============================================================================
 // Hexagonal Architecture Imports
@@ -5419,6 +5420,12 @@ const agentCmd = new Command()
     }
   });
 
+const agentInstructionsCmd = new Command()
+  .description("Print AGENTS.md instructions for wl")
+  .action(() => {
+    console.log(agentInstructions("wl"));
+  });
+
 const updateCmd = new Command()
   .description("Update task name or description")
   .arguments(HAS_ENV_TASK_ID ? "[taskId:string]" : "<taskId:string>")
@@ -6025,6 +6032,7 @@ const cli = new Command()
   .command("claude", claudeCmd)
   .command("codex", codexCmd)
   .command("agent", agentCmd)
+  .command("agent-instructions", agentInstructionsCmd)
   .command("update", updateCmd)
   .command("trace", traceCmd)
   .command("traces", tracesCmd)

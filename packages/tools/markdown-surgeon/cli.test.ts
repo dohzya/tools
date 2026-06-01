@@ -58,6 +58,23 @@ async function createTempFile(content: string): Promise<string> {
 }
 
 // ============================================================================
+// CLI agent-instructions command tests
+// ============================================================================
+
+Deno.test("md agent-instructions - prints AGENTS.md snippet", async () => {
+  const output = await captureOutput(() => main(["agent-instructions"]));
+
+  assertEquals(output.startsWith("##"), false);
+  assertEquals(output.includes("editing.\n\n- Outline"), false);
+  assertStringIncludes(output, "Markdown Surgeon (`md`):");
+  assertStringIncludes(output, "md outline");
+  assertStringIncludes(output, "md read");
+  assertStringIncludes(output, "md write");
+  assertStringIncludes(output, "section IDs");
+  assertStringIncludes(output, "md --help");
+});
+
+// ============================================================================
 // CLI outline command tests
 // ============================================================================
 

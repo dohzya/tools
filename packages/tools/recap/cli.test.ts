@@ -56,6 +56,24 @@ async function captureOutput(fn: () => Promise<void>): Promise<string> {
 }
 
 // ============================================================================
+// CLI agent-instructions command tests
+// ============================================================================
+
+Deno.test("recap agent-instructions - prints AGENTS.md snippet", async () => {
+  const output = await captureOutput(() => main(["agent-instructions"]));
+
+  assertEquals(output.startsWith("##"), false);
+  assertEquals(output.includes("assistants.\n\n- Snapshot"), false);
+  assertStringIncludes(output, "Recap (`recap`):");
+  assertStringIncludes(output, "recap");
+  assertStringIncludes(output, "useful as assistant context");
+  assertStringIncludes(output, "Project-specific context");
+  assertStringIncludes(output, "recap --help");
+  assertEquals(output.includes("recap config show"), false);
+  assertEquals(output.includes("recap config files"), false);
+});
+
+// ============================================================================
 // resolve-config tests
 // ============================================================================
 

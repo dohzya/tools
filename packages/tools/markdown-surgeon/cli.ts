@@ -11,6 +11,7 @@ import { CompletionsCommand } from "@cliffy/command/completions";
 import { Blake3HashService } from "./adapters/services/blake3-hash.ts";
 import { YamlParserService } from "./adapters/services/yaml-parser.ts";
 import { createCommands } from "./adapters/cli/commands.ts";
+import { agentInstructions } from "../agent-instructions.ts";
 
 // ============================================================================
 // Version
@@ -30,6 +31,11 @@ const yamlService = new YamlParserService();
 // ============================================================================
 
 const commands = createCommands({ hashService, yamlService });
+const agentInstructionsCmd = new Command()
+  .description("Print AGENTS.md instructions for md")
+  .action(() => {
+    console.log(agentInstructions("md"));
+  });
 
 // ============================================================================
 // CLI tree
@@ -49,6 +55,7 @@ const cli = new Command()
   .command("concat", commands.concatCmd)
   .command("meta", commands.metaCmd)
   .command("create", commands.createCmd)
+  .command("agent-instructions", agentInstructionsCmd)
   .command("completions", new CompletionsCommand());
 
 /** Run the markdown-surgeon CLI with the given arguments */

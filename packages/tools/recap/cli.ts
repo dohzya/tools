@@ -30,6 +30,7 @@ import { formatRecapJson } from "./adapters/cli/formatter.ts";
 import { join, resolve } from "node:path";
 import { RecapError } from "./domain/entities/errors.ts";
 import { ExplicitCast } from "../explicit-cast.ts";
+import { agentInstructions } from "../agent-instructions.ts";
 
 const VERSION = "0.2.1";
 
@@ -323,6 +324,10 @@ export async function main(args: string[]): Promise<void> {
 
       await fs.writeFile(configPath, content);
       console.log(`recap: created ${configPath}`);
+    })
+    .command("agent-instructions", "Print AGENTS.md instructions for recap")
+    .action(() => {
+      console.log(agentInstructions("recap"));
     })
     .command("completions", new CompletionsCommand());
 

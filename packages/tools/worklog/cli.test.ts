@@ -54,6 +54,20 @@ Deno.test("worklog - shows help when no arguments provided", async () => {
   assertStringIncludes(output, "Key principles:");
 });
 
+Deno.test("worklog agent-instructions - prints AGENTS.md snippet", async () => {
+  const output = await captureOutput(() => main(["agent-instructions"]));
+
+  assertEquals(output.startsWith("##"), false);
+  assertEquals(output.includes("work.\n\n- Create"), false);
+  assertStringIncludes(output, "Worklog (`wl`):");
+  assertStringIncludes(output, "wl create");
+  assertStringIncludes(output, "wl trace");
+  assertStringIncludes(output, "wl done");
+  assertStringIncludes(output, "wl done --agent");
+  assertStringIncludes(output, "wl --help");
+  assertEquals(output.includes("WORKLOG_TASK_ID"), false);
+});
+
 Deno.test("worklog trace - uses current timestamp by default", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
