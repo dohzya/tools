@@ -222,16 +222,18 @@ export interface ListTaskItem {
   desc: string;
   /** Current lifecycle status. */
   status: TaskStatus;
-  /** Formatted creation date. */
-  created: string;
   /** Scope prefix prepended in multi-scope listings. */
   scopePrefix?: string;
+  /** Formatted creation date. */
+  created: string;
   /** Effective tags for the task. */
   tags?: readonly string[];
   /** Filter pattern used for matching (hidden from display). */
   filterPattern?: string;
   /** Full parent task ID (present in --subtasks mode). */
   parent?: string;
+  /** Source worklog path, requested only by commands that need task details. */
+  sourceWorklogPath?: string;
 }
 
 /** Output of the list command. */
@@ -245,6 +247,63 @@ export interface ListOutput {
   };
   /** Ordered list of matching tasks. */
   tasks: readonly ListTaskItem[];
+}
+
+/** A subtask expanded in dashboard output. */
+export interface DashboardSubtaskItem {
+  /** Full task ID. */
+  id: string;
+  /** Short display name. */
+  name: string;
+  /** Task description. */
+  desc: string;
+  /** Current lifecycle status. */
+  status: TaskStatus;
+  /** Scope prefix prepended for cross-scope subtasks. */
+  scopePrefix?: string;
+  /** Formatted creation date. */
+  created: string;
+  /** Open todo items attached to the subtask. */
+  todos: readonly Todo[];
+  /** Open nested subtasks attached to this subtask. */
+  subtasks: readonly DashboardSubtaskItem[];
+}
+
+/** A top-level task in dashboard output. */
+export interface DashboardTaskItem {
+  /** Full task ID. */
+  id: string;
+  /** Short display name. */
+  name: string;
+  /** Task description. */
+  desc: string;
+  /** Current lifecycle status. */
+  status: TaskStatus;
+  /** Formatted creation date. */
+  created: string;
+  /** Effective tags for the task. */
+  tags?: readonly string[];
+  /** Open todo items attached to a started task. */
+  todos: readonly Todo[];
+  /** Open subtasks attached to a started task. */
+  subtasks: readonly DashboardSubtaskItem[];
+}
+
+/** Output of the dashboard command. */
+export interface DashboardOutput {
+  /** Current worklog context when dashboarding from a child worklog. */
+  childWorklog?: {
+    /** Display ID of the current child scope. */
+    scope: string;
+    /** Parent path from the child worklog's scope configuration. */
+    childOf: string;
+  };
+  /** Number of open top-level tasks hidden by --limit. */
+  hiddenTopLevelTasks?: number;
+  /** Applied top-level task limit. */
+  limit?: number;
+  /** Ordered top-level tasks, optionally expanded with details. */
+  tasks: readonly DashboardTaskItem[];
 }
 
 /** A task with its full history, used in summary output. */

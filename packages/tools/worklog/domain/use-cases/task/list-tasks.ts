@@ -27,6 +27,7 @@ export interface ListTasksInput {
   readonly showSubtasks?: boolean; // Include subtasks (hidden by default)
   readonly showSubtasksOfStarted?: boolean; // Include subtasks whose parent is started
   readonly parentFilter?: string; // Full parent task ID — show only direct children
+  readonly includeSourceWorklogPath?: boolean;
 }
 
 export class ListTasksUseCase {
@@ -174,6 +175,7 @@ export class ListTasksUseCase {
         matchStatus,
         shouldInclude,
         shouldDisplayParent,
+        input.includeSourceWorklogPath ?? false,
       );
     }
 
@@ -311,6 +313,7 @@ export class ListTasksUseCase {
     matchStatus: (status: string) => boolean,
     shouldInclude: (t: IndexEntry, parentStatus?: TaskStatus) => boolean,
     shouldDisplayParent: boolean,
+    includeSourceWorklogPath: boolean,
   ): Promise<ListOutput> {
     const tasks: ListTaskItem[] = [];
     const seenTasks = new Set<string>();
@@ -395,6 +398,9 @@ export class ListTasksUseCase {
             created: this.formatShort(parentTask.created),
             scopePrefix: "^",
             tags: parentTask.tags,
+            ...(includeSourceWorklogPath && parentWorklogPath
+              ? { sourceWorklogPath: parentWorklogPath }
+              : {}),
           });
         }
       }
@@ -408,6 +414,9 @@ export class ListTasksUseCase {
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
+          ...(includeSourceWorklogPath
+            ? { sourceWorklogPath: currentScope }
+            : {}),
           ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
         }));
 
@@ -443,6 +452,9 @@ export class ListTasksUseCase {
             created: this.formatShort(task.created),
             scopePrefix: "^",
             tags: task.tags,
+            ...(includeSourceWorklogPath && parentWorklogPath
+              ? { sourceWorklogPath: parentWorklogPath }
+              : {}),
             ...(shouldDisplayParent && task.parent
               ? { parent: task.parent }
               : {}),
@@ -497,6 +509,9 @@ export class ListTasksUseCase {
                 created: this.formatShort(t.created),
                 scopePrefix: child.id,
                 tags: t.tags,
+                ...(includeSourceWorklogPath
+                  ? { sourceWorklogPath: childWorklogPath }
+                  : {}),
                 ...(shouldDisplayParent && t.parent
                   ? { parent: t.parent }
                   : {}),

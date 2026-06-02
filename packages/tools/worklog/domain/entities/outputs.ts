@@ -64,6 +64,7 @@ export type ListTaskItem = {
   readonly tags?: readonly string[];
   readonly filterPattern?: string; // Pattern used for filtering (to hide from display)
   readonly parent?: string; // Full parent task ID (set in --subtasks mode)
+  readonly sourceWorklogPath?: string;
 };
 
 export type ListOutput = {
@@ -72,6 +73,39 @@ export type ListOutput = {
     readonly childOf: string;
   };
   readonly tasks: readonly ListTaskItem[];
+};
+
+export type DashboardSubtaskItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly desc: string;
+  readonly status: TaskStatus;
+  readonly scopePrefix?: string;
+  readonly created: string;
+  readonly todos: readonly Todo[];
+  readonly subtasks: readonly DashboardSubtaskItem[];
+};
+
+export type DashboardTaskItem = {
+  readonly id: string;
+  readonly name: string;
+  readonly desc: string;
+  readonly status: TaskStatus;
+  readonly scopePrefix?: string;
+  readonly created: string;
+  readonly tags?: readonly string[];
+  readonly todos: readonly Todo[];
+  readonly subtasks: readonly DashboardSubtaskItem[];
+};
+
+export type DashboardOutput = {
+  readonly childWorklog?: {
+    readonly scope: string;
+    readonly childOf: string;
+  };
+  readonly hiddenTopLevelTasks?: number;
+  readonly limit?: number;
+  readonly tasks: readonly DashboardTaskItem[];
 };
 
 export type SummaryTaskItem = {

@@ -4415,6 +4415,23 @@ Deno.test("list --no-header from child worklog hides child context header", asyn
   }
 });
 
+Deno.test("dashboard from child worklog shows child context header", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot } = await setupCrossScopeFixture(tempDir);
+    Deno.chdir(`${gitRoot}/packages/api`);
+
+    const output = await captureOutput(() => main(["dash"]));
+
+    assertStringIncludes(output, "[api] · child of ../..");
+    assertEquals(output.split("\n")[0], "[api] · child of ../..");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create --scope stores new task in the target child scope", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -4571,6 +4588,44 @@ Deno.test("cross-scope subtasks - parent list shows child-scope subtask of start
     assertStringIncludes(listText, "[api]");
     assertStringIncludes(listText, "Child B");
     const lines = listText.split("\n");
+    const parentLine = lines.findIndex((line) => line.includes("Parent A"));
+    const childLine = lines.findIndex((line) => line.includes("Child B"));
+    assert(childLine > parentLine, "Child B should render below Parent A");
+    assert(lines[childLine].startsWith("  "), "Child B should be indented");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("dashboard - parent shows child-scope subtask of started parent", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const { gitRoot, parentTaskId } = await setupCrossScopeParentWithChildScope(
+      tempDir,
+    );
+
+    Deno.chdir(gitRoot);
+    await main([
+      "create",
+      "Child B",
+      "--scope",
+      "api",
+      "--parent",
+      parentTaskId,
+      "--todo",
+      "child cross-scope todo",
+    ]);
+    Deno.chdir(gitRoot);
+
+    const dashText = await captureOutput(() => main(["dash"]));
+
+    assertStringIncludes(dashText, "Parent A");
+    assertStringIncludes(dashText, "[api]");
+    assertStringIncludes(dashText, "Child B");
+    assertStringIncludes(dashText, "child cross-scope todo");
+    const lines = dashText.split("\n");
     const parentLine = lines.findIndex((line) => line.includes("Parent A"));
     const childLine = lines.findIndex((line) => line.includes("Child B"));
     assert(childLine > parentLine, "Child B should render below Parent A");
@@ -5475,6 +5530,142 @@ Deno.test("subtasks - list --subtasks-of-started shows children of started paren
       !listedTasks.some((t: { name: string }) => t.name === "hidden child"),
       "child of non-started parent should stay hidden",
     );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("dashboard - expands started tasks with open todos and open subtasks", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main([
+      "create",
+      "--started",
+      "started parent",
+      "--todo",
+      "parent open todo",
+    ]);
+    await main([
+      "create",
+      "--ready",
+      "ready parent",
+      "--todo",
+      "ready parent hidden todo",
+    ]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listOut)).dangerousCast<{
+      tasks: Array<{ id: string; name: string }>;
+    }>().tasks;
+    const startedParentId = tasks.find((t) => t.name === "started parent")!.id;
+    const readyParentId = tasks.find((t) => t.name === "ready parent")!.id;
+
+    await main([
+      "create",
+      "open child",
+      "--parent",
+      startedParentId,
+      "--todo",
+      "child open todo",
+    ]);
+    const subtaskListOut = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const subtaskTasks = ExplicitCast.fromAny(JSON.parse(subtaskListOut))
+      .dangerousCast<{ tasks: Array<{ id: string; name: string }> }>().tasks;
+    const openChildId = subtaskTasks.find((t) => t.name === "open child")!.id;
+    await main([
+      "create",
+      "nested child",
+      "--parent",
+      openChildId,
+      "--todo",
+      "nested child todo",
+    ]);
+    const closedChildId = await captureOutput(() =>
+      main(["create", "closed child", "--parent", startedParentId])
+    );
+    await main(["done", closedChildId, "closed", "closed"]);
+    await main(["create", "ready child", "--parent", readyParentId]);
+
+    const dashText = await captureOutput(() => main(["dash"]));
+
+    assertStringIncludes(dashText, "started parent");
+    assertStringIncludes(dashText, "parent open todo");
+    assertStringIncludes(dashText, "open child");
+    assertStringIncludes(dashText, "child open todo");
+    assertStringIncludes(dashText, "nested child");
+    assertStringIncludes(dashText, "nested child todo");
+    assertStringIncludes(dashText, "ready parent");
+    assertEquals(dashText.includes("ready parent hidden todo"), false);
+    assertEquals(dashText.includes("closed child"), false);
+    assertEquals(dashText.includes("ready child"), false);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("dashboard --limit limits top-level tasks before expansion", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main([
+      "create",
+      "--started",
+      "first parent",
+      "--todo",
+      "first todo",
+    ]);
+    await main([
+      "create",
+      "--started",
+      "second parent",
+      "--todo",
+      "second todo",
+    ]);
+    await main(["create", "--ready", "third parent"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listOut)).dangerousCast<{
+      tasks: Array<{ id: string; name: string }>;
+    }>().tasks;
+    const firstParentId = tasks.find((t) => t.name === "first parent")!.id;
+    await main(["create", "first child", "--parent", firstParentId]);
+
+    const dashJson = await captureOutput(() =>
+      main(["dashboard", "--limit", "1", "--json"])
+    );
+    const output = ExplicitCast.fromAny(JSON.parse(dashJson)).dangerousCast<{
+      hiddenTopLevelTasks: number;
+      limit: number;
+      tasks: Array<{ name: string; todos: unknown[]; subtasks: unknown[] }>;
+    }>();
+
+    assertEquals(output.hiddenTopLevelTasks, 2);
+    assertEquals(output.limit, 1);
+    assertEquals(output.tasks.length, 1);
+    assertEquals(
+      output.tasks[0].todos.length + output.tasks[0].subtasks.length > 0,
+      true,
+    );
+
+    const dashText = await captureOutput(() =>
+      main(["dashboard", "--limit", "1"])
+    );
+    const lines = dashText.split("\n");
+    assertEquals(lines.at(-1), "... 2 more active tasks");
+    assert(lines.at(-2) !== "");
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });

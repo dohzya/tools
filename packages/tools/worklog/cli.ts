@@ -11,6 +11,7 @@ import {
   type AssignByTagOutput,
   type AssignOutput,
   type Checkpoint,
+  type DashboardOutput,
   type DiscoveredScope,
   type Entry,
   type ImportOutput,
@@ -2587,6 +2588,107 @@ function formatList(
   return header ? `${header}\n${body}` : body;
 }
 
+function formatDashboard(
+  output: DashboardOutput,
+  palette: Palette = createPalette(false, catppuccinLatte),
+): string {
+  const header = output.childWorklog
+    ? `${
+      palette.tag(`[${output.childWorklog.scope}]`)
+    } · child of ${output.childWorklog.childOf}`
+    : "";
+
+  if (output.tasks.length === 0) {
+    return header ? `${header}\nno active tasks` : "no active tasks";
+  }
+
+  const collectSubtasks = (
+    subtasks: DashboardOutput["tasks"][number]["subtasks"],
+  ): DashboardOutput["tasks"][number]["subtasks"][number][] =>
+    subtasks.flatMap((subtask) => [
+      subtask,
+      ...collectSubtasks(subtask.subtasks),
+    ]);
+  const allSubtasks = output.tasks.flatMap((task) =>
+    collectSubtasks(task.subtasks)
+  );
+  const allTaskIds = [
+    ...output.tasks.map((task) => task.id),
+    ...allSubtasks.map((subtask) => subtask.id),
+  ];
+  const allTodoIds = [
+    ...output.tasks.flatMap((task) => task.todos.map((todo) => todo.id)),
+    ...allSubtasks.flatMap((subtask) => subtask.todos.map((todo) => todo.id)),
+  ];
+  const statusChars: Record<TodoStatus, string> = {
+    "todo": " ",
+    "wip": ">",
+    "blocked": "!",
+    "cancelled": "-",
+    "done": "x",
+  };
+
+  const formatTaskLine = (
+    task: {
+      readonly id: string;
+      readonly name: string;
+      readonly status: TaskStatus;
+      readonly created: string;
+      readonly scopePrefix?: string;
+      readonly tags?: readonly string[];
+    },
+    indent: string,
+  ): string => {
+    let prefix = indent;
+    if (task.scopePrefix) {
+      prefix += `${palette.tag(`[${task.scopePrefix}]`)}  `;
+    }
+    const tagsStr = task.tags && task.tags.length > 0
+      ? task.tags.map((tag) => palette.tag(`#${tag}`)).join(" ") + "  "
+      : "";
+    return `${prefix}${tagsStr}${
+      palette.id(getShortId(task.id, allTaskIds))
+    }  ${colorStatus(task.status, palette)}  "${task.name}"  ${
+      palette.timestamp(task.created)
+    }`;
+  };
+
+  const formatTodoLine = (todo: Todo, indent: string): string => {
+    return `${indent}${palette.id(getShortId(todo.id, allTodoIds))} [${
+      statusChars[todo.status]
+    }] ${todo.text}`;
+  };
+
+  const lines: string[] = [];
+  const pushSubtaskLines = (
+    subtasks: DashboardOutput["tasks"][number]["subtasks"],
+    indent: string,
+  ) => {
+    for (const subtask of subtasks) {
+      lines.push(formatTaskLine(subtask, indent));
+      for (const todo of subtask.todos) {
+        lines.push(formatTodoLine(todo, `${indent}  `));
+      }
+      pushSubtaskLines(subtask.subtasks, `${indent}  `);
+    }
+  };
+
+  for (const task of output.tasks) {
+    lines.push(formatTaskLine(task, ""));
+    for (const todo of task.todos) {
+      lines.push(formatTodoLine(todo, "  "));
+    }
+    pushSubtaskLines(task.subtasks, "  ");
+  }
+  const hidden = output.hiddenTopLevelTasks ?? 0;
+  if (hidden > 0) {
+    lines.push(`... ${hidden} more active tasks`);
+  }
+
+  const body = lines.join("\n");
+  return header ? `${header}\n${body}` : body;
+}
+
 function formatScopes(output: ScopesOutput): string {
   if (output.scopes.length === 0) {
     return "no scopes found";
@@ -3222,6 +3324,7 @@ async function cmdList(
   showSubtasks?: boolean,
   showSubtasksOfStarted?: boolean,
   parentFilter?: string,
+  includeSourceWorklogPath?: boolean,
 ): Promise<ListOutput> {
   if (!baseDir) {
     await purge();
@@ -3242,7 +3345,130 @@ async function cmdList(
     showSubtasks,
     showSubtasksOfStarted,
     parentFilter,
+    includeSourceWorklogPath,
   });
+}
+
+async function cmdDashboard(
+  limit?: number,
+  gitRoot?: string | null,
+  currentScope?: string,
+): Promise<DashboardOutput> {
+  const listOutput = await cmdList(
+    false,
+    undefined,
+    undefined,
+    false,
+    gitRoot,
+    currentScope,
+    Deno.cwd(),
+    ["created", "ready", "started"],
+    undefined,
+    true,
+    false,
+    undefined,
+    true,
+  );
+  return await buildDashboardOutput(listOutput, limit);
+}
+
+async function buildDashboardOutput(
+  listOutput: ListOutput,
+  limit?: number,
+): Promise<DashboardOutput> {
+  const topLevelTasks = listOutput.tasks
+    .filter((task) => !task.parent)
+    .sort(compareListTasksNewestFirst)
+    .slice(0, limit);
+  const topLevelTaskCount = listOutput.tasks.filter((task) => !task.parent)
+    .length;
+  const hiddenTopLevelTasks = limit === undefined
+    ? 0
+    : Math.max(0, topLevelTaskCount - topLevelTasks.length);
+
+  const subtasksByParent = new Map<string, ListTaskItem[]>();
+  for (const task of listOutput.tasks) {
+    if (!task.parent) continue;
+    const subtasks = subtasksByParent.get(task.parent) ?? [];
+    subtasks.push(task);
+    subtasksByParent.set(task.parent, subtasks);
+  }
+
+  const tasks = [];
+  const buildSubtasks = async (
+    parentId: string,
+    seenTaskIds: ReadonlySet<string>,
+  ): Promise<DashboardOutput["tasks"][number]["subtasks"]> => {
+    const subtasks = [];
+    for (
+      const subtask of (subtasksByParent.get(parentId) ?? [])
+        .sort(compareListTasksNewestFirst)
+    ) {
+      if (seenTaskIds.has(subtask.id)) continue;
+      const nextSeenTaskIds = new Set(seenTaskIds);
+      nextSeenTaskIds.add(subtask.id);
+      subtasks.push({
+        id: subtask.id,
+        name: subtask.name,
+        desc: subtask.desc,
+        status: subtask.status,
+        scopePrefix: subtask.scopePrefix,
+        created: subtask.created,
+        todos: await loadOpenTodosForTask(subtask),
+        subtasks: await buildSubtasks(subtask.id, nextSeenTaskIds),
+      });
+    }
+    return subtasks;
+  };
+
+  for (const task of topLevelTasks) {
+    const shouldExpand = task.status === "started";
+    const seenTaskIds = new Set<string>([task.id]);
+    const subtasks = shouldExpand
+      ? await buildSubtasks(task.id, seenTaskIds)
+      : [];
+
+    tasks.push({
+      id: task.id,
+      name: task.name,
+      desc: task.desc,
+      status: task.status,
+      scopePrefix: task.scopePrefix,
+      created: task.created,
+      tags: task.tags,
+      todos: shouldExpand ? await loadOpenTodosForTask(task) : [],
+      subtasks,
+    });
+  }
+
+  return {
+    ...(listOutput.childWorklog
+      ? { childWorklog: listOutput.childWorklog }
+      : {}),
+    ...(limit !== undefined ? { limit } : {}),
+    ...(hiddenTopLevelTasks > 0 ? { hiddenTopLevelTasks } : {}),
+    tasks,
+  };
+}
+
+async function loadOpenTodosForTask(task: ListTaskItem): Promise<Todo[]> {
+  const content = task.sourceWorklogPath
+    ? await _loadTaskContentFrom(task.id, task.sourceWorklogPath)
+    : await loadTaskContent(task.id);
+  const taskData = await parseTaskFile(content);
+  return taskData.todos.filter((todo) =>
+    todo.status !== "done" && todo.status !== "cancelled"
+  );
+}
+
+function compareListTasksNewestFirst(
+  taskA: ListTaskItem,
+  taskB: ListTaskItem,
+): number {
+  const byCreated = new Date(taskB.created).getTime() -
+    new Date(taskA.created).getTime();
+  if (byCreated !== 0) return byCreated;
+  return taskA.id.localeCompare(taskB.id);
 }
 
 async function cmdSummary(since: string | null): Promise<SummaryOutput> {
@@ -5888,6 +6114,52 @@ const listCmd = new Command()
     }
   });
 
+function createDashboardCommand() {
+  return new Command()
+    .description("Show a compact dashboard of active work")
+    .option("--json", "Output as JSON")
+    .option("--limit <n:number>", "Limit top-level tasks before expansion")
+    .action(async (options) => {
+      try {
+        applyDirOptions(
+          asGlobal(options).cwd,
+          asGlobal(options).worklogDir,
+        );
+        const cwd = Deno.cwd();
+        const gitRoot = await findGitRoot(cwd);
+        let currentScope: string | undefined;
+        if (gitRoot) {
+          try {
+            currentScope = await resolveActiveScope(cwd, null, gitRoot);
+          } catch {
+            // No scope found
+          }
+        }
+
+        const limit = options.limit;
+        if (
+          limit !== undefined &&
+          (!Number.isInteger(limit) || limit < 1)
+        ) {
+          throw new WtError(
+            "invalid_args",
+            "--limit must be a positive integer",
+          );
+        }
+
+        const output = await cmdDashboard(limit, gitRoot, currentScope);
+        console.log(
+          options.json ? JSON.stringify(output) : formatDashboard(
+            output,
+            computePalette(),
+          ),
+        );
+      } catch (e) {
+        handleError(e, options.json ?? false);
+      }
+    });
+}
+
 const summaryCmd = new Command()
   .description("Aggregate all tasks")
   .option("--json", "Output as JSON")
@@ -6065,6 +6337,8 @@ const cli = new Command()
   .command("meta", metaCmd)
   .command("tags", tagsCmd)
   .command("list", listCmd)
+  .command("dash", createDashboardCommand())
+  .command("dashboard", createDashboardCommand())
   .command("summary", summaryCmd)
   .command("import", importCmd)
   .command("todo", todoCmd)
