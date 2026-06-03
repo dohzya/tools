@@ -447,6 +447,32 @@ Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", as
   }
 });
 
+Deno.test("DenoGitInfo - renders local unicode paths without octal escapes", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await runIn(tempDir, ["git", "init", "-q"]);
+    await runIn(tempDir, ["git", "config", "user.email", "test@test"]);
+    await runIn(tempDir, ["git", "config", "user.name", "Test"]);
+    await runIn(tempDir, ["git", "config", "commit.gpgsign", "false"]);
+    await Deno.mkdir(join(tempDir, "foo"), { recursive: true });
+    await Deno.writeTextFile(join(tempDir, "foo", ".keep"), "tracked\n");
+    await runIn(tempDir, ["git", "add", "."]);
+    await runIn(tempDir, ["git", "commit", "-q", "-m", "initial commit"]);
+    await Deno.writeTextFile(join(tempDir, "foo", "été.md"), "hello\n");
+
+    const adapter = new DenoGitInfo();
+    const status = await adapter.getGitStatus(
+      join(tempDir, "foo"),
+      true,
+      false,
+    );
+
+    assertEquals(status.lines, ["?? été.md (1+ 0-)"]);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("DenoGitInfo - colors additions green and deletions red in stats", async () => {
   const tempDir = await Deno.makeTempDir();
   try {
@@ -468,7 +494,39 @@ Deno.test("DenoGitInfo - colors additions green and deletions red in stats", asy
     const status = await adapter.getGitStatus(tempDir, true, true);
 
     assertEquals(status.lines, [
-      " M a (\x1b[32m12+\x1b[39m \x1b[31m3-\x1b[39m)",
+      " \x1b[33mM\x1b[39m a (\x1b[32m12+\x1b[39m \x1b[31m3-\x1b[39m)",
+    ]);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("DenoGitInfo - colors status columns by kind", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await runIn(tempDir, ["git", "init", "-q"]);
+    await runIn(tempDir, ["git", "config", "user.email", "test@test"]);
+    await runIn(tempDir, ["git", "config", "user.name", "Test"]);
+    await runIn(tempDir, ["git", "config", "commit.gpgsign", "false"]);
+    await Deno.writeTextFile(join(tempDir, "deleted.txt"), "old\n");
+    await Deno.writeTextFile(join(tempDir, "modified.txt"), "old\n");
+    await runIn(tempDir, ["git", "add", "."]);
+    await runIn(tempDir, ["git", "commit", "-q", "-m", "initial commit"]);
+
+    await Deno.remove(join(tempDir, "deleted.txt"));
+    await Deno.writeTextFile(join(tempDir, "modified.txt"), "new\n");
+    await Deno.writeTextFile(join(tempDir, "added.txt"), "new\n");
+    await Deno.writeTextFile(join(tempDir, "untracked.txt"), "new\n");
+    await runIn(tempDir, ["git", "add", "added.txt"]);
+
+    const adapter = new DenoGitInfo();
+    const status = await adapter.getGitStatus(tempDir, true, true);
+
+    assertEquals(status.lines, [
+      "\x1b[32mA\x1b[39m  added.txt (\x1b[32m1+\x1b[39m \x1b[31m0-\x1b[39m)",
+      " \x1b[31mD\x1b[39m deleted.txt (\x1b[32m0+\x1b[39m \x1b[31m1-\x1b[39m)",
+      " \x1b[33mM\x1b[39m modified.txt (\x1b[32m1+\x1b[39m \x1b[31m1-\x1b[39m)",
+      "\x1b[36m?\x1b[39m\x1b[36m?\x1b[39m untracked.txt (\x1b[32m1+\x1b[39m \x1b[31m0-\x1b[39m)",
     ]);
   } finally {
     await Deno.remove(tempDir, { recursive: true });

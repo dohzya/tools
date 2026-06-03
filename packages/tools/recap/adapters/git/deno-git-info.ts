@@ -111,15 +111,30 @@ function isOctalDigit(value: string): boolean {
 function decodeGitQuotedPath(path: string): string {
   if (!path.startsWith('"') || !path.endsWith('"')) return path;
 
+  const decoder = new TextDecoder();
   const bytes: number[] = [];
+  let decoded = "";
+  const flushBytes = () => {
+    if (bytes.length === 0) return;
+    decoded += decoder.decode(new Uint8Array(bytes));
+    bytes.length = 0;
+  };
+
   for (let index = 1; index < path.length - 1; index += 1) {
     const current = path[index] ?? "";
     if (current !== "\\") {
-      bytes.push(current.charCodeAt(0));
+      flushBytes();
+      decoded += current;
       continue;
     }
 
     const escaped = path[index + 1] ?? "";
+    if (escaped === "") {
+      flushBytes();
+      decoded += "\\";
+      continue;
+    }
+
     if (isOctalDigit(escaped)) {
       const digits: string[] = [];
       for (
@@ -134,31 +149,32 @@ function decodeGitQuotedPath(path: string): string {
       continue;
     }
 
-    const escapedByte = (() => {
+    flushBytes();
+    decoded += (() => {
       switch (escaped) {
         case "a":
-          return 7;
+          return "\x07";
         case "b":
-          return 8;
+          return "\b";
         case "f":
-          return 12;
+          return "\f";
         case "n":
-          return 10;
+          return "\n";
         case "r":
-          return 13;
+          return "\r";
         case "t":
-          return 9;
+          return "\t";
         case "v":
-          return 11;
+          return "\v";
         default:
-          return escaped.charCodeAt(0);
+          return escaped;
       }
     })();
-    bytes.push(escapedByte);
     index += 1;
   }
+  flushBytes();
 
-  return new TextDecoder().decode(new Uint8Array(bytes));
+  return decoded;
 }
 
 async function getDiffStats(cwd: string): Promise<Map<string, DiffStats>> {
@@ -166,6 +182,8 @@ async function getDiffStats(cwd: string): Promise<Map<string, DiffStats>> {
   const unstaged = await runGit([
     "-C",
     cwd,
+    "-c",
+    "core.quotePath=false",
     "diff",
     "--relative",
     "--numstat",
@@ -175,6 +193,8 @@ async function getDiffStats(cwd: string): Promise<Map<string, DiffStats>> {
   const staged = await runGit([
     "-C",
     cwd,
+    "-c",
+    "core.quotePath=false",
     "diff",
     "--relative",
     "--cached",
@@ -207,6 +227,30 @@ async function getUntrackedStats(
 
 function ansi(open: string, close: string, text: string): string {
   return `\x1b[${open}m${text}\x1b[${close}m`;
+}
+
+function formatStatusChar(status: string): string {
+  switch (status) {
+    case "A":
+      return ansi("32", "39", status);
+    case "M":
+      return ansi("33", "39", status);
+    case "D":
+      return ansi("31", "39", status);
+    case "R":
+    case "C":
+    case "?":
+      return ansi("36", "39", status);
+    case "U":
+      return ansi("31", "39", status);
+    default:
+      return status;
+  }
+}
+
+function formatStatus(status: string, useColor: boolean): string {
+  if (!useColor) return status;
+  return Array.from(status).map(formatStatusChar).join("");
 }
 
 function formatStats(stats: DiffStats | null, useColor: boolean): string {
@@ -396,6 +440,8 @@ export class DenoGitInfo implements GitInfoProvider {
     const result = await runGit([
       "-C",
       cwd,
+      "-c",
+      "core.quotePath=false",
       "status",
       "--short",
       "--untracked-files=normal",
@@ -426,7 +472,11 @@ export class DenoGitInfo implements GitInfoProvider {
         const stats = status === "??"
           ? await getUntrackedStats(cwd, path)
           : statsByPath.get(path) ?? null;
-        localLines.push(`${line}${formatStats(stats, useColor)}`);
+        localLines.push(
+          `${formatStatus(status, useColor)}${line.slice(2)}${
+            formatStats(stats, useColor)
+          }`,
+        );
       }
     }
 
