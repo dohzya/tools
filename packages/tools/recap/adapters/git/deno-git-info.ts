@@ -104,6 +104,63 @@ function parseNumstat(output: string, statsByPath: Map<string, DiffStats>) {
   }
 }
 
+function isOctalDigit(value: string): boolean {
+  return value >= "0" && value <= "7";
+}
+
+function decodeGitQuotedPath(path: string): string {
+  if (!path.startsWith('"') || !path.endsWith('"')) return path;
+
+  const bytes: number[] = [];
+  for (let index = 1; index < path.length - 1; index += 1) {
+    const current = path[index] ?? "";
+    if (current !== "\\") {
+      bytes.push(current.charCodeAt(0));
+      continue;
+    }
+
+    const escaped = path[index + 1] ?? "";
+    if (isOctalDigit(escaped)) {
+      const digits: string[] = [];
+      for (
+        let offset = 1;
+        offset <= 3 && isOctalDigit(path[index + offset] ?? "");
+        offset += 1
+      ) {
+        digits.push(path[index + offset] ?? "");
+      }
+      bytes.push(Number.parseInt(digits.join(""), 8));
+      index += digits.length;
+      continue;
+    }
+
+    const escapedByte = (() => {
+      switch (escaped) {
+        case "a":
+          return 7;
+        case "b":
+          return 8;
+        case "f":
+          return 12;
+        case "n":
+          return 10;
+        case "r":
+          return 13;
+        case "t":
+          return 9;
+        case "v":
+          return 11;
+        default:
+          return escaped.charCodeAt(0);
+      }
+    })();
+    bytes.push(escapedByte);
+    index += 1;
+  }
+
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
 async function getDiffStats(cwd: string): Promise<Map<string, DiffStats>> {
   const statsByPath = new Map<string, DiffStats>();
   const unstaged = await runGit([
@@ -361,7 +418,7 @@ export class DenoGitInfo implements GitInfoProvider {
 
     for (const line of lines) {
       const status = line.slice(0, 2);
-      const path = line.slice(3);
+      const path = decodeGitQuotedPath(line.slice(3));
       if (path.startsWith("../")) {
         const kind = outsideKindFor(status);
         outsideCounts.set(kind, (outsideCounts.get(kind) ?? 0) + 1);

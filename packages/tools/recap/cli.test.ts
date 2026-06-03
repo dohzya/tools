@@ -429,6 +429,8 @@ Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", as
     );
     await Deno.writeTextFile(join(tempDir, "b"), "two\n");
     await Deno.writeTextFile(join(tempDir, "outside-new"), "new\n");
+    await Deno.writeTextFile(join(tempDir, "outside space"), "new\n");
+    await Deno.writeTextFile(join(tempDir, "extérieur"), "new\n");
 
     const adapter = new DenoGitInfo();
     const cwd = join(tempDir, "foo");
@@ -438,7 +440,7 @@ Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", as
     assertEquals(stash.lines, ["(1 stashed entry)"]);
     assertEquals(status.lines, [
       " M a (12+ 3-)",
-      "(1 change and 1 untracked file outside this dir)",
+      "(1 change and 3 untracked files outside this dir)",
     ]);
   } finally {
     await Deno.remove(tempDir, { recursive: true });
