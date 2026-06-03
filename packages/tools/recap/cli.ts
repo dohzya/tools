@@ -32,7 +32,7 @@ import { RecapError } from "./domain/entities/errors.ts";
 import { ExplicitCast } from "../explicit-cast.ts";
 import { agentInstructions } from "../agent-instructions.ts";
 
-const VERSION = "0.3.1";
+const VERSION = "0.3.2";
 
 const fs = new DenoFileSystem();
 const env = new DenoEnvironment();

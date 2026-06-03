@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [recap-v0.3.2] — 2026-06-03
+
+### Fixed
+
+- **recap:** `git-status-local` now displays non-ASCII paths directly instead of octal-escaped Git paths, and colorizes status columns when color output is enabled.
+
 ## [recap-v0.3.1] — 2026-06-03
 
 ### Fixed
