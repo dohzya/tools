@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- **recap:** `git-status-local` built-in scopes status output to the current directory, adds colorized compact per-file diff stats, and summarizes changes outside it by kind.
+- **recap:** `git-stash` built-in shows stash entry counts in the default recap.
 - **tools:** `wl agent-instructions`, `md agent-instructions`, and `recap agent-instructions` print short AGENTS.md snippets for lightweight agent onboarding.
 
 ## [wl-v0.17.0] — 2026-05-29

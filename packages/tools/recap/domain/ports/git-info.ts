@@ -12,6 +12,18 @@ export type GitLogResult = {
   readonly lines: readonly string[];
 };
 
+/** Result of fetching working tree status entries. */
+export type GitStatusResult = {
+  /** Lines of git status output, already scoped for display. */
+  readonly lines: readonly string[];
+};
+
+/** Result of fetching stash entries. */
+export type GitStashResult = {
+  /** Lines of stash summary output. */
+  readonly lines: readonly string[];
+};
+
 /** Result of detecting subdirectory position within a git repo. */
 export type GitSubdirResult = {
   /** Human-readable "(in ./sub/path)" string, or null if at repo root / not in a repo. */
@@ -37,6 +49,23 @@ export interface GitInfoProvider {
     maxLines: number,
     useColor: boolean,
   ): Promise<GitLogResult>;
+
+  /**
+   * Get working tree status entries.
+   * When localOnly is true and cwd is a subdirectory, entries outside that
+   * directory are hidden and summarized with a compact note.
+   */
+  getGitStatus(
+    cwd: string,
+    localOnly: boolean,
+    useColor: boolean,
+  ): Promise<GitStatusResult>;
+
+  /**
+   * Get stash summary entries.
+   * Returns empty lines when no stash exists or cwd is outside a git repo.
+   */
+  getGitStash(cwd: string): Promise<GitStashResult>;
 
   /**
    * Detect whether cwd is in a subdirectory of a git repo.

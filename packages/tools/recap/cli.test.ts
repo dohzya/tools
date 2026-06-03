@@ -84,6 +84,13 @@ Deno.test("resolveConfig - returns hardcoded defaults when no config provided", 
   assertEquals(config.sections[1].id, "git-subdir");
   assertEquals(config.sections[3].id, "git-log");
   assertEquals(config.sections[3].max_lines, 6);
+  assertEquals(config.sections[4].id, "git-stash");
+});
+
+Deno.test("resolveConfig - git-status default uses local builtin provider", () => {
+  const config = resolveConfig({});
+  const gitStatus = config.sections.find((s) => s.id === "git-status");
+  assertEquals(gitStatus?.builtin, "git-status-local");
 });
 
 Deno.test("resolveConfig - ref:* expands all parent sections", () => {
@@ -95,7 +102,7 @@ Deno.test("resolveConfig - ref:* expands all parent sections", () => {
   // Should include all hardcoded sections
   assertEquals(config.sections.length, HARDCODED_SECTIONS.length);
   assertEquals(config.sections[0].id, "git-branch-track");
-  assertEquals(config.sections[4].id, "git-status");
+  assertEquals(config.sections[5].id, "git-status");
 });
 
 Deno.test("resolveConfig - ref:* excludes IDs referenced explicitly elsewhere", () => {
@@ -396,6 +403,76 @@ sections:
   }
 });
 
+Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await runIn(tempDir, ["git", "init", "-q"]);
+    await runIn(tempDir, ["git", "config", "user.email", "test@test"]);
+    await runIn(tempDir, ["git", "config", "user.name", "Test"]);
+    await runIn(tempDir, ["git", "config", "commit.gpgsign", "false"]);
+    await Deno.mkdir(join(tempDir, "foo"), { recursive: true });
+    await Deno.mkdir(join(tempDir, "bar"), { recursive: true });
+    await Deno.writeTextFile(join(tempDir, "foo", "a"), "old1\nold2\nold3\n");
+    await Deno.writeTextFile(join(tempDir, "b"), "one\n");
+    await Deno.writeTextFile(join(tempDir, "bar", "c"), "one\n");
+    await runIn(tempDir, ["git", "add", "."]);
+    await runIn(tempDir, ["git", "commit", "-q", "-m", "initial commit"]);
+
+    await Deno.writeTextFile(join(tempDir, "stash-me"), "stashed\n");
+    await runIn(tempDir, ["git", "add", "stash-me"]);
+    await runIn(tempDir, ["git", "stash", "push", "-q", "-m", "test stash"]);
+
+    await Deno.writeTextFile(
+      join(tempDir, "foo", "a"),
+      Array.from({ length: 12 }, (_value, index) => `new${index + 1}`)
+        .join("\n") + "\n",
+    );
+    await Deno.writeTextFile(join(tempDir, "b"), "two\n");
+    await Deno.writeTextFile(join(tempDir, "outside-new"), "new\n");
+
+    const adapter = new DenoGitInfo();
+    const cwd = join(tempDir, "foo");
+    const stash = await adapter.getGitStash(cwd);
+    const status = await adapter.getGitStatus(cwd, true, false);
+
+    assertEquals(stash.lines, ["(1 stashed entry)"]);
+    assertEquals(status.lines, [
+      " M a (12+ 3-)",
+      "(1 change and 1 untracked file outside this dir)",
+    ]);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("DenoGitInfo - colors additions green and deletions red in stats", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await runIn(tempDir, ["git", "init", "-q"]);
+    await runIn(tempDir, ["git", "config", "user.email", "test@test"]);
+    await runIn(tempDir, ["git", "config", "user.name", "Test"]);
+    await runIn(tempDir, ["git", "config", "commit.gpgsign", "false"]);
+    await Deno.writeTextFile(join(tempDir, "a"), "old1\nold2\nold3\n");
+    await runIn(tempDir, ["git", "add", "."]);
+    await runIn(tempDir, ["git", "commit", "-q", "-m", "initial commit"]);
+
+    await Deno.writeTextFile(
+      join(tempDir, "a"),
+      Array.from({ length: 12 }, (_value, index) => `new${index + 1}`)
+        .join("\n") + "\n",
+    );
+
+    const adapter = new DenoGitInfo();
+    const status = await adapter.getGitStatus(tempDir, true, true);
+
+    assertEquals(status.lines, [
+      " M a (\x1b[32m12+\x1b[39m \x1b[31m3-\x1b[39m)",
+    ]);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("recap CLI - discovers .config/recap.yml", async () => {
   const tempDir = await Deno.makeTempDir();
   try {
@@ -647,6 +724,8 @@ Deno.test("collectSections - git-subdir builtin returns display when in subdir",
   const mockGit: GitInfoProvider = {
     getGitOps: () => Promise.resolve({ operation: null }),
     getGitLog: () => Promise.resolve({ lines: [] }),
+    getGitStash: () => Promise.resolve({ lines: [] }),
+    getGitStatus: () => Promise.resolve({ lines: [] }),
     getGitSubdir: () => Promise.resolve({ display: "(in ./src/lib)" }),
   };
   const mockShell: ShellRunner = {
@@ -669,6 +748,8 @@ Deno.test("collectSections - git-subdir builtin returns empty lines at repo root
   const mockGit: GitInfoProvider = {
     getGitOps: () => Promise.resolve({ operation: null }),
     getGitLog: () => Promise.resolve({ lines: [] }),
+    getGitStash: () => Promise.resolve({ lines: [] }),
+    getGitStatus: () => Promise.resolve({ lines: [] }),
     getGitSubdir: () => Promise.resolve({ display: null }),
   };
   const mockShell: ShellRunner = {
@@ -686,6 +767,36 @@ Deno.test("collectSections - git-subdir builtin returns empty lines at repo root
   assertEquals(result.length, 1);
   assertEquals(result[0].lines, []);
   assertEquals(result[0].error, undefined);
+});
+
+Deno.test("collectSections - git-status builtins select full or local mode", async () => {
+  const calls: boolean[] = [];
+  const mockGit: GitInfoProvider = {
+    getGitOps: () => Promise.resolve({ operation: null }),
+    getGitLog: () => Promise.resolve({ lines: [] }),
+    getGitStash: () => Promise.resolve({ lines: [] }),
+    getGitSubdir: () => Promise.resolve({ display: null }),
+    getGitStatus: (_cwd, localOnly) => {
+      calls.push(localOnly);
+      return Promise.resolve({ lines: [] });
+    },
+  };
+  const mockShell: ShellRunner = {
+    run: () => Promise.resolve({ stdout: "", stderr: "", exitCode: 0 }),
+  };
+
+  await collectSections(
+    {
+      sections: [
+        { id: "git-status", builtin: "git-status" },
+        { id: "git-status-local", builtin: "git-status-local" },
+      ],
+      envVars: {},
+    },
+    { shell: mockShell, git: mockGit, cwd: "/tmp", useColor: false },
+  );
+
+  assertEquals(calls, [false, true]);
 });
 
 // ============================================================================
@@ -714,6 +825,8 @@ function makeSpyShell(): {
 const noopGit: GitInfoProvider = {
   getGitOps: () => Promise.resolve({ operation: null }),
   getGitLog: () => Promise.resolve({ lines: [] }),
+  getGitStash: () => Promise.resolve({ lines: [] }),
+  getGitStatus: () => Promise.resolve({ lines: [] }),
   getGitSubdir: () => Promise.resolve({ display: null }),
 };
 
@@ -831,6 +944,8 @@ Deno.test("collectSections - git-log forwards useColor to GitInfoProvider", asyn
   const mockGit: GitInfoProvider = {
     getGitOps: () => Promise.resolve({ operation: null }),
     getGitSubdir: () => Promise.resolve({ display: null }),
+    getGitStash: () => Promise.resolve({ lines: [] }),
+    getGitStatus: () => Promise.resolve({ lines: [] }),
     getGitLog: (cwd, maxLines, useColor) => {
       calls.push({ cwd, maxLines, useColor });
       return Promise.resolve({ lines: [] });

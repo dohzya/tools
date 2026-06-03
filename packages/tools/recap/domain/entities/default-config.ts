@@ -23,8 +23,12 @@ export const HARDCODED_SECTIONS: readonly ResolvedSection[] = [
     max_lines: 6,
   },
   {
+    id: "git-stash",
+    builtin: "git-stash",
+  },
+  {
     id: "git-status",
-    sh: "git status --short --untracked-files=normal --renames",
+    builtin: "git-status-local",
   },
 ];
 

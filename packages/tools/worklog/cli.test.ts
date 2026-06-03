@@ -5632,7 +5632,13 @@ Deno.test("dashboard --limit limits top-level tasks before expansion", async () 
       "--todo",
       "second todo",
     ]);
-    await main(["create", "--ready", "third parent"]);
+    await main([
+      "create",
+      "--started",
+      "third parent",
+      "--todo",
+      "third todo",
+    ]);
 
     const listOut = await captureOutput(() =>
       main(["list", "--all", "--json"])

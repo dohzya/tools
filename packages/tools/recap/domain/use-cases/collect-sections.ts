@@ -164,6 +164,37 @@ async function executeSection(
       };
     }
 
+    if (section.builtin === "git-stash") {
+      const { lines: rawLines } = await providers.git.getGitStash(
+        section.cwd ?? providers.cwd,
+      );
+      const lines = applyMaxLines(rawLines, section.max_lines);
+      return {
+        id: section.id,
+        title: section.title,
+        lines,
+        separator,
+      };
+    }
+
+    if (
+      section.builtin === "git-status" ||
+      section.builtin === "git-status-local"
+    ) {
+      const { lines: rawLines } = await providers.git.getGitStatus(
+        section.cwd ?? providers.cwd,
+        section.builtin === "git-status-local",
+        providers.useColor,
+      );
+      const lines = applyMaxLines(rawLines, section.max_lines);
+      return {
+        id: section.id,
+        title: section.title,
+        lines,
+        separator,
+      };
+    }
+
     if (section.value !== undefined) {
       // Static text with interpolation
       const text = interpolate(section.value, {

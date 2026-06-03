@@ -1,13 +1,16 @@
-// DenoGitInfo adapter — implements git-ops and git-log built-ins
+// DenoGitInfo adapter — implements git built-in providers
 
 import type {
   GitInfoProvider,
   GitLogResult,
   GitOpsResult,
+  GitStashResult,
+  GitStatusResult,
   GitSubdirResult,
 } from "../../domain/ports/git-info.ts";
 
 type GitResult = { success: boolean; stdout: string };
+type DiffStats = { additions: number; deletions: number };
 
 /**
  * Run git with explicit args via Deno.Command, bypassing any shell tokenizer.
@@ -69,6 +72,140 @@ async function findGitDir(cwd: string): Promise<string | null> {
   // git may return relative path — resolve it
   if (gitDir.startsWith("/")) return gitDir;
   return `${cwd}/${gitDir}`;
+}
+
+function parseNumber(value: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function addStats(
+  statsByPath: Map<string, DiffStats>,
+  path: string,
+  additions: number,
+  deletions: number,
+): void {
+  const existing = statsByPath.get(path) ?? { additions: 0, deletions: 0 };
+  statsByPath.set(path, {
+    additions: existing.additions + additions,
+    deletions: existing.deletions + deletions,
+  });
+}
+
+function parseNumstat(output: string, statsByPath: Map<string, DiffStats>) {
+  for (const line of output.split("\n")) {
+    if (line.trim().length === 0) continue;
+    const fields = line.split("\t");
+    if (fields.length < 3) continue;
+    const additions = parseNumber(fields[0]);
+    const deletions = parseNumber(fields[1]);
+    if (additions === null || deletions === null) continue;
+    addStats(statsByPath, fields.slice(2).join("\t"), additions, deletions);
+  }
+}
+
+async function getDiffStats(cwd: string): Promise<Map<string, DiffStats>> {
+  const statsByPath = new Map<string, DiffStats>();
+  const unstaged = await runGit([
+    "-C",
+    cwd,
+    "diff",
+    "--relative",
+    "--numstat",
+    "--",
+  ]);
+  parseNumstat(unstaged.stdout, statsByPath);
+  const staged = await runGit([
+    "-C",
+    cwd,
+    "diff",
+    "--relative",
+    "--cached",
+    "--numstat",
+    "--",
+  ]);
+  parseNumstat(staged.stdout, statsByPath);
+  return statsByPath;
+}
+
+async function getUntrackedStats(
+  cwd: string,
+  path: string,
+): Promise<DiffStats | null> {
+  try {
+    const file = `${cwd}/${path}`;
+    const stat = await Deno.stat(file);
+    if (!stat.isFile) return null;
+    const content = await Deno.readTextFile(file);
+    const additions = content.length === 0
+      ? 0
+      : content.endsWith("\n")
+      ? content.split("\n").length - 1
+      : content.split("\n").length;
+    return { additions, deletions: 0 };
+  } catch {
+    return null;
+  }
+}
+
+function ansi(open: string, close: string, text: string): string {
+  return `\x1b[${open}m${text}\x1b[${close}m`;
+}
+
+function formatStats(stats: DiffStats | null, useColor: boolean): string {
+  if (stats === null) return "";
+  const additions = `${stats.additions}+`;
+  const deletions = `${stats.deletions}-`;
+  if (!useColor) {
+    return ` (${additions} ${deletions})`;
+  }
+  return ` (${ansi("32", "39", additions)} ${ansi("31", "39", deletions)})`;
+}
+
+type OutsideKind =
+  | "added file"
+  | "change"
+  | "deleted file"
+  | "unmerged file"
+  | "untracked file";
+
+const OUTSIDE_KIND_ORDER: readonly OutsideKind[] = [
+  "added file",
+  "change",
+  "deleted file",
+  "unmerged file",
+  "untracked file",
+];
+
+function outsideKindFor(status: string): OutsideKind {
+  if (status === "??") return "untracked file";
+  if (status.includes("U") || status === "AA" || status === "DD") {
+    return "unmerged file";
+  }
+  if (status.includes("D")) return "deleted file";
+  if (status.includes("A")) return "added file";
+  return "change";
+}
+
+function pluralize(noun: string, count: number): string {
+  return count === 1 ? noun : `${noun}s`;
+}
+
+function joinParts(parts: readonly string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+function outsideSummary(
+  counts: ReadonlyMap<OutsideKind, number>,
+): string | null {
+  const parts = OUTSIDE_KIND_ORDER.flatMap((kind) => {
+    const count = counts.get(kind) ?? 0;
+    return count === 0 ? [] : [`${count} ${pluralize(kind, count)}`];
+  });
+  if (parts.length === 0) return null;
+  return `(${joinParts(parts)} outside this dir)`;
 }
 
 export class DenoGitInfo implements GitInfoProvider {
@@ -178,5 +315,69 @@ export class DenoGitInfo implements GitInfoProvider {
       .split("\n")
       .filter((l) => l.trim().length > 0);
     return { lines };
+  }
+
+  async getGitStash(cwd: string): Promise<GitStashResult> {
+    const result = await runGit(["-C", cwd, "stash", "list"]);
+    if (!result.success && result.stdout.trim() === "") {
+      return { lines: [] };
+    }
+    const count = result.stdout
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .length;
+    if (count === 0) return { lines: [] };
+    const noun = count === 1 ? "entry" : "entries";
+    return { lines: [`(${count} stashed ${noun})`] };
+  }
+
+  async getGitStatus(
+    cwd: string,
+    localOnly: boolean,
+    useColor: boolean,
+  ): Promise<GitStatusResult> {
+    const result = await runGit([
+      "-C",
+      cwd,
+      "status",
+      "--short",
+      "--untracked-files=normal",
+      "--renames",
+    ]);
+    if (!result.success && result.stdout.trim() === "") {
+      return { lines: [] };
+    }
+
+    const lines = result.stdout
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+    if (!localOnly) {
+      return { lines };
+    }
+
+    const statsByPath = await getDiffStats(cwd);
+    const localLines: string[] = [];
+    const outsideCounts = new Map<OutsideKind, number>();
+
+    for (const line of lines) {
+      const status = line.slice(0, 2);
+      const path = line.slice(3);
+      if (path.startsWith("../")) {
+        const kind = outsideKindFor(status);
+        outsideCounts.set(kind, (outsideCounts.get(kind) ?? 0) + 1);
+      } else {
+        const stats = status === "??"
+          ? await getUntrackedStats(cwd, path)
+          : statsByPath.get(path) ?? null;
+        localLines.push(`${line}${formatStats(stats, useColor)}`);
+      }
+    }
+
+    const summary = outsideSummary(outsideCounts);
+    if (summary !== null) {
+      localLines.push(summary);
+    }
+
+    return { lines: localLines };
   }
 }

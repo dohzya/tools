@@ -20,7 +20,14 @@ const shSectionSchema = z.object({
 
 const builtinSectionSchema = z.object({
   id: z.string(),
-  builtin: z.enum(["git-ops", "git-log", "git-subdir"]),
+  builtin: z.enum([
+    "git-ops",
+    "git-log",
+    "git-stash",
+    "git-status",
+    "git-status-local",
+    "git-subdir",
+  ]),
   title: z.optional(z.string()),
   max_lines: z.optional(z.number()),
   separator: z.optional(separatorSchema),

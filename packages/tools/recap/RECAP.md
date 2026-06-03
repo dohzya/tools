@@ -58,6 +58,12 @@ sections:
 2. Falls back to `refs/remotes/origin/HEAD`
 3. Falls back to the last N commits with no range filter
 
+**`git-status`** — Shows `git status --short --untracked-files=normal --renames`.
+
+**`git-stash`** — Shows `(N stashed entries)` when the repo has stash entries.
+
+**`git-status-local`** — Shows the same status scoped to the current directory. Listed files include compact diff stats like `(12+ 3-)` when available, with additions in green and deletions in red when color output is enabled. When run from a subdirectory, changes outside that directory are hidden and summarized by kind, for example `(1 change and 1 untracked file outside this dir)`.
+
 ### `ref:` resolution
 
 `ref: "*"` expands to **all** sections from the parent level, at this position. `ref: "some-id"` includes one specific section. Any additional fields override the parent's values.

@@ -1,6 +1,7 @@
 // resolve-config use case — merges defaults + global + local config, resolves ref: entries
 
 import type {
+  BuiltinKind,
   RawConfig,
   RawSectionEntry,
   RecapConfig,
@@ -15,6 +16,23 @@ import {
 } from "../entities/config.ts";
 import { HARDCODED_SECTIONS } from "../entities/default-config.ts";
 import { RecapError } from "../entities/errors.ts";
+
+function resolveBuiltin(
+  builtin: string | undefined,
+  fallback: BuiltinKind | undefined,
+): BuiltinKind | undefined {
+  switch (builtin) {
+    case "git-ops":
+    case "git-log":
+    case "git-stash":
+    case "git-status":
+    case "git-status-local":
+    case "git-subdir":
+      return builtin;
+    default:
+      return fallback;
+  }
+}
 
 /** Options controlling how config files are discovered and merged. */
 export type ResolveConfigOptions = {
@@ -100,11 +118,7 @@ function resolveEntry(
   const merged: ResolvedSection = {
     id: parent.id,
     sh: overrides.sh ?? parent.sh,
-    builtin:
-      overrides.builtin === "git-ops" || overrides.builtin === "git-log" ||
-        overrides.builtin === "git-subdir"
-        ? overrides.builtin
-        : parent.builtin,
+    builtin: resolveBuiltin(overrides.builtin, parent.builtin),
     value: overrides.value ?? parent.value,
     title: overrides.title ?? parent.title,
     max_lines: overrides.max_lines ?? parent.max_lines,
@@ -144,10 +158,7 @@ function expandEntries(
         const merged: ResolvedSection = {
           id: parentSection.id,
           sh: overrides.sh ?? parentSection.sh,
-          builtin:
-            overrides.builtin === "git-ops" || overrides.builtin === "git-log"
-              ? overrides.builtin
-              : parentSection.builtin,
+          builtin: resolveBuiltin(overrides.builtin, parentSection.builtin),
           value: overrides.value ?? parentSection.value,
           title: overrides.title ?? parentSection.title,
           max_lines: overrides.max_lines ?? parentSection.max_lines,

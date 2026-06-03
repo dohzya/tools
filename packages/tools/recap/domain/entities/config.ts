@@ -8,7 +8,13 @@
 /** How sections are visually separated in rendered output. */
 export type SeparatorKind = "blank_line" | "none" | "line";
 /** Identifier for a built-in section provider. */
-export type BuiltinKind = "git-ops" | "git-log" | "git-subdir";
+export type BuiltinKind =
+  | "git-ops"
+  | "git-log"
+  | "git-stash"
+  | "git-status"
+  | "git-status-local"
+  | "git-subdir";
 
 /** A section entry that references another section from the parent config level. */
 export type RefSectionEntry = {
