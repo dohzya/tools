@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [recap-v0.3.1] — 2026-06-03
+
+### Fixed
+
+- **recap:** `git-status-local` now correctly summarizes files outside the current directory when Git quotes paths containing spaces or non-ASCII characters.
+
 ## [wl-v0.18.0 / md-v0.8.0 / recap-v0.3.0] — 2026-06-03
 
 ### Added
