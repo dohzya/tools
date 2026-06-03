@@ -17,7 +17,7 @@ import { agentInstructions } from "../agent-instructions.ts";
 // Version
 // ============================================================================
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 
 // ============================================================================
 // Dependency injection

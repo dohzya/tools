@@ -6,11 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.18.0 / md-v0.8.0 / recap-v0.3.0] — 2026-06-03
+
 ### Added
 
+- **markdown-surgeon:** `md` commands now accept `#`-prefixed heading selectors, resolving by heading level and title while reporting ambiguous matches explicitly.
+- **worklog:** `wl agent`/`wl codex` now inject worklog context through Codex `developer_instructions`, preserving existing Codex config and CLI overrides.
+- **worklog:** `wl list` shows child worklog context in a concise header, with `--no-header` for stable script output.
+- **worklog:** `wl dashboard` provides an overview of active work, grouped status counts, started tasks, and recent activity.
 - **recap:** `git-status-local` built-in scopes status output to the current directory, adds colorized compact per-file diff stats, and summarizes changes outside it by kind.
 - **recap:** `git-stash` built-in shows stash entry counts in the default recap.
 - **tools:** `wl agent-instructions`, `md agent-instructions`, and `recap agent-instructions` print short AGENTS.md snippets for lightweight agent onboarding.
+
+### Fixed
+
+- **worklog:** Cross-scope subtasks keep their target scope at creation time, `wl list` can reveal child-scope subtasks for started parent tasks, and parent-scope tasks render with `[^]`.
 
 ## [wl-v0.17.0] — 2026-05-29
 
