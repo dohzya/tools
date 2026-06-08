@@ -51,6 +51,7 @@ Before considering a documentation change complete, verify:
 - language metadata is present and correct;
 - non-English language checks were run when the project requires them;
 - the directory and `category` agree;
+- exploration notes that became stable decisions or behavior were promoted into functional, technical, or operations docs;
 - terminology matches the source material;
 - option sets, enums, modes, providers, and state keys are exhaustive or explicitly partial;
 - examples are marked as verbatim or illustrative;

@@ -7,6 +7,7 @@
 | `docs/functional/`  | User-facing behavior, domain concepts, business rules, workflows, and constraints                  | Product, business, support, new contributors |
 | `docs/technical/`   | Architecture, implementation details, APIs, configuration, data model, and engineering constraints | Engineers and operators                      |
 | `docs/operations/`  | Repeatable operational procedures, runbooks, deployment actions, and support actions               | Operators, support, on-call engineers        |
+| `docs/exploration/` | Durable discovery notes, spikes, option analysis, and investigation paths before a final decision  | Project team and maintainers                 |
 | `docs/postmortems/` | Dated incident or regression analyses                                                              | Project team and maintainers                 |
 | `docs/refs/`        | Raw or lightly annotated reference material that must remain close to its source form              | Readers who need primary evidence            |
 | `docs/review/`      | Durable reviews of documentation, branches, diffs, commits, or implementation choices              | Reviewers and maintainers                    |
@@ -21,6 +22,7 @@ When `AGENTS.md` needs a docs recap, keep it short and directory-level:
 - `docs/functional/`: user-facing behavior, domain concepts, business rules, workflows, and constraints.
 - `docs/technical/`: architecture, implementation details, APIs, configuration, data model, and engineering constraints.
 - `docs/operations/`: repeatable operational procedures, runbooks, deployment actions, and support actions.
+- `docs/exploration/`: durable discovery notes, spikes, option analysis, and investigation paths before a final decision.
 - `docs/postmortems/`: dated incident or regression analyses.
 - `docs/refs/`: raw or lightly annotated reference material that must remain close to its source form.
 - `docs/review/`: durable reviews of documentation, branches, diffs, commits, or implementation choices.
@@ -54,6 +56,14 @@ Use `docs/operations/` for procedures that someone can execute:
 - expected output or verification signals;
 - rollback or troubleshooting guidance.
 
+Use `docs/exploration/` for discovery work that is durable but not yet a final reference, decision, or maintained behavior document:
+
+- investigation paths and alternatives compared;
+- spikes and prototypes;
+- open questions and rejected options;
+- evidence gathered before a decision;
+- transition notes that may later be promoted into functional, technical, or operations docs.
+
 Use `docs/postmortems/` for incidents and regressions:
 
 - symptoms;
@@ -70,6 +80,7 @@ Use `docs/review/` for durable review artifacts. Review outputs must be written 
 ## File Naming
 
 - General Markdown files: `lowercase-kebab-case.md`.
+- Files in `docs/exploration/`: `YYYY-MM-DD-HHmm-slug.md`.
 - Files in `docs/postmortems/`: `YYYY-MM-DD-HHmm-slug.md`.
 - Files in `docs/refs/`: `YYYY-MM-DD-HHmm-slug.md`.
 - Files in `docs/review/`: `YYYY-MM-DD-HHmm-slug.md`.

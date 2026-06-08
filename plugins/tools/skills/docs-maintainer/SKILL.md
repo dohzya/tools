@@ -1,6 +1,6 @@
 ---
 name: docs-maintainer
-description: Maintain and review project documentation under docs/. Use when creating, updating, organizing, or reviewing project docs, documentation taxonomy, AGENTS.md docs recaps, runbooks, technical docs, functional docs, postmortems, references, or durable review reports. Generated documentation is English by default unless the user explicitly requests another language.
+description: Maintain and review project documentation under docs/. Use when creating, updating, organizing, or reviewing project docs, documentation taxonomy, AGENTS.md docs recaps, runbooks, technical docs, functional docs, exploration notes, postmortems, references, or durable review reports. Generated documentation is English by default unless the user explicitly requests another language.
 ---
 
 # Docs Maintainer
@@ -15,6 +15,10 @@ Maintain project documentation as durable, source-verified knowledge.
 - Do not include secrets, tokens, raw PII, sensitive result excerpts, or private operational details in examples.
 - Durable knowledge belongs in a maintained documentation file. Temporary investigation notes should be deleted or promoted before the task is closed.
 - Existing projects may contain older files that do not follow this method. Do not churn them only for style; apply this method when creating new documentation or substantially updating existing documentation.
+
+## Context Preservation
+
+For broad documentation writing or review tasks, use a subagent when the agent environment supports it and the task is large enough to benefit from delegation. Keep the main conversation focused on scope, decisions, and final review; let the subagent perform long source-reading, inventory, and first-pass drafting or review.
 
 ## Docs Recap In AGENTS.md
 
