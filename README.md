@@ -37,6 +37,7 @@ See [CLI_SETUP.md](CLI_SETUP.md) for detailed CLI installation options.
 | **worklog**          | Track work progress with append-only logs and on-demand checkpoints      | Skill · CLI (`wl`) · Library |
 | **obsidian-journal** | Create journal entries in Obsidian for later reference                   | Skill only                   |
 | **rex-session**      | Generate structured REX (Post-Mortem) from technical conversations       | Skill only                   |
+| **docs-maintainer**  | Maintain and review source-verified project documentation                | Skill only                   |
 
 ### markdown-surgeon
 
@@ -96,6 +97,12 @@ AI agent skill for creating timestamped journal entries in Obsidian.
 AI agent skill for generating structured REX (Retour d'EXpérience / Post-Mortem) documents from technical conversations.
 
 **Use when:** documenting incidents, project retrospectives, or technical decisions.
+
+### docs-maintainer
+
+AI agent skill for maintaining and reviewing project documentation under `docs/`.
+
+**Use when:** creating, updating, organizing, or reviewing durable project documentation.
 
 ## Library Usage
 

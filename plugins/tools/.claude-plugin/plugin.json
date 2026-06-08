@@ -9,6 +9,7 @@
     "./skills/worklog",
     "./skills/markdown-surgeon",
     "./skills/obsidian-journal",
-    "./skills/rex-session"
+    "./skills/rex-session",
+    "./skills/docs-maintainer"
   ]
 }
