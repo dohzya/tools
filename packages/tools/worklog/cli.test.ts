@@ -61,10 +61,32 @@ Deno.test("worklog agent-instructions - prints AGENTS.md snippet", async () => {
   assertEquals(output.includes("work.\n\n- Create"), false);
   assertStringIncludes(output, "Worklog (`wl`):");
   assertStringIncludes(output, "wl create");
+  assertStringIncludes(output, "create a subtask. `wl create");
+  assertEquals(output.includes("create a subtask: `wl create"), false);
+  assertStringIncludes(output, "wl create [--parent <taskid>]");
   assertStringIncludes(output, "wl trace");
   assertStringIncludes(output, "wl done");
   assertStringIncludes(output, "wl done --agent");
   assertStringIncludes(output, "wl --help");
+  assertEquals(output.includes("WORKLOG_TASK_ID"), false);
+});
+
+Deno.test("worklog agent-instructions --mandatory - prints strict AGENTS.md snippet", async () => {
+  const output = await captureOutput(() =>
+    main(["agent-instructions", "--mandatory"])
+  );
+
+  assertStringIncludes(output, "Worklog (`wl`):");
+  assertStringIncludes(output, "MUST create");
+  assertStringIncludes(output, "MUST trace");
+  assertStringIncludes(output, "create a subtask. `wl create");
+  assertEquals(output.includes("create a subtask: `wl create"), false);
+  assertStringIncludes(output, "wl create [--parent <taskid>]");
+  assertStringIncludes(output, "user validates completion");
+  assertEquals(output.includes("MUST show"), false);
+  assertEquals(output.includes("MUST consolidate"), false);
+  assertEquals(output.includes("MUST checkpoint"), false);
+  assertStringIncludes(output, "wl done --agent");
   assertEquals(output.includes("WORKLOG_TASK_ID"), false);
 });
 

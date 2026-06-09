@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+### Added
+
+- **worklog:** `wl agent-instructions` now mentions subtask creation with `--parent`, and `wl agent-instructions --mandatory` prints stricter AGENTS.md wording.
+
 ## [recap-v0.3.2] — 2026-06-03
 
 ### Fixed

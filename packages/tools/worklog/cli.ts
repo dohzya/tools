@@ -5663,8 +5663,9 @@ const agentCmd = new Command()
 
 const agentInstructionsCmd = new Command()
   .description("Print AGENTS.md instructions for wl")
-  .action(() => {
-    console.log(agentInstructions("wl"));
+  .option("--mandatory", "Use mandatory wording for strict agent instructions")
+  .action((options) => {
+    console.log(agentInstructions("wl", { mandatory: options.mandatory }));
   });
 
 const updateCmd = new Command()
