@@ -45,4 +45,7 @@ export interface TaskRepository {
 
   /** Save raw task file content by ID. */
   saveContent(taskId: string, content: string): Promise<void>;
+
+  /** Run an operation while holding an exclusive lock for a task file. */
+  withTaskLock?<T>(taskId: string, operation: () => Promise<T>): Promise<T>;
 }

@@ -84,4 +84,14 @@ export class MarkdownTaskRepository implements TaskRepository {
   async saveContent(taskId: string, content: string): Promise<void> {
     await this.fs.writeFile(this.getTaskFilePath(taskId), content);
   }
+
+  async withTaskLock<T>(
+    taskId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const lockPath = `${this.getTaskFilePath(taskId)}.lock`;
+    return await (this.fs.withFileLock
+      ? this.fs.withFileLock(lockPath, operation)
+      : operation());
+  }
 }

@@ -6215,6 +6215,78 @@ Deno.test("regression - wl checkpoint with explicit taskId still works", async (
   }
 });
 
+Deno.test("regression - concurrent todo updates preserve every status change", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const cliPath = new URL("./cli.ts", import.meta.url).pathname;
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main([
+      "create",
+      "--started",
+      "Concurrent todo task",
+      "--todo",
+      "todo one",
+      "--todo",
+      "todo two",
+      "--todo",
+      "todo three",
+      "--todo",
+      "todo four",
+      "--todo",
+      "todo five",
+      "--json",
+    ]);
+
+    const listOutput = await captureOutput(() =>
+      main(["todo", "list", "--json"])
+    );
+    const { todos } = JSON.parse(listOutput);
+    const todoIds = todos.map((todo: { id: string }) => todo.id);
+
+    const updates = await Promise.all(
+      todoIds.map((todoId: string) =>
+        new Deno.Command(Deno.execPath(), {
+          args: [
+            "run",
+            "-A",
+            cliPath,
+            "todo",
+            "set",
+            todoId,
+            "status=done",
+          ],
+          cwd: tempDir,
+          stderr: "piped",
+          stdout: "piped",
+        }).output()
+      ),
+    );
+
+    const decoder = new TextDecoder();
+    for (const update of updates) {
+      assertEquals(
+        update.code,
+        0,
+        decoder.decode(update.stderr) || decoder.decode(update.stdout),
+      );
+    }
+
+    const afterOutput = await captureOutput(() =>
+      main(["todo", "list", "--json"])
+    );
+    const { todos: afterTodos } = JSON.parse(afterOutput);
+    assertEquals(
+      afterTodos.map((todo: { status: string }) => todo.status),
+      ["done", "done", "done", "done", "done"],
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("help - shows wl create step 1 when no env task ID", async () => {
   const output = await captureOutput(() => main([]));
   assertStringIncludes(output, "wl create");

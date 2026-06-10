@@ -22,4 +22,7 @@ export interface FileSystem {
 
   /** Remove a file. Does not throw if file doesn't exist. */
   remove(path: string): Promise<void>;
+
+  /** Run an operation while holding an exclusive file lock. */
+  withFileLock?<T>(path: string, operation: () => Promise<T>): Promise<T>;
 }

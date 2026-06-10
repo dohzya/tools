@@ -80,6 +80,10 @@ export class InMemoryFileSystem implements FileSystem {
     return Promise.resolve();
   }
 
+  withFileLock<T>(_path: string, operation: () => Promise<T>): Promise<T> {
+    return operation();
+  }
+
   // --- Test helpers ---
 
   /** Remove all files and directories from the in-memory store. */

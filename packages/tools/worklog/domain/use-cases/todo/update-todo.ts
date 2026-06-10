@@ -48,8 +48,21 @@ export class UpdateTodoUseCase {
       throw new WtError("todo_not_found", `Todo ${input.todoId} not found`);
     }
 
-    // Update the todo in the task file using raw content manipulation
-    const content = await this.taskRepo.loadContent(foundTaskId);
+    const update = async (): Promise<StatusOutput> => {
+      return await this.updateTodoInTask(foundTaskId, resolvedTodoId, input);
+    };
+
+    return await (this.taskRepo.withTaskLock
+      ? this.taskRepo.withTaskLock(foundTaskId, update)
+      : update());
+  }
+
+  private async updateTodoInTask(
+    taskId: string,
+    resolvedTodoId: string,
+    input: UpdateTodoInput,
+  ): Promise<StatusOutput> {
+    const content = await this.taskRepo.loadContent(taskId);
     const lines = content.split("\n");
 
     const statusMap: Record<TodoStatus, string> = {
@@ -102,7 +115,7 @@ export class UpdateTodoUseCase {
       }
     }
 
-    await this.taskRepo.saveContent(foundTaskId, lines.join("\n"));
+    await this.taskRepo.saveContent(taskId, lines.join("\n"));
 
     return { status: "todo_updated" };
   }
