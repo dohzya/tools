@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.18.3] — 2026-06-10
+
+### Fixed
+
+- **worklog:** Published binaries now pin Cliffy to the lockfile-tested version, so `wl run <taskId> <cmd>` keeps working when release assets are compiled from JSR.
+
 ## [wl-v0.18.2] — 2026-06-10
 
 ### Added

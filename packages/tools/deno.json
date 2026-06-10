@@ -1,6 +1,6 @@
 {
   "name": "@dohzya/tools",
-  "version": "0.9.11",
+  "version": "0.9.12",
   "description": "CLI tools for markdown manipulation (markdown-surgeon), work tracking (worklog), and context snapshots (recap).",
   "license": "MIT",
   "exports": {
@@ -23,8 +23,8 @@
     "@std/fs": "jsr:@std/fs@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
     "@zod/zod": "jsr:@zod/zod@^4.3.6",
-    "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
-    "@cliffy/command/completions": "jsr:@cliffy/command@^1.0.0-rc.8/completions",
+    "@cliffy/command": "jsr:@cliffy/command@1.0.0-rc.8",
+    "@cliffy/command/completions": "jsr:@cliffy/command@1.0.0-rc.8/completions",
     "@david/dax": "jsr:@david/dax@^0.42.0"
   },
   "tasks": {
