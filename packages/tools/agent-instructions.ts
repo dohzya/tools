@@ -1,3 +1,5 @@
+import { CHECKPOINT_DELEGATION_GUIDANCE } from "./worklog/checkpoint-guidance.ts";
+
 export type AgentInstructionsTool = "wl" | "md" | "recap";
 
 export type AgentInstructionsOptions = {
@@ -9,9 +11,10 @@ Worklog (\`wl\`): local task log for agent work.
 - Create a worktask at the start of substantive work. If already working in a task, use it or create a subtask. \`wl create [--parent <taskid>] "short task name"\`.
 - Trace each significant action, problem, idea, lead, finding, and insight: \`wl trace <id> "message"\`.
 - Show task context: \`wl show <id>\`; list traces: \`wl traces <id>\`.
-- Consolidate traces: \`wl checkpoint <id> "changes" "learnings"\`.
-- Complete a task: \`wl done <id> "changes" "learnings"\`.
-- Agent-assisted completion synthesis: \`wl done --agent\`.
+- Agent-assisted synthesis: use only one command, \`wl checkpoint --agent\` to keep working or \`wl done --agent\` to close.
+- If closing with \`wl done --agent\`, do not checkpoint first.
+- If you must synthesize manually, make it self-contained: after this checkpoint, previous traces and checkpoints could be deleted.
+- ${CHECKPOINT_DELEGATION_GUIDANCE.split("\n")[0]}
 - Help: \`wl --help\`.
 `.trim();
 
@@ -20,9 +23,11 @@ Worklog (\`wl\`): mandatory local task log for agent work.
 - You MUST create a worktask at the start of any substantive work. If already working in a task, use it or create a subtask. \`wl create [--parent <taskid>] "short task name"\`.
 - You MUST trace each significant action, problem, idea, lead, finding, and insight: \`wl trace <id> "message"\`.
 - Show task context when useful: \`wl show <id>\`; list traces: \`wl traces <id>\`.
-- Consolidate traces when useful: \`wl checkpoint <id> "changes" "learnings"\`.
-- When the user validates completion, close the task: \`wl done <id> "changes" "learnings"\`.
-- Agent-assisted completion synthesis: \`wl done --agent\`.
+- Use agent-assisted synthesis when useful: choose \`wl checkpoint --agent\` to keep working or \`wl done --agent\` to close.
+- When the user validates completion, close the task, preferably with \`wl done --agent\`.
+- If closing with \`wl done --agent\`, do not checkpoint first.
+- If you must synthesize manually, make it self-contained: after this checkpoint, previous traces and checkpoints could be deleted.
+- ${CHECKPOINT_DELEGATION_GUIDANCE.split("\n")[0]}
 - Help: \`wl --help\`.
 `.trim();
 

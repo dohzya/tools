@@ -2,6 +2,7 @@
 // No I/O, no side effects — all data comes from ShowOutput.
 
 import type { ShowOutput } from "./domain/entities/outputs.ts";
+import { CHECKPOINT_SYNTHESIS_CONTRACT } from "./checkpoint-guidance.ts";
 
 export type CheckpointPromptMode = "checkpoint" | "done";
 
@@ -15,8 +16,8 @@ export function buildCheckpointPrompt(
   // Opening directive
   sections.push(
     mode === "done"
-      ? `You are creating a final checkpoint that closes the task: a synthesis of recent work traces into a concise record of what was accomplished and what was learned.`
-      : `You are creating a checkpoint: a synthesis of recent work traces into a concise record of what was accomplished and what was learned.`,
+      ? `You are the dedicated synthesis agent creating a final checkpoint that closes the task.`
+      : `You are the dedicated synthesis agent creating a checkpoint.`,
   );
 
   // Section 1: Task identity
@@ -60,23 +61,39 @@ export function buildCheckpointPrompt(
     );
   }
 
-  // Section 5: Quality guidelines
+  // Section 5: Synthesis contract
   sections.push(
-    `## Quality guidelines\n\n` +
-      `**Changes** (1-2 sentences): Synthesize OUTCOMES, not activities. ` +
-      `Do not list traces — distill what was accomplished.\n\n` +
-      `- Good: "Migrated user lookup from sync to async; resolved the race ` +
-      `condition that caused duplicate sessions."\n` +
-      `- Bad: "Changed function signature, then updated tests, then fixed ` +
-      `a bug, then ran lint."\n\n` +
-      `**Learnings** (1-2 sentences): Capture REUSABLE learnings — decisions ` +
-      `and why, gotchas discovered, patterns identified.\n\n` +
-      `- Good: "JSON.parse on streamed input fails silently for incomplete ` +
-      `chunks — wrap in a length guard before parsing."\n` +
-      `- Bad: "Used TDD. Tests passed."`,
+    `## Checkpoint synthesis contract\n\n${CHECKPOINT_SYNTHESIS_CONTRACT}`,
   );
 
-  // Section 6: Command to execute
+  sections.push(
+    `## Agent delegation rule\n\n` +
+      `Ordinary agents should not write manual ${mode} syntheses by ` +
+      `default; agents do not write manual ${mode} content when delegation ` +
+      `is available. Prefer \`wl ${mode} --agent\` for this synthesis.\n\n` +
+      `For an ordinary agent, this is the preferred handoff path.\n\n` +
+      `Use manual \`wl ${mode} <id> "<changes>" "<learnings>"\` only when ` +
+      `delegation is unavailable, inappropriate, or explicitly requested.\n\n` +
+      `This prompt is already running inside the delegated synthesis path. ` +
+      `Do not call \`wl ${mode} --agent\` again; produce the synthesis now ` +
+      `and run the direct command below.`,
+  );
+
+  // Section 6: Quality guidelines
+  sections.push(
+    `## Output quality\n\n` +
+      `**Changes**: Write a compact but self-contained narrative of outcomes, ` +
+      `important pivots, and final state. Include validation when it proves ` +
+      `the outcome.\n\n` +
+      `**Learnings**: Capture reusable learnings, not a work log. Preserve ` +
+      `root causes, decisions and why, rejected alternatives, gotchas, ` +
+      `workflow rules, and codebase facts.\n\n` +
+      `Good learning: "Deno tests for worklog must run from packages/tools ` +
+      `because that directory owns deno.json dependency resolution."\n` +
+      `Bad learning: "Used TDD and tests passed."`,
+  );
+
+  // Section 7: Command to execute
   const cmd = mode === "done" ? "done" : "checkpoint";
   sections.push(
     `## Command\n\n` +

@@ -61,6 +61,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "@zod/zod/mini";
 import { ExplicitCast } from "../explicit-cast.ts";
 import { buildCheckpointPrompt } from "./checkpoint-prompt.ts";
+import { CHECKPOINT_SYNTHESIS_CONTRACT } from "./checkpoint-guidance.ts";
 import { agentInstructions } from "../agent-instructions.ts";
 
 // ============================================================================
@@ -5132,7 +5133,13 @@ const tracesCmd = new Command()
   });
 
 const checkpointCmd = new Command()
-  .description("Consolidate recent traces into synthesis (not just a list)")
+  .description(
+    "Create a self-contained synthesis of the task context.\n" +
+      "Prefer --agent / --claude / --codex; manual synthesis must preserve " +
+      "Root causes, Decisions, Validation, Final state, and reusable " +
+      "learnings.\n" +
+      CHECKPOINT_SYNTHESIS_CONTRACT,
+  )
   .arguments("[taskId:string] [changes:string] [learnings:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
@@ -5236,7 +5243,11 @@ const checkpointCmd = new Command()
 
 const doneCmd = new Command()
   .description(
-    "Final consolidation: synthesize ALL traces (changes + learnings)\n" +
+    "Final self-contained synthesis: close the task with changes + learnings.\n" +
+      "Prefer --agent / --claude / --codex; manual synthesis must preserve " +
+      "Root causes, Decisions, Validation, Final state, and reusable " +
+      "learnings.\n" +
+      CHECKPOINT_SYNTHESIS_CONTRACT + "\n" +
       "⚠️  ALWAYS run 'wl show <id>' first to review traces & check TODOs!",
   )
   .arguments(

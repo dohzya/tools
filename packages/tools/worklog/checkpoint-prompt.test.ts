@@ -55,8 +55,21 @@ Deno.test("checkpoint prompt — with entries + previous checkpoint", () => {
   assertStringIncludes(prompt, "YAML roundtrip loses quote style");
 
   // Quality guidelines
-  assertStringIncludes(prompt, "changes");
-  assertStringIncludes(prompt, "learnings");
+  assertStringIncludes(prompt, "A checkpoint is cumulative");
+  assertStringIncludes(
+    prompt,
+    "after this checkpoint, previous traces and checkpoints could be deleted",
+  );
+  assertStringIncludes(prompt, "first argument");
+  assertStringIncludes(prompt, "second argument");
+  assertStringIncludes(prompt, "Root causes");
+  assertStringIncludes(prompt, "Rejected alternatives");
+  assertStringIncludes(prompt, "Validation");
+  assertStringIncludes(prompt, "Final state");
+  assertStringIncludes(prompt, "ordinary agent");
+  assertStringIncludes(prompt, "wl checkpoint --agent");
+  assertEquals(prompt.includes("wl done --agent"), false);
+  assertStringIncludes(prompt, "dedicated synthesis agent");
 
   // Command with exact taskId
   assertStringIncludes(prompt, "wl checkpoint abc123def456");
@@ -197,6 +210,8 @@ Deno.test("done mode — opening directive mentions closing", () => {
   // Should mention final/closing in the opening directive
   assertStringIncludes(prompt, "final");
   assertStringIncludes(prompt, "closes");
+  assertStringIncludes(prompt, "wl done --agent");
+  assertEquals(prompt.includes("wl checkpoint --agent"), false);
 });
 
 Deno.test("default mode — still uses checkpoint command", () => {

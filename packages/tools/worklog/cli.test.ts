@@ -66,7 +66,11 @@ Deno.test("worklog agent-instructions - prints AGENTS.md snippet", async () => {
   assertStringIncludes(output, "wl create [--parent <taskid>]");
   assertStringIncludes(output, "wl trace");
   assertStringIncludes(output, "wl done");
+  assertStringIncludes(output, "wl checkpoint --agent");
   assertStringIncludes(output, "wl done --agent");
+  assertStringIncludes(output, "use only one");
+  assertStringIncludes(output, "self-contained");
+  assertStringIncludes(output, "do not write manual checkpoint");
   assertStringIncludes(output, "wl --help");
   assertEquals(output.includes("WORKLOG_TASK_ID"), false);
 });
@@ -86,8 +90,46 @@ Deno.test("worklog agent-instructions --mandatory - prints strict AGENTS.md snip
   assertEquals(output.includes("MUST show"), false);
   assertEquals(output.includes("MUST consolidate"), false);
   assertEquals(output.includes("MUST checkpoint"), false);
+  assertStringIncludes(output, "wl checkpoint --agent");
   assertStringIncludes(output, "wl done --agent");
+  assertStringIncludes(output, "choose `wl checkpoint --agent`");
+  assertStringIncludes(output, "self-contained");
+  assertStringIncludes(output, "do not write manual checkpoint");
   assertEquals(output.includes("WORKLOG_TASK_ID"), false);
+});
+
+Deno.test("worklog checkpoint help - discourages manual synthesis", async () => {
+  const output = await captureOutput(async () => {
+    try {
+      await main(["checkpoint", "--help"]);
+    } catch {
+      // Help exits after printing.
+    }
+  });
+
+  assertStringIncludes(output, "self-contained synthesis");
+  assertStringIncludes(output, "Prefer --agent");
+  assertStringIncludes(output, "Root causes");
+  assertStringIncludes(output, "Validation");
+  assertStringIncludes(output, "first argument");
+  assertStringIncludes(output, "second argument");
+});
+
+Deno.test("worklog done help - discourages manual synthesis", async () => {
+  const output = await captureOutput(async () => {
+    try {
+      await main(["done", "--help"]);
+    } catch {
+      // Help exits after printing.
+    }
+  });
+
+  assertStringIncludes(output, "self-contained synthesis");
+  assertStringIncludes(output, "Prefer --agent");
+  assertStringIncludes(output, "Root causes");
+  assertStringIncludes(output, "Validation");
+  assertStringIncludes(output, "first argument");
+  assertStringIncludes(output, "second argument");
 });
 
 Deno.test("worklog trace - uses current timestamp by default", async () => {

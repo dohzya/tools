@@ -34,11 +34,36 @@ Output: `<id>  <status>  "<name>"  <date>`
 
 1. **Create & start**: `wl create --started "Task name"`
 2. **Trace** every event: `wl trace <id> "action taken / problem hit / idea / lead explored / finding / learning"`
-3. **Checkpoint** when prompted: `wl checkpoint <id> "changes" "learnings"`
+3. **Checkpoint** when prompted: prefer `wl checkpoint --agent` (or `--claude` / `--codex`) for synthesis
 4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces)
-5. **Close**: `wl done <id> "changes" "learnings"` (args optional if no new traces since last checkpoint)
+5. **Close**: prefer `wl done --agent` (args optional if no new traces since last checkpoint)
 
-**Critical:** commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, learnings · include causes & pistes in traces · learnings = reusable discoveries (not a summary)
+**Critical:** commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, learnings · include causes & pistes in traces · checkpoints must be cumulative and self-contained · learnings = reusable discoveries (not a summary)
+
+## Checkpoint Synthesis
+
+A checkpoint is cumulative and self-contained: after this checkpoint, previous traces and checkpoints could be deleted without losing the useful story of the task.
+
+Ordinary agents should not write manual checkpoint or done syntheses by default. Choose exactly one delegated synthesis command:
+
+- `wl checkpoint --agent` when you need to synthesize progress and keep the task open.
+- `wl done --agent` when you need to synthesize and close the task. Do not run `checkpoint` first.
+
+Use `--claude` or `--codex` to choose a specific agent when auto-detection is not right. Write manual `wl checkpoint <id> "<changes>" "<learnings>"` or `wl done <id> "<changes>" "<learnings>"` only when delegation is unavailable, inappropriate, or explicitly requested.
+
+Manual or delegated synthesis must preserve enough context for a future agent to resume without rereading raw traces. Put these in the first argument, `changes`:
+
+- **Outcomes**: what changed and what state the task reached.
+- **Root causes**: why the problem happened or why the chosen fix was needed.
+- **Decisions**: chosen approach, constraints, and rejected alternatives.
+- **Validation**: checks run, failures hit, fixes after failures, and final result.
+- **Final state**: user acceptance, commit/release/status when relevant.
+
+Put this in the second argument, `learnings`:
+
+- **Reusable learnings**: durable patterns, gotchas, workflow rules, and codebase facts.
+
+Do not turn learnings into an activity summary. "Tests passed" is validation; the learning is the reusable reason, constraint, or pattern discovered while getting there.
 
 ## Tracing Learnings
 
@@ -67,9 +92,12 @@ wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent del
 # Trace — one entry per event: action taken / problem hit / idea / lead explored / finding / learning
 wl trace <id> "msg"         # flags before message: wl trace <id> -t T14:30 "msg"
 
-# Consolidate
-wl checkpoint <id> "narrative (actions + pivots, incl. failures)" "learnings (reusable discoveries, not a summary)"
-wl done <id> ["same as checkpoint"]  # args optional if no new traces since last checkpoint
+# Consolidate: choose exactly one delegated command
+wl checkpoint --agent       # synthesize progress and keep working
+# OR, if the task is ready to close:
+wl done --agent             # synthesize and close; do not checkpoint first
+wl checkpoint <id> "self-contained synthesis" "reusable learnings"  # manual fallback
+wl done <id> ["same as checkpoint"]  # manual fallback; args optional if no new traces since last checkpoint
 ```
 
 See [reference.md](reference.md) for full reference (TODOs, state transitions, metadata, etc.).
@@ -82,7 +110,8 @@ See [reference.md](reference.md) for full reference (TODOs, state transitions, m
 wl claude <task-id>
 wl codex <task-id>
 wl agent <task-id>          # auto-detect
-wl checkpoint --agent -q    # auto-detect active agent
+wl checkpoint --agent -q    # progress synthesis; keep task open
+wl done --agent             # final synthesis + completion; do not checkpoint first
 ```
 
 Codex support is CLI-based through `wl codex`, `--codex`, and `--agent`. Claude Code hooks below do not configure Codex automatically unless the Codex environment provides an equivalent hook mechanism.
