@@ -6,9 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.18.2] — 2026-06-10
+
 ### Added
 
 - **worklog:** `wl agent-instructions` now mentions subtask creation with `--parent`, and `wl agent-instructions --mandatory` prints stricter AGENTS.md wording.
+
+### Changed
+
+- **worklog:** Checkpoint and done synthesis prompts now ask agents for cumulative, self-contained summaries.
+- **release:** The binary-only release instructions now warn that `wl` binaries are compiled from the published JSR package.
+
+### Fixed
+
+- **worklog:** Release binaries are now compiled with unrestricted `--allow-run`, so `wl codex` can launch Codex and `wl run` can execute arbitrary commands.
+- **worklog:** Concurrent todo status updates now serialize writes through the repository lock.
 
 ## [recap-v0.3.2] — 2026-06-03
 

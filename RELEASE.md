@@ -223,33 +223,34 @@ cd ~/bin/share/mise-tools
 - Bundle tags: `vX.Y.Z` (no tool prefix)
 - Tool tags: `wl-vX.Y.Z` or `md-vX.Y.Z`
 
-## Binary-Only Release (no library changes)
+## Build-Flag Release
 
-Use this when only the **compiled binary** changes but the TypeScript library code is identical (e.g., updating Deno compile permissions, changing compile flags).
+Use this when the release changes **compiled binary behavior** such as Deno compile permissions or other build flags.
 
-**Key difference:** No JSR publish needed — the CI will recompile from the same JSR version already published.
+**Important:** the GitHub release workflow compiles binaries from the published JSR package (`jsr:@dohzya/tools@<deno.json version>`), not from the checkout source directly. Therefore a build-flag release still needs a normal JSR bump and publish when the CLI `VERSION` changes. Otherwise the published binary may use new compile flags but still contain old TypeScript code and report the old tool version.
 
-**What to skip:** Steps 1 (`bump-prepare`), 1b, and 5 (`gh workflow run publish.yml`). No `deno.json` bump.
-
-**What still applies:** CI gate (step 4), release workflow (step 7), and finalization (steps 8–11).
+Follow the normal release process above. Do **not** skip `bump-prepare`, `CHANGELOG.md`, or `gh workflow run publish.yml` just because the TypeScript logic is unchanged.
 
 ```bash
 # 0. Validate
 task validate
 
-# 1. Manually bump VERSION constant in cli.ts only
-#    (edit packages/tools/worklog/cli.ts or markdown-surgeon/cli.ts)
+# 1. Prepare a normal release bump
+echo y | task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=A.B.C
 
-# 2. Commit
-git add -A && git commit -m "chore(wl): bump to vX.Y.Z (<reason>)"
+# 2. Update CHANGELOG.md
 
-# 3. Push (NO deno publish — JSR lib unchanged)
+# 3. Validate, commit, push
+task validate
+git add -A && git commit -m "chore(wl): bump to vX.Y.Z"
 git push origin main
 
-# 4. Wait for CI to pass (MANDATORY GATE)
+# 4. Wait for CI to pass
 gh run watch
 
-# 5. Tag and push tag ONLY after CI is green
+# 5. Publish JSR, then tag after publish is green
+gh workflow run publish.yml
+gh run watch
 git tag wl-vX.Y.Z && git push origin wl-vX.Y.Z
 
 # 6. Wait for release workflow to build binaries
