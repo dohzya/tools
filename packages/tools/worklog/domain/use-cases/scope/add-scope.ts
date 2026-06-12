@@ -186,6 +186,12 @@ export class AddScopeUseCase {
     const parentDir = input.parentPath.startsWith("/")
       ? input.parentPath
       : this.resolveRelativePath(input.cwd, input.parentPath);
+    if (parentDir === childDir) {
+      throw new WtError(
+        "invalid_args",
+        "Cannot configure a scope as its own parent.",
+      );
+    }
 
     const parentWorklogPath = `${parentDir}/${input.worklogDir}`;
 

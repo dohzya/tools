@@ -3758,6 +3758,13 @@ async function cmdScopesAddParent(
       `Parent path does not exist: ${parentPath}`,
     );
   });
+  const normalizedChildDir = await Deno.realPath(childDir);
+  if (parentDir === normalizedChildDir) {
+    throw new WtError(
+      "invalid_args",
+      "Cannot configure a scope as its own parent.",
+    );
+  }
 
   const parentWorklogPath = `${parentDir}/${WORKLOG_DIR}`;
 
@@ -6354,6 +6361,7 @@ const cli = new Command()
   .command("summary", summaryCmd)
   .command("import", importCmd)
   .command("todo", todoCmd)
+  .command("add-parent", scopesAddParentCmd)
   .command("scopes", scopesCmd)
   .command("completions", new CompletionsCommand());
 
