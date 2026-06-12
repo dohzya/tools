@@ -482,6 +482,11 @@ export class ListTasksUseCase {
             const childWorklogPath = child.path.startsWith("/")
               ? `${child.path}/${worklogDir}`
               : `${gitRoot}/${child.path}/${worklogDir}`;
+            if (
+              this.normalizePath(childWorklogPath) ===
+                this.normalizePath(currentScope)
+            ) continue;
+
             const childIndexPath = `${childWorklogPath}/index.json`;
 
             if (!(await this.fs.exists(childIndexPath))) continue;

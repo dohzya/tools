@@ -84,7 +84,10 @@ export class SyncWorktreesUseCase {
 
     // Find new worktrees to add
     for (const worktree of worktrees) {
-      if (worktree.isMainWorktree || !worktree.branch) continue;
+      if (
+        worktree.isMainWorktree || !worktree.branch ||
+        this.normalizePath(worktree.path) === this.normalizePath(gitRoot)
+      ) continue;
 
       const existingScope = children.find(
         (c) => c.type === "worktree" && c.gitRef === worktree.branch,
@@ -157,5 +160,13 @@ export class SyncWorktreesUseCase {
     const relativeParts = [...Array(upCount).fill(".."), ...downParts];
 
     return relativeParts.length > 0 ? relativeParts.join("/") : ".";
+  }
+
+  private normalizePath(path: string): string {
+    let normalized = path;
+    while (normalized.length > 1 && normalized.endsWith("/")) {
+      normalized = normalized.slice(0, -1);
+    }
+    return normalized;
   }
 }

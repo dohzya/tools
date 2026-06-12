@@ -399,6 +399,63 @@ Deno.test("ListTasksUseCase - includes child worklog context for current child s
   );
 });
 
+Deno.test("ListTasksUseCase - skips child scope that resolves to current worklog", async () => {
+  const indexContent = JSON.stringify({
+    version: 2,
+    tasks: {
+      local1: {
+        name: "Local task",
+        desc: "Local task",
+        status: "started",
+        created: "2025-01-15T10:00:00+01:00",
+        status_updated_at: "2025-01-15T10:00:00+01:00",
+      },
+    },
+  });
+
+  const files = new Map<string, string>();
+  files.set("/repo/.worklog/index.json", indexContent);
+  files.set(
+    "/repo/.worklog/scope.json",
+    JSON.stringify({
+      children: [
+        {
+          path: "/repo",
+          id: "trunk",
+          type: "worktree",
+          gitRef: "trunk",
+        },
+      ],
+    }),
+  );
+
+  const useCase = new ListTasksUseCase(
+    createMockIndexRepo({}),
+    createMockScopeRepo(),
+    createMockFs(files),
+  );
+
+  const result = await useCase.execute({
+    showAll: false,
+    worklogDir: ".worklog",
+    depthLimit: 5,
+    gitRoot: "/repo",
+    currentScope: "/repo/.worklog",
+    cwd: "/repo",
+  });
+
+  assertEquals(result.tasks, [
+    {
+      id: "local1",
+      name: "Local task",
+      desc: "Local task",
+      status: "started",
+      created: "2025-01-15 10:00",
+      tags: undefined,
+    },
+  ]);
+});
+
 Deno.test("ListTasksUseCase - throws on missing baseDir", async () => {
   const files = new Map<string, string>();
 
