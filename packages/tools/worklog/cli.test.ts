@@ -4496,6 +4496,58 @@ Deno.test("dashboard from child worklog shows child context header", async () =>
   }
 });
 
+Deno.test("dashboard from linked worktree shows configured child scope id", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const parentDir = `${tempDir}/reporting-api`;
+    const childDir = `${parentDir}/.worktrees/feat-agent-ready`;
+    await Deno.mkdir(childDir, { recursive: true });
+
+    await new Deno.Command("git", { args: ["init"], cwd: parentDir }).output();
+    await new Deno.Command("git", { args: ["init"], cwd: childDir }).output();
+
+    Deno.chdir(parentDir);
+    await main(["init"]);
+
+    Deno.chdir(childDir);
+    await main(["init"]);
+    await main(["create", "Worktree task"]);
+    await Deno.writeTextFile(
+      `${childDir}/.worklog/scope.json`,
+      JSON.stringify({ parent: "../../" }, null, 2),
+    );
+    await Deno.writeTextFile(
+      `${parentDir}/.worklog/scope.json`,
+      JSON.stringify(
+        {
+          children: [
+            {
+              path: ".worktrees/feat-agent-ready",
+              id: "feat/agent-ready",
+              type: "worktree",
+              gitRef: "feat/agent-ready",
+            },
+          ],
+        },
+        null,
+        2,
+      ),
+    );
+
+    const output = await captureOutput(() => main(["dash", "--json"]));
+    const dashboard = ExplicitCast.fromAny(JSON.parse(output)).dangerousCast<{
+      childWorklog: { scope: string; childOf: string };
+    }>();
+
+    assertEquals(dashboard.childWorklog.scope, "feat/agent-ready");
+    assertEquals(dashboard.childWorklog.childOf, "../..");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create --scope stores new task in the target child scope", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

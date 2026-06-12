@@ -323,14 +323,15 @@ export class ListTasksUseCase {
       seenTasks.add(key);
       tasks.push(task);
     };
-    const currentScopeId = await this.getScopeId(
-      currentScope,
-      gitRoot,
-      worklogDir,
-    );
-
     // Check if child worklog
     const isChild = await this.isChildWorklog(currentScope);
+    const currentScopeId = isChild
+      ? await this.getChildScopeId(currentScope, gitRoot, worklogDir)
+      : await this.getScopeId(
+        currentScope,
+        gitRoot,
+        worklogDir,
+      );
     const childWorklog = isChild && currentScopeId && currentScopeId !== "."
       ? {
         scope: currentScopeId,
@@ -644,6 +645,49 @@ export class ListTasksUseCase {
     }
 
     return relativePath;
+  }
+
+  private async getChildScopeId(
+    childWorklogPath: string,
+    gitRoot: string,
+    worklogDir: string,
+  ): Promise<string> {
+    try {
+      const parentScopeDir = await this.getParentScope(childWorklogPath);
+      const parentConfigPath = `${parentScopeDir}/${worklogDir}/scope.json`;
+      if (await this.fs.exists(parentConfigPath)) {
+        const content = await this.fs.readFile(parentConfigPath);
+        const parentConfig = ExplicitCast.fromAny(JSON.parse(content))
+          .dangerousCast<ScopeConfig>();
+        if ("children" in parentConfig) {
+          const childDir = this.scopeDir(childWorklogPath, worklogDir);
+          const normalizedChildDir = this.normalizePath(childDir);
+          const child = parentConfig.children.find((c) => {
+            const entryDir = c.path.startsWith("/")
+              ? c.path
+              : this.resolveRelativePath(parentScopeDir, c.path);
+            return this.normalizePath(entryDir) === normalizedChildDir;
+          });
+          if (child) return child.id;
+        }
+      }
+    } catch {
+      // Fall back to the current git-root based behavior.
+    }
+
+    return await this.getScopeId(childWorklogPath, gitRoot, worklogDir);
+  }
+
+  private scopeDir(worklogPath: string, worklogDir: string): string {
+    return worklogPath.slice(0, -worklogDir.length - 1);
+  }
+
+  private normalizePath(path: string): string {
+    let normalized = path;
+    while (normalized.length > 1 && normalized.endsWith("/")) {
+      normalized = normalized.slice(0, -1);
+    }
+    return normalized;
   }
 
   private getRelativeScopePath(
