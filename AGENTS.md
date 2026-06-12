@@ -51,6 +51,8 @@ task validate                                   # 5. Validate (MANDATORY)
 
 Create a worktask at the start. Trace every action taken, problem hit, idea, lead explored, finding, and learning. Complete after commit.
 
+When creating a task, tag the main tool or skill used for the work, for example `--tag wl`, `--tag homebrew`, or `--tag docs-maintainer`. Reference tags: `wl`, `md`, `recap`, `homebrew`, `release`, `docs`, `tests`, `agentmd`, `codex`, `claude`, `worklog`, `markdown-surgeon`, `docs-maintainer`, `obsidian-journal`, `rex-session`, `agent-context-writing`.
+
 **Good traces = causes + next steps:**
 
 - ✅ `"Tried X - failed (cause: Y), next: Z"`
@@ -59,7 +61,7 @@ Create a worktask at the start. Trace every action taken, problem hit, idea, lea
 **Commands:**
 
 ```bash
-wl create "..."            # Create
+wl create --tag <tag> "..." # Create, tagged by main tool/skill
 wl trace <id> "..."        # Trace
 wl show <id>               # Context since checkpoint
 wl traces <id>             # All traces
