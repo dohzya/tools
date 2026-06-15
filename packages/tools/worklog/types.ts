@@ -244,6 +244,8 @@ export interface ListOutput {
     scope: string;
     /** Parent path from the child worklog's scope configuration. */
     childOf: string;
+    /** Warning when the configured parent cannot be used. */
+    warning?: string;
   };
   /** Ordered list of matching tasks. */
   tasks: readonly ListTaskItem[];
@@ -297,6 +299,8 @@ export interface DashboardOutput {
     scope: string;
     /** Parent path from the child worklog's scope configuration. */
     childOf: string;
+    /** Warning when the configured parent cannot be used. */
+    warning?: string;
   };
   /** Number of open top-level tasks hidden by --limit. */
   hiddenTopLevelTasks?: number;

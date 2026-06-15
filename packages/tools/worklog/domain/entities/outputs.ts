@@ -71,6 +71,7 @@ export type ListOutput = {
   readonly childWorklog?: {
     readonly scope: string;
     readonly childOf: string;
+    readonly warning?: string;
   };
   readonly tasks: readonly ListTaskItem[];
 };
@@ -102,6 +103,7 @@ export type DashboardOutput = {
   readonly childWorklog?: {
     readonly scope: string;
     readonly childOf: string;
+    readonly warning?: string;
   };
   readonly hiddenTopLevelTasks?: number;
   readonly limit?: number;

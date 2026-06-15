@@ -333,10 +333,11 @@ export class ListTasksUseCase {
         worklogDir,
       );
     const childWorklog = isChild && currentScopeId && currentScopeId !== "."
-      ? {
-        scope: currentScopeId,
-        childOf: await this.getChildOfDisplay(currentScope),
-      }
+      ? await this.getChildWorklogContext(
+        currentScope,
+        currentScopeId,
+        worklogDir,
+      )
       : undefined;
 
     const relatedTaskStatuses = new Map<string, TaskStatus>();
@@ -681,6 +682,46 @@ export class ListTasksUseCase {
     }
 
     return await this.getScopeId(childWorklogPath, gitRoot, worklogDir);
+  }
+
+  private async getChildWorklogContext(
+    childWorklogPath: string,
+    scopeId: string,
+    worklogDir: string,
+  ): Promise<{ scope: string; childOf: string; warning?: string }> {
+    const childOf = await this.getChildOfDisplay(childWorklogPath);
+    const warning = await this.getParentScopeWarning(
+      childWorklogPath,
+      worklogDir,
+    );
+
+    return {
+      scope: scopeId,
+      childOf,
+      ...(warning ? { warning } : {}),
+    };
+  }
+
+  private async getParentScopeWarning(
+    childWorklogPath: string,
+    worklogDir: string,
+  ): Promise<string | undefined> {
+    try {
+      const parentScopeDir = await this.getParentScope(childWorklogPath);
+      const parentWorklogPath = `${parentScopeDir}/${worklogDir}`;
+      if (!(await this.worklogExists(parentWorklogPath))) {
+        return "Invalid parent: missing .worklog";
+      }
+      return undefined;
+    } catch {
+      return "Invalid parent: unreadable scope config";
+    }
+  }
+
+  private async worklogExists(worklogPath: string): Promise<boolean> {
+    return await this.fs.exists(worklogPath) ||
+      await this.fs.exists(`${worklogPath}/scope.json`) ||
+      await this.fs.exists(`${worklogPath}/index.json`);
   }
 
   private scopeDir(worklogPath: string, worklogDir: string): string {

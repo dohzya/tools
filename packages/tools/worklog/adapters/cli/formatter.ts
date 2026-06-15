@@ -318,7 +318,9 @@ export function formatList(
   showHeader = true,
 ): string {
   const header = showHeader && output.childWorklog
-    ? `[${output.childWorklog.scope}] · child of ${output.childWorklog.childOf}`
+    ? `[${output.childWorklog.scope}] · child of ${output.childWorklog.childOf}${
+      output.childWorklog.warning ? ` ! ${output.childWorklog.warning}` : ""
+    }`
     : "";
 
   if (output.tasks.length === 0) {

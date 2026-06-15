@@ -4669,6 +4669,37 @@ Deno.test("dashboard from linked worktree shows configured child scope id", asyn
   }
 });
 
+Deno.test("dashboard from child worktree warns when parent worklog is missing", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    const parentDir = `${tempDir}/reporting-api`;
+    const childDir = `${parentDir}/.worktrees/feat-agent-ready`;
+    await Deno.mkdir(childDir, { recursive: true });
+
+    await new Deno.Command("git", { args: ["init"], cwd: parentDir }).output();
+    await new Deno.Command("git", { args: ["init"], cwd: childDir }).output();
+
+    Deno.chdir(childDir);
+    await main(["init"]);
+    await main(["create", "Worktree task"]);
+    await Deno.writeTextFile(
+      `${childDir}/.worklog/scope.json`,
+      JSON.stringify({ parent: "../../bad" }, null, 2),
+    );
+
+    const output = await captureOutput(() => main(["dash"]));
+
+    assertStringIncludes(
+      output,
+      "[(root)] · child of ../../bad ! Invalid parent: missing .worklog",
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create --scope stores new task in the target child scope", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

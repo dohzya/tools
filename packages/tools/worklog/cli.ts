@@ -2596,7 +2596,9 @@ function formatList(
   const header = showHeader && output.childWorklog
     ? `${
       palette.tag(`[${output.childWorklog.scope}]`)
-    } · child of ${output.childWorklog.childOf}`
+    } · child of ${output.childWorklog.childOf}${
+      output.childWorklog.warning ? ` ! ${output.childWorklog.warning}` : ""
+    }`
     : "";
 
   if (output.tasks.length === 0) {
@@ -2684,7 +2686,9 @@ function formatDashboard(
   const header = output.childWorklog
     ? `${
       palette.tag(`[${output.childWorklog.scope}]`)
-    } · child of ${output.childWorklog.childOf}`
+    } · child of ${output.childWorklog.childOf}${
+      output.childWorklog.warning ? ` ! ${output.childWorklog.warning}` : ""
+    }`
     : "";
 
   if (output.tasks.length === 0) {
