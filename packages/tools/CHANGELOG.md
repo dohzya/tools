@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.18.4] — 2026-06-15
+
+### Fixed
+
+- **worklog:** GitHub release and Homebrew binaries are rebuilt from a new JSR package version that includes interactive task selection, instead of reusing the older `@dohzya/tools@0.9.12` package published before that feature.
+
 ## [wl-v0.18.3] — 2026-06-15
 
 ### Added
