@@ -6,6 +6,7 @@
 
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
+import { Select } from "@cliffy/prompt/select";
 import {
   type AddOutput,
   type AssignByTagOutput,
@@ -185,6 +186,24 @@ const ENV_TASK_ID: string | undefined = (() => {
   }
 })();
 const HAS_ENV_TASK_ID = !!ENV_TASK_ID;
+
+type InteractiveTaskSelectionContext = {
+  readonly taskId?: string;
+  readonly envTaskId?: string;
+  readonly stdinIsTerminal: boolean;
+  readonly stdoutIsTerminal: boolean;
+  readonly detectedAgentType: AgentType | null;
+};
+
+export function _canSelectTaskInteractively(
+  context: InteractiveTaskSelectionContext,
+): boolean {
+  return !context.taskId &&
+    !context.envTaskId &&
+    context.stdinIsTerminal &&
+    context.stdoutIsTerminal &&
+    context.detectedAgentType === null;
+}
 
 // Pre-computed section IDs for fixed section titles
 let ENTRIES_ID: string | null = null;
@@ -1271,6 +1290,75 @@ async function resolveTaskIdWithEnvFallbackAcrossScopes(
     );
   }
   return await resolveTaskIdAcrossScopes(id, gitRoot);
+}
+
+function canSelectTaskInteractively(taskId?: string): boolean {
+  return _canSelectTaskInteractively({
+    taskId,
+    envTaskId: ENV_TASK_ID,
+    stdinIsTerminal: Deno.stdin.isTerminal(),
+    stdoutIsTerminal: Deno.stdout.isTerminal(),
+    detectedAgentType: detectAgentType(Deno.env),
+  });
+}
+
+function taskSelectionTarget(task: ListTaskItem): string {
+  return task.scopePrefix ? `${task.scopePrefix}:${task.id}` : task.id;
+}
+
+function formatTaskSelectionOption(
+  task: ListTaskItem,
+  targets: readonly string[],
+): string {
+  const target = taskSelectionTarget(task);
+  const shortId = getShortId(target, [...targets]);
+  const tags = task.tags && task.tags.length > 0
+    ? ` #${task.tags.join(" #")}`
+    : "";
+  return `${shortId} [${task.status}] ${task.name}${tags}`;
+}
+
+async function selectTaskInteractively(
+  gitRoot: string | null,
+): Promise<string> {
+  const listOutput = await cmdList(
+    false,
+    undefined,
+    undefined,
+    false,
+    gitRoot,
+    undefined,
+    Deno.cwd(),
+  );
+  const tasks = [...listOutput.tasks].sort((a, b) =>
+    new Date(b.created).getTime() - new Date(a.created).getTime()
+  );
+  if (tasks.length === 0) {
+    throw new WtError("task_not_found", "No active tasks to select");
+  }
+
+  const targets = tasks.map(taskSelectionTarget);
+  const selectedTarget = await Select.prompt<string>({
+    message: "Select task",
+    options: tasks.map((task) => ({
+      name: formatTaskSelectionOption(task, targets),
+      value: taskSelectionTarget(task),
+    })),
+  });
+  return await resolveTaskIdAcrossScopes(selectedTarget, gitRoot);
+}
+
+async function resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+  taskId: string | undefined,
+  gitRoot: string | null,
+): Promise<string> {
+  if (taskId || ENV_TASK_ID) {
+    return await resolveTaskIdWithEnvFallbackAcrossScopes(taskId, gitRoot);
+  }
+  if (canSelectTaskInteractively(taskId)) {
+    return await selectTaskInteractively(gitRoot);
+  }
+  return await resolveTaskIdWithEnvFallbackAcrossScopes(taskId, gitRoot);
 }
 
 // Resolve todo ID prefix to full ID with detailed error message
@@ -5097,10 +5185,11 @@ const showCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
-      const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-        taskId,
-        options.scope ? null : gitRoot,
-      );
+      const resolvedTaskId =
+        await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+          taskId,
+          options.scope ? null : gitRoot,
+        );
       const output = await cmdShow(resolvedTaskId, options.active ?? false);
       console.log(
         options.json
@@ -5378,7 +5467,7 @@ const doneCmd = new Command()
 
 const readyCmd = new Command()
   .description("Mark task as ready to work on")
-  .arguments(HAS_ENV_TASK_ID ? "[taskId:string]" : "<taskId:string>")
+  .arguments("[taskId:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId?: string) => {
@@ -5388,10 +5477,11 @@ const readyCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
-      const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-        taskId,
-        options.scope ? null : gitRoot,
-      );
+      const resolvedTaskId =
+        await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+          taskId,
+          options.scope ? null : gitRoot,
+        );
       const output = await cmdReady(resolvedTaskId);
       console.log(
         options.json
@@ -5405,7 +5495,7 @@ const readyCmd = new Command()
 
 const startCmd = new Command()
   .description("Start working on a task (or reopen a done/cancelled task)")
-  .arguments(HAS_ENV_TASK_ID ? "[taskId:string]" : "<taskId:string>")
+  .arguments("[taskId:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--name <name:string>", "Update task name")
@@ -5417,10 +5507,11 @@ const startCmd = new Command()
         asGlobal(options).cwd,
         asGlobal(options).worklogDir,
       );
-      const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-        taskId,
-        options.scope ? null : gitRoot,
-      );
+      const resolvedTaskId =
+        await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+          taskId,
+          options.scope ? null : gitRoot,
+        );
       let output = await cmdStart(resolvedTaskId);
       if (options.name !== undefined || options.desc !== undefined) {
         output = await cmdUpdate(resolvedTaskId, options.name, options.desc);
@@ -5442,7 +5533,7 @@ const runCmd = new Command()
       "  wl run <taskId> npm test\n" +
       '  wl run --create "task name" npm test',
   )
-  .arguments("<args...:string>")
+  .arguments("[args...:string]")
   .stopEarly()
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
@@ -5493,20 +5584,44 @@ const runCmd = new Command()
           cmd = args;
         }
       } else {
-        // wl run <taskId> <cmd...>
-        if (args.length < 2) {
+        if (args.length === 0) {
           throw new WtError(
             "invalid_args",
             "Usage: wl run <taskId> <cmd...> OR wl run --create <name> <cmd...>",
           );
         }
-        // Pre-resolve across scopes before passing to cmdRun
-        const resolved = await resolveTaskIdAcrossScopes(
-          args[0],
-          options.scope ? null : gitRoot,
-        );
-        taskId = resolved;
-        cmd = args.slice(1);
+        if (args.length >= 2) {
+          try {
+            const resolved = await resolveTaskIdAcrossScopes(
+              args[0],
+              options.scope ? null : gitRoot,
+            );
+            taskId = resolved;
+            cmd = args.slice(1);
+          } catch (e) {
+            if (
+              !(e instanceof WtError) ||
+              e.code !== "task_not_found" ||
+              !canSelectTaskInteractively(undefined)
+            ) {
+              throw e;
+            }
+            taskId = await selectTaskInteractively(
+              options.scope ? null : gitRoot,
+            );
+            cmd = args;
+          }
+        } else if (canSelectTaskInteractively(undefined)) {
+          taskId = await selectTaskInteractively(
+            options.scope ? null : gitRoot,
+          );
+          cmd = args;
+        } else {
+          throw new WtError(
+            "invalid_args",
+            "Usage: wl run <taskId> <cmd...> OR wl run --create <name> <cmd...>",
+          );
+        }
       }
 
       if (cmd.length === 0) {
@@ -5569,6 +5684,11 @@ const claudeCmd = new Command()
           actualTaskId,
           options.scope ? null : gitRoot,
         );
+      } else {
+        actualTaskId = await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+          undefined,
+          options.scope ? null : gitRoot,
+        );
       }
 
       const output = await cmdClaude(actualTaskId, claudeArgs);
@@ -5617,6 +5737,11 @@ const codexCmd = new Command()
           actualTaskId,
           options.scope ? null : gitRoot,
         );
+      } else {
+        actualTaskId = await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+          undefined,
+          options.scope ? null : gitRoot,
+        );
       }
 
       const output = await cmdCodex(actualTaskId, codexArgs);
@@ -5662,6 +5787,11 @@ const agentCmd = new Command()
       if (actualTaskId) {
         actualTaskId = await resolveTaskIdAcrossScopes(
           actualTaskId,
+          options.scope ? null : gitRoot,
+        );
+      } else {
+        actualTaskId = await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+          undefined,
           options.scope ? null : gitRoot,
         );
       }
@@ -5740,11 +5870,7 @@ const updateCmd = new Command()
 
 const cancelCmd = new Command()
   .description("Cancel/abandon a task (marks as cancelled)")
-  .arguments(
-    HAS_ENV_TASK_ID
-      ? "[taskId:string] [reason:string]"
-      : "<taskId:string> [reason:string]",
-  )
+  .arguments("[taskId:string] [reason:string]")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .action(async (options, taskId?: string, reason?: string) => {
@@ -5769,10 +5895,11 @@ const cancelCmd = new Command()
         );
       } else {
         // Normal case: first arg is taskId, second is reason
-        resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
-          taskId,
-          options.scope ? null : gitRoot,
-        );
+        resolvedTaskId =
+          await resolveTaskIdWithEnvFallbackOrInteractiveSelection(
+            taskId,
+            options.scope ? null : gitRoot,
+          );
         resolvedReason = reason;
       }
 

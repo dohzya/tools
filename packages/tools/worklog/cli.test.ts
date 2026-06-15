@@ -44,7 +44,7 @@ Deno.test("WtError - handles different error codes", () => {
 });
 
 // Integration tests for wl trace with timestamp
-import { _setStdinReadable, main } from "./cli.ts";
+import { _canSelectTaskInteractively, _setStdinReadable, main } from "./cli.ts";
 
 Deno.test("worklog - shows help when no arguments provided", async () => {
   const output = await captureOutput(() => main([]));
@@ -1501,6 +1501,127 @@ Deno.test("worklog run - uses WORKLOG_TASK_ID when taskId is omitted", async () 
     assertEquals(output.taskId, taskId);
     assertEquals(output.exitCode, 0);
     assertEquals(output.created, false);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("interactive task selection - only activates in plain interactive terminals", () => {
+  assertEquals(
+    _canSelectTaskInteractively({
+      taskId: undefined,
+      envTaskId: undefined,
+      stdinIsTerminal: true,
+      stdoutIsTerminal: true,
+      detectedAgentType: null,
+    }),
+    true,
+  );
+  assertEquals(
+    _canSelectTaskInteractively({
+      taskId: "abc123",
+      envTaskId: undefined,
+      stdinIsTerminal: true,
+      stdoutIsTerminal: true,
+      detectedAgentType: null,
+    }),
+    false,
+  );
+  assertEquals(
+    _canSelectTaskInteractively({
+      taskId: undefined,
+      envTaskId: "abc123",
+      stdinIsTerminal: true,
+      stdoutIsTerminal: true,
+      detectedAgentType: null,
+    }),
+    false,
+  );
+  assertEquals(
+    _canSelectTaskInteractively({
+      taskId: undefined,
+      envTaskId: undefined,
+      stdinIsTerminal: false,
+      stdoutIsTerminal: true,
+      detectedAgentType: null,
+    }),
+    false,
+  );
+  assertEquals(
+    _canSelectTaskInteractively({
+      taskId: undefined,
+      envTaskId: undefined,
+      stdinIsTerminal: true,
+      stdoutIsTerminal: false,
+      detectedAgentType: null,
+    }),
+    false,
+  );
+  assertEquals(
+    _canSelectTaskInteractively({
+      taskId: undefined,
+      envTaskId: undefined,
+      stdinIsTerminal: true,
+      stdoutIsTerminal: true,
+      detectedAgentType: "codex",
+    }),
+    false,
+  );
+});
+
+Deno.test("wl show without taskId keeps the usual error when stdout is piped", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const cliUrl = new URL("./cli.ts", import.meta.url).href;
+    const process = new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", cliUrl, "show"],
+      cwd: tempDir,
+      env: { WORKLOG_TASK_ID: "" },
+      stderr: "piped",
+      stdout: "piped",
+    });
+
+    const result = await process.output();
+    const stderr = new TextDecoder().decode(result.stderr);
+    assertEquals(result.code, 1);
+    assertStringIncludes(
+      stderr,
+      "taskId argument is required (or set WORKLOG_TASK_ID environment variable)",
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("wl show without taskId keeps the usual error inside an agent env", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const cliUrl = new URL("./cli.ts", import.meta.url).href;
+    const process = new Deno.Command(Deno.execPath(), {
+      args: ["run", "-A", cliUrl, "show"],
+      cwd: tempDir,
+      env: { AGENT: "codex", WORKLOG_TASK_ID: "" },
+      stderr: "piped",
+      stdout: "piped",
+    });
+
+    const result = await process.output();
+    const stderr = new TextDecoder().decode(result.stderr);
+    assertEquals(result.code, 1);
+    assertStringIncludes(
+      stderr,
+      "taskId argument is required (or set WORKLOG_TASK_ID environment variable)",
+    );
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });

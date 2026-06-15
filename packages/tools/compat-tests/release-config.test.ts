@@ -12,4 +12,8 @@ Deno.test("release config pins Cliffy command for compiled wl run", async () => 
     config.imports["@cliffy/command/completions"],
     "jsr:@cliffy/command@1.0.0-rc.8/completions",
   );
+  assertEquals(
+    config.imports["@cliffy/prompt/select"],
+    "jsr:@cliffy/prompt@1.0.0-rc.8/select",
+  );
 });

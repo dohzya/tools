@@ -25,6 +25,7 @@
     "@zod/zod": "jsr:@zod/zod@^4.3.6",
     "@cliffy/command": "jsr:@cliffy/command@1.0.0-rc.8",
     "@cliffy/command/completions": "jsr:@cliffy/command@1.0.0-rc.8/completions",
+    "@cliffy/prompt/select": "jsr:@cliffy/prompt@1.0.0-rc.8/select",
     "@david/dax": "jsr:@david/dax@^0.42.0"
   },
   "tasks": {
