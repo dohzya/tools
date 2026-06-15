@@ -1,26 +1,26 @@
 class Wl < Formula
   desc "Worklog - track work progress during development sessions"
   homepage "https://github.com/dohzya/tools"
-  version "0.18.3"
+  version "0.18.5"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.3/wl-darwin-arm64"
-      sha256 "3012e35600d9251f54fa69561da9fb1474465ffb8673554d9a17f2e322b9d47e"
+      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.5/wl-darwin-arm64"
+      sha256 "a525f8e4f3b329cfb63fc5771b2b4ba91141733985573f2a575223132ada8ffa"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.3/wl-darwin-x86_64"
-      sha256 "2aded37a1f7f2044377211ddcfa706c7953eef86f2cd0370033b8abb46aec95c"
+      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.5/wl-darwin-x86_64"
+      sha256 "b77a4e57c289c8cc88272ab9d079edd635dc26d2adcbbc1580127acfa5904bad"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.3/wl-linux-arm64"
-      sha256 "e2e8e8042a7ec90ec345f7c26ab12df528d248d15e24492e35a8c287960ec1fa"
+      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.5/wl-linux-arm64"
+      sha256 "e95129d20e9bf23d34c1736ca5cec06c67186dd2a1731d117b2f87c2e4ceaad1"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.3/wl-linux-x86_64"
-      sha256 "df727c2b6a24468c905798c9037e8d6b4739d3609923d42fb63c60b8fb9f8665"
+      url "https://github.com/dohzya/tools/releases/download/wl-v0.18.5/wl-linux-x86_64"
+      sha256 "36548fa6c12f497d5051698e3be1df5145fcf5278c88775b2b2749459f5dcfc3"
     end
   end
 
