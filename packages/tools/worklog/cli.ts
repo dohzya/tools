@@ -154,7 +154,7 @@ function asGlobal<T extends object>(options: T): WithGlobalOptions<T> {
 // Version
 // ============================================================================
 
-const VERSION = "0.18.4";
+const VERSION = "0.18.5";
 
 // ============================================================================
 // Constants

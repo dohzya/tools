@@ -46,15 +46,17 @@ jobs:
           # Create dist directory
           mkdir -p dist
 
-          # Determine entry point
+          # Determine entry point. Use direct versioned JSR URLs instead of
+          # jsr: specifiers so release builds do not depend on the package
+          # index metadata propagating before the version-specific files.
           if [ "$TOOL" = "md" ]; then
-            ENTRY="jsr:@dohzya/tools@${JSR_VERSION}/markdown-surgeon/cli"
+            ENTRY="https://jsr.io/@dohzya/tools/${JSR_VERSION}/markdown-surgeon/cli.ts"
             PERMS="--allow-read --allow-write"
           elif [ "$TOOL" = "recap" ]; then
-            ENTRY="jsr:@dohzya/tools@${JSR_VERSION}/recap/cli"
+            ENTRY="https://jsr.io/@dohzya/tools/${JSR_VERSION}/recap/cli.ts"
             PERMS="--allow-read --allow-write --allow-env --allow-run"
           else
-            ENTRY="jsr:@dohzya/tools@${JSR_VERSION}/worklog/cli"
+            ENTRY="https://jsr.io/@dohzya/tools/${JSR_VERSION}/worklog/cli.ts"
             PERMS="--allow-read --allow-write --allow-env --allow-run"
           fi
 

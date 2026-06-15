@@ -227,7 +227,7 @@ cd ~/bin/share/mise-tools
 
 Use this when the release changes **compiled binary behavior** such as Deno compile permissions or other build flags.
 
-**Important:** the GitHub release workflow compiles binaries from the published JSR package (`jsr:@dohzya/tools@<deno.json version>`), not from the checkout source directly. Therefore a build-flag release still needs a normal JSR bump and publish when the CLI `VERSION` changes. Otherwise the published binary may use new compile flags but still contain old TypeScript code and report the old tool version.
+**Important:** the GitHub release workflow compiles binaries from the published JSR package, not from the checkout source directly. It uses direct versioned JSR URLs (`https://jsr.io/@dohzya/tools/<deno.json version>/...`) to avoid waiting for package index metadata propagation, but a build-flag release still needs a normal JSR bump and publish when the CLI `VERSION` changes. Otherwise the published binary may use new compile flags but still contain old TypeScript code and report the old tool version.
 
 Follow the normal release process above. Do **not** skip `bump-prepare`, `CHANGELOG.md`, or `gh workflow run publish.yml` just because the TypeScript logic is unchanged.
 

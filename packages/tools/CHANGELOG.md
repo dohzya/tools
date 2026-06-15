@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.18.5] — 2026-06-15
+
+### Fixed
+
+- **release:** GitHub release binaries now compile from direct versioned JSR URLs, avoiding stale package index metadata when the version-specific JSR files are already published.
+
 ## [wl-v0.18.4] — 2026-06-15
 
 ### Fixed

@@ -17,3 +17,22 @@ Deno.test("release config pins Cliffy command for compiled wl run", async () => 
     "jsr:@cliffy/prompt@1.0.0-rc.8/select",
   );
 });
+
+Deno.test("release workflow compiles from direct versioned JSR URLs", async () => {
+  const workflowUrl = new URL(
+    "../../../.github/workflows/release.yml",
+    import.meta.url,
+  );
+  const workflow = await Deno.readTextFile(workflowUrl);
+
+  assertEquals(
+    workflow.includes(
+      "https://jsr.io/@dohzya/tools/${JSR_VERSION}/worklog/cli.ts",
+    ),
+    true,
+  );
+  assertEquals(
+    workflow.includes('ENTRY="jsr:@dohzya/tools@${JSR_VERSION}'),
+    false,
+  );
+});
