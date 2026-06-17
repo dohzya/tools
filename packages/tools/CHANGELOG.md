@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+### Added
+
+- **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
+
 ## [wl-v0.18.5] — 2026-06-15
 
 ### Fixed

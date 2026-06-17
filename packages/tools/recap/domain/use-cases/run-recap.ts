@@ -11,6 +11,7 @@ import type { ConfigResolver } from "../ports/config-resolver.ts";
 import { resolveConfig } from "./resolve-config.ts";
 import { collectSections } from "./collect-sections.ts";
 import { renderRecap } from "./render-recap.ts";
+import { RecapError } from "../entities/errors.ts";
 
 /** Options for a full recap run. */
 export type RunRecapOptions = {
@@ -22,6 +23,8 @@ export type RunRecapOptions = {
   readonly json?: boolean;
   /** Override working directory for config discovery and shell commands. */
   readonly cwd?: string;
+  /** Restrict execution to these resolved section IDs, in this order. */
+  readonly sectionIds?: readonly string[];
   /**
    * Whether colors are enabled for this run. Propagated down to subcommands
    * (via FORCE_COLOR / CLICOLOR_FORCE or NO_COLOR env vars) and to the git-log
@@ -150,6 +153,40 @@ function envOverridesFrom(env: Environment): Record<string, string> {
   return envOverrides;
 }
 
+function selectSectionsById(
+  config: RecapConfig,
+  sectionIds: readonly string[] | undefined,
+): RecapConfig {
+  if (sectionIds === undefined || sectionIds.length === 0) {
+    return config;
+  }
+
+  const byId = new Map(config.sections.map((section) => [section.id, section]));
+  const missing = sectionIds.filter((sectionId) => !byId.has(sectionId));
+  if (missing.length > 0) {
+    const quoted = missing.map((sectionId) => `"${sectionId}"`).join(", ");
+    const label = missing.length === 1 ? "section" : "sections";
+    throw new RecapError(
+      "config_validation_error",
+      `${label} ${quoted} not found`,
+    );
+  }
+
+  return {
+    ...config,
+    sections: sectionIds.map((sectionId) => {
+      const section = byId.get(sectionId);
+      if (section === undefined) {
+        throw new RecapError(
+          "config_validation_error",
+          `section "${sectionId}" not found`,
+        );
+      }
+      return section;
+    }),
+  };
+}
+
 /**
  * Full recap run: resolve config → collect sections → render.
  */
@@ -168,7 +205,9 @@ export async function runRecap(
     envOverrides: envOverridesFrom(deps.env),
   });
 
-  const sections = await collectSections(config, {
+  const selectedConfig = selectSectionsById(config, options.sectionIds);
+
+  const sections = await collectSections(selectedConfig, {
     shell: deps.shell,
     git: deps.git,
     cwd,

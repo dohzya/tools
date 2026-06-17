@@ -72,10 +72,30 @@ function readStringProperty(value: unknown, key: string): string | undefined {
   return typeof property === "string" ? property : undefined;
 }
 
+function readBooleanProperty(value: unknown, key: string): boolean | undefined {
+  if (typeof value !== "object" || value === null || !(key in value)) {
+    return undefined;
+  }
+  const record = ExplicitCast.from<unknown>(value)
+    .dangerousCast<Record<string, unknown>>();
+  const property = record[key];
+  return typeof property === "boolean" ? property : undefined;
+}
+
 function globalOptionsFromUnknown(options: unknown): GlobalOptions {
   return {
     "": readStringProperty(options, ""),
     config: readStringProperty(options, "config"),
+  };
+}
+
+function outputOptionsFromUnknown(
+  options: unknown,
+): GlobalOptions & { readonly color?: boolean; readonly json?: boolean } {
+  return {
+    ...globalOptionsFromUnknown(options),
+    color: readBooleanProperty(options, "color"),
+    json: readBooleanProperty(options, "json"),
   };
 }
 
@@ -209,6 +229,46 @@ function formatConfigFilesVerbose(
   return sections.join("\n\n");
 }
 
+async function printRecap(
+  options: unknown,
+  sectionIds?: readonly string[],
+): Promise<void> {
+  const outputOptions = outputOptionsFromUnknown(options);
+  const context = getCliContext(outputOptions);
+
+  const noColor = outputOptions.color === false ||
+    !!env.getEnv("NO_COLOR");
+  const useColor = !noColor && env.isTerminal();
+  const palette = createPalette(useColor);
+
+  try {
+    const result = await runRecap(
+      {
+        configPath: context.configPath,
+        noColor,
+        useColor,
+        json: outputOptions.json,
+        cwd: context.cwd,
+        sectionIds,
+      },
+      deps,
+      palette,
+    );
+
+    if (outputOptions.json) {
+      console.log(formatRecapJson([...result.sections]));
+    } else if (result.text.trim()) {
+      console.log(result.text);
+    }
+  } catch (e) {
+    if (e instanceof RecapError) {
+      console.error(`recap error: ${e.message}`);
+      Deno.exit(1);
+    }
+    throw e;
+  }
+}
+
 /** CLI entry point — parses args and runs the recap command. */
 export async function main(args: string[]): Promise<void> {
   const program = new Command()
@@ -224,44 +284,12 @@ export async function main(args: string[]): Promise<void> {
       "Explicit config path (skip auto-discovery)",
     )
     .globalOption("--no-color", "Disable ANSI color output")
-    .option("--json", "Output as JSON instead of formatted text")
-    .action(async (options) => {
-      const globalOpts = asGlobal(options);
-      const context = getCliContext(globalOpts);
-
-      const noColor = options.color === false ||
-        !!env.getEnv("NO_COLOR");
-      const useColor = !noColor && env.isTerminal();
-      const palette = createPalette(useColor);
-
-      try {
-        const result = await runRecap(
-          {
-            configPath: context.configPath,
-            noColor,
-            useColor,
-            json: options.json,
-            cwd: context.cwd,
-          },
-          deps,
-          palette,
-        );
-
-        if (options.json) {
-          console.log(formatRecapJson([...result.sections]));
-        } else {
-          if (result.text.trim()) {
-            console.log(result.text);
-          }
-        }
-      } catch (e) {
-        if (e instanceof RecapError) {
-          console.error(`recap error: ${e.message}`);
-          Deno.exit(1);
-        }
-        throw e;
-      }
-    })
+    .globalOption("--json", "Output as JSON instead of formatted text")
+    .action((options) => printRecap(options))
+    .command("show <sectionIds...:string>", "Run selected sections by ID")
+    .action((options, ...sectionIds: string[]) =>
+      printRecap(options, sectionIds)
+    )
     .command(
       "config",
       new Command()

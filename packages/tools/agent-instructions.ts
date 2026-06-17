@@ -46,6 +46,7 @@ const RECAP_INSTRUCTIONS = `
 Recap (\`recap\`): compact project context snapshot; it can be useful as assistant context.
 - Snapshot current directory: \`recap\`.
 - Snapshot another directory: \`recap -C <dir>\`.
+- Show selected sections: \`recap show <section...>\`.
 - Structured output: \`recap --json\`.
 - Project-specific context can be added via recap configuration.
 - Help: \`recap --help\`.

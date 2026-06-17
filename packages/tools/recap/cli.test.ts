@@ -1,11 +1,17 @@
 // Integration tests for recap CLI
 // Tests use Deno.makeTempDir() for isolation
 
-import { assertEquals, assertMatch, assertStringIncludes } from "@std/assert";
+import {
+  assertEquals,
+  assertMatch,
+  assertRejects,
+  assertStringIncludes,
+} from "@std/assert";
 import { join } from "node:path";
 import { resolveConfig } from "./domain/use-cases/resolve-config.ts";
 import { renderRecap } from "./domain/use-cases/render-recap.ts";
 import { collectSections } from "./domain/use-cases/collect-sections.ts";
+import { runRecap } from "./domain/use-cases/run-recap.ts";
 import { createPalette } from "./domain/entities/color.ts";
 import { HARDCODED_SECTIONS } from "./domain/entities/default-config.ts";
 import type { SectionData } from "./domain/entities/section-data.ts";
@@ -435,6 +441,165 @@ sections:
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
+});
+
+Deno.test("recap CLI - show prints only requested sections in requested order", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yaml"),
+      `
+sections:
+  - id: alpha
+    value: "ALPHA"
+  - id: unused
+    sh: "printf UNUSED"
+  - id: beta
+    value: "BETA"
+`,
+    );
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "show", "beta", "alpha"]);
+    });
+
+    assertStringIncludes(output, "BETA");
+    assertStringIncludes(output, "ALPHA");
+    assertEquals(output.includes("UNUSED"), false);
+    assertEquals(output.indexOf("BETA") < output.indexOf("ALPHA"), true);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - show --json returns only requested sections", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yaml"),
+      `
+sections:
+  - id: alpha
+    value: "ALPHA"
+  - id: beta
+    value: "BETA"
+`,
+    );
+
+    const output = await captureOutput(async () => {
+      await main([
+        "--json",
+        "--no-color",
+        "-C",
+        tempDir,
+        "show",
+        "beta",
+      ]);
+    });
+
+    const parsed = JSON.parse(output.trim());
+    assertEquals(parsed.map((section: { id: string }) => section.id), [
+      "beta",
+    ]);
+    assertEquals(parsed[0].lines, ["BETA"]);
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("runRecap - selected sections skip non-selected shell commands", async () => {
+  const { shell, calls } = makeSpyShell();
+  const mockEnv = {
+    cwd: () => "/tmp",
+    home: () => undefined,
+    getEnv: () => undefined,
+    isTerminal: () => false,
+    loadDotenv: () => Promise.resolve({}),
+  };
+  const mockConfigResolver = {
+    loadConfig: () =>
+      Promise.resolve({
+        sections: [
+          { id: "wanted", sh: "echo wanted" },
+          { id: "skipped", sh: "echo skipped" },
+        ],
+      }),
+  };
+
+  const result = await runRecap(
+    {
+      useColor: false,
+      sectionIds: ["wanted"],
+      configPath: "mock",
+    },
+    {
+      shell,
+      git: noopGit,
+      env: mockEnv,
+      fs: {
+        exists: () => Promise.resolve(false),
+        readFile: () => Promise.resolve(""),
+        writeFile: () => Promise.resolve(),
+        ensureDir: () => Promise.resolve(),
+        readDir: async function* () {},
+      },
+      configResolver: mockConfigResolver,
+    },
+    createPalette(false),
+  );
+
+  assertEquals(result.sections.map((section) => section.id), ["wanted"]);
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].command, "echo wanted");
+});
+
+Deno.test("runRecap - unknown selected section rejects with a clear error", async () => {
+  const { shell } = makeSpyShell();
+  const mockEnv = {
+    cwd: () => "/tmp",
+    home: () => undefined,
+    getEnv: () => undefined,
+    isTerminal: () => false,
+    loadDotenv: () => Promise.resolve({}),
+  };
+  const mockConfigResolver = {
+    loadConfig: () =>
+      Promise.resolve({
+        sections: [
+          { id: "wanted", sh: "echo wanted" },
+          { id: "skipped", sh: "echo skipped" },
+        ],
+      }),
+  };
+
+  await assertRejects(
+    () =>
+      runRecap(
+        {
+          useColor: false,
+          sectionIds: ["missing"],
+          configPath: "mock",
+        },
+        {
+          shell,
+          git: noopGit,
+          env: mockEnv,
+          fs: {
+            exists: () => Promise.resolve(false),
+            readFile: () => Promise.resolve(""),
+            writeFile: () => Promise.resolve(),
+            ensureDir: () => Promise.resolve(),
+            readDir: async function* () {},
+          },
+          configResolver: mockConfigResolver,
+        },
+        createPalette(false),
+      ),
+    Error,
+    'section "missing" not found',
+  );
 });
 
 Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", async () => {

@@ -1,5 +1,14 @@
 # recap — Technical Reference
 
+## Commands
+
+```bash
+recap                         # Run all resolved sections
+recap show git-status         # Run one section by resolved section id
+recap show git-status git-log # Run several sections in the requested order
+recap --json show git-status  # Emit selected sections as JSON
+```
+
 ## Config resolution
 
 `recap` merges three levels of configuration, each building on the previous:
