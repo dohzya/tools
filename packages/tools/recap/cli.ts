@@ -220,7 +220,7 @@ export async function main(args: string[]): Promise<void> {
       "Run as if started in <dir> (affects config discovery and shell commands)",
     )
     .globalOption(
-      "--config <path:string>",
+      "-c, --config <path:string>",
       "Explicit config path (skip auto-discovery)",
     )
     .globalOption("--no-color", "Disable ANSI color output")

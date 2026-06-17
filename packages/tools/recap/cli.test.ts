@@ -403,6 +403,40 @@ sections:
   }
 });
 
+Deno.test("recap CLI - -c loads explicit config path", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const configPath = join(tempDir, "custom-recap.yaml");
+  try {
+    await Deno.writeTextFile(
+      configPath,
+      `
+sections:
+  - id: explicit-marker
+    value: "EXPLICIT_FOUND"
+`,
+    );
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-c", configPath]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((s: { id: string }) =>
+      s.id === "explicit-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "EXPLICIT_FOUND");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", async () => {
   const tempDir = await Deno.makeTempDir();
   try {
