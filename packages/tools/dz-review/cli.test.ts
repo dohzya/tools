@@ -25,6 +25,10 @@ async function captureOutput(fn: () => Promise<unknown>): Promise<string> {
   }
 }
 
+function stripAnsi(text: string): string {
+  return text.replace(new RegExp(String.raw`\x1b\[[0-9;]*m`, "g"), "");
+}
+
 Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () => {
   const output = await captureOutput(() => main(["agent-instructions"]));
 
@@ -54,7 +58,7 @@ Deno.test("dz-review completions - prints shell completions", async () => {
 });
 
 Deno.test("dz-review --help - prints structured command help", async () => {
-  const output = await captureOutput(() => main(["--help"]));
+  const output = stripAnsi(await captureOutput(() => main(["--help"])));
 
   assertStringIncludes(output, "Usage:");
   assertStringIncludes(output, "dz-review");
@@ -71,7 +75,9 @@ Deno.test("dz-review --help - prints structured command help", async () => {
 });
 
 Deno.test("dz-review status --help - prints subcommand options", async () => {
-  const output = await captureOutput(() => main(["status", "--help"]));
+  const output = stripAnsi(
+    await captureOutput(() => main(["status", "--help"])),
+  );
 
   assertStringIncludes(output, "Usage:");
   assertStringIncludes(output, "dz-review status");
