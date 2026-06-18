@@ -1,0 +1,1860 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+const test = require("node:test");
+
+const {
+  applyReviewAnnotationAction,
+  applyConversationAction,
+  collectReviewAnnotations,
+  collectConversations,
+  getConversationLastMessage,
+  getConversationStatus,
+  getAddedLinesByFile,
+  isClosedConversation,
+} = require("../out/reviewCliCore.js");
+const {
+  decodeCompactTimestamp,
+  encodeCompactTimestamp,
+  formatTimestampForDisplay,
+  parseReviewTimestamp,
+} = require("../out/timestamp.js");
+
+function makeTempDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), "dz-review-"));
+}
+
+function initGitRepo(cwd) {
+  assert.equal(spawnSync("git", ["init"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["config", "user.email", "test@example.invalid"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["config", "user.name", "Test User"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["config", "commit.gpgsign", "false"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["config", "core.hooksPath", "/dev/null"], { cwd }).status, 0);
+}
+
+function stripAnsi(text) {
+  return text.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function formatLocalIso(year, month, day, hour, minute, second) {
+  const date = new Date(year, month - 1, day, hour, minute, second);
+  const offsetMinutes = -date.getTimezoneOffset();
+  const sign = offsetMinutes < 0 ? "-" : "+";
+  const absoluteOffset = Math.abs(offsetMinutes);
+  const offset = `${sign}${String(Math.floor(absoluteOffset / 60)).padStart(2, "0")}:${String(absoluteOffset % 60).padStart(2, "0")}`;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T`
+    + `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}${offset}`;
+}
+
+test("collects HTML and custom review conversations with line numbers", () => {
+  const text = [
+    "Intro",
+    "<!--",
+    "@agent HTML note",
+    "-->",
+    "Body {?? @me custom note ??} end",
+  ].join("\n");
+
+  const conversations = collectConversations(text);
+
+  assert.deepEqual(
+    conversations.map(({ lineStart, lineEnd, roles }) => ({ lineStart, lineEnd, roles })),
+    [
+      { lineStart: 2, lineEnd: 4, roles: ["agent"] },
+      { lineStart: 5, lineEnd: 5, roles: ["me"] },
+    ],
+  );
+});
+
+test("conversation actions delete, toggle ok, and append replies", () => {
+  const source = "{?? @agent note ??}";
+  const [conversation] = collectConversations(source);
+
+  const withOk = applyConversationAction(source, conversation, { kind: "toggle-ok" });
+  assert.equal(withOk, "{?? @agent note @me ok ??}");
+
+  const withoutOk = applyConversationAction(withOk, collectConversations(withOk)[0], { kind: "toggle-ok" });
+  assert.equal(withoutOk, "{?? @agent note ??}");
+
+  const withReply = applyConversationAction(source, conversation, {
+    kind: "reply",
+    body: "Vu, je garde.",
+  });
+  assert.equal(withReply, "{?? @agent note @me Vu, je garde. ??}");
+
+  const deleted = applyConversationAction(source, conversation, { kind: "delete" });
+  assert.equal(deleted, "");
+});
+
+test("detects closed conversations by trailing human ok replies", () => {
+  assert.equal(isClosedConversation(collectConversations("<!-- @agent note @me ok -->")[0]), true);
+  assert.equal(isClosedConversation(collectConversations("<!-- @agent note @me: OK -->")[0]), true);
+  assert.equal(isClosedConversation(collectConversations("{?? @agent note @ ok ??}")[0]), true);
+  assert.equal(isClosedConversation(collectConversations("<!-- @agent note @me question -->")[0]), false);
+  assert.equal(isClosedConversation(collectConversations("<!-- @agent note @agent ok -->")[0]), false);
+});
+
+test("classifies conversation status from the trailing review message", () => {
+  const statusOf = (text) => getConversationStatus(collectConversations(text)[0]);
+
+  assert.equal(statusOf("<!-- @agent note -->"), "open");
+  assert.equal(statusOf("<!-- @agent note @me -->"), "wip");
+  assert.equal(statusOf("<!-- @agent note @ -->"), "wip");
+  assert.equal(statusOf("<!-- @agent note @me answer -->"), "handled");
+  assert.equal(statusOf("<!-- @agent note @ answer -->"), "handled");
+  assert.equal(statusOf("<!-- @agent note @me ok -->"), "resolved");
+  assert.equal(statusOf("<!-- @agent note @ ok -->"), "resolved");
+});
+
+test("parses timestamps on review conversation messages", () => {
+  const conversation = collectConversations(
+    "<!-- @agent%1WzvP91W note @me%2026-06-16T17:35:35+02:00 ok -->",
+  )[0];
+
+  assert.equal(getConversationStatus(conversation), "resolved");
+  assert.deepEqual(getConversationLastMessage(conversation), {
+    body: "ok",
+    marker: "@me",
+    timestamp: "2026-06-16T17:35:35+02:00",
+  });
+});
+
+test("parses escaped conversation timestamp prefixes as message text", () => {
+  const conversation = collectConversations(
+    "<!-- @agent%1WzvP91W Write \\@%1WzvQ31W literally. @%1WzvQ31W ok -->",
+  )[0];
+
+  assert.equal(getConversationStatus(conversation), "resolved");
+  assert.deepEqual(getConversationLastMessage(conversation), {
+    body: "ok",
+    marker: "@",
+    timestamp: "1WzvQ31W",
+  });
+});
+
+test("encodes and decodes compact review timestamps", () => {
+  const instant = new Date("2026-06-16T17:35:35+02:00");
+
+  assert.equal(encodeCompactTimestamp(instant, 120), "1WzvP91W");
+  assert.deepEqual(decodeCompactTimestamp("1WzvP91W"), {
+    offsetMinutes: 120,
+    unixSeconds: 1781624135n,
+  });
+  assert.equal(
+    formatTimestampForDisplay(parseReviewTimestamp("1WzvP91W")),
+    "2026-06-16T17:35:35+02:00",
+  );
+  assert.equal(
+    formatTimestampForDisplay(parseReviewTimestamp("%1WzvP91W")),
+    "2026-06-16T17:35:35+02:00",
+  );
+  assert.equal(
+    formatTimestampForDisplay(parseReviewTimestamp("2026-06-16T17:35:35+0200")),
+    "2026-06-16T17:35:35+02:00",
+  );
+});
+
+test("collects review annotations and applies or cancels them", () => {
+  const source = [
+    "Add {++%1WzvP91W|new++}",
+    "Remove {--%2026-06-16T17:35:35+0200|old--}",
+    "Discuss <!-- @agent note -->",
+  ].join("\n");
+
+  const annotations = collectReviewAnnotations(source);
+
+  assert.deepEqual(
+    annotations.map(({ kind, lineStart, lineEnd }) => ({ kind, lineStart, lineEnd })),
+    [
+      { kind: "addition", lineStart: 1, lineEnd: 1 },
+      { kind: "deletion", lineStart: 2, lineEnd: 2 },
+      { kind: "conversation", lineStart: 3, lineEnd: 3 },
+    ],
+  );
+
+  assert.equal(
+    applyReviewAnnotationAction(source, annotations[0], { kind: "apply" }),
+    [
+      "Add new",
+      "Remove {--%2026-06-16T17:35:35+0200|old--}",
+      "Discuss <!-- @agent note -->",
+    ].join("\n"),
+  );
+
+  assert.equal(
+    applyReviewAnnotationAction(source, annotations[1], { kind: "cancel" }),
+    [
+      "Add {++%1WzvP91W|new++}",
+      "Remove old",
+      "Discuss <!-- @agent note -->",
+    ].join("\n"),
+  );
+});
+
+test("parses added worktree diff lines by file", () => {
+  const diff = [
+    "diff --git a/file.md b/file.md",
+    "index 1111111..2222222 100644",
+    "--- a/file.md",
+    "+++ b/file.md",
+    "@@ -1,0 +2,2 @@",
+    "+<!--",
+    "+@agent new",
+    "@@ -8 +10,0 @@",
+    "-old",
+  ].join("\n");
+
+  assert.deepEqual(getAddedLinesByFile(diff), new Map([
+    ["file.md", new Set([2, 3])],
+  ]));
+});
+
+test("CLI review command processes review annotations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "A {++new++}\nB <!-- @agent thread -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "a\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\{\+\+new\+\+\}/);
+  assert.equal(fs.readFileSync(file, "utf8"), "A new\nB <!-- @agent thread -->\n");
+});
+
+test("CLI review --conversation processes only conversations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "A {++new++}\nB <!-- @agent thread -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--conversation", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "o\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /\{\+\+new\+\+\}/);
+  assert.equal(fs.readFileSync(file, "utf8"), "A {++new++}\nB <!-- @agent thread @me ok -->\n");
+});
+
+test("CLI processes only open conversations when requested", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "<!-- @agent resolved @me ok -->",
+      "<!-- @agent handled @me answer -->",
+      "<!-- @agent wip @me -->",
+      "<!-- @agent open -->",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "review",
+      "--open-conversations",
+      "--context",
+      "0:0",
+      "file.md",
+    ],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "o\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /resolved/);
+  assert.doesNotMatch(result.stdout, /handled/);
+  assert.doesNotMatch(result.stdout, /wip/);
+  assert.match(result.stdout, /open/);
+  assert.equal(
+    fs.readFileSync(file, "utf8"),
+    [
+      "<!-- @agent resolved @me ok -->",
+      "<!-- @agent handled @me answer -->",
+      "<!-- @agent wip @me -->",
+      "<!-- @agent open @me ok -->",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("CLI can process only resolved conversations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "<!-- @agent open -->\n<!-- @agent closed @me ok -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "review",
+      "--resolved-conversations",
+      "--context",
+      "0:0",
+      "file.md",
+    ],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "d\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /open/);
+  assert.match(result.stdout, /closed/);
+  assert.equal(fs.readFileSync(file, "utf8"), "<!-- @agent open -->\n\n");
+});
+
+test("CLI can process pending conversations with the short filter alias", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "<!-- @agent open -->",
+      "<!-- @agent wip @me -->",
+      "<!-- @agent handled @me answer -->",
+      "{++addition++}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--pending", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "n\nn\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Action \[n\]ext/);
+  assert.doesNotMatch(result.stdout, /Action \[s\]kip/);
+  assert.match(result.stdout, /open/);
+  assert.match(result.stdout, /wip/);
+  assert.doesNotMatch(result.stdout, /handled/);
+  assert.doesNotMatch(result.stdout, /addition/);
+});
+
+test("CLI treats non-conversation annotations as handled for the short handled filter", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "<!-- @agent handled @me answer -->",
+      "<!-- @agent open -->",
+      "{++addition++}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--handled", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "n\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /handled/);
+  assert.match(result.stdout, /\{\+\+addition\+\+\}/);
+  assert.doesNotMatch(result.stdout, /open/);
+});
+
+test("CLI can jump to the next pending conversation while reviewing all annotations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "{++addition++}",
+      "<!-- @agent handled @me answer -->",
+      "<!-- @agent open -->",
+      "<!-- @agent wip @me -->",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "p\no\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\{\+\+addition\+\+\}/);
+  assert.match(result.stdout, /open/);
+  assert.doesNotMatch(result.stdout, /handled/);
+  assert.equal(
+    fs.readFileSync(file, "utf8"),
+    [
+      "{++addition++}",
+      "<!-- @agent handled @me answer -->",
+      "<!-- @agent open @me ok -->",
+      "<!-- @agent wip @me -->",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("CLI interactive help mentions the hidden next pending shortcut", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "{++addition++}\n", "utf8");
+
+  const compactPrompt = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "q\n",
+    },
+  );
+  const help = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "?\nq\n",
+    },
+  );
+
+  assert.equal(compactPrompt.status, 0, compactPrompt.stderr);
+  assert.doesNotMatch(compactPrompt.stdout, /p next pending conversation/);
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /p next pending conversation/);
+});
+
+test("CLI stats is removed in favor of status --oneline", () => {
+  const cwd = makeTempDir();
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "stats"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /dz-review stats was removed; use dz-review status --oneline/);
+});
+
+test("CLI status --oneline summarizes annotations and conversation state", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "{++one++}",
+      "{++two++}",
+      "{==highlight==}",
+      "{>>comment<<}",
+      "<!-- @agent open -->",
+      "<!-- @agent handled @me answer -->",
+      "<!-- @agent resolved @me ok -->",
+      "<!-- @agent wip @me -->",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trim(),
+    "4 conversations (1 open, 1 wip, 1 handled, 1 resolved), 2 additions, 1 highlight, 1 comment",
+  );
+});
+
+test("CLI status --oneline can report only open conversations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "<!-- @agent open -->\n<!-- @agent closed @me: ok -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "status",
+      "--oneline",
+      "--open-conversations",
+      "file.md",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "1 open conversation");
+});
+
+test("CLI status --oneline can report only wip and pending conversations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    "<!-- @agent open -->\n<!-- @agent wip @me -->\n<!-- @agent handled @me answer -->\n",
+    "utf8",
+  );
+
+  const wip = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline", "--wip-conversations", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+  const pending = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline", "--pending-conversations", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(wip.status, 0, wip.stderr);
+  assert.equal(wip.stdout.trim(), "1 wip conversation");
+  assert.equal(pending.status, 0, pending.stderr);
+  assert.equal(pending.stdout.trim(), "2 pending conversations (1 open, 1 wip)");
+});
+
+test("CLI status --oneline can report only resolved conversations", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "<!-- @agent open -->\n<!-- @agent closed @me ok -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline", "--resolved-conversations", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "1 resolved conversation");
+});
+
+test("CLI status lists files with per-file review stats", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(
+    path.join(cwd, "first.md"),
+    "{++one++}\n<!-- @agent open -->\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(cwd, "second.md"),
+    "<!-- @agent handled @me answer -->\n<!-- @agent resolved @me ok -->\n",
+    "utf8",
+  );
+  fs.writeFileSync(path.join(cwd, "discussion.md"), "{?? confirm this ??}\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "empty.md"), "No review annotations.\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "first.md", "second.md", "discussion.md", "empty.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.stdout.trim().split("\n"), [
+    "first.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved), 1 addition",
+    "second.md: 2 conversations (0 open, 0 wip, 1 handled, 1 resolved)",
+    "discussion.md: 1 conversation (0 open, 0 wip, 1 handled, 0 resolved)",
+  ]);
+});
+
+test("CLI status --short prints compact per-file stats with local today time", () => {
+  const cwd = makeTempDir();
+  const now = new Date();
+  const today = formatLocalIso(now.getFullYear(), now.getMonth() + 1, now.getDate(), 11, 16, 34);
+  const conversations = [
+    ...Array.from({ length: 6 }, (_, index) => `<!-- @agent open ${index} -->`),
+    ...Array.from({ length: 5 }, (_, index) => `<!-- @agent wip ${index} @me -->`),
+    ...Array.from({ length: 10 }, (_, index) => `<!-- @agent handled ${index} @me answer -->`),
+    "<!-- @agent resolved @me ok -->",
+  ];
+  const annotations = [
+    ...Array.from({ length: 3 }, (_, index) => `{++addition ${index}++}`),
+    `{++%${today}|addition latest++}`,
+    "{--deletion 1--}",
+    "{--deletion 2--}",
+    "{~~old 1~>new 1~~}",
+    "{~~old 2~>new 2~~}",
+    ...Array.from({ length: 7 }, (_, index) => `{==highlight ${index}==}`),
+    "{>>comment 1<<}",
+    "{>>comment 2<<}",
+  ];
+  fs.writeFileSync(path.join(cwd, "file.md"), [...conversations, ...annotations, ""].join("\n"), "utf8");
+  fs.writeFileSync(path.join(cwd, "agent.md"), `<!-- @agent%${today} open -->\n`, "utf8");
+  fs.writeFileSync(path.join(cwd, "human.md"), `<!-- @agent older @%${today} answer -->\n`, "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--short", "file.md", "agent.md", "human.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.stdout.trim().split("\n"), [
+    "file.md: 11/22 +4-2~2=7x2 - o 11:16:34",
+    "agent.md: 1/1 - a 11:16:34",
+    "human.md: 0/1 - @ 11:16:34",
+  ]);
+});
+
+test("CLI status --recap prints tab-separated compact per-file stats with color support", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "<!-- @agent open -->\n{++new++}\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "empty.md"), "No review annotations.\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--recap", "--color=always", "file.md", "empty.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\x1b\[/);
+  assert.equal(stripAnsi(result.stdout), "file.md\t1/1 +1\n");
+});
+
+test("CLI status --recap can template the compact status field", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "<!-- @agent open -->\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "status",
+      "--recap",
+      "--color=always",
+      "--template",
+      "{%(status)}",
+      "file.md",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\x1b\[/);
+  assert.equal(stripAnsi(result.stdout), "file.md\t{1/1 +1}\n");
+});
+
+test("CLI status --recap template requires a status placeholder", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "<!-- @agent open -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--recap", "--template", "status", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /--template requires %\(status\)/);
+});
+
+test("CLI status colorizes long and short output when requested", () => {
+  const cwd = makeTempDir();
+  const now = new Date();
+  const today = formatLocalIso(now.getFullYear(), now.getMonth() + 1, now.getDate(), 11, 16, 34);
+  fs.writeFileSync(path.join(cwd, "file.md"), `{++%${today}|one++}\n<!-- @agent open -->\n`, "utf8");
+
+  const longResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--color=always", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+  const shortResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--short", "--color=always", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(longResult.status, 0, longResult.stderr);
+  assert.match(longResult.stdout, /\x1b\[/);
+  assert.equal(
+    stripAnsi(longResult.stdout).trim(),
+    `file.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved), 1 addition; last other ${today}`,
+  );
+  assert.equal(shortResult.status, 0, shortResult.stderr);
+  assert.match(shortResult.stdout, /\x1b\[/);
+  assert.equal(stripAnsi(shortResult.stdout).trim(), "file.md: 1/1 +1 - o 11:16:34");
+});
+
+test("CLI status applies status filters per file", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(
+    path.join(cwd, "first.md"),
+    "<!-- @agent open -->\n<!-- @agent handled @me answer -->\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(cwd, "second.md"),
+    "<!-- @agent resolved @me ok -->\n",
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--pending", "first.md", "second.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "first.md: 1 pending conversation (1 open, 0 wip)");
+});
+
+test("CLI status --oneline without files summarizes the worktree diff", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(file, "Base\n{++new++}\n<!-- @agent open -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "1 conversation (1 open, 0 wip, 0 handled, 0 resolved), 1 addition");
+});
+
+test("CLI status --oneline summarizes like long status totals", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n{++new++}\n<!-- @agent open -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "1 conversation (1 open, 0 wip, 0 handled, 0 resolved), 1 addition");
+});
+
+test("CLI command aliases match their long commands", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "<!-- @agent open -->\n{++new++}\n", "utf8");
+
+  const run = (...args) => spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), ...args],
+    { cwd, encoding: "utf8" },
+  );
+
+  const status = run("st", "file.md");
+  const list = run("l", "file.md", "--context", "0:0");
+  const ls = run("ls", "file.md", "--context", "0:0");
+
+  assert.equal(status.status, 0, status.stderr);
+  assert.equal(status.stdout.trim(), "file.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved), 1 addition");
+  assert.equal(list.status, 0, list.stderr);
+  assert.equal(ls.status, 0, ls.stderr);
+  assert.equal(list.stdout, ls.stdout);
+  assert.match(list.stdout, /1\/2 open conversation file\.md:1-1/);
+});
+
+test("CLI git status --oneline ignores inherited colored git diff output", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(file, "Base\n<!-- @agent open -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "--oneline"],
+    {
+      cwd,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        GIT_CONFIG_COUNT: "1",
+        GIT_CONFIG_KEY_0: "color.ui",
+        GIT_CONFIG_VALUE_0: "always",
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "1 conversation (1 open, 0 wip, 0 handled, 0 resolved)");
+});
+
+test("CLI status without files lists files from the worktree diff", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "first.md", "second.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n<!-- @agent open -->\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(result.stdout.trim().split("\n"), [
+    "first.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+    "second.md: 1 addition",
+  ]);
+});
+
+test("CLI diff displays review items from the worktree diff", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "first.md", "second.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n<!-- @agent open -->\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "diff", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/2 open conversation first\.md:2-2/);
+  assert.match(result.stdout, />2 │ <!-- @agent open -->/);
+  assert.match(result.stdout, /<!--\n@agent open\n-->/);
+  assert.match(result.stdout, /2\/2 addition second\.md:2-2/);
+  assert.match(result.stdout, /\{\+\+new\+\+\}/);
+  assert.doesNotMatch(result.stdout, /Action/);
+});
+
+test("CLI d alias displays review items from the worktree diff", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(file, "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "d", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/1 addition file\.md:2-2/);
+  assert.match(result.stdout, /\{\+\+new\+\+\}/);
+  assert.doesNotMatch(result.stdout, /Action/);
+});
+
+test("CLI diff applies pending filters", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(
+    file,
+    [
+      "Base",
+      "<!-- @agent open -->",
+      "<!-- @agent handled @me answer -->",
+      "{++new++}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "diff", "--pending", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/1 open conversation file\.md:2-2/);
+  assert.match(result.stdout, /@agent open/);
+  assert.doesNotMatch(result.stdout, /handled/);
+  assert.doesNotMatch(result.stdout, /\{\+\+new\+\+\}/);
+});
+
+test("CLI diff can target explicit files in the worktree diff", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "first.md", "second.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n<!-- @agent open -->\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "diff", "first.md", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/1 open conversation first\.md:2-2/);
+  assert.doesNotMatch(result.stdout, /second\.md/);
+  assert.doesNotMatch(result.stdout, /\{\+\+new\+\+\}/);
+});
+
+test("CLI list displays review items from explicit files", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "Base",
+      "<!-- @agent open -->",
+      "{++new++}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/2 open conversation file\.md:2-2/);
+  assert.match(result.stdout, /<!--\n@agent open\n-->/);
+  assert.match(result.stdout, /2\/2 addition file\.md:3-3/);
+  assert.match(result.stdout, /\{\+\+new\+\+\}/);
+  assert.doesNotMatch(result.stdout, /Action/);
+});
+
+test("CLI list renders conversation timestamps in readable form", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    "<!-- @agent%1WzvP91W note @me%2026-06-16T17:35:35+0200 ok -->\n",
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /@agent 2026-06-16T17:35:35\+02:00 note/);
+  assert.match(result.stdout, /@me 2026-06-16T17:35:35\+02:00 ok/);
+});
+
+test("CLI list renders review annotation timestamps in ISO form", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    "{++%1WzvP91W|new text++}\n{>>%2026-06-17T11:16:34+0200|check this<<}\n",
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\{\+\+%2026-06-16T17:35:35\+02:00\|new text\+\+\}/);
+  assert.match(result.stdout, /\{>>%2026-06-17T11:16:34\+02:00\|check this<<\}/);
+});
+
+test("CLI color is disabled by default when stdout is not a TTY", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "{++%1WzvP91W|new text++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.stdout, /\x1b\[/);
+});
+
+test("CLI --color always dims review syntax tokens", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "{++%1WzvP91W|new text++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "list",
+      "file.md",
+      "--context",
+      "0:0",
+      "--color",
+      "always",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\x1b\[2m\{\+\+\x1b\[0m/);
+  assert.match(result.stdout, /\x1b\[2m%2026-06-16T17:35:35\+02:00\|\x1b\[0m/);
+  assert.match(result.stdout, /\x1b\[32mnew text\x1b\[0m/);
+  assert.match(result.stdout, /\x1b\[2m\+\+\}\x1b\[0m/);
+  assert.match(stripAnsi(result.stdout), /\{\+\+%2026-06-16T17:35:35\+02:00\|new text\+\+\}/);
+});
+
+test("CLI color can be disabled explicitly", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "{==%1WzvP91W|check==}\n", "utf8");
+
+  for (const args of [["--color", "never"], ["--no-color"]]) {
+    const result = spawnSync(
+      process.execPath,
+      [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0", ...args],
+      { cwd, encoding: "utf8" },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /\x1b\[/);
+  }
+});
+
+test("CLI NO_COLOR disables auto color but --color always overrides it", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "{>>%1WzvP91W|note<<}\n", "utf8");
+  const env = { ...process.env, NO_COLOR: "1" };
+
+  const autoResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8", env },
+  );
+  assert.equal(autoResult.status, 0, autoResult.stderr);
+  assert.doesNotMatch(autoResult.stdout, /\x1b\[/);
+
+  const alwaysResult = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "list",
+      "file.md",
+      "--context",
+      "0:0",
+      "--color=always",
+    ],
+    { cwd, encoding: "utf8", env },
+  );
+  assert.equal(alwaysResult.status, 0, alwaysResult.stderr);
+  assert.match(alwaysResult.stdout, /\x1b\[/);
+});
+
+test("CLI FORCE_COLOR enables color unless --color or NO_COLOR take precedence", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "{>>%1WzvP91W|note<<}\n", "utf8");
+  const forceColorEnv = { ...process.env, FORCE_COLOR: "1" };
+  delete forceColorEnv.NO_COLOR;
+
+  const forcedResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8", env: forceColorEnv },
+  );
+  assert.equal(forcedResult.status, 0, forcedResult.stderr);
+  assert.match(forcedResult.stdout, /\x1b\[/);
+
+  const explicitAutoResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0", "--color=auto"],
+    { cwd, encoding: "utf8", env: forceColorEnv },
+  );
+  assert.equal(explicitAutoResult.status, 0, explicitAutoResult.stderr);
+  assert.doesNotMatch(explicitAutoResult.stdout, /\x1b\[/);
+
+  const noColorResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "file.md", "--context", "0:0"],
+    { cwd, encoding: "utf8", env: { ...forceColorEnv, NO_COLOR: "1" } },
+  );
+  assert.equal(noColorResult.status, 0, noColorResult.stderr);
+  assert.doesNotMatch(noColorResult.stdout, /\x1b\[/);
+});
+
+test("CLI status reports the latest review timestamp and source", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(
+    path.join(cwd, "conversation.md"),
+    "<!-- @agent%1WzvP91W note @me%2026-06-16T17:35:36+0200 answer -->\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(cwd, "bare-human.md"),
+    "<!-- @agent%1WzvP91W note @%2026-06-16T17:35:36+0200 answer -->\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(cwd, "file.md"),
+    [
+      "<!-- @agent%1WzvP91W note @me%2026-06-16T17:35:36+0200 answer -->",
+      "{++%2026-06-16T17:35:37+0200|newer annotation++}",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const conversationResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "conversation.md"],
+    { cwd, encoding: "utf8" },
+  );
+  assert.equal(conversationResult.status, 0, conversationResult.stderr);
+  assert.equal(
+    conversationResult.stdout.trim(),
+    "conversation.md: 1 conversation (0 open, 0 wip, 1 handled, 0 resolved); last @me 2026-06-16T17:35:36+02:00",
+  );
+
+  const bareHumanResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "bare-human.md"],
+    { cwd, encoding: "utf8" },
+  );
+  assert.equal(bareHumanResult.status, 0, bareHumanResult.stderr);
+  assert.equal(
+    bareHumanResult.stdout.trim(),
+    "bare-human.md: 1 conversation (0 open, 0 wip, 1 handled, 0 resolved); last @me 2026-06-16T17:35:36+02:00",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trim(),
+    "file.md: 1 conversation (0 open, 0 wip, 1 handled, 0 resolved), 1 addition; last other 2026-06-16T17:35:37+02:00",
+  );
+});
+
+test("CLI since filter keeps conversations from a timestamp onward", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(
+    path.join(cwd, "file.md"),
+    [
+      "<!-- @agent%2026-06-16T17:35:34+0200 old -->",
+      "<!-- @agent%2026-06-16T17:35:35+0200 new -->",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "list",
+      "--since",
+      "2026-06-16T17:35:35+02:00",
+      "file.md",
+      "--context",
+      "0:0",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/1 open conversation file\.md:2-2/);
+  assert.match(result.stdout, /new/);
+  assert.doesNotMatch(result.stdout, /old/);
+});
+
+test("CLI timestamp command writes transformed content to stdout by default", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  const modifiedAt = new Date("2026-06-16T17:35:35+02:00");
+  fs.writeFileSync(file, "<!-- @agent%2026-06-16T17:35:35+0200 note @me ok -->\n{++new++}\n", "utf8");
+  fs.utimesSync(file, modifiedAt, modifiedAt);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "timestamp",
+      "--iso",
+      "file.md",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 note @me%2026-06-16T17:35:35+02:00 ok -->\n"
+      + "{++%2026-06-16T17:35:35+02:00|new++}\n",
+  );
+  assert.equal(
+    fs.readFileSync(file, "utf8"),
+    "<!-- @agent%2026-06-16T17:35:35+0200 note @me ok -->\n{++new++}\n",
+  );
+});
+
+test("CLI ts command converts timestamps to short format by default", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+0200 note -->\n{==%2026-06-16T17:35:35+0200|check==}\n",
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "ts", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "<!-- @agent%1WzvP91W note -->\n{==%1WzvP91W|check==}\n");
+});
+
+test("CLI timestamp command can write transformed content to a new file", () => {
+  const cwd = makeTempDir();
+  const source = path.join(cwd, "source.md");
+  const output = path.join(cwd, "output.md");
+  fs.writeFileSync(source, "<!-- @agent%1WzvP91W note -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "timestamp",
+      "--iso",
+      "-o",
+      "output.md",
+      "source.md",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "");
+  assert.equal(fs.readFileSync(source, "utf8"), "<!-- @agent%1WzvP91W note -->\n");
+  assert.equal(fs.readFileSync(output, "utf8"), "<!-- @agent%2026-06-16T17:35:35+02:00 note -->\n");
+});
+
+test("CLI timestamp command can update review timestamps inline", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  const modifiedAt = new Date("2026-06-16T17:35:35+02:00");
+  fs.writeFileSync(file, "<!-- @agent note @me ok -->\n{++new++}\n", "utf8");
+  fs.utimesSync(file, modifiedAt, modifiedAt);
+
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "timestamp",
+      "--timestamp-format",
+      "iso",
+      "--inline",
+      "file.md",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "file.md: 3 timestamps updated");
+  assert.equal(
+    fs.readFileSync(file, "utf8"),
+    "<!-- @agent%2026-06-16T17:35:35+02:00 note @me%2026-06-16T17:35:35+02:00 ok -->\n"
+      + "{++%2026-06-16T17:35:35+02:00|new++}\n",
+  );
+});
+
+test("CLI ts command supports short output and format flags", () => {
+  const cases = [
+    {
+      args: ["-i", "-S"],
+      input: "<!-- @agent%2026-06-16T17:35:35+0200 note -->\n",
+      stdout: "file.md: 1 timestamp updated\n",
+      file: "<!-- @agent%1WzvP91W note -->\n",
+    },
+    {
+      args: ["-i", "-I"],
+      input: "<!-- @agent%1WzvP91W note -->\n",
+      stdout: "file.md: 1 timestamp updated\n",
+      file: "<!-- @agent%2026-06-16T17:35:35+02:00 note -->\n",
+    },
+    {
+      args: ["-s", "-S"],
+      input: "<!-- @agent%2026-06-16T17:35:35+0200 note -->\n",
+      stdout: "<!-- @agent%1WzvP91W note -->\n",
+      file: "<!-- @agent%2026-06-16T17:35:35+0200 note -->\n",
+    },
+    {
+      args: ["-s", "-I"],
+      input: "<!-- @agent%1WzvP91W note -->\n",
+      stdout: "<!-- @agent%2026-06-16T17:35:35+02:00 note -->\n",
+      file: "<!-- @agent%1WzvP91W note -->\n",
+    },
+  ];
+
+  for (const testCase of cases) {
+    const cwd = makeTempDir();
+    fs.writeFileSync(path.join(cwd, "file.md"), testCase.input, "utf8");
+
+    const result = spawnSync(
+      process.execPath,
+      [path.join(__dirname, "..", "out", "dz-review.js"), "ts", ...testCase.args, "file.md"],
+      { cwd, encoding: "utf8" },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout, testCase.stdout);
+    assert.equal(fs.readFileSync(path.join(cwd, "file.md"), "utf8"), testCase.file);
+  }
+});
+
+test("CLI ts command can transform stdin as a filter", () => {
+  const cwd = makeTempDir();
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "ts", "-I"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "<!-- @agent%1WzvP91W note -->\n{++%1WzvP91W|new++}\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 note -->\n{++%2026-06-16T17:35:35+02:00|new++}\n",
+  );
+});
+
+test("CLI ts --stdin forces stdin mode and rejects inline output", () => {
+  const cwd = makeTempDir();
+  const stdoutResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "ts", "--stdin", "-S"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "<!-- @agent%2026-06-16T17:35:35+0200 note -->\n",
+    },
+  );
+
+  assert.equal(stdoutResult.status, 0, stdoutResult.stderr);
+  assert.equal(stdoutResult.stdout, "<!-- @agent%1WzvP91W note -->\n");
+
+  const inlineResult = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "ts", "--stdin", "--inline"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "<!-- @agent%1WzvP91W note -->\n",
+    },
+  );
+
+  assert.equal(inlineResult.status, 1);
+  assert.match(inlineResult.stderr, /--inline cannot be used with stdin/);
+});
+
+test("CLI now command prints a review timestamp", () => {
+  const cwd = makeTempDir();
+
+  const shortResult = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "now",
+      "--date",
+      "2026-06-16T17:35:35+02:00",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+  assert.equal(shortResult.status, 0, shortResult.stderr);
+  assert.equal(shortResult.stdout, "1WzvP91W\n");
+
+  const isoResult = spawnSync(
+    process.execPath,
+    [
+      path.join(__dirname, "..", "out", "dz-review.js"),
+      "now",
+      "-I",
+      "-d",
+      "1WzvP91W",
+    ],
+    { cwd, encoding: "utf8" },
+  );
+  assert.equal(isoResult.status, 0, isoResult.stderr);
+  assert.equal(isoResult.stdout, "2026-06-16T17:35:35+02:00\n");
+});
+
+test("CLI list without files displays review items from the worktree diff", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "first.md", "second.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(path.join(cwd, "first.md"), "Base\n<!-- @agent open -->\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "second.md"), "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "list", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/2 open conversation first\.md:2-2/);
+  assert.match(result.stdout, /2\/2 addition second\.md:2-2/);
+  assert.doesNotMatch(result.stdout, /Action/);
+});
+
+test("CLI git diff respects .dz-review-ignore", () => {
+  const cwd = makeTempDir();
+  fs.mkdirSync(path.join(cwd, "src"));
+  fs.mkdirSync(path.join(cwd, "docs"));
+  fs.writeFileSync(path.join(cwd, "src", "syntax.md"), "Base\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "docs", "review.md"), "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "src/syntax.md", "docs/review.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(path.join(cwd, ".dz-review-ignore"), "src/\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "src", "syntax.md"), "Base\n<!-- @agent syntax example -->\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "docs", "review.md"), "Base\n<!-- @agent real review -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "diff", "--context", "0:0"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /docs\/review\.md/);
+  assert.match(result.stdout, /real review/);
+  assert.doesNotMatch(result.stdout, /src\/syntax\.md/);
+  assert.doesNotMatch(result.stdout, /syntax example/);
+});
+
+test("CLI explicit file lists respect .dz-review-ignore with negation", () => {
+  const cwd = makeTempDir();
+  fs.mkdirSync(path.join(cwd, "src"));
+  fs.writeFileSync(path.join(cwd, ".dz-review-ignore"), "src/\n!src/keep.md\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "src", "ignored.md"), "<!-- @agent ignored -->\n", "utf8");
+  fs.writeFileSync(path.join(cwd, "src", "keep.md"), "<!-- @agent keep -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "status", "src/ignored.md", "src/keep.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trim(),
+    "src/keep.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+  );
+});
+
+test("CLI without arguments shows help even in a git repo", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(path.join(cwd, "file.md"), "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js")],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /^Usage:/);
+  assert.equal(fs.readFileSync(path.join(cwd, "file.md"), "utf8"), "Base\n{++new++}\n");
+});
+
+test("CLI --git without a command is rejected", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "Base\n{++new++}\n", "utf8");
+
+  const bare = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "--git"],
+    { cwd, encoding: "utf8" },
+  );
+  const withFile = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "--git", "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(bare.status, 1);
+  assert.match(bare.stderr, /Missing command before --git/);
+  assert.equal(withFile.status, 1);
+  assert.match(withFile.stderr, /Missing command before --git/);
+});
+
+test("CLI file arguments without review command are rejected", () => {
+  const cwd = makeTempDir();
+  fs.writeFileSync(path.join(cwd, "file.md"), "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "file.md"],
+    { cwd, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown command: file\.md/);
+});
+
+test("CLI review command without files reviews the worktree diff in a git repo", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(file, "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "a\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\{\+\+new\+\+\}/);
+  assert.equal(fs.readFileSync(file, "utf8"), "Base\nnew\n");
+});
+
+test("CLI r alias reviews the worktree diff in a git repo", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(file, "Base\n{++new++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "r"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "a\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /\{\+\+new\+\+\}/);
+  assert.equal(fs.readFileSync(file, "utf8"), "Base\nnew\n");
+});
+
+test("CLI review conversation filters without files implicitly use the worktree diff", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "Base\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "file.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(file, "Base\n<!-- @agent open -->\n<!-- @agent resolved @me ok -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--open-conversations"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "o\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /open/);
+  assert.doesNotMatch(result.stdout, /resolved/);
+  assert.equal(
+    fs.readFileSync(file, "utf8"),
+    "Base\n<!-- @agent open @me ok -->\n<!-- @agent resolved @me ok -->\n",
+  );
+});
+
+test("CLI q quits immediately across files", () => {
+  const cwd = makeTempDir();
+  const first = path.join(cwd, "first.md");
+  const second = path.join(cwd, "second.md");
+  fs.writeFileSync(first, "A {++first++}\n", "utf8");
+  fs.writeFileSync(second, "B {++second++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "first.md", "second.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "q\na\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /first/);
+  assert.doesNotMatch(result.stdout, /second/);
+  assert.equal(fs.readFileSync(first, "utf8"), "A {++first++}\n");
+  assert.equal(fs.readFileSync(second, "utf8"), "B {++second++}\n");
+});
+
+test("CLI f moves to the next file", () => {
+  const cwd = makeTempDir();
+  const first = path.join(cwd, "first.md");
+  const second = path.join(cwd, "second.md");
+  fs.writeFileSync(first, "A {++first++}\n", "utf8");
+  fs.writeFileSync(second, "B {++second++}\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "first.md", "second.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "f\na\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /first/);
+  assert.match(result.stdout, /second/);
+  assert.equal(fs.readFileSync(first, "utf8"), "A {++first++}\n");
+  assert.equal(fs.readFileSync(second, "utf8"), "B second\n");
+});
+
+test("CLI displays inline conversations as multiline blocks", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(file, "<!-- @agent note @me ok -->\n", "utf8");
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--conversation", "--context", "0:0", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "q\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1\/1 resolved conversation file\.md:1-1/);
+  assert.match(result.stdout, /<!--\n@agent note\n@me ok\n-->/);
+});
+
+test("CLI displays configurable source context around review items", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "line 1",
+      "line 2",
+      "line 3 {++new++}",
+      "line 4",
+      "line 5",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--context", "1:1", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "q\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, / 2 │ line 2/);
+  assert.match(result.stdout, />3 │ line 3 \{\+\+new\+\+\}/);
+  assert.match(result.stdout, / 4 │ line 4/);
+  assert.doesNotMatch(result.stdout, /line 1/);
+  assert.doesNotMatch(result.stdout, /line 5/);
+});
+
+test("CLI context shorthand applies before and after context symmetrically", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "file.md");
+  fs.writeFileSync(
+    file,
+    [
+      "line 1",
+      "line 2 {++new++}",
+      "line 3",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const longOption = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "--context", "1", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "q\n",
+    },
+  );
+  const shortOption = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "review", "-c", "1", "file.md"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "q\n",
+    },
+  );
+
+  assert.equal(longOption.status, 0, longOption.stderr);
+  assert.match(longOption.stdout, / 1 │ line 1/);
+  assert.match(longOption.stdout, />2 │ line 2 \{\+\+new\+\+\}/);
+  assert.match(longOption.stdout, / 3 │ line 3/);
+  assert.equal(shortOption.status, 0, shortOption.stderr);
+  assert.match(shortOption.stdout, / 1 │ line 1/);
+  assert.match(shortOption.stdout, />2 │ line 2 \{\+\+new\+\+\}/);
+  assert.match(shortOption.stdout, / 3 │ line 3/);
+});
+
+test("CLI r --git processes only review annotations visible in the worktree diff with unicode paths", () => {
+  const cwd = makeTempDir();
+  const file = path.join(cwd, "échanges.md");
+  fs.writeFileSync(file, "Kept <!-- @agent old thread -->\n", "utf8");
+
+  initGitRepo(cwd);
+  assert.equal(spawnSync("git", ["add", "échanges.md"], { cwd }).status, 0);
+  assert.equal(spawnSync("git", ["commit", "-m", "initial"], { cwd }).status, 0);
+
+  fs.writeFileSync(
+    file,
+    [
+      "Kept <!-- @agent old thread -->",
+      "Added {++nouveau++} <!-- @agent new thread -->",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const result = spawnSync(
+    process.execPath,
+    [path.join(__dirname, "..", "out", "dz-review.js"), "r", "--git", "--context", "0:0"],
+    {
+      cwd,
+      encoding: "utf8",
+      input: "a\no\nq\n",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /nouveau/);
+  assert.match(result.stdout, /new thread/);
+  assert.doesNotMatch(result.stdout, /old thread/);
+  assert.equal(
+    fs.readFileSync(file, "utf8"),
+    [
+      "Kept <!-- @agent old thread -->",
+      "Added nouveau <!-- @agent new thread @me ok -->",
+      "",
+    ].join("\n"),
+  );
+});

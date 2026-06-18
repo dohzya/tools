@@ -1,0 +1,10 @@
+title = "dz-tools gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "VS Code keybinding strings are not API keys"
+condition = "AND"
+paths = ['''packages/vscode/dz-review/package\.json''']
+regexes = ['''cmd\+alt\+shift\+enter''']

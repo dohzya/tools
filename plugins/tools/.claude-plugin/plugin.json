@@ -11,6 +11,7 @@
     "./skills/obsidian-journal",
     "./skills/rex-session",
     "./skills/docs-maintainer",
-    "./skills/agent-context-writing"
+    "./skills/agent-context-writing",
+    "./skills/markdown-review-workflow"
   ]
 }

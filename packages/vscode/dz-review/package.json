@@ -1,0 +1,645 @@
+{
+  "name": "dz-review-vscode",
+  "displayName": "DZ Review",
+  "description": "Adds role-aware Markdown review comments and custom review annotation highlighting to VS Code Markdown.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dohzya/tools.git",
+    "directory": "packages/vscode/dz-review"
+  },
+  "main": "./out/extension.js",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onCommand:dzMdReview.toggleReviewMode",
+    "onCommand:dzMdReview.enterReviewMode",
+    "onCommand:dzMdReview.exitReviewMode",
+    "onCommand:dzMdReview.approveAgentMessage",
+    "onCommand:dzMdReview.addHumanComment",
+    "onCommand:dzMdReview.addHumanOk",
+    "onCommand:dzMdReview.removeHumanOk",
+    "onCommand:dzMdReview.addCriticMarkupAddition",
+    "onCommand:dzMdReview.addCriticMarkupDeletion",
+    "onCommand:dzMdReview.addCriticMarkupSubstitution",
+    "onCommand:dzMdReview.addCriticMarkupHighlight",
+    "onCommand:dzMdReview.addCriticMarkupComment",
+    "onCommand:dzMdReview.addTimestampToCurrentReviewElement",
+    "onCommand:dzMdReview.createCompactReviewNote",
+    "onCommand:dzMdReview.createCriticMarkupDiscussion",
+    "onCommand:dzMdReview.cancelCriticMarkupAnnotation",
+    "onCommand:dzMdReview.applyCriticMarkupAnnotation",
+    "onCommand:dzMdReview.nextReviewBlock",
+    "onCommand:dzMdReview.previousReviewBlock",
+    "onCommand:dzMdReview.deleteConversation",
+    "onCommand:dzMdReview.nextConversation",
+    "onCommand:dzMdReview.previousConversation",
+    "onCommand:dzMdReview.nextPendingConversation",
+    "onCommand:dzMdReview.previousPendingConversation",
+    "onCommand:dzMdReview.revealReviewItem",
+    "onCommand:dzMdReview.filterReviewItems",
+    "onCommand:dzMdReview.showUnresolvedReviewItems",
+    "onCommand:dzMdReview.showPendingReviewItems",
+    "onCommand:dzMdReview.showAllReviewItems",
+    "onCommand:dzMdReview.showOpenReviewItems",
+    "onCommand:dzMdReview.showWipReviewItems",
+    "onCommand:dzMdReview.showHandledReviewItems",
+    "onCommand:dzMdReview.showResolvedReviewItems",
+    "onView:dzMdReview.reviewItems"
+  ],
+  "scripts": {
+    "compile": "tsc -p ./",
+    "test": "npm run compile && node --test test/*.test.js",
+    "check": "node -e \"const fs=require('fs'); JSON.parse(fs.readFileSync('package.json','utf8')); for (const file of fs.readdirSync('syntaxes').filter(f => f.endsWith('.json'))) JSON.parse(fs.readFileSync('syntaxes/' + file,'utf8'));\" && node --check out/extension.js",
+    "vsix": "npm exec --yes @vscode/vsce -- package",
+    "install:local": "npm run vsix && code --install-extension dz-review-vscode-0.0.1.vsix"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "typescript": "^5.4.0"
+  },
+  "contributes": {
+    "grammars": [
+      {
+        "scopeName": "source.obsidian.markdown.injection",
+        "path": "./syntaxes/obsidian-markdown-injection.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      },
+      {
+        "scopeName": "source.dz-md-review.markdown.injection",
+        "path": "./syntaxes/md-review-injection.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      },
+      {
+        "scopeName": "source.dz-md-review.html-comment.injection",
+        "path": "./syntaxes/md-review-html-comment-injection.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown",
+          "text.html.basic",
+          "text.html.derivative"
+        ]
+      },
+      {
+        "scopeName": "source.dz-md-review.list.injection",
+        "path": "./syntaxes/md-review-list-injection.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "dzMdReview.toggleReviewMode",
+        "title": "Toggle Review Mode",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.enterReviewMode",
+        "title": "Enter Review Mode",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.exitReviewMode",
+        "title": "Exit Review Mode",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.approveAgentMessage",
+        "title": "Add Quick Comment",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addHumanComment",
+        "title": "Add Human Comment",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addHumanOk",
+        "title": "Add OK Reply",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.removeHumanOk",
+        "title": "Remove OK Reply",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupAddition",
+        "title": "Add Review Addition",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupDeletion",
+        "title": "Add Review Deletion",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupSubstitution",
+        "title": "Add Review Substitution",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupHighlight",
+        "title": "Add Review Highlight",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupComment",
+        "title": "Add Review Comment",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.addTimestampToCurrentReviewElement",
+        "title": "Add Timestamp to Review Element",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.createCompactReviewNote",
+        "title": "Create Multiline Quick Comment or Toggle Conversation Layout",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.createCriticMarkupDiscussion",
+        "title": "Create Review Discussion",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.cancelCriticMarkupAnnotation",
+        "title": "Cancel Review Annotation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.applyCriticMarkupAnnotation",
+        "title": "Apply Review Annotation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.nextReviewBlock",
+        "title": "Go to Next Review Block",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.previousReviewBlock",
+        "title": "Go to Previous Review Block",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.deleteConversation",
+        "title": "Delete Conversation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.nextConversation",
+        "title": "Go to Next Conversation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.previousConversation",
+        "title": "Go to Previous Conversation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.nextPendingConversation",
+        "title": "Go to Next Pending Conversation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.previousPendingConversation",
+        "title": "Go to Previous Pending Conversation",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.revealReviewItem",
+        "title": "Reveal Review Item",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.filterReviewItems",
+        "title": "Filter Review Items",
+        "category": "Markdown Review",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "dzMdReview.showUnresolvedReviewItems",
+        "title": "Show Unresolved Review Items",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.showPendingReviewItems",
+        "title": "Show Pending Review Items",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.showAllReviewItems",
+        "title": "Show All Review Items",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.showOpenReviewItems",
+        "title": "Show Open Review Items",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.showWipReviewItems",
+        "title": "Show WIP Review Items",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.showHandledReviewItems",
+        "title": "Show Handled Review Items",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.showResolvedReviewItems",
+        "title": "Show Resolved Review Items",
+        "category": "Markdown Review"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "dzMdReview.reviewItems",
+          "name": "Review Items",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "dzMdReview.filterReviewItems",
+          "when": "view == dzMdReview.reviewItems",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DZ Markdown Review",
+      "properties": {
+        "dzMdReview.commentSyntax": {
+          "type": "string",
+          "enum": [
+            "html",
+            "custom"
+          ],
+          "default": "html",
+          "description": "Syntax used when creating new review conversations. Use custom for {?? ??} blocks. Existing conversations in supported syntaxes remain supported."
+        },
+        "dzMdReview.timestampFormat": {
+          "type": "string",
+          "enum": [
+            "compact",
+            "iso",
+            "none"
+          ],
+          "default": "compact",
+          "description": "Timestamp format used when creating review conversation messages and review annotations. Use none for timestamp-free workshop notes."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "dzMdReview.toggleReviewMode",
+        "key": "cmd+alt+k m",
+        "mac": "cmd+alt+k m",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.exitReviewMode",
+        "key": "escape",
+        "mac": "escape",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+      },
+      {
+        "command": "dzMdReview.nextReviewBlock",
+        "key": "n",
+        "mac": "n",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+      },
+      {
+        "command": "dzMdReview.nextPendingConversation",
+        "key": "p",
+        "mac": "p",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+      },
+      {
+        "command": "dzMdReview.previousPendingConversation",
+        "key": "shift+p",
+        "mac": "shift+p",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+      },
+      {
+        "command": "dzMdReview.previousReviewBlock",
+        "key": "shift+n",
+        "mac": "shift+n",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+      },
+      {
+        "command": "dzMdReview.cancelCriticMarkupAnnotation",
+        "key": "x",
+        "mac": "x",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.applyCriticMarkupAnnotation",
+        "key": "shift+x",
+        "mac": "shift+x",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addHumanOk",
+        "key": "o",
+        "mac": "o",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.approveAgentMessage",
+        "key": "@",
+        "mac": "@",
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.approveAgentMessage",
+        "key": "cmd+alt+enter",
+        "mac": "cmd+alt+enter",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.createCompactReviewNote",
+        "key": "cmd+alt+shift+enter",
+        "mac": "cmd+alt+shift+enter",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupAddition",
+        "key": "cmd+alt+k a",
+        "mac": "cmd+alt+k a",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupDeletion",
+        "key": "cmd+alt+k s",
+        "mac": "cmd+alt+k s",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupSubstitution",
+        "key": "cmd+alt+k r",
+        "mac": "cmd+alt+k r",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupHighlight",
+        "key": "cmd+alt+k h",
+        "mac": "cmd+alt+k h",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addCriticMarkupComment",
+        "key": "cmd+alt+k c",
+        "mac": "cmd+alt+k c",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.createCriticMarkupDiscussion",
+        "key": "cmd+alt+k d",
+        "mac": "cmd+alt+k d",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addTimestampToCurrentReviewElement",
+        "key": "cmd+alt+k t",
+        "mac": "cmd+alt+k t",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.addHumanOk",
+        "key": "cmd+alt+k o",
+        "mac": "cmd+alt+k o",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.removeHumanOk",
+        "key": "cmd+alt+k shift+o",
+        "mac": "cmd+alt+k shift+o",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.cancelCriticMarkupAnnotation",
+        "key": "cmd+alt+k x",
+        "mac": "cmd+alt+k x",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.applyCriticMarkupAnnotation",
+        "key": "cmd+alt+k shift+x",
+        "mac": "cmd+alt+k shift+x",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
+        "command": "dzMdReview.nextReviewBlock",
+        "key": "cmd+alt+k n",
+        "mac": "cmd+alt+k n",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.previousReviewBlock",
+        "key": "cmd+alt+k shift+n",
+        "mac": "cmd+alt+k shift+n",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.nextPendingConversation",
+        "key": "cmd+alt+k p",
+        "mac": "cmd+alt+k p",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.previousPendingConversation",
+        "key": "cmd+alt+k shift+p",
+        "mac": "cmd+alt+k shift+p",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.nextConversation",
+        "key": "cmd+ctrl+down",
+        "mac": "cmd+ctrl+down",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.previousConversation",
+        "key": "cmd+ctrl+up",
+        "mac": "cmd+ctrl+up",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.nextPendingConversation",
+        "key": "cmd+ctrl+alt+down",
+        "mac": "cmd+ctrl+alt+down",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.previousPendingConversation",
+        "key": "cmd+ctrl+alt+up",
+        "mac": "cmd+ctrl+alt+up",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.deleteConversation",
+        "key": "cmd+alt+backspace",
+        "mac": "cmd+alt+backspace",
+        "when": "editorTextFocus && editorLangId == markdown"
+      }
+    ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "storage.type.role.md-review.agent.markdown",
+            "settings": {
+              "foreground": "#1E66F5",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "storage.type.role.md-review.human.markdown",
+            "settings": {
+              "foreground": "#FE640B",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": [
+              "punctuation.definition.comment.begin.md-review.markdown",
+              "punctuation.definition.comment.end.md-review.markdown",
+              "punctuation.definition.comment.begin.html",
+              "punctuation.definition.comment.end.html"
+            ],
+            "settings": {
+              "foreground": "#8C8FA1",
+              "fontStyle": ""
+            }
+          },
+          {
+            "scope": [
+              "comment.block.obsidian.markdown",
+              "comment.block.critic.markdown"
+            ],
+            "settings": {
+              "foreground": "#8C8FA1",
+              "fontStyle": "italic"
+            }
+          },
+          {
+            "scope": [
+              "markup.inserted.critic.markdown",
+              "markup.inserted.critic.substitution.markdown"
+            ],
+            "settings": {
+              "foreground": "#40A02B",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "meta.substitution.critic.markdown markup.strikethrough.markdown",
+            "settings": {
+              "fontStyle": ""
+            }
+          },
+          {
+            "scope": [
+              "meta.timestamp.review.markdown",
+              "markup.inserted.critic.markdown meta.timestamp.review.markdown",
+              "markup.deleted.critic.markdown meta.timestamp.review.markdown",
+              "meta.substitution.critic.markdown meta.timestamp.review.markdown",
+              "markup.marked.critic.markdown meta.timestamp.review.markdown",
+              "comment.block.critic.markdown meta.timestamp.review.markdown",
+              "comment.block.obsidian.markdown meta.timestamp.review.markdown"
+            ],
+            "settings": {
+              "foreground": "#8C8FA1",
+              "fontStyle": ""
+            }
+          }
+        ],
+        "[Catppuccin Latte]": {
+          "textMateRules": [
+            {
+              "scope": [
+                "markup.inserted.critic.markdown",
+                "markup.inserted.critic.substitution.markdown"
+              ],
+              "settings": {
+                "foreground": "#40a02b",
+                "fontStyle": "bold"
+              }
+            },
+            {
+              "scope": [
+                "markup.deleted.critic.markdown",
+                "markup.deleted.critic.substitution.markdown"
+              ],
+              "settings": {
+                "foreground": "#d20f39",
+                "fontStyle": "strikethrough"
+              }
+            },
+            {
+              "scope": [
+                "markup.marked.critic.markdown",
+                "markup.marked.obsidian.markdown"
+              ],
+              "settings": {
+                "foreground": "#df8e1d",
+                "fontStyle": "bold"
+              }
+            },
+            {
+              "scope": [
+                "comment.block.critic.markdown",
+                "comment.block.obsidian.markdown"
+              ],
+              "settings": {
+                "foreground": "#7c7f93",
+                "fontStyle": "italic"
+              }
+            },
+            {
+              "scope": "punctuation.separator.substitution.critic.markdown",
+              "settings": {
+                "foreground": "#8839ef",
+                "fontStyle": "bold"
+              }
+            },
+            {
+              "scope": [
+                "meta.timestamp.review.markdown",
+                "markup.inserted.critic.markdown meta.timestamp.review.markdown",
+                "markup.deleted.critic.markdown meta.timestamp.review.markdown",
+                "meta.substitution.critic.markdown meta.timestamp.review.markdown",
+                "markup.marked.critic.markdown meta.timestamp.review.markdown",
+                "comment.block.critic.markdown meta.timestamp.review.markdown",
+                "comment.block.obsidian.markdown meta.timestamp.review.markdown"
+              ],
+              "settings": {
+                "foreground": "#7c7f93",
+                "fontStyle": ""
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

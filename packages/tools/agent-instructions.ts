@@ -1,6 +1,6 @@
 import { CHECKPOINT_DELEGATION_GUIDANCE } from "./worklog/checkpoint-guidance.ts";
 
-export type AgentInstructionsTool = "wl" | "md" | "recap";
+export type AgentInstructionsTool = "wl" | "md" | "recap" | "dz-review";
 
 export type AgentInstructionsOptions = {
   mandatory?: boolean;
@@ -52,6 +52,15 @@ Recap (\`recap\`): compact project context snapshot; it can be useful as assista
 - Help: \`recap --help\`.
 `.trim();
 
+const DZ_REVIEW_INSTRUCTIONS = `
+DZ Review (\`dz-review\`): Markdown review syntax scanner and helper CLI.
+- Summarize active review state: \`dz-review status --oneline <file...>\`.
+- Review files interactively: \`dz-review review <file...>\`.
+- Use \`--open-conversations\`, \`--pending-conversations\`, or \`--resolved-conversations\` to narrow conversation status.
+- \`dz-review stats\` is removed; use \`dz-review status --oneline\`.
+- Help: \`dz-review --help\`.
+`.trim();
+
 export function agentInstructions(
   tool: AgentInstructionsTool,
   options: AgentInstructionsOptions = {},
@@ -64,5 +73,7 @@ export function agentInstructions(
       return MARKDOWN_SURGEON_INSTRUCTIONS;
     case "recap":
       return RECAP_INSTRUCTIONS;
+    case "dz-review":
+      return DZ_REVIEW_INSTRUCTIONS;
   }
 }

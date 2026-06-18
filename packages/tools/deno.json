@@ -15,7 +15,9 @@
     "./worklog/types": "./worklog/types.ts",
     "./worklog/cli": "./worklog/cli.ts",
     "./recap": "./recap/mod.ts",
-    "./recap/cli": "./recap/cli.ts"
+    "./recap/cli": "./recap/cli.ts",
+    "./dz-review": "./dz-review/mod.ts",
+    "./dz-review/cli": "./dz-review/cli.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@^1.0.0",

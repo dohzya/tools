@@ -32,6 +32,37 @@ tasks:
     dir: packages/tools
     cmds:
       - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot recap/cli.test.ts {{.CLI_ARGS}}
+  test:dz-review:
+    desc: "Run dz-review CLI tests"
+    dir: packages/tools
+    cmds:
+      - deno test --allow-read --allow-write --allow-env --allow-run --reporter=dot dz-review/core.test.ts dz-review/cli.test.ts {{.CLI_ARGS}}
+  vscode:dz-review:install-deps:
+    desc: "Install VS Code dz-review extension dependencies"
+    dir: packages/vscode/dz-review
+    sources:
+      - package.json
+      - package-lock.json
+    cmds:
+      - npm ci --silent
+  vscode:dz-review:test:
+    desc: "Run VS Code dz-review extension tests"
+    dir: packages/vscode/dz-review
+    deps: [vscode:dz-review:install-deps]
+    cmds:
+      - npm test
+  vscode:dz-review:vsix:
+    desc: "Build the VS Code dz-review VSIX"
+    dir: packages/vscode/dz-review
+    deps: [vscode:dz-review:install-deps]
+    cmds:
+      - npm run vsix
+  vscode:dz-review:install:
+    desc: "Build and install the VS Code dz-review extension locally"
+    dir: packages/vscode/dz-review
+    deps: [vscode:dz-review:install-deps]
+    cmds:
+      - npm run install:local
   compat:install:
     desc: "Install npm deps for Node/Bun compat tests"
     dir: packages/tools
