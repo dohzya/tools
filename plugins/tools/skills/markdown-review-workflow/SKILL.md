@@ -9,6 +9,17 @@ Use this skill to run Markdown review loops with inline discussion blocks, in th
 
 For exact syntax examples and edge cases, read `references/review-syntax.md`.
 
+## CLI Checks
+
+Use `dz-review` as a non-interactive inspection and timestamp helper:
+
+1. Before reading or editing annotated files, run `dz-review ts -i -I <file...>` to convert compact timestamps to readable ISO timestamps and add missing timestamps.
+2. Inspect the active review state with `dz-review status [file...]`. Add conversation filters such as `--pending-conversations`, `--open-conversations`, or `--resolved-conversations` only when that narrower view helps.
+3. Use `dz-review now -I` or `dz-review now -S` when a manual timestamp is needed.
+4. Before handing edited annotated files back, run `dz-review ts -i -S <file...>` to restore compact timestamps.
+
+Agents should edit the Markdown threads directly. Do not use the interactive `dz-review review` flow from an agent session.
+
 ## Workflow
 
 1. Inspect the Markdown around each active review block before editing.

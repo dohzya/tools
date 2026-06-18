@@ -26,6 +26,7 @@ Before starting ANY release:
 - `packages/tools/worklog/cli.ts` → `wl` version (what `wl --version` shows)
 - `packages/tools/markdown-surgeon/cli.ts` → `md` version (what `md --version` shows)
 - `packages/tools/recap/cli.ts` → `recap` version (what `recap --version` shows)
+- `packages/tools/dz-review/cli.ts` → `dz-review` version (what `dz-review --version` shows)
 - Can differ from each other and from the JSR package version
 - These are independent version numbers for each CLI tool
 
@@ -179,6 +180,12 @@ Updates ONLY files needed BEFORE the GitHub release:
 - `packages/tools/recap/cli.ts` (VERSION constant - tool version)
 - No skill import to update (recap has no plugin skill yet)
 
+**For dz-review:**
+
+- `packages/tools/deno.json` (JSR package version - always increments)
+- `packages/tools/dz-review/cli.ts` (CLI_VERSION constant - tool version)
+- No skill import to update (the workflow skill has no CLI wrapper yet)
+
 **Always (manual step 1b):**
 
 - `packages/tools/CHANGELOG.md` (add new `[wl-vX.Y.Z] — YYYY-MM-DD` section)
@@ -187,7 +194,7 @@ Updates ONLY files needed BEFORE the GitHub release:
 
 Updates files that depend on the GitHub release existing:
 
-**For both tools:**
+**For released tools:**
 
 - `homebrew/Formula/{tool}.rb` (version, URLs, and checksums from GH release)
 - `CLI_SETUP.md` (version references in examples)
@@ -204,7 +211,7 @@ Updates files that depend on the GitHub release existing:
 
 ## Bundle Releases (mise)
 
-Bundle releases combine wl + md + recap for the mise backend (`dohzya/mise-tools`).
+Bundle releases combine wl + md + recap + dz-review for the mise backend (`dohzya/mise-tools`).
 
 ```bash
 # 1. Verify latest tool releases exist
@@ -213,15 +220,15 @@ gh release list | head -5
 # 2. Create bundle tag (no tool prefix)
 git tag v0.6.0 && git push origin v0.6.0
 
-# 3. Update mise-tools repo
+# 3. Update mise-tools repo if its hard-coded bundled tool list changed
 cd ~/bin/share/mise-tools
-# Update version references, commit, push, tag
+# Update bundled tools, commit, push, tag
 ```
 
 **Tag naming:**
 
 - Bundle tags: `vX.Y.Z` (no tool prefix)
-- Tool tags: `wl-vX.Y.Z` or `md-vX.Y.Z`
+- Tool tags: `wl-vX.Y.Z`, `md-vX.Y.Z`, `recap-vX.Y.Z`, or `dz-review-vX.Y.Z`
 
 ## Build-Flag Release
 
@@ -363,10 +370,10 @@ task build VERSION=0.5.0
 
 After successful release:
 
-- [ ] `wl --version` (or `md --version` or `recap --version`) shows correct version
+- [ ] `wl --version` (or `md --version`, `recap --version`, or `dz-review --version`) shows correct version
 - [ ] GitHub release exists with all platform binaries
 - [ ] Homebrew formula updated and installable
-- [ ] (Optional) mise backend updated if doing bundle release
+- [ ] (Optional) mise backend updated if doing bundle release or changing the bundled tool list
 - [ ] (Optional) Claude plugin marketplace updated
 
 ## Lessons Learned (REX-04vcuw)

@@ -11,21 +11,21 @@ A collection of CLI tools and AI agent skills for markdown manipulation and prod
 This repository provides three ways to use the tools:
 
 1. **AI Agent Skills** - AI-powered workflows in Claude Code and Codex
-2. **CLI Tools** - Standalone command-line tools (`md`, `wl`)
+2. **CLI Tools** - Standalone command-line tools (`md`, `wl`, `recap`, `dz-review`)
 3. **TypeScript Library** - Importable package from JSR
 
 ## Installation
 
 Choose your preferred method:
 
-| Method          | Command                                                  | Best For               |
-| --------------- | -------------------------------------------------------- | ---------------------- |
-| **Claude Code** | See [CLAUDE_SETUP.md](CLAUDE_SETUP.md)                   | AI-assisted workflows  |
-| **Codex**       | See [CODEX_SETUP.md](CODEX_SETUP.md)                     | AI-assisted workflows  |
-| **Homebrew**    | `brew tap dohzya/tools && brew install md wl`            | macOS/Linux users      |
-| **mise**        | `mise use -g github:dohzya/tools@md-v0.4.0`              | Project-based installs |
-| **Deno**        | `deno install -g jsr:@dohzya/tools/markdown-surgeon/cli` | Deno users             |
-| **Library**     | `deno add @dohzya/tools`                                 | TypeScript projects    |
+| Method          | Command                                                       | Best For               |
+| --------------- | ------------------------------------------------------------- | ---------------------- |
+| **Claude Code** | See [CLAUDE_SETUP.md](CLAUDE_SETUP.md)                        | AI-assisted workflows  |
+| **Codex**       | See [CODEX_SETUP.md](CODEX_SETUP.md)                          | AI-assisted workflows  |
+| **Homebrew**    | `brew tap dohzya/tools && brew install md wl recap dz-review` | macOS/Linux users      |
+| **mise**        | `mise use -g https://github.com/dohzya/mise-tools@vX.Y.Z`     | Project-based installs |
+| **Deno**        | `deno install -g jsr:@dohzya/tools/markdown-surgeon/cli`      | Deno users             |
+| **Library**     | `deno add @dohzya/tools`                                      | TypeScript projects    |
 
 See [CLI_SETUP.md](CLI_SETUP.md) for detailed CLI installation options.
 
@@ -35,6 +35,8 @@ See [CLI_SETUP.md](CLI_SETUP.md) for detailed CLI installation options.
 | -------------------- | ------------------------------------------------------------------------ | ---------------------------- |
 | **markdown-surgeon** | Surgically edit Markdown files by section without loading entire content | Skill · CLI (`md`) · Library |
 | **worklog**          | Track work progress with append-only logs and on-demand checkpoints      | Skill · CLI (`wl`) · Library |
+| **recap**            | Build compact project context snapshots                                  | CLI (`recap`) · Library      |
+| **dz-review**        | Inspect and maintain Markdown review conversations and annotations       | Skill · CLI · Library        |
 | **obsidian-journal** | Create journal entries in Obsidian for later reference                   | Skill only                   |
 | **rex-session**      | Generate structured REX (Post-Mortem) from technical conversations       | Skill only                   |
 | **docs-maintainer**  | Maintain and review source-verified project documentation                | Skill only                   |

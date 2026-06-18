@@ -32,7 +32,28 @@ Deno.test("release workflow compiles from direct versioned JSR URLs", async () =
     true,
   );
   assertEquals(
+    workflow.includes(
+      "https://jsr.io/@dohzya/tools/${JSR_VERSION}/dz-review/cli.ts",
+    ),
+    true,
+  );
+  assertEquals(workflow.includes("dz-review-v*"), true);
+  assertEquals(workflow.includes("TOOL=${TAG%-v${VERSION}}"), true);
+  assertEquals(
     workflow.includes('ENTRY="jsr:@dohzya/tools@${JSR_VERSION}'),
     false,
   );
+});
+
+Deno.test("bundle release includes every CLI tool", async () => {
+  const workflowUrl = new URL(
+    "../../../.github/workflows/release-bundle.yml",
+    import.meta.url,
+  );
+  const workflow = await Deno.readTextFile(workflowUrl);
+
+  for (const tool of ["wl", "md", "recap", "dz-review"]) {
+    assertEquals(workflow.includes(`download_tool ${tool}`), true);
+    assertEquals(workflow.includes(`brew install dohzya/tools/${tool}`), true);
+  }
 });

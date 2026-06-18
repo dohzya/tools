@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build script for tools CLI
-# Compiles md and wl for multiple platforms
+# Compiles CLI tools for multiple platforms
 
 VERSION="${1:-0.3.0}"
 DIST_DIR="dist"
@@ -18,6 +18,7 @@ declare -A TOOLS=(
   ["md"]="jsr:@dohzya/tools@${VERSION}/markdown-surgeon/cli"
   ["wl"]="jsr:@dohzya/tools@${VERSION}/worklog/cli"
   ["recap"]="jsr:@dohzya/tools@${VERSION}/recap/cli"
+  ["dz-review"]="jsr:@dohzya/tools@${VERSION}/dz-review/cli"
 )
 
 # Target platforms
@@ -46,8 +47,8 @@ for tool in "${!TOOLS[@]}"; do
 
     echo "  → ${platform} (${target})"
 
-    # md only needs read/write, wl needs unrestricted run for `wl run`.
-    # recap needs read/write/env/run for shell commands and git
+    # md only needs read/write. wl needs unrestricted run for `wl run`.
+    # recap and dz-review need env/run for shell commands and Git.
     if [[ "${tool}" == "wl" ]]; then
       deno compile \
         --allow-read \
@@ -57,7 +58,7 @@ for tool in "${!TOOLS[@]}"; do
         --target "${target}" \
         --output "${output}" \
         "${entry}"
-    elif [[ "${tool}" == "recap" ]]; then
+    elif [[ "${tool}" == "recap" || "${tool}" == "dz-review" ]]; then
       deno compile \
         --allow-read \
         --allow-write \

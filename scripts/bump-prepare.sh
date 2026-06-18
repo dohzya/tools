@@ -26,14 +26,14 @@ if [[ -z "$TOOL" ]] || [[ -z "$TOOL_VERSION" ]] || [[ -z "$JSR_VERSION" ]]; then
   echo "Example: $0 md 0.5.2 0.6.2"
   echo ""
   echo "Arguments:"
-  echo "  tool         - 'wl', 'md', or 'recap'"
+  echo "  tool         - 'wl', 'md', 'recap', or 'dz-review'"
   echo "  tool-version - Version for the specific tool (what --version shows)"
   echo "  jsr-version  - Version for JSR package @dohzya/tools (must increment every release)"
   exit 1
 fi
 
-if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]] && [[ "$TOOL" != "recap" ]]; then
-  echo "Error: tool must be 'wl', 'md', or 'recap'"
+if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]] && [[ "$TOOL" != "recap" ]] && [[ "$TOOL" != "dz-review" ]]; then
+  echo "Error: tool must be 'wl', 'md', 'recap', or 'dz-review'"
   exit 1
 fi
 
@@ -59,6 +59,8 @@ elif [[ "$TOOL" == "md" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/markdown-surgeon/cli.ts | sed 's/.*"\(.*\)".*/\1/')
 elif [[ "$TOOL" == "recap" ]]; then
   CURRENT_TOOL=$(grep 'const VERSION' packages/tools/recap/cli.ts | sed 's/.*"\(.*\)".*/\1/')
+elif [[ "$TOOL" == "dz-review" ]]; then
+  CURRENT_TOOL=$(grep 'const CLI_VERSION' packages/tools/dz-review/cli.ts | sed 's/.*"\(.*\)".*/\1/')
 else
   echo "Error: unknown tool '$TOOL'" >&2; exit 1
 fi
@@ -83,6 +85,8 @@ elif [[ "$TOOL" == "md" ]]; then
   echo "  ✓ plugins/tools/skills/markdown-surgeon/md (JSR import)"
 elif [[ "$TOOL" == "recap" ]]; then
   echo "  ✓ packages/tools/recap/cli.ts (VERSION constant)"
+elif [[ "$TOOL" == "dz-review" ]]; then
+  echo "  ✓ packages/tools/dz-review/cli.ts (CLI_VERSION constant)"
 else
   echo "Error: unknown tool '$TOOL'" >&2; exit 1
 fi
@@ -134,6 +138,11 @@ elif [[ "$TOOL" == "recap" ]]; then
   echo "Updating packages/tools/recap/cli.ts VERSION to $TOOL_VERSION..."
   sed -i.bak "s/const VERSION = \".*\";/const VERSION = \"$TOOL_VERSION\";/" packages/tools/recap/cli.ts
   rm packages/tools/recap/cli.ts.bak
+elif [[ "$TOOL" == "dz-review" ]]; then
+  # Update CLI_VERSION constant in cli.ts
+  echo "Updating packages/tools/dz-review/cli.ts CLI_VERSION to $TOOL_VERSION..."
+  sed -i.bak "s/const CLI_VERSION = \".*\";/const CLI_VERSION = \"$TOOL_VERSION\";/" packages/tools/dz-review/cli.ts
+  rm packages/tools/dz-review/cli.ts.bak
 else
   echo "Error: unknown tool '$TOOL'" >&2; exit 1
 fi

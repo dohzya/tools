@@ -54,10 +54,11 @@ Recap (\`recap\`): compact project context snapshot; it can be useful as assista
 
 const DZ_REVIEW_INSTRUCTIONS = `
 DZ Review (\`dz-review\`): Markdown review syntax scanner and helper CLI.
-- Summarize active review state: \`dz-review status --oneline <file...>\`.
-- Review files interactively: \`dz-review review <file...>\`.
-- Use \`--open-conversations\`, \`--pending-conversations\`, or \`--resolved-conversations\` to narrow conversation status.
-- \`dz-review stats\` is removed; use \`dz-review status --oneline\`.
+- Inspect review state: \`dz-review status [file...]\`.
+- Before reading annotated files, make timestamps readable: \`dz-review ts -i -I <file...>\`.
+- Before handing edited annotated files back, restore compact timestamps: \`dz-review ts -i -S <file...>\`.
+- Use \`--open-conversations\`, \`--pending-conversations\`, or \`--resolved-conversations\` to narrow conversation status when needed.
+- Reply by editing the Markdown thread: append a new \`@agent\` message and preserve unresolved history until human validation.
 - Help: \`dz-review --help\`.
 `.trim();
 

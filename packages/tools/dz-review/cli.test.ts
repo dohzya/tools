@@ -30,9 +30,12 @@ Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () =>
 
   assertEquals(output.startsWith("##"), false);
   assertStringIncludes(output, "DZ Review (`dz-review`):");
-  assertStringIncludes(output, "dz-review status --oneline");
-  assertStringIncludes(output, "dz-review review");
+  assertStringIncludes(output, "dz-review status");
+  assertStringIncludes(output, "dz-review ts -i -I");
   assertStringIncludes(output, "dz-review --help");
+  assertEquals(output.includes("dz-review status --oneline"), false);
+  assertEquals(output.includes("dz-review review"), false);
+  assertEquals(output.includes("dz-review stats"), false);
 });
 
 Deno.test("dz-review completions - prints shell completions", async () => {

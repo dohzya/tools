@@ -1,6 +1,6 @@
 # CLI Tools Installation
 
-The `md` (markdown-surgeon) and `wl` (worklog) tools can be installed as standalone CLI tools.
+The `md` (markdown-surgeon), `wl` (worklog), `recap`, and `dz-review` tools can be installed as standalone CLI tools.
 
 ## Installation Methods
 
@@ -13,26 +13,28 @@ brew tap dohzya/tools
 # Install individual tools
 brew install md
 brew install wl
+brew install recap
+brew install dz-review
 
-# Or both at once
-brew install md wl
+# Or several at once
+brew install md wl recap dz-review
 ```
 
 See [HOMEBREW_SETUP.md](HOMEBREW_SETUP.md) for detailed Homebrew usage.
 
 ### Via mise (using custom backend)
 
-Install both tools as a bundle:
+Install all tools as a bundle:
 
 ```bash
-mise use https://github.com/dohzya/mise-tools@v0.5.0
+mise use https://github.com/dohzya/mise-tools@vX.Y.Z
 ```
 
 Or add to your `.mise.toml`:
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "0.5.0"  # Installs md + wl
+"https://github.com/dohzya/mise-tools" = "X.Y.Z"  # Installs md + wl + recap + dz-review
 ```
 
 Then run `mise install`.
@@ -51,13 +53,21 @@ deno install -g --allow-read --allow-write -n md \
 # Install wl
 deno install -g --allow-read --allow-write --allow-env --allow-run=git,claude,codex -n wl \
   jsr:@dohzya/tools/worklog/cli
+
+# Install recap
+deno install -g --allow-read --allow-write --allow-env --allow-run -n recap \
+  jsr:@dohzya/tools/recap/cli
+
+# Install dz-review
+deno install -g --allow-read --allow-write --allow-env --allow-run -n dz-review \
+  jsr:@dohzya/tools/dz-review/cli
 ```
 
 ### Manual Installation
 
 Download pre-compiled binaries from [GitHub Releases](https://github.com/dohzya/tools/releases):
 
-1. Find the latest release for your tool (`md-v0.8.0*` or `wl-v0.18.5*`)
+1. Find the latest release for your tool (`md-v0.8.0*`, `wl-v0.18.5*`, `recap-v0.3.2*`, or `dz-review-v0.1.0*`)
 2. Download the binary for your platform (e.g., `md-darwin-arm64` for macOS ARM)
 3. Make it executable: `chmod +x md-darwin-arm64`
 4. Move to your PATH: `mv md-darwin-arm64 ~/.local/bin/md`
@@ -104,18 +114,52 @@ wl logs
 
 See the [worklog skill](plugins/tools/skills/worklog/SKILL.md) for complete command reference.
 
+### recap
+
+Build compact project context snapshots for humans and agents.
+
+```bash
+# Snapshot the current directory
+recap
+
+# Snapshot another directory
+recap -C ../project
+
+# Show selected configured sections
+recap show status
+```
+
+### dz-review
+
+Inspect and maintain Markdown review conversations and annotations.
+
+```bash
+# Inspect review state
+dz-review status docs/file.md
+
+# Normalize timestamps for reading
+dz-review ts -i -I docs/file.md
+
+# Restore compact timestamps before handing back
+dz-review ts -i -S docs/file.md
+```
+
+See the [markdown review workflow skill](plugins/tools/skills/markdown-review-workflow/SKILL.md) for agent workflow guidance.
+
 ## Shell Completions
 
-Both `wl` and `md` support tab completion for bash, zsh, and fish.
+The CLI tools support tab completion for bash, zsh, and fish.
 
 ### Fish
 
 Add to `~/.config/fish/config.fish` (or a file in `~/.config/fish/conf.d/`):
 
 ```fish
-# Tab completions for wl and md
+# Tab completions for the tools
 wl completions fish | source
 md completions fish | source
+recap completions fish | source
+dz-review completions fish | source
 ```
 
 ### Bash
@@ -123,9 +167,11 @@ md completions fish | source
 Add to `~/.bashrc`:
 
 ```bash
-# Tab completions for wl and md
+# Tab completions for the tools
 eval "$(wl completions bash)"
 eval "$(md completions bash)"
+eval "$(recap completions bash)"
+eval "$(dz-review completions bash)"
 ```
 
 ### Zsh
@@ -133,9 +179,11 @@ eval "$(md completions bash)"
 Add to `~/.zshrc`:
 
 ```zsh
-# Tab completions for wl and md
+# Tab completions for the tools
 eval "$(wl completions zsh)"
 eval "$(md completions zsh)"
+eval "$(recap completions zsh)"
+eval "$(dz-review completions zsh)"
 ```
 
 ## Updating
@@ -144,7 +192,7 @@ eval "$(md completions zsh)"
 
 ```bash
 brew update
-brew upgrade md wl
+brew upgrade md wl recap dz-review
 ```
 
 ### mise
@@ -168,6 +216,7 @@ deno install -g --allow-read --allow-write -n md -f \
 
 ```bash
 brew uninstall md wl
+brew uninstall recap dz-review
 brew untap dohzya/tools
 ```
 
@@ -180,5 +229,5 @@ mise uninstall https-github-com-dohzya-mise-tools
 ### Deno
 
 ```bash
-deno uninstall md wl
+deno uninstall md wl recap dz-review
 ```

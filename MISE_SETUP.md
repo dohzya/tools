@@ -1,10 +1,10 @@
 # mise Installation Guide
 
-This guide explains how to install `md` and `wl` using mise with a custom backend.
+This guide explains how to install `md`, `wl`, `recap`, and `dz-review` using mise with a custom backend.
 
 ## What is the custom backend?
 
-The custom mise backend automatically downloads pre-compiled binaries from GitHub Releases, detecting the correct platform and architecture automatically. It supports installing both tools together (bundle) or using homebrew for individual installations.
+The custom mise backend automatically downloads pre-compiled binaries from GitHub Releases, detecting the correct platform and architecture automatically. It supports installing the tools together as a bundle or using Homebrew for individual installations.
 
 ## Prerequisites
 
@@ -15,19 +15,19 @@ The custom mise backend automatically downloads pre-compiled binaries from GitHu
 
 ### Bundle Installation (Recommended)
 
-Install both tools together using the bundle release:
+Install the tools together using the bundle release:
 
 **Direct Command:**
 
 ```bash
-mise use -g https://github.com/dohzya/mise-tools@v0.6.0
+mise use -g https://github.com/dohzya/mise-tools@vX.Y.Z
 ```
 
 **Project Configuration (`.mise.toml`):**
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "0.6.0"  # Installs md + wl
+"https://github.com/dohzya/mise-tools" = "X.Y.Z"  # Installs md + wl + recap + dz-review
 ```
 
 **Global Configuration (`~/.config/mise/config.toml`):**
@@ -41,27 +41,29 @@ Then run `mise install`.
 
 ### Individual Installation
 
-For installing tools separately or using different versions, use homebrew:
+For installing tools separately or using different versions, use Homebrew:
 
 ```bash
 brew install dohzya/tools/wl
 brew install dohzya/tools/md
+brew install dohzya/tools/recap
+brew install dohzya/tools/dz-review
 ```
 
 ## How It Works
 
 The custom mise backend:
 
-1. Looks at the specified GitHub release tag (e.g., `v0.5.0`)
-2. Downloads both binary assets for your platform (e.g., `wl-darwin-arm64` and `md-darwin-arm64` on macOS ARM)
+1. Looks at the specified GitHub release tag (for example `vX.Y.Z`)
+2. Downloads the binary assets for your platform (for example `wl-darwin-arm64`, `md-darwin-arm64`, `recap-darwin-arm64`, and `dz-review-darwin-arm64` on macOS ARM)
 3. Installs them in your mise bin directory (`~/.local/share/mise/installs/...`)
-4. Makes both tools available in your PATH automatically
+4. Makes all bundled tools available in your PATH automatically
 
 ## Bundle Versions
 
-Bundle releases (e.g., `v0.5.0`) contain specific versions of both tools:
+Bundle releases contain specific versions of the tools:
 
-- `v0.6.0` = `wl-0.5.0` + `md-0.4.0`
+- `vX.Y.Z` = `wl` + `md` + `recap` + `dz-review` versions recorded in the GitHub release notes.
 
 To see what versions are in a bundle, check the release notes at: https://github.com/dohzya/tools/releases
 
@@ -71,7 +73,7 @@ Pin to specific bundle versions:
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "0.6.0"  # Specific bundle
+"https://github.com/dohzya/mise-tools" = "X.Y.Z"  # Specific bundle
 "https://github.com/dohzya/mise-tools" = "latest" # Latest bundle
 ```
 
@@ -97,7 +99,7 @@ mise install
 
 Check that bundle releases exist with the expected naming pattern:
 
-- Bundle releases: `v*` tags (e.g., `v0.5.0`) with assets like `wl-darwin-arm64`, `md-darwin-arm64`, etc.
+- Bundle releases: `v*` tags with assets like `wl-darwin-arm64`, `md-darwin-arm64`, `recap-darwin-arm64`, `dz-review-darwin-arm64`, etc.
 
 ### Wrong version installed
 
@@ -107,12 +109,14 @@ Check which version is active:
 mise current github-dohzya-tools
 wl --version
 md --version
+recap --version
+dz-review --version
 ```
 
 Check GitHub releases for available bundles:
 
 ```bash
-gh release list -R dohzya/tools | grep -v "wl-v0.18.5\|md-v0.8.0"
+gh release list -R dohzya/tools | grep -v "wl-v\|md-v\|recap-v\|dz-review-v"
 ```
 
 ### Permission denied
@@ -123,13 +127,15 @@ Make sure binaries are executable (mise should handle this automatically). If ne
 chmod +x ~/.local/share/mise/installs/github-dohzya-tools/*/bin/*
 ```
 
-### Need different versions of md and wl
+### Need different versions of the tools
 
-The bundle installs fixed versions. For flexibility, use homebrew instead:
+The bundle installs fixed versions. For flexibility, use Homebrew instead:
 
 ```bash
 brew install dohzya/tools/wl
 brew install dohzya/tools/md
+brew install dohzya/tools/recap
+brew install dohzya/tools/dz-review
 ```
 
 ## Uninstalling

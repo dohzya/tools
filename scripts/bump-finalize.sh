@@ -23,8 +23,8 @@ if [[ -z "$TOOL" ]] || [[ -z "$VERSION" ]]; then
   exit 1
 fi
 
-if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]] && [[ "$TOOL" != "recap" ]]; then
-  echo "Error: tool must be 'wl', 'md', or 'recap'"
+if [[ "$TOOL" != "wl" ]] && [[ "$TOOL" != "md" ]] && [[ "$TOOL" != "recap" ]] && [[ "$TOOL" != "dz-review" ]]; then
+  echo "Error: tool must be 'wl', 'md', 'recap', or 'dz-review'"
   exit 1
 fi
 
@@ -101,6 +101,82 @@ rm -rf "$TEMP_DIR"
 
 # Update homebrew formula
 echo "Updating homebrew/Formula/$TOOL.rb..."
+
+if [[ ! -f "homebrew/Formula/$TOOL.rb" ]]; then
+  case "$TOOL" in
+    md)
+      FORMULA_CLASS="Md"
+      FORMULA_DESC="Surgical Markdown editing CLI"
+      ;;
+    wl)
+      FORMULA_CLASS="Wl"
+      FORMULA_DESC="Worklog CLI for local task tracking"
+      ;;
+    recap)
+      FORMULA_CLASS="Recap"
+      FORMULA_DESC="Configurable project status dashboard for AI assistants"
+      ;;
+    dz-review)
+      FORMULA_CLASS="DzReview"
+      FORMULA_DESC="Markdown review syntax scanner and helper CLI"
+      ;;
+    *)
+      echo "Error: unknown tool '$TOOL'" >&2
+      exit 1
+      ;;
+  esac
+
+  cat > "homebrew/Formula/$TOOL.rb" <<EOF
+class $FORMULA_CLASS < Formula
+  desc "$FORMULA_DESC"
+  homepage "https://github.com/dohzya/tools"
+  version "$VERSION"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/dohzya/tools/releases/download/$TOOL-v$VERSION/$TOOL-darwin-arm64"
+      sha256 "$DARWIN_ARM64"
+    elsif Hardware::CPU.intel?
+      url "https://github.com/dohzya/tools/releases/download/$TOOL-v$VERSION/$TOOL-darwin-x86_64"
+      sha256 "$DARWIN_X86_64"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/dohzya/tools/releases/download/$TOOL-v$VERSION/$TOOL-linux-arm64"
+      sha256 "$LINUX_ARM64"
+    elsif Hardware::CPU.intel?
+      url "https://github.com/dohzya/tools/releases/download/$TOOL-v$VERSION/$TOOL-linux-x86_64"
+      sha256 "$LINUX_X86_64"
+    end
+  end
+
+  def install
+    binary_name = if OS.mac?
+      if Hardware::CPU.arm?
+        "$TOOL-darwin-arm64"
+      else
+        "$TOOL-darwin-x86_64"
+      end
+    else
+      if Hardware::CPU.arm?
+        "$TOOL-linux-arm64"
+      else
+        "$TOOL-linux-x86_64"
+      end
+    end
+
+    bin.install binary_name => "$TOOL"
+  end
+
+  test do
+    system "#{bin}/$TOOL", "--help"
+  end
+end
+EOF
+fi
 
 # Update version
 sed -i.bak "s/version \".*\"/version \"$VERSION\"/" "homebrew/Formula/$TOOL.rb"

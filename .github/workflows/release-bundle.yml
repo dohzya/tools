@@ -35,10 +35,14 @@ jobs:
           # Column 3 is the tag (e.g., wl-v0.4.4)
           WL_VERSION=$(gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^wl-v/ {print $3; exit}' | sed 's/^wl-v//')
           MD_VERSION=$(gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^md-v/ {print $3; exit}' | sed 's/^md-v//')
+          RECAP_VERSION=$(gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^recap-v/ {print $3; exit}' | sed 's/^recap-v//')
+          DZ_REVIEW_VERSION=$(gh release list -R dohzya/tools | awk -F'\t' '$3 ~ /^dz-review-v/ {print $3; exit}' | sed 's/^dz-review-v//')
 
           echo "wl_version=$WL_VERSION" >> $GITHUB_OUTPUT
           echo "md_version=$MD_VERSION" >> $GITHUB_OUTPUT
-          echo "Bundle will contain: wl-$WL_VERSION + md-$MD_VERSION"
+          echo "recap_version=$RECAP_VERSION" >> $GITHUB_OUTPUT
+          echo "dz_review_version=$DZ_REVIEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bundle will contain: wl-$WL_VERSION + md-$MD_VERSION + recap-$RECAP_VERSION + dz-review-$DZ_REVIEW_VERSION"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -48,34 +52,31 @@ jobs:
 
           WL_VERSION=${{ steps.versions.outputs.wl_version }}
           MD_VERSION=${{ steps.versions.outputs.md_version }}
+          RECAP_VERSION=${{ steps.versions.outputs.recap_version }}
+          DZ_REVIEW_VERSION=${{ steps.versions.outputs.dz_review_version }}
 
-          # Download wl binaries
-          for platform in darwin-arm64 darwin-x86_64 linux-arm64 linux-x86_64 windows-x86_64; do
-            ext=""
-            if [[ "$platform" == windows-* ]]; then
-              ext=".exe"
-            fi
+          download_tool() {
+            local tool="$1"
+            local version="$2"
 
-            echo "Downloading wl-${platform}${ext}..."
-            gh release download "wl-v${WL_VERSION}" \
-              -p "wl-${platform}${ext}" \
-              -D dist \
-              -R dohzya/tools
-          done
+            for platform in darwin-arm64 darwin-x86_64 linux-arm64 linux-x86_64 windows-x86_64; do
+              ext=""
+              if [[ "$platform" == windows-* ]]; then
+                ext=".exe"
+              fi
 
-          # Download md binaries
-          for platform in darwin-arm64 darwin-x86_64 linux-arm64 linux-x86_64 windows-x86_64; do
-            ext=""
-            if [[ "$platform" == windows-* ]]; then
-              ext=".exe"
-            fi
+              echo "Downloading ${tool}-${platform}${ext}..."
+              gh release download "${tool}-v${version}" \
+                -p "${tool}-${platform}${ext}" \
+                -D dist \
+                -R dohzya/tools
+            done
+          }
 
-            echo "Downloading md-${platform}${ext}..."
-            gh release download "md-v${MD_VERSION}" \
-              -p "md-${platform}${ext}" \
-              -D dist \
-              -R dohzya/tools
-          done
+          download_tool wl "$WL_VERSION"
+          download_tool md "$MD_VERSION"
+          download_tool recap "$RECAP_VERSION"
+          download_tool dz-review "$DZ_REVIEW_VERSION"
 
           ls -lh dist/
         env:
@@ -91,6 +92,8 @@ jobs:
             This bundle release contains:
             - **wl** `${{ steps.versions.outputs.wl_version }}` - Worklog tool
             - **md** `${{ steps.versions.outputs.md_version }}` - Markdown-surgeon tool
+            - **recap** `${{ steps.versions.outputs.recap_version }}` - Project context snapshot tool
+            - **dz-review** `${{ steps.versions.outputs.dz_review_version }}` - Markdown review syntax helper
 
             ## Installation
 
@@ -103,6 +106,8 @@ jobs:
             ```bash
             brew install dohzya/tools/wl
             brew install dohzya/tools/md
+            brew install dohzya/tools/recap
+            brew install dohzya/tools/dz-review
             ```
           draft: false
           prerelease: false

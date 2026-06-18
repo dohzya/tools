@@ -1,6 +1,6 @@
 # Homebrew Tap for tools
 
-This directory contains Homebrew formulas for distributing `md` and `wl` CLI tools.
+This directory contains Homebrew formulas for distributing the `md`, `wl`, `recap`, and `dz-review` CLI tools.
 
 ## Setup
 
@@ -21,7 +21,7 @@ Copy the formulas from this directory:
 ```bash
 cp /path/to/tools/homebrew/Formula/*.rb Formula/
 git add Formula/
-git commit -m "Add md and wl formulas"
+git commit -m "Add tools formulas"
 git push origin main
 ```
 
@@ -52,16 +52,18 @@ brew tap dohzya/dz-tools
 # Install individual tools
 brew install md
 brew install wl
+brew install recap
+brew install dz-review
 
-# Or install both
-brew install md wl
+# Or install several at once
+brew install md wl recap dz-review
 ```
 
 ## Updating
 
 When releasing a new version:
 
-1. Create new release tags (e.g., `md-v0.4.0`, `wl-v0.4.0`)
+1. Create new release tags (for example `md-v0.4.0`, `wl-v0.4.0`, `recap-v0.3.2`, or `dz-review-v0.1.0`)
 2. GitHub Actions will build and upload binaries
 3. Update formulas with new version and SHA256 checksums
 4. Push to tap repository

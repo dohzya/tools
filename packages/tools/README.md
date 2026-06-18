@@ -12,13 +12,16 @@ import { findSection, parseDocument } from "@dohzya/tools/markdown-surgeon";
 import { expandMagic } from "@dohzya/tools/markdown-surgeon/magic";
 import { isValidId, sectionHash } from "@dohzya/tools/markdown-surgeon/hash";
 
-// Import worklog exports
+// Import worklog, recap, and dz-review exports
 import { loadIndex, loadTask } from "@dohzya/tools/worklog";
 import type { Task, TaskIndex } from "@dohzya/tools/worklog/types";
+import { collectReviewAnnotations } from "@dohzya/tools/dz-review";
 
 // CLI entry points
 import { main as mdMain } from "@dohzya/tools/markdown-surgeon/cli";
 import { main as wlMain } from "@dohzya/tools/worklog/cli";
+import { main as recapMain } from "@dohzya/tools/recap/cli";
+import { main as dzReviewMain } from "@dohzya/tools/dz-review/cli";
 ```
 
 ## Modules

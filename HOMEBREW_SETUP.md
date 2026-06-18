@@ -1,6 +1,6 @@
-# Installing md and wl via Homebrew
+# Installing CLI tools via Homebrew
 
-This guide explains how to install the `md` (markdown-surgeon) and `wl` (worklog) CLI tools using Homebrew.
+This guide explains how to install the `md` (markdown-surgeon), `wl` (worklog), `recap`, and `dz-review` CLI tools using Homebrew.
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ This guide explains how to install the `md` (markdown-surgeon) and `wl` (worklog
 # Add the tap
 brew tap dohzya/tools
 
-# Install both tools
-brew install md wl
+# Install all tools
+brew install md wl recap dz-review
 ```
 
 ### Install Individual Tools
@@ -27,6 +27,12 @@ brew install md
 
 # Or install only worklog
 brew install wl
+
+# Or install only recap
+brew install recap
+
+# Or install only dz-review
+brew install dz-review
 ```
 
 ## Verification
@@ -39,6 +45,12 @@ md --help
 
 # Check wl
 wl --help
+
+# Check recap
+recap --help
+
+# Check dz-review
+dz-review --help
 ```
 
 ## Usage
@@ -86,6 +98,30 @@ wl done <task-id> "Changes" "Learnings"
 
 See the [worklog skill documentation](https://github.com/dohzya/tools/tree/main/plugins/tools/skills/worklog) for complete usage.
 
+### Recap
+
+Build compact project context snapshots:
+
+```bash
+# Snapshot the current directory
+recap
+
+# Snapshot another directory
+recap -C ../project
+```
+
+### DZ Review
+
+Inspect Markdown review conversations and annotations:
+
+```bash
+# Show review status
+dz-review status docs/file.md
+
+# Make review timestamps readable
+dz-review ts -i -I docs/file.md
+```
+
 ## Updating
 
 Keep the tools up to date:
@@ -95,7 +131,7 @@ Keep the tools up to date:
 brew update
 
 # Upgrade tools
-brew upgrade md wl
+brew upgrade md wl recap dz-review
 ```
 
 Or upgrade all Homebrew packages:
@@ -110,7 +146,7 @@ Remove the tools:
 
 ```bash
 # Uninstall tools
-brew uninstall md wl
+brew uninstall md wl recap dz-review
 
 # Optionally, remove the tap
 brew untap dohzya/tools
@@ -139,9 +175,10 @@ The downloaded binary doesn't match the expected checksum. Try:
 ```bash
 # Clear Homebrew cache
 brew cleanup md wl
+brew cleanup recap dz-review
 
 # Reinstall
-brew reinstall md wl
+brew reinstall md wl recap dz-review
 ```
 
 ### Permission denied when running commands
@@ -151,6 +188,8 @@ Make sure the binaries are executable:
 ```bash
 chmod +x $(which md)
 chmod +x $(which wl)
+chmod +x $(which recap)
+chmod +x $(which dz-review)
 ```
 
 ## Alternative Installation Methods
