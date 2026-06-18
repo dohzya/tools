@@ -213,6 +213,23 @@ Deno.test("dz-review list - lists review items", async () => {
   }
 });
 
+Deno.test("dz-review list --conversation - keeps legacy singular alias", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      main(["list", "--conversation", file])
+    );
+
+    assertStringIncludes(output, "open conversation");
+    assertEquals(output.includes("addition"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review review - applies an annotation from stdin", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -229,6 +246,61 @@ Deno.test("dz-review review - applies an annotation from stdin", async () => {
     assertEquals(result.success, true);
     assertStringIncludes(result.stdout, "addition");
     assertEquals(updated, "Before after\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review review --list --diff - keeps legacy diff listing flags", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(file, "Intro\n");
+    await runGit(dir, ["add", "file.md"]);
+    await runGit(dir, ["commit", "-m", "initial"]);
+    await Deno.writeTextFile(file, "Intro\n{++new++}\n");
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["review", "--list", "--diff"]))
+    );
+
+    assertStringIncludes(output, "file.md:2");
+    assertStringIncludes(output, "addition");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review review --context-before/after - keeps legacy context flags", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "Before\n{++after++}\nAfter\n");
+
+  try {
+    const result = await runDzReview(
+      dir,
+      [
+        "review",
+        "--no-color",
+        "--context-before",
+        "1",
+        "--context-after",
+        "1",
+        "file.md",
+      ],
+      "n\n",
+    );
+
+    assertEquals(result.success, true);
+    assertStringIncludes(result.stdout, "Before");
+    assertStringIncludes(result.stdout, "After");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -318,6 +390,12 @@ Deno.test("dz-review timestamp - adds timestamps inline", async () => {
 
 Deno.test("dz-review now - prints a review timestamp", async () => {
   const output = await captureOutput(() => main(["now"]));
+
+  assertEquals(/^[A-Za-z0-9]{8}$/.test(output.trim()), true);
+});
+
+Deno.test("dz-review now --compact - keeps legacy format alias", async () => {
+  const output = await captureOutput(() => main(["now", "--compact"]));
 
   assertEquals(/^[A-Za-z0-9]{8}$/.test(output.trim()), true);
 });

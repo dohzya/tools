@@ -68,6 +68,7 @@ interface CommonCliffyOptions {
   wip?: boolean;
   handled?: boolean;
   resolved?: boolean;
+  conversation?: boolean;
   conversations?: boolean;
   openConversations?: boolean;
   wipConversations?: boolean;
@@ -82,18 +83,30 @@ interface CommonCliffyOptions {
 
 interface ReviewCliffyOptions extends CommonCliffyOptions {
   git?: boolean;
+  diff?: boolean;
+  list?: boolean;
+  contextBefore?: string;
+  contextAfter?: string;
+  diffConversations?: boolean;
+  listDiffConversations?: boolean;
   context?: string;
   c?: string;
 }
 
 interface StatusCliffyOptions extends CommonCliffyOptions {
+  git?: boolean;
+  diff?: boolean;
   oneline?: boolean;
   short?: boolean;
   recap?: boolean;
   template?: string;
 }
 
-type ListCliffyOptions = CommonCliffyOptions;
+interface ListCliffyOptions extends CommonCliffyOptions {
+  git?: boolean;
+  diff?: boolean;
+}
+
 type DiffCliffyOptions = CommonCliffyOptions;
 
 interface TimestampCliffyOptions {
@@ -101,12 +114,14 @@ interface TimestampCliffyOptions {
   output?: string;
   stdout?: boolean;
   stdin?: boolean;
+  compact?: boolean;
   short?: boolean;
   iso?: boolean;
   timestampFormat?: string;
 }
 
 interface NowCliffyOptions {
+  compact?: boolean;
   short?: boolean;
   iso?: boolean;
   date?: string;
@@ -365,6 +380,7 @@ function createReviewCommand() {
     .option("--wip", "Keep wip conversations, plus annotations.")
     .option("--handled", "Keep handled conversations, plus annotations.")
     .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversation", "Alias for --conversations.")
     .option("--conversations", "Keep conversation blocks only.")
     .option("--open-conversations", "Keep open conversations only.")
     .option("--wip-conversations", "Keep wip conversations only.")
@@ -382,10 +398,19 @@ function createReviewCommand() {
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
     .option("--git", "Review only items on lines added in git diff HEAD.")
+    .option("--diff", "Alias for --git.")
+    .option("--list", "List matching review items without editing files.")
+    .option("--diff-conversations", "Review conversations from the Git diff.")
+    .option(
+      "--list-diff-conversations",
+      "List conversations from the Git diff.",
+    )
     .option(
       "--context <beforeAfter:string>",
       "Display context as before:after.",
     )
+    .option("--context-before <lines:string>", "Display lines before an item.")
+    .option("--context-after <lines:string>", "Display lines after an item.")
     .option("-c <lines:string>", "Shortcut for --context lines:lines.")
     .arguments("[files...:string]")
     .action(async (options: ReviewCliffyOptions, ...files: string[]) => {
@@ -402,6 +427,7 @@ function createStatusCommand() {
     .option("--wip", "Keep wip conversations, plus annotations.")
     .option("--handled", "Keep handled conversations, plus annotations.")
     .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversation", "Alias for --conversations.")
     .option("--conversations", "Keep conversation blocks only.")
     .option("--open-conversations", "Keep open conversations only.")
     .option("--wip-conversations", "Keep wip conversations only.")
@@ -418,6 +444,8 @@ function createStatusCommand() {
     )
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
+    .option("--git", "Restrict status to lines added in git diff HEAD.")
+    .option("--diff", "Alias for --git.")
     .option("--oneline", "Print one aggregate summary.")
     .option("--short", "Print compact per-file stats.")
     .option("--recap", "Print file and compact status separated by a tab.")
@@ -441,6 +469,7 @@ function createListCommand() {
     .option("--wip", "Keep wip conversations, plus annotations.")
     .option("--handled", "Keep handled conversations, plus annotations.")
     .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversation", "Alias for --conversations.")
     .option("--conversations", "Keep conversation blocks only.")
     .option("--open-conversations", "Keep open conversations only.")
     .option("--wip-conversations", "Keep wip conversations only.")
@@ -457,6 +486,8 @@ function createListCommand() {
     )
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
+    .option("--git", "Restrict list output to lines added in git diff HEAD.")
+    .option("--diff", "Alias for --git.")
     .arguments("[files...:string]")
     .action(async (options: ListCliffyOptions, ...files: string[]) => {
       await runLegacyCommand(buildListArgv(options, files));
@@ -472,6 +503,7 @@ function createDiffCommand() {
     .option("--wip", "Keep wip conversations, plus annotations.")
     .option("--handled", "Keep handled conversations, plus annotations.")
     .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversation", "Alias for --conversations.")
     .option("--conversations", "Keep conversation blocks only.")
     .option("--open-conversations", "Keep open conversations only.")
     .option("--wip-conversations", "Keep wip conversations only.")
@@ -503,6 +535,7 @@ function createTimestampCommand() {
     .option("-o, --output <file:string>", "Write transformed output to a file.")
     .option("-s, --stdout", "Write transformed output to stdout.")
     .option("--stdin", "Read Markdown from stdin.")
+    .option("--compact", "Use compact timestamps.")
     .option("-S, --short", "Use compact timestamps.")
     .option("-I, --iso", "Use ISO timestamps.")
     .option(
@@ -518,6 +551,7 @@ function createTimestampCommand() {
 function createNowCommand() {
   return new Command()
     .description("Print a review timestamp for now or for --date")
+    .option("--compact", "Use compact timestamps.")
     .option("-S, --short", "Use compact timestamps.")
     .option("-I, --iso", "Use ISO timestamps.")
     .option("-d, --date <date:string>", "Timestamp the provided date.")
@@ -553,7 +587,17 @@ function buildReviewArgv(
   const argv = ["review"];
   appendCommonOptions(argv, options);
   appendFlag(argv, options.git, "--git");
+  appendFlag(argv, options.diff, "--git");
+  appendFlag(argv, options.list, "--list");
+  appendFlag(argv, options.diffConversations, "--diff-conversations");
+  appendFlag(
+    argv,
+    options.listDiffConversations,
+    "--list-diff-conversations",
+  );
   appendOption(argv, "--context", options.context);
+  appendOption(argv, "--context-before", options.contextBefore);
+  appendOption(argv, "--context-after", options.contextAfter);
   appendOption(argv, "-c", options.c);
   argv.push(...files);
   return argv;
@@ -565,6 +609,8 @@ function buildStatusArgv(
 ): string[] {
   const argv = ["status"];
   appendCommonOptions(argv, options);
+  appendFlag(argv, options.git, "--git");
+  appendFlag(argv, options.diff, "--git");
   appendFlag(argv, options.oneline, "--oneline");
   appendFlag(argv, options.short, "--short");
   appendFlag(argv, options.recap, "--recap");
@@ -576,6 +622,8 @@ function buildStatusArgv(
 function buildListArgv(options: ListCliffyOptions, files: string[]): string[] {
   const argv = ["list"];
   appendCommonOptions(argv, options);
+  appendFlag(argv, options.git, "--git");
+  appendFlag(argv, options.diff, "--git");
   argv.push(...files);
   return argv;
 }
@@ -596,6 +644,7 @@ function buildTimestampArgv(
   appendOption(argv, "--output", options.output);
   appendFlag(argv, options.stdout, "--stdout");
   appendFlag(argv, options.stdin, "--stdin");
+  appendFlag(argv, options.compact, "--compact");
   appendFlag(argv, options.short, "--short");
   appendFlag(argv, options.iso, "--iso");
   appendOption(argv, "--timestamp-format", options.timestampFormat);
@@ -605,6 +654,7 @@ function buildTimestampArgv(
 
 function buildNowArgv(options: NowCliffyOptions): string[] {
   const argv = ["now"];
+  appendFlag(argv, options.compact, "--compact");
   appendFlag(argv, options.short, "--short");
   appendFlag(argv, options.iso, "--iso");
   appendOption(argv, "--date", options.date);
@@ -620,6 +670,7 @@ function appendCommonOptions(
   appendFlag(argv, options.wip, "--wip");
   appendFlag(argv, options.handled, "--handled");
   appendFlag(argv, options.resolved, "--resolved");
+  appendFlag(argv, options.conversation, "--conversation");
   appendFlag(argv, options.conversations, "--conversations");
   appendFlag(argv, options.openConversations, "--open-conversations");
   appendFlag(argv, options.wipConversations, "--wip-conversations");

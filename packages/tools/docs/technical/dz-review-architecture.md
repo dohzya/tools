@@ -32,7 +32,7 @@ The source CLI was written for Node and compiled from `src/dz-review.ts`. The in
 - Tests under `packages/tools/dz-review/*.test.ts`.
 - Exports through `packages/tools/deno.json`.
 
-The current CLI keeps the standalone parser for behavior parity with the old tool. Cliffy is already used by the repo and supports `.alias(...)`; a future cleanup can migrate the dispatch layer to Cliffy for more standard help and generated completions once compatibility tests are broad enough.
+The current CLI uses Cliffy for command dispatch, aliases, structured help, and generated completions. It still rebuilds a legacy-style argv and delegates to the standalone parser internally so the port can keep behavior parity while the engine and compatibility tests stabilize.
 
 The migrated engine is deliberately independent from VS Code. It uses a small review-markup parser rather than a Markdown AST because review annotations are non-nested, local text markers.
 
@@ -47,12 +47,14 @@ Every item records raw text, character offsets, and line numbers. Text edits use
 The integrated CLI now covers the legacy command surface plus the standard dz-tools shell surface:
 
 - `dz-review review` / `dz-review r`
+- `dz-review review --git`, `--diff`, `--list`, `--context`, `--context-before`, and `--context-after`
 - `dz-review status` / `dz-review st`
 - `dz-review status --oneline`, `--short`, and `--recap`
 - `dz-review list` / `dz-review l` / `dz-review ls`
 - `dz-review diff` / `dz-review d`
-- `dz-review timestamp` / `dz-review ts` / `dz-review timestamps`
-- `dz-review now`
+- conversation filters such as `--conversation`, `--conversations`, `--pending`, `--pending-conversations`, and `--ignore-closed-conversations`
+- `dz-review timestamp` / `dz-review ts` / `dz-review timestamps`, including `--stdin`, `--stdout`, `--inline`, `--output`, `--compact`, and `--iso`
+- `dz-review now`, including `--compact`, `--iso`, and `--date`
 - `dz-review -C <dir>` / `dz-review --cwd <dir>`
 - `dz-review agent-instructions`
 - `dz-review completions`

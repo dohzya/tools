@@ -78,14 +78,21 @@ The Deno module lives in `packages/tools/dz-review`. The integrated CLI surface 
 dz-review -C path/to/repo status
 dz-review review file.md
 dz-review r --pending file.md
+dz-review r --conversation file.md
+dz-review r --list --diff
+dz-review r --context-before 2 --context-after 1 file.md
 dz-review status file.md
 dz-review status --oneline file.md
 dz-review status --short file.md
 dz-review status --recap file.md
+dz-review status --recap --template '%(status)' file.md
 dz-review list file.md
+dz-review list --pending-conversations file.md
 dz-review diff
 dz-review timestamp -i file.md
+dz-review timestamp --compact -o stamped.md file.md
 dz-review now
+dz-review now --iso --date 2026-06-18T12:00:00+02:00
 dz-review agent-instructions
 dz-review completions bash
 ```
@@ -97,6 +104,8 @@ dz-review stats was removed; use dz-review status --oneline.
 ```
 
 Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`, and `timestamps`. With an explicit command and no files inside a Git worktree, `dz-review` reads the current `git diff HEAD --unified=0`. `status` defaults to one line per matching file; `status --oneline` is the aggregate form.
+
+The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--resolved`, `--conversation`, `--conversations`, `--open-conversations`, `--wip-conversations`, `--handled-conversations`, `--resolved-conversations`, `--pending-conversations`, `--ignore-closed-conversations`, `--since`, `--color`, and `--no-color`. `review`, `status`, and `list` also accept `--git` and `--diff` to restrict output to lines added in the current Git diff.
 
 ## Agent Workflow
 
