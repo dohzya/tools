@@ -11,6 +11,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
 - **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
 
+## [dz-review-v0.1.0] — 2026-06-18
+
+### Added
+
+- **dz-review:** Initial CLI release with Markdown review conversation parsing, CriticMarkup-style annotations, per-file and aggregate status views, list/diff inspection, timestamp normalization, shell completions, `-C/--cwd`, and agent instructions.
+- **dz-review:** Markdown review workflow skill and documentation for agents working with inline `{?? ??}` or HTML comment review threads.
+- **vscode:** DZ Review VS Code extension package with grammar injections, decorations, review commands, a review panel, tests, and VSIX/install tasks.
+
 ## [wl-v0.18.5] — 2026-06-15
 
 ### Fixed
