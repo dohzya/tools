@@ -1,5 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-env --allow-run
 
+import { Command } from "@cliffy/command";
+import { CompletionsCommand } from "@cliffy/command/completions";
 import * as childProcess from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -59,6 +61,56 @@ type TimestampOutputMode = "stdout" | "inline" | "file";
 type ColorMode = "auto" | "always" | "never";
 type StatusFormat = "long" | "oneline" | "short" | "recap";
 type DzReviewCliErrorCode = "invalid_args" | "runtime_error";
+
+interface CommonCliffyOptions {
+  pending?: boolean;
+  open?: boolean;
+  wip?: boolean;
+  handled?: boolean;
+  resolved?: boolean;
+  conversations?: boolean;
+  openConversations?: boolean;
+  wipConversations?: boolean;
+  handledConversations?: boolean;
+  resolvedConversations?: boolean;
+  pendingConversations?: boolean;
+  ignoreClosedConversations?: boolean;
+  since?: string;
+  color?: string | false;
+  noColor?: boolean;
+}
+
+interface ReviewCliffyOptions extends CommonCliffyOptions {
+  git?: boolean;
+  context?: string;
+  c?: string;
+}
+
+interface StatusCliffyOptions extends CommonCliffyOptions {
+  oneline?: boolean;
+  short?: boolean;
+  recap?: boolean;
+  template?: string;
+}
+
+type ListCliffyOptions = CommonCliffyOptions;
+type DiffCliffyOptions = CommonCliffyOptions;
+
+interface TimestampCliffyOptions {
+  inline?: boolean;
+  output?: string;
+  stdout?: boolean;
+  stdin?: boolean;
+  short?: boolean;
+  iso?: boolean;
+  timestampFormat?: string;
+}
+
+interface NowCliffyOptions {
+  short?: boolean;
+  iso?: boolean;
+  date?: string;
+}
 
 class DzReviewCliError extends Error {
   constructor(
@@ -134,6 +186,7 @@ const DISPLAY_ANNOTATION_TIMESTAMP_RE = new RegExp(
   String.raw`(\{(?:\+\+|--|==|>>|~~))%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})\|`,
   "g",
 );
+const CLI_VERSION = "0.0.1";
 let activeColorMode: ColorMode | undefined;
 
 interface GlobalArgs {
@@ -169,42 +222,30 @@ function parseGlobalArgs(argv: string[]): GlobalArgs {
   return { argv: remaining, cwd };
 }
 
-function writeCompletions(shell: string | undefined): void {
-  if (!shell || shell === "bash" || shell === "zsh") {
-    process.stdout.write(
-      `complete -W "-C --cwd review r status st list ls l diff d timestamp timestamps ts now agent-instructions completions" dz-review\n`,
-    );
-    return;
-  }
-
-  process.stdout.write(
-    "# dz-review completions are available for bash and zsh.\n",
-  );
-}
-
 export async function main(argv: string[]): Promise<number> {
   const global = parseGlobalArgs(argv);
   const previousCwd = Deno.cwd();
   Deno.chdir(global.cwd);
 
   try {
-    return await mainInCwd(global.argv);
+    return await runCliffy(global.argv);
   } finally {
     Deno.chdir(previousCwd);
   }
 }
 
-async function mainInCwd(argv: string[]): Promise<number> {
-  if (argv[0] === "agent-instructions") {
-    console.log(agentInstructions("dz-review"));
+async function runCliffy(argv: string[]): Promise<number> {
+  const cli = createCli();
+  if (argv.length === 0) {
+    cli.showHelp();
     return 0;
   }
 
-  if (argv[0] === "completions") {
-    writeCompletions(argv[1]);
-    return 0;
-  }
+  await cli.parse(argv);
+  return 0;
+}
 
+async function runLegacyCommand(argv: string[]): Promise<number> {
   const options = parseArgs(argv);
   activeColorMode = options.colorMode;
   const ignoreRules = readReviewIgnoreRules();
@@ -291,6 +332,328 @@ async function mainInCwd(argv: string[]): Promise<number> {
     options.since,
   );
   return 0;
+}
+
+function createCli() {
+  return new Command()
+    .name("dz-review")
+    .version(CLI_VERSION)
+    .description("Markdown review syntax helper")
+    .noExit()
+    .throwErrors()
+    .globalOption(
+      "-C, --cwd <dir:string>",
+      "Change directory before running the command.",
+    )
+    .command("review", createReviewCommand())
+    .command("status", createStatusCommand())
+    .command("list", createListCommand())
+    .command("diff", createDiffCommand())
+    .command("timestamp", createTimestampCommand())
+    .command("now", createNowCommand())
+    .command("stats", createStatsCommand())
+    .command("agent-instructions", createAgentInstructionsCommand())
+    .command("completions", new CompletionsCommand());
+}
+
+function createReviewCommand() {
+  return new Command()
+    .alias("r")
+    .description("Review annotations and conversations interactively")
+    .option("--pending", "Keep open and wip conversations, plus annotations.")
+    .option("--open", "Keep open conversations, plus annotations.")
+    .option("--wip", "Keep wip conversations, plus annotations.")
+    .option("--handled", "Keep handled conversations, plus annotations.")
+    .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversations", "Keep conversation blocks only.")
+    .option("--open-conversations", "Keep open conversations only.")
+    .option("--wip-conversations", "Keep wip conversations only.")
+    .option("--handled-conversations", "Keep handled conversations only.")
+    .option("--resolved-conversations", "Keep resolved conversations only.")
+    .option("--pending-conversations", "Keep open and wip conversations only.")
+    .option(
+      "--ignore-closed-conversations",
+      "Alias for --pending-conversations.",
+    )
+    .option(
+      "--since <timestamp:string>",
+      "Keep timestamped items from this date onward.",
+    )
+    .option("--color <mode:string>", "Color mode: auto, always, or never.")
+    .option("--no-color", "Disable colored output.")
+    .option("--git", "Review only items on lines added in git diff HEAD.")
+    .option(
+      "--context <beforeAfter:string>",
+      "Display context as before:after.",
+    )
+    .option("-c <lines:string>", "Shortcut for --context lines:lines.")
+    .arguments("[files...:string]")
+    .action(async (options: ReviewCliffyOptions, ...files: string[]) => {
+      await runLegacyCommand(buildReviewArgv(options, files));
+    });
+}
+
+function createStatusCommand() {
+  return new Command()
+    .alias("st")
+    .description("Print review status")
+    .option("--pending", "Keep open and wip conversations, plus annotations.")
+    .option("--open", "Keep open conversations, plus annotations.")
+    .option("--wip", "Keep wip conversations, plus annotations.")
+    .option("--handled", "Keep handled conversations, plus annotations.")
+    .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversations", "Keep conversation blocks only.")
+    .option("--open-conversations", "Keep open conversations only.")
+    .option("--wip-conversations", "Keep wip conversations only.")
+    .option("--handled-conversations", "Keep handled conversations only.")
+    .option("--resolved-conversations", "Keep resolved conversations only.")
+    .option("--pending-conversations", "Keep open and wip conversations only.")
+    .option(
+      "--ignore-closed-conversations",
+      "Alias for --pending-conversations.",
+    )
+    .option(
+      "--since <timestamp:string>",
+      "Keep timestamped items from this date onward.",
+    )
+    .option("--color <mode:string>", "Color mode: auto, always, or never.")
+    .option("--no-color", "Disable colored output.")
+    .option("--oneline", "Print one aggregate summary.")
+    .option("--short", "Print compact per-file stats.")
+    .option("--recap", "Print file and compact status separated by a tab.")
+    .option(
+      "--template <template:string>",
+      "Format --recap status with %(status).",
+    )
+    .arguments("[files...:string]")
+    .action(async (options: StatusCliffyOptions, ...files: string[]) => {
+      await runLegacyCommand(buildStatusArgv(options, files));
+    });
+}
+
+function createListCommand() {
+  return new Command()
+    .alias("l")
+    .alias("ls")
+    .description("List matching review items without editing files")
+    .option("--pending", "Keep open and wip conversations, plus annotations.")
+    .option("--open", "Keep open conversations, plus annotations.")
+    .option("--wip", "Keep wip conversations, plus annotations.")
+    .option("--handled", "Keep handled conversations, plus annotations.")
+    .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversations", "Keep conversation blocks only.")
+    .option("--open-conversations", "Keep open conversations only.")
+    .option("--wip-conversations", "Keep wip conversations only.")
+    .option("--handled-conversations", "Keep handled conversations only.")
+    .option("--resolved-conversations", "Keep resolved conversations only.")
+    .option("--pending-conversations", "Keep open and wip conversations only.")
+    .option(
+      "--ignore-closed-conversations",
+      "Alias for --pending-conversations.",
+    )
+    .option(
+      "--since <timestamp:string>",
+      "Keep timestamped items from this date onward.",
+    )
+    .option("--color <mode:string>", "Color mode: auto, always, or never.")
+    .option("--no-color", "Disable colored output.")
+    .arguments("[files...:string]")
+    .action(async (options: ListCliffyOptions, ...files: string[]) => {
+      await runLegacyCommand(buildListArgv(options, files));
+    });
+}
+
+function createDiffCommand() {
+  return new Command()
+    .alias("d")
+    .description("List review items on lines added in the current Git diff")
+    .option("--pending", "Keep open and wip conversations, plus annotations.")
+    .option("--open", "Keep open conversations, plus annotations.")
+    .option("--wip", "Keep wip conversations, plus annotations.")
+    .option("--handled", "Keep handled conversations, plus annotations.")
+    .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversations", "Keep conversation blocks only.")
+    .option("--open-conversations", "Keep open conversations only.")
+    .option("--wip-conversations", "Keep wip conversations only.")
+    .option("--handled-conversations", "Keep handled conversations only.")
+    .option("--resolved-conversations", "Keep resolved conversations only.")
+    .option("--pending-conversations", "Keep open and wip conversations only.")
+    .option(
+      "--ignore-closed-conversations",
+      "Alias for --pending-conversations.",
+    )
+    .option(
+      "--since <timestamp:string>",
+      "Keep timestamped items from this date onward.",
+    )
+    .option("--color <mode:string>", "Color mode: auto, always, or never.")
+    .option("--no-color", "Disable colored output.")
+    .arguments("[files...:string]")
+    .action(async (options: DiffCliffyOptions, ...files: string[]) => {
+      await runLegacyCommand(buildDiffArgv(options, files));
+    });
+}
+
+function createTimestampCommand() {
+  return new Command()
+    .alias("ts")
+    .alias("timestamps")
+    .description("Add or convert review timestamps")
+    .option("-i, --inline", "Rewrite source files in place.")
+    .option("-o, --output <file:string>", "Write transformed output to a file.")
+    .option("-s, --stdout", "Write transformed output to stdout.")
+    .option("--stdin", "Read Markdown from stdin.")
+    .option("-S, --short", "Use compact timestamps.")
+    .option("-I, --iso", "Use ISO timestamps.")
+    .option(
+      "--timestamp-format <format:string>",
+      "Compatibility alias for short or iso.",
+    )
+    .arguments("[files...:string]")
+    .action(async (options: TimestampCliffyOptions, ...files: string[]) => {
+      await runLegacyCommand(buildTimestampArgv(options, files));
+    });
+}
+
+function createNowCommand() {
+  return new Command()
+    .description("Print a review timestamp for now or for --date")
+    .option("-S, --short", "Use compact timestamps.")
+    .option("-I, --iso", "Use ISO timestamps.")
+    .option("-d, --date <date:string>", "Timestamp the provided date.")
+    .action(async (options: NowCliffyOptions) => {
+      await runLegacyCommand(buildNowArgv(options));
+    });
+}
+
+function createStatsCommand() {
+  return new Command()
+    .description("Removed command")
+    .hidden()
+    .action(() => {
+      throw new DzReviewCliError(
+        "invalid_args",
+        "dz-review stats was removed; use dz-review status --oneline.",
+      );
+    });
+}
+
+function createAgentInstructionsCommand() {
+  return new Command()
+    .description("Print AGENTS.md guidance for dz-review")
+    .action(() => {
+      console.log(agentInstructions("dz-review"));
+    });
+}
+
+function buildReviewArgv(
+  options: ReviewCliffyOptions,
+  files: string[],
+): string[] {
+  const argv = ["review"];
+  appendCommonOptions(argv, options);
+  appendFlag(argv, options.git, "--git");
+  appendOption(argv, "--context", options.context);
+  appendOption(argv, "-c", options.c);
+  argv.push(...files);
+  return argv;
+}
+
+function buildStatusArgv(
+  options: StatusCliffyOptions,
+  files: string[],
+): string[] {
+  const argv = ["status"];
+  appendCommonOptions(argv, options);
+  appendFlag(argv, options.oneline, "--oneline");
+  appendFlag(argv, options.short, "--short");
+  appendFlag(argv, options.recap, "--recap");
+  appendOption(argv, "--template", options.template);
+  argv.push(...files);
+  return argv;
+}
+
+function buildListArgv(options: ListCliffyOptions, files: string[]): string[] {
+  const argv = ["list"];
+  appendCommonOptions(argv, options);
+  argv.push(...files);
+  return argv;
+}
+
+function buildDiffArgv(options: DiffCliffyOptions, files: string[]): string[] {
+  const argv = ["diff"];
+  appendCommonOptions(argv, options);
+  argv.push(...files);
+  return argv;
+}
+
+function buildTimestampArgv(
+  options: TimestampCliffyOptions,
+  files: string[],
+): string[] {
+  const argv = ["timestamp"];
+  appendFlag(argv, options.inline, "--inline");
+  appendOption(argv, "--output", options.output);
+  appendFlag(argv, options.stdout, "--stdout");
+  appendFlag(argv, options.stdin, "--stdin");
+  appendFlag(argv, options.short, "--short");
+  appendFlag(argv, options.iso, "--iso");
+  appendOption(argv, "--timestamp-format", options.timestampFormat);
+  argv.push(...files);
+  return argv;
+}
+
+function buildNowArgv(options: NowCliffyOptions): string[] {
+  const argv = ["now"];
+  appendFlag(argv, options.short, "--short");
+  appendFlag(argv, options.iso, "--iso");
+  appendOption(argv, "--date", options.date);
+  return argv;
+}
+
+function appendCommonOptions(
+  argv: string[],
+  options: CommonCliffyOptions,
+): void {
+  appendFlag(argv, options.pending, "--pending");
+  appendFlag(argv, options.open, "--open");
+  appendFlag(argv, options.wip, "--wip");
+  appendFlag(argv, options.handled, "--handled");
+  appendFlag(argv, options.resolved, "--resolved");
+  appendFlag(argv, options.conversations, "--conversations");
+  appendFlag(argv, options.openConversations, "--open-conversations");
+  appendFlag(argv, options.wipConversations, "--wip-conversations");
+  appendFlag(argv, options.handledConversations, "--handled-conversations");
+  appendFlag(argv, options.resolvedConversations, "--resolved-conversations");
+  appendFlag(argv, options.pendingConversations, "--pending-conversations");
+  appendFlag(
+    argv,
+    options.ignoreClosedConversations,
+    "--ignore-closed-conversations",
+  );
+  appendOption(argv, "--since", options.since);
+  appendOption(argv, "--color", options.color);
+  appendFlag(argv, options.noColor, "--no-color");
+}
+
+function appendFlag(
+  argv: string[],
+  enabled: boolean | undefined,
+  flag: string,
+): void {
+  if (enabled) {
+    argv.push(flag);
+  }
+}
+
+function appendOption(
+  argv: string[],
+  flag: string,
+  value: string | false | undefined,
+): void {
+  if (value !== undefined && value !== false) {
+    argv.push(flag, value);
+  }
 }
 
 function parseArgs(argv: string[]): CliOptions {

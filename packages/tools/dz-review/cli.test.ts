@@ -54,17 +54,29 @@ Deno.test("dz-review --help - prints structured command help", async () => {
   const output = await captureOutput(() => main(["--help"]));
 
   assertStringIncludes(output, "Usage:");
+  assertStringIncludes(output, "dz-review");
+  assertStringIncludes(output, "Options:");
   assertStringIncludes(output, "Commands:");
-  assertStringIncludes(output, "Global Options:");
-  assertStringIncludes(output, "Common Options:");
-  assertStringIncludes(output, "Examples:");
   assertStringIncludes(output, "review, r");
   assertStringIncludes(output, "status, st");
   assertStringIncludes(output, "timestamp, ts, timestamps");
-  assertStringIncludes(output, "-C, --cwd <dir>");
-  assertStringIncludes(output, "dz-review status --short");
+  assertStringIncludes(output, "-C, --cwd");
+  assertStringIncludes(output, "<dir>");
+  assertStringIncludes(output, "completions");
   assertEquals(output.includes("Conversation messages may carry"), false);
   assertEquals(output.includes("Review annotations may carry"), false);
+});
+
+Deno.test("dz-review status --help - prints subcommand options", async () => {
+  const output = await captureOutput(() => main(["status", "--help"]));
+
+  assertStringIncludes(output, "Usage:");
+  assertStringIncludes(output, "dz-review status");
+  assertStringIncludes(output, "Options:");
+  assertStringIncludes(output, "--oneline");
+  assertStringIncludes(output, "--short");
+  assertStringIncludes(output, "--recap");
+  assertStringIncludes(output, "--template");
 });
 
 Deno.test("dz-review errors - format stderr with code and color", async () => {
@@ -80,7 +92,7 @@ Deno.test("dz-review errors - format stderr with code and color", async () => {
     assertEquals(result.success, false);
     assertStringIncludes(result.stderr, "\x1b[");
     assertStringIncludes(result.stderr, "error: invalid_args");
-    assertStringIncludes(result.stderr, "Unknown command: unknown-command");
+    assertStringIncludes(result.stderr, 'Unknown command "unknown-command"');
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
