@@ -203,6 +203,8 @@ Updates files that depend on the GitHub release existing:
 - `plugins/tools/.codex-plugin/plugin.json` (Codex plugin version)
 - `.claude-plugin/marketplace.json` (Claude marketplace metadata/plugin versions)
 
+For `dz-review`, `bump-finalize` skips plugin metadata version updates because the CLI version is independent from the global `tools` plugin version and the review workflow skill has no versioned JSR wrapper.
+
 **Important:** The two-phase approach ensures:
 
 1. Skill imports reference the JSR version that will be published

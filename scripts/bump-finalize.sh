@@ -41,7 +41,11 @@ echo "  1. Download binaries from GitHub release $TOOL-v$VERSION"
 echo "  2. Calculate SHA256 checksums"
 echo "  3. Update homebrew/Formula/$TOOL.rb with version, URLs, and checksums"
 echo "  4. Update documentation (*_SETUP.md) with version references"
-echo "  5. Update Claude/Codex plugin metadata versions"
+if [[ "$TOOL" == "dz-review" ]]; then
+  echo "  5. Leave Claude/Codex plugin metadata versions unchanged"
+else
+  echo "  5. Update Claude/Codex plugin metadata versions"
+fi
 echo ""
 
 # Verify GitHub release exists
@@ -230,9 +234,15 @@ echo "Updating MISE_SETUP.md..."
 sed -i.bak "s/$TOOL-v[0-9.]*/$TOOL-v$VERSION/g" MISE_SETUP.md
 rm MISE_SETUP.md.bak
 
-# Update plugin metadata
-echo "Updating plugin metadata versions..."
-deno run --allow-read --allow-write scripts/update-plugin-versions.ts "$VERSION"
+# Update plugin metadata when the released tool ships plugin entrypoints that
+# track the JSR package. dz-review only contributes a workflow skill, so its
+# CLI version must not drive the global tools plugin version.
+if [[ "$TOOL" == "dz-review" ]]; then
+  echo "Skipping plugin metadata version update for dz-review."
+else
+  echo "Updating plugin metadata versions..."
+  deno run --allow-read --allow-write scripts/update-plugin-versions.ts "$VERSION"
+fi
 
 echo ""
 echo "✅ Release finalization complete"
