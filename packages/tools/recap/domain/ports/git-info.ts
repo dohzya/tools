@@ -13,9 +13,20 @@ export type GitLogResult = {
 };
 
 /** Result of fetching working tree status entries. */
+export type GitStatusEntry = {
+  /** File path key used by status enrichers. */
+  readonly path: string;
+  /** Rendered git status line for this file. */
+  readonly line: string;
+  /** Optional rendered Git diff stats for this file, such as "(3+ 4-)". */
+  readonly stats?: string;
+};
+
 export type GitStatusResult = {
   /** Lines of git status output, already scoped for display. */
   readonly lines: readonly string[];
+  /** File lines with path keys, excluding aggregate summary lines. */
+  readonly entries?: readonly GitStatusEntry[];
 };
 
 /** Result of fetching stash entries. */

@@ -1,9 +1,13 @@
 // collect-sections use case — runs all sections concurrently, returns SectionData[]
 
-import type { RecapConfig, ResolvedSection } from "../entities/config.ts";
+import type {
+  RecapConfig,
+  ResolvedSection,
+  StatusEnricherEntry,
+} from "../entities/config.ts";
 import type { SectionData } from "../entities/section-data.ts";
 import type { ShellRunner } from "../ports/shell-runner.ts";
-import type { GitInfoProvider } from "../ports/git-info.ts";
+import type { GitInfoProvider, GitStatusEntry } from "../ports/git-info.ts";
 
 /** External dependencies needed to execute sections during collection. */
 export type CollectSectionsProviders = {
@@ -74,10 +78,97 @@ function applyMaxLines(
   return [...truncated, `... (${remaining} more lines)`];
 }
 
+function parseTsvEnricherOutput(stdout: string): ReadonlyMap<string, string> {
+  const entries = new Map<string, string>();
+  for (const line of stdout.split("\n")) {
+    if (line.length === 0) continue;
+    const separator = line.indexOf("\t");
+    if (separator <= 0) continue;
+    const path = line.slice(0, separator);
+    const text = line.slice(separator + 1);
+    if (text.length > 0) {
+      entries.set(path, text);
+    }
+  }
+  return entries;
+}
+
+async function collectStatusEnrichments(
+  enrichers: readonly StatusEnricherEntry[],
+  entries: readonly GitStatusEntry[],
+  providers: CollectSectionsProviders,
+  globalEnv: Readonly<Record<string, string>>,
+  cwd: string,
+  colorEnv: Readonly<Record<string, string>>,
+): Promise<ReadonlyMap<string, readonly string[]>> {
+  const wantedPaths = new Set(entries.map((entry) => entry.path));
+  const enrichments = new Map<string, string[]>();
+
+  if (wantedPaths.size === 0) {
+    return enrichments;
+  }
+
+  for (const enricher of enrichers) {
+    if ("builtin" in enricher) {
+      if (enricher.builtin === "git-stats") {
+        for (const entry of entries) {
+          if (entry.stats === undefined) continue;
+          const existing = enrichments.get(entry.path) ?? [];
+          enrichments.set(entry.path, [...existing, entry.stats]);
+        }
+      }
+      continue;
+    }
+
+    const result = await providers.shell.run(enricher.sh, {
+      env: {
+        ...colorEnv,
+        ...globalEnv,
+        ...(enricher.env ?? {}),
+      },
+      cwd: enricher.cwd ?? cwd,
+    });
+    if (result.exitCode !== 0 && result.stdout.trim() === "") {
+      throw new Error(result.stderr.trim() || `exit code ${result.exitCode}`);
+    }
+
+    const parsed = parseTsvEnricherOutput(result.stdout);
+    for (const [path, text] of parsed) {
+      if (!wantedPaths.has(path)) continue;
+      const existing = enrichments.get(path) ?? [];
+      enrichments.set(path, [...existing, text]);
+    }
+  }
+
+  return enrichments;
+}
+
+function appendStatusEnrichments(
+  lines: readonly string[],
+  entries: readonly GitStatusEntry[],
+  enrichments: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
+  let entryIndex = 0;
+  return lines.map((line) => {
+    const entry = entries[entryIndex];
+    if (entry === undefined || entry.line !== line) {
+      return line;
+    }
+    entryIndex += 1;
+
+    const suffixes = enrichments.get(entry.path);
+    if (suffixes === undefined || suffixes.length === 0) {
+      return line;
+    }
+    return `${line} ${suffixes.join(" ")}`;
+  });
+}
+
 /**
  * Execute a single resolved section and return SectionData.
  */
 async function executeSection(
+  config: RecapConfig,
   section: ResolvedSection,
   providers: CollectSectionsProviders,
   globalEnv: Readonly<Record<string, string>>,
@@ -178,15 +269,32 @@ async function executeSection(
     }
 
     if (
+      section.builtin === "status" ||
       section.builtin === "git-status" ||
       section.builtin === "git-status-local"
     ) {
-      const { lines: rawLines } = await providers.git.getGitStatus(
-        section.cwd ?? providers.cwd,
-        section.builtin === "git-status-local",
-        providers.useColor,
+      const cwd = section.cwd ?? providers.cwd;
+      const { lines: rawLines, entries = [] } = await providers.git
+        .getGitStatus(
+          cwd,
+          section.builtin === "status" ||
+            section.builtin === "git-status-local",
+          providers.useColor,
+        );
+      const enrichments = await collectStatusEnrichments(
+        config.statusEnrichers ?? [],
+        entries,
+        providers,
+        globalEnv,
+        cwd,
+        colorEnv,
       );
-      const lines = applyMaxLines(rawLines, section.max_lines);
+      const enrichedLines = appendStatusEnrichments(
+        rawLines,
+        entries,
+        enrichments,
+      );
+      const lines = applyMaxLines(enrichedLines, section.max_lines);
       return {
         id: section.id,
         title: section.title,
@@ -239,7 +347,7 @@ export async function collectSections(
 ): Promise<SectionData[]> {
   const globalEnv = { ...config.envVars, ...(providers.globalEnv ?? {}) };
   const promises = config.sections.map((section) =>
-    executeSection(section, providers, globalEnv)
+    executeSection(config, section, providers, globalEnv)
   );
   return await Promise.all(promises);
 }

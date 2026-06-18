@@ -5,6 +5,7 @@ import type {
   GitLogResult,
   GitOpsResult,
   GitStashResult,
+  GitStatusEntry,
   GitStatusResult,
   GitSubdirResult,
 } from "../../domain/ports/git-info.ts";
@@ -455,11 +456,16 @@ export class DenoGitInfo implements GitInfoProvider {
       .split("\n")
       .filter((line) => line.trim().length > 0);
     if (!localOnly) {
-      return { lines };
+      const entries = lines.map((line) => ({
+        path: decodeGitQuotedPath(line.slice(3)),
+        line,
+      }));
+      return { lines, entries };
     }
 
     const statsByPath = await getDiffStats(cwd);
     const localLines: string[] = [];
+    const entries: GitStatusEntry[] = [];
     const outsideCounts = new Map<OutsideKind, number>();
 
     for (const line of lines) {
@@ -472,11 +478,14 @@ export class DenoGitInfo implements GitInfoProvider {
         const stats = status === "??"
           ? await getUntrackedStats(cwd, path)
           : statsByPath.get(path) ?? null;
-        localLines.push(
-          `${formatStatus(status, useColor)}${line.slice(2)}${
-            formatStats(stats, useColor)
-          }`,
-        );
+        const localLine = `${formatStatus(status, useColor)}${line.slice(2)}`;
+        localLines.push(localLine);
+        const statsText = formatStats(stats, useColor).trimStart();
+        entries.push({
+          path,
+          line: localLine,
+          stats: statsText.length > 0 ? statsText : undefined,
+        });
       }
     }
 
@@ -485,6 +494,6 @@ export class DenoGitInfo implements GitInfoProvider {
       localLines.push(summary);
     }
 
-    return { lines: localLines };
+    return { lines: localLines, entries };
   }
 }

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
+- **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
 
 ## [wl-v0.18.5] — 2026-06-15
 

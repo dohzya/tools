@@ -9,12 +9,45 @@
 export type SeparatorKind = "blank_line" | "none" | "line";
 /** Identifier for a built-in section provider. */
 export type BuiltinKind =
+  | "status"
   | "git-ops"
   | "git-log"
   | "git-stash"
   | "git-status"
   | "git-status-local"
   | "git-subdir";
+/** Built-in status enricher provider. */
+export type StatusEnricherBuiltinKind = "git-stats";
+/** Output format emitted by a status enricher command. */
+export type StatusEnricherFormat = "tsv";
+
+/** A shell command that adds per-file text to status lines. */
+export type ShStatusEnricherEntry = {
+  readonly id: string;
+  readonly sh: string;
+  readonly format: StatusEnricherFormat;
+  readonly env?: Readonly<Record<string, string>>;
+  readonly cwd?: string;
+};
+
+/** A built-in provider that adds per-file text to status lines. */
+export type BuiltinStatusEnricherEntry = {
+  readonly id: string;
+  readonly builtin: StatusEnricherBuiltinKind;
+  readonly format: StatusEnricherFormat;
+};
+
+/** An enricher that adds per-file text to status lines. */
+export type StatusEnricherEntry =
+  | ShStatusEnricherEntry
+  | BuiltinStatusEnricherEntry;
+
+/** A section id alias, usually used for backwards compatibility. */
+export type SectionAliasEntry = {
+  readonly id: string;
+  readonly alias: string;
+  readonly deprecated?: boolean;
+};
 
 /** A section entry that references another section from the parent config level. */
 export type RefSectionEntry = {
@@ -63,12 +96,14 @@ export type RawSectionEntry =
   | ShSectionEntry
   | BuiltinSectionEntry
   | ValueSectionEntry
-  | RefSectionEntry;
+  | RefSectionEntry
+  | SectionAliasEntry;
 
 /** Raw config file shape (what comes from YAML). */
 export type RawConfig = {
   readonly dotenv?: readonly string[];
   readonly sections?: readonly RawSectionEntry[];
+  readonly status_enrichers?: readonly StatusEnricherEntry[];
 };
 
 /** A fully resolved section — ready for execution, no ref: allowed. */
@@ -87,6 +122,9 @@ export type ResolvedSection = {
 /** Fully resolved config ready for collection. */
 export type RecapConfig = {
   readonly sections: readonly ResolvedSection[];
+  readonly statusEnrichers?: readonly StatusEnricherEntry[];
+  readonly sectionAliases?: readonly SectionAliasEntry[];
+  readonly warnings?: readonly string[];
   readonly envVars: Readonly<Record<string, string>>;
 };
 
@@ -96,6 +134,12 @@ export type RecapConfig = {
 
 export function isRefEntry(entry: RawSectionEntry): entry is RefSectionEntry {
   return "ref" in entry;
+}
+
+export function isAliasEntry(
+  entry: RawSectionEntry,
+): entry is SectionAliasEntry {
+  return "id" in entry && "alias" in entry;
 }
 
 export function isShEntry(entry: RawSectionEntry): entry is ShSectionEntry {

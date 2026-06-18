@@ -67,6 +67,8 @@ export type RunRecapResult = {
   readonly sections: readonly SectionData[];
   /** Rendered text output (formatted or plain). */
   readonly text: string;
+  /** Warnings emitted while resolving or selecting sections. */
+  readonly warnings: readonly string[];
 };
 
 const CONFIG_FILENAMES = ["recap.yaml", "recap.yml"] as const;
@@ -156,13 +158,27 @@ function envOverridesFrom(env: Environment): Record<string, string> {
 function selectSectionsById(
   config: RecapConfig,
   sectionIds: readonly string[] | undefined,
-): RecapConfig {
+): { readonly config: RecapConfig; readonly warnings: readonly string[] } {
   if (sectionIds === undefined || sectionIds.length === 0) {
-    return config;
+    return { config, warnings: [] };
   }
 
   const byId = new Map(config.sections.map((section) => [section.id, section]));
-  const missing = sectionIds.filter((sectionId) => !byId.has(sectionId));
+  const aliasById = new Map(
+    (config.sectionAliases ?? []).map((alias) => [alias.id, alias]),
+  );
+  const warnings: string[] = [];
+  const resolvedIds = sectionIds.map((sectionId) => {
+    const alias = aliasById.get(sectionId);
+    if (alias?.deprecated === true) {
+      warnings.push(
+        `section "${alias.id}" is deprecated; use "${alias.alias}" instead`,
+      );
+    }
+    return alias?.alias ?? sectionId;
+  });
+
+  const missing = resolvedIds.filter((sectionId) => !byId.has(sectionId));
   if (missing.length > 0) {
     const quoted = missing.map((sectionId) => `"${sectionId}"`).join(", ");
     const label = missing.length === 1 ? "section" : "sections";
@@ -173,18 +189,25 @@ function selectSectionsById(
   }
 
   return {
-    ...config,
-    sections: sectionIds.map((sectionId) => {
-      const section = byId.get(sectionId);
-      if (section === undefined) {
-        throw new RecapError(
-          "config_validation_error",
-          `section "${sectionId}" not found`,
-        );
-      }
-      return section;
-    }),
+    config: {
+      ...config,
+      sections: resolvedIds.map((sectionId) => {
+        const section = byId.get(sectionId);
+        if (section === undefined) {
+          throw new RecapError(
+            "config_validation_error",
+            `section "${sectionId}" not found`,
+          );
+        }
+        return section;
+      }),
+    },
+    warnings,
   };
+}
+
+function uniqueWarnings(warnings: readonly string[]): readonly string[] {
+  return [...new Set(warnings)];
 }
 
 /**
@@ -205,9 +228,9 @@ export async function runRecap(
     envOverrides: envOverridesFrom(deps.env),
   });
 
-  const selectedConfig = selectSectionsById(config, options.sectionIds);
+  const selected = selectSectionsById(config, options.sectionIds);
 
-  const sections = await collectSections(selectedConfig, {
+  const sections = await collectSections(selected.config, {
     shell: deps.shell,
     git: deps.git,
     cwd,
@@ -216,5 +239,12 @@ export async function runRecap(
 
   const text = renderRecap(sections, palette);
 
-  return { sections, text };
+  return {
+    sections,
+    text,
+    warnings: uniqueWarnings([
+      ...(config.warnings ?? []),
+      ...selected.warnings,
+    ]),
+  };
 }

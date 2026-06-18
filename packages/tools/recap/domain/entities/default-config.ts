@@ -1,6 +1,11 @@
 // Hardcoded default sections — the baseline configuration baked into the binary
 
-import type { RecapConfig, ResolvedSection } from "./config.ts";
+import type {
+  RecapConfig,
+  ResolvedSection,
+  SectionAliasEntry,
+  StatusEnricherEntry,
+} from "./config.ts";
 
 /** Built-in default sections baked into the binary (git branch, ops, log, status). */
 export const HARDCODED_SECTIONS: readonly ResolvedSection[] = [
@@ -27,13 +32,33 @@ export const HARDCODED_SECTIONS: readonly ResolvedSection[] = [
     builtin: "git-stash",
   },
   {
+    id: "status",
+    builtin: "status",
+  },
+];
+
+/** Built-in status enrichers baked into the binary. */
+export const HARDCODED_STATUS_ENRICHERS: readonly StatusEnricherEntry[] = [
+  {
+    id: "git-stats",
+    builtin: "git-stats",
+    format: "tsv",
+  },
+];
+
+/** Built-in section aliases baked into the binary. */
+export const HARDCODED_SECTION_ALIASES: readonly SectionAliasEntry[] = [
+  {
     id: "git-status",
-    builtin: "git-status-local",
+    alias: "status",
+    deprecated: true,
   },
 ];
 
 /** Default config with no additional env vars */
 export const DEFAULT_CONFIG: RecapConfig = {
   sections: HARDCODED_SECTIONS,
+  statusEnrichers: HARDCODED_STATUS_ENRICHERS,
+  sectionAliases: HARDCODED_SECTION_ALIASES,
   envVars: {},
 };

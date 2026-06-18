@@ -21,6 +21,7 @@ const shSectionSchema = z.object({
 const builtinSectionSchema = z.object({
   id: z.string(),
   builtin: z.enum([
+    "status",
     "git-ops",
     "git-log",
     "git-stash",
@@ -53,16 +54,43 @@ const refSectionSchema = z.object({
   cwd: z.optional(z.string()),
 });
 
+const aliasSectionSchema = z.object({
+  id: z.string(),
+  alias: z.string(),
+  deprecated: z.optional(z.boolean()),
+});
+
 const rawSectionEntrySchema = z.union([
   shSectionSchema,
   builtinSectionSchema,
   valueSectionSchema,
   refSectionSchema,
+  aliasSectionSchema,
+]);
+
+const shStatusEnricherSchema = z.object({
+  id: z.string(),
+  sh: z.string(),
+  format: z.enum(["tsv"]),
+  env: z.optional(z.record(z.string(), z.string())),
+  cwd: z.optional(z.string()),
+});
+
+const builtinStatusEnricherSchema = z.object({
+  id: z.string(),
+  builtin: z.enum(["git-stats"]),
+  format: z.enum(["tsv"]),
+});
+
+const statusEnricherSchema = z.union([
+  shStatusEnricherSchema,
+  builtinStatusEnricherSchema,
 ]);
 
 const rawConfigSchema = z.object({
   dotenv: z.optional(z.array(z.string())),
   sections: z.optional(z.array(rawSectionEntrySchema)),
+  status_enrichers: z.optional(z.array(statusEnricherSchema)),
 });
 
 type ParsedRawConfig = z.infer<typeof rawConfigSchema>;
@@ -75,6 +103,7 @@ function toRawConfig(parsed: ParsedRawConfig): RawConfig {
   return {
     dotenv: parsed.dotenv,
     sections: parsed.sections,
+    status_enrichers: parsed.status_enrichers,
   };
 }
 

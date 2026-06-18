@@ -91,12 +91,19 @@ Deno.test("resolveConfig - returns hardcoded defaults when no config provided", 
   assertEquals(config.sections[3].id, "git-log");
   assertEquals(config.sections[3].max_lines, 6);
   assertEquals(config.sections[4].id, "git-stash");
+  assertEquals(config.sections[5].id, "status");
+  assertEquals(config.statusEnrichers, [
+    { id: "git-stats", builtin: "git-stats", format: "tsv" },
+  ]);
 });
 
-Deno.test("resolveConfig - git-status default uses local builtin provider", () => {
+Deno.test("resolveConfig - status default uses generic status builtin", () => {
   const config = resolveConfig({});
-  const gitStatus = config.sections.find((s) => s.id === "git-status");
-  assertEquals(gitStatus?.builtin, "git-status-local");
+  const status = config.sections.find((s) => s.id === "status");
+  assertEquals(status?.builtin, "status");
+  assertEquals(config.sectionAliases, [
+    { id: "git-status", alias: "status", deprecated: true },
+  ]);
 });
 
 Deno.test("resolveConfig - ref:* expands all parent sections", () => {
@@ -108,7 +115,7 @@ Deno.test("resolveConfig - ref:* expands all parent sections", () => {
   // Should include all hardcoded sections
   assertEquals(config.sections.length, HARDCODED_SECTIONS.length);
   assertEquals(config.sections[0].id, "git-branch-track");
-  assertEquals(config.sections[5].id, "git-status");
+  assertEquals(config.sections[5].id, "status");
 });
 
 Deno.test("resolveConfig - ref:* excludes IDs referenced explicitly elsewhere", () => {
@@ -185,6 +192,53 @@ Deno.test("resolveConfig - MAX_WORKTASKS env override applies to worktasks secti
   });
   const worktasks = config.sections.find((s) => s.id === "worktasks");
   assertEquals(worktasks?.max_lines, 3);
+});
+
+Deno.test("resolveConfig - status enrichers merge by id", () => {
+  const config = resolveConfig({
+    rawGlobalConfig: {
+      status_enrichers: [
+        { id: "annotations", sh: "ann old", format: "tsv" },
+        { id: "review", sh: "review status", format: "tsv" },
+      ],
+    },
+    rawLocalConfig: {
+      status_enrichers: [
+        { id: "annotations", sh: "ann new", format: "tsv" },
+      ],
+    },
+  });
+
+  assertEquals(config.statusEnrichers, [
+    { id: "git-stats", builtin: "git-stats", format: "tsv" },
+    { id: "annotations", sh: "ann new", format: "tsv" },
+    { id: "review", sh: "review status", format: "tsv" },
+  ]);
+});
+
+Deno.test("resolveConfig - section aliases resolve refs and warn when deprecated", () => {
+  const config = resolveConfig({
+    rawGlobalConfig: {
+      sections: [
+        { id: "status", builtin: "status" },
+        { id: "old-status", alias: "status", deprecated: true },
+      ],
+    },
+    rawLocalConfig: {
+      sections: [{ ref: "old-status" }],
+    },
+  });
+
+  assertEquals(
+    config.sections.map((section) => ({
+      id: section.id,
+      builtin: section.builtin,
+    })),
+    [{ id: "status", builtin: "status" }],
+  );
+  assertEquals(config.warnings, [
+    'section "old-status" is deprecated; use "status" instead',
+  ]);
 });
 
 Deno.test("resolveConfig - global + local layering works", () => {
@@ -509,6 +563,36 @@ sections:
   }
 });
 
+Deno.test("recap CLI - show warns when using deprecated git-status alias", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yaml"),
+      `
+sections:
+  - id: status
+    value: "STATUS_FOUND"
+  - id: git-status
+    alias: status
+    deprecated: true
+`,
+    );
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "show", "git-status"]);
+    });
+
+    assertStringIncludes(output, "STATUS_FOUND");
+    assertStringIncludes(
+      output,
+      'recap warning: section "git-status" is deprecated; use "status" instead',
+    );
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("runRecap - selected sections skip non-selected shell commands", async () => {
   const { shell, calls } = makeSpyShell();
   const mockEnv = {
@@ -638,8 +722,11 @@ Deno.test("DenoGitInfo - summarizes local stats, outside changes, and stash", as
 
     assertEquals(stash.lines, ["(1 stashed entry)"]);
     assertEquals(status.lines, [
-      " M a (12+ 3-)",
+      " M a",
       "(1 change and 3 untracked files outside this dir)",
+    ]);
+    assertEquals(status.entries, [
+      { path: "a", line: " M a", stats: "(12+ 3-)" },
     ]);
   } finally {
     await Deno.remove(tempDir, { recursive: true });
@@ -666,7 +753,10 @@ Deno.test("DenoGitInfo - renders local unicode paths without octal escapes", asy
       false,
     );
 
-    assertEquals(status.lines, ["?? été.md (1+ 0-)"]);
+    assertEquals(status.lines, ["?? été.md"]);
+    assertEquals(status.entries, [
+      { path: "été.md", line: "?? été.md", stats: "(1+ 0-)" },
+    ]);
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -693,7 +783,14 @@ Deno.test("DenoGitInfo - colors additions green and deletions red in stats", asy
     const status = await adapter.getGitStatus(tempDir, true, true);
 
     assertEquals(status.lines, [
-      " \x1b[33mM\x1b[39m a (\x1b[32m12+\x1b[39m \x1b[31m3-\x1b[39m)",
+      " \x1b[33mM\x1b[39m a",
+    ]);
+    assertEquals(status.entries, [
+      {
+        path: "a",
+        line: " \x1b[33mM\x1b[39m a",
+        stats: "(\x1b[32m12+\x1b[39m \x1b[31m3-\x1b[39m)",
+      },
     ]);
   } finally {
     await Deno.remove(tempDir, { recursive: true });
@@ -722,10 +819,16 @@ Deno.test("DenoGitInfo - colors status columns by kind", async () => {
     const status = await adapter.getGitStatus(tempDir, true, true);
 
     assertEquals(status.lines, [
-      "\x1b[32mA\x1b[39m  added.txt (\x1b[32m1+\x1b[39m \x1b[31m0-\x1b[39m)",
-      " \x1b[31mD\x1b[39m deleted.txt (\x1b[32m0+\x1b[39m \x1b[31m1-\x1b[39m)",
-      " \x1b[33mM\x1b[39m modified.txt (\x1b[32m1+\x1b[39m \x1b[31m1-\x1b[39m)",
-      "\x1b[36m?\x1b[39m\x1b[36m?\x1b[39m untracked.txt (\x1b[32m1+\x1b[39m \x1b[31m0-\x1b[39m)",
+      "\x1b[32mA\x1b[39m  added.txt",
+      " \x1b[31mD\x1b[39m deleted.txt",
+      " \x1b[33mM\x1b[39m modified.txt",
+      "\x1b[36m?\x1b[39m\x1b[36m?\x1b[39m untracked.txt",
+    ]);
+    assertEquals(status.entries?.map((entry) => entry.stats), [
+      "(\x1b[32m1+\x1b[39m \x1b[31m0-\x1b[39m)",
+      "(\x1b[32m0+\x1b[39m \x1b[31m1-\x1b[39m)",
+      "(\x1b[32m1+\x1b[39m \x1b[31m1-\x1b[39m)",
+      "(\x1b[32m1+\x1b[39m \x1b[31m0-\x1b[39m)",
     ]);
   } finally {
     await Deno.remove(tempDir, { recursive: true });
@@ -780,6 +883,10 @@ sections:
     max_lines: 2
   - id: local-marker
     value: "LOCAL_FOUND"
+status_enrichers:
+  - id: annotations
+    sh: annotations status --recap
+    format: tsv
 `,
     );
     Deno.env.set("HOME", homeDir);
@@ -797,6 +904,10 @@ sections:
     assertStringIncludes(output, "max_lines: 2");
     assertStringIncludes(output, "id: local-marker");
     assertStringIncludes(output, "value: LOCAL_FOUND");
+    assertStringIncludes(output, "status_enrichers:");
+    assertStringIncludes(output, "id: annotations");
+    assertStringIncludes(output, "sh: annotations status --recap");
+    assertStringIncludes(output, "format: tsv");
   } finally {
     if (originalHome === undefined) {
       Deno.env.delete("HOME");
@@ -1056,6 +1167,59 @@ Deno.test("collectSections - git-status builtins select full or local mode", asy
   );
 
   assertEquals(calls, [false, true]);
+});
+
+Deno.test("collectSections - status appends builtin and TSV enricher output by file", async () => {
+  const { shell, calls } = makeSpyShell();
+  const mockGit: GitInfoProvider = {
+    getGitOps: () => Promise.resolve({ operation: null }),
+    getGitLog: () => Promise.resolve({ lines: [] }),
+    getGitStash: () => Promise.resolve({ lines: [] }),
+    getGitSubdir: () => Promise.resolve({ display: null }),
+    getGitStatus: () =>
+      Promise.resolve({
+        lines: [
+          " M src/a.ts",
+          "?? src/b.ts",
+          "(1 change outside this dir)",
+        ],
+        entries: [
+          { path: "src/a.ts", line: " M src/a.ts", stats: "(3+ 4-)" },
+          { path: "src/b.ts", line: "?? src/b.ts", stats: "(1+ 0-)" },
+        ],
+      }),
+  };
+
+  shell.run = (command, options) => {
+    calls.push({ command, env: options?.env, cwd: options?.cwd });
+    return Promise.resolve({
+      stdout: "src/a.ts\t[ann 3/11 +3~2]\nunknown.ts\t[ignored]\n",
+      stderr: "",
+      exitCode: 0,
+    });
+  };
+
+  const result = await collectSections(
+    {
+      sections: [{ id: "status", builtin: "status" }],
+      statusEnrichers: [
+        { id: "git-stats", builtin: "git-stats", format: "tsv" },
+        { id: "annotations", sh: "annotations status", format: "tsv" },
+      ],
+      envVars: {},
+    },
+    { shell, git: mockGit, cwd: "/repo", useColor: false },
+  );
+
+  assertEquals(result[0].lines, [
+    " M src/a.ts (3+ 4-) [ann 3/11 +3~2]",
+    "?? src/b.ts (1+ 0-)",
+    "(1 change outside this dir)",
+  ]);
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].command, "annotations status");
+  assertEquals(calls[0].cwd, "/repo");
+  assertEquals(calls[0].env?.NO_COLOR, "1");
 });
 
 // ============================================================================

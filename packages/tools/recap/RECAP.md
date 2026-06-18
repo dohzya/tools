@@ -46,6 +46,14 @@ sections:
     env: # Extra env vars for this command
       FOO: bar
     cwd: /some/path # Working directory override
+
+status_enrichers:
+  - id: git-stats # Built-in default: appends "(N+ M-)"
+    builtin: git-stats
+    format: tsv
+  - id: annotations # Stable id for merge/override
+    sh: annotations status --recap # Emits path<TAB>text lines
+    format: tsv # Currently only tsv is supported
 ```
 
 ### Section types
@@ -67,11 +75,13 @@ sections:
 2. Falls back to `refs/remotes/origin/HEAD`
 3. Falls back to the last N commits with no range filter
 
-**`git-status`** — Shows `git status --short --untracked-files=normal --renames`.
+**`status`** — Shows local working-tree status lines, enriched with configured `status_enrichers`. The built-in default `git-stats` enricher appends compact Git diff stats like `(12+ 3-)`, with additions in green and deletions in red when color output is enabled.
+
+**`git-status`** — Deprecated alias for `status`; use `status` instead.
 
 **`git-stash`** — Shows `(N stashed entries)` when the repo has stash entries.
 
-**`git-status-local`** — Shows the same status scoped to the current directory. Listed files include compact diff stats like `(12+ 3-)` when available, with additions in green and deletions in red when color output is enabled. When run from a subdirectory, changes outside that directory are hidden and summarized by kind, for example `(1 change and 1 untracked file outside this dir)`.
+**`git-status-local`** — Legacy built-in provider kept for compatibility. It uses the same local status source as `status`.
 
 ### `ref:` resolution
 
@@ -87,6 +97,38 @@ This enables multiple merge strategies:
 | Wrap parent                 | `[local-before, ref: "*", local-after]` |
 
 A `ref:` to a non-existent id is an error (not silently skipped).
+
+### `status_enrichers:`
+
+Status enrichers append per-file text to `status` lines.
+
+```yaml
+status_enrichers:
+  - id: git-stats
+    builtin: git-stats
+    format: tsv
+  - id: annotations
+    sh: annotations status --recap
+    format: tsv
+```
+
+`git-stats` is the built-in default enricher that appends Git additions and deletions, for example `(3+ 4-)`.
+
+For `format: tsv`, the command emits one line per file:
+
+```text
+src/a.ts	[ann 3/11 +3~2]
+```
+
+`recap` matches the path against visible Git status entries and appends the text verbatim:
+
+```text
+M src/a.ts (3+ 4-) [ann 3/11 +3~2]
+```
+
+Global and local configs merge enrichers by `id`; local entries override global entries with the same `id` and append entries with new ids.
+
+See [Status Enrichers](../docs/functional/status-enrichers.md) for the producer contract intended for external tools.
 
 ### `dotenv:` + interpolation
 

@@ -12,6 +12,8 @@ import type {
   RawConfig,
   RecapConfig,
   ResolvedSection,
+  SectionAliasEntry,
+  StatusEnricherEntry,
 } from "./domain/entities/config.ts";
 import {
   type LoadedConfigSource,
@@ -20,7 +22,11 @@ import {
 } from "./domain/use-cases/run-recap.ts";
 import { resolveConfig } from "./domain/use-cases/resolve-config.ts";
 import { generateConfigContent } from "./domain/use-cases/init-config.ts";
-import { HARDCODED_SECTIONS } from "./domain/entities/default-config.ts";
+import {
+  HARDCODED_SECTION_ALIASES,
+  HARDCODED_SECTIONS,
+  HARDCODED_STATUS_ENRICHERS,
+} from "./domain/entities/default-config.ts";
 import { DenoFileSystem } from "./adapters/filesystem/deno-fs.ts";
 import { DenoEnvironment } from "./adapters/environment/deno-environment.ts";
 import { DaxShellRunner } from "./adapters/shell/dax-shell-runner.ts";
@@ -144,6 +150,34 @@ function sectionToYamlObject(
   return output;
 }
 
+function statusEnricherToYamlObject(
+  enricher: StatusEnricherEntry,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = {
+    id: enricher.id,
+    format: enricher.format,
+  };
+  if ("builtin" in enricher) {
+    output.builtin = enricher.builtin;
+  } else {
+    output.sh = enricher.sh;
+    addDefined(output, "env", enricher.env);
+    addDefined(output, "cwd", enricher.cwd);
+  }
+  return output;
+}
+
+function sectionAliasToYamlObject(
+  alias: SectionAliasEntry,
+): Record<string, unknown> {
+  const output: Record<string, unknown> = {
+    id: alias.id,
+    alias: alias.alias,
+  };
+  addDefined(output, "deprecated", alias.deprecated);
+  return output;
+}
+
 function removeUndefined(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(removeUndefined);
@@ -168,13 +202,23 @@ function rawConfigToYaml(config: RawConfig): string {
 
 function configToYaml(config: RecapConfig): string {
   return stringifyYaml(removeUndefined({
-    sections: config.sections.map(sectionToYamlObject),
+    sections: [
+      ...config.sections.map(sectionToYamlObject),
+      ...(config.sectionAliases ?? []).map(sectionAliasToYamlObject),
+    ],
+    status_enrichers: config.statusEnrichers?.map(statusEnricherToYamlObject),
   }));
 }
 
 function defaultConfigYaml(): string {
   return stringifyYaml(removeUndefined({
-    sections: HARDCODED_SECTIONS.map(sectionToYamlObject),
+    sections: [
+      ...HARDCODED_SECTIONS.map(sectionToYamlObject),
+      ...HARDCODED_SECTION_ALIASES.map(sectionAliasToYamlObject),
+    ],
+    status_enrichers: HARDCODED_STATUS_ENRICHERS.map(
+      statusEnricherToYamlObject,
+    ),
   }));
 }
 
@@ -254,6 +298,10 @@ async function printRecap(
       deps,
       palette,
     );
+
+    for (const warning of result.warnings) {
+      console.error(`recap warning: ${warning}`);
+    }
 
     if (outputOptions.json) {
       console.log(formatRecapJson([...result.sections]));
