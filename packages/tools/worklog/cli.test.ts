@@ -5357,6 +5357,118 @@ Deno.test("subtasks - create --parent creates subtask with parent field in index
   }
 });
 
+Deno.test("subtasks - meta reparents and detaches structural parent", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+
+  // deno-lint-ignore dz-tools/no-type-assertion
+  Deno.exit = ((code: number) => {
+    exitCode = code;
+    throw new Error("EXIT");
+  }) as typeof Deno.exit;
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "first parent"]);
+    await main(["create", "second parent"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listOut)).dangerousCast<{
+      tasks: Array<{ id: string; name: string }>;
+    }>().tasks;
+    const firstParentId = tasks.find((task) => task.name === "first parent")!
+      .id;
+    const secondParentId = tasks.find((task) => task.name === "second parent")!
+      .id;
+
+    await main(["create", "child task", "--parent", firstParentId]);
+    const withChildOut = await captureOutput(() =>
+      main(["list", "--all", "--json", "--subtasks"])
+    );
+    const withChildTasks = ExplicitCast.fromAny(JSON.parse(withChildOut))
+      .dangerousCast<{ tasks: Array<{ id: string; name: string }> }>().tasks;
+    const childId = withChildTasks.find((task) => task.name === "child task")!
+      .id;
+
+    try {
+      await main(["meta", childId, "--parent", firstParentId]);
+    } catch (e) {
+      if (!(e instanceof Error) || e.message !== "EXIT") throw e;
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "already_has_parent");
+    exitCode = 0;
+    errorOutput = "";
+
+    try {
+      await main(["meta", childId, "--parent", secondParentId]);
+    } catch (e) {
+      if (!(e instanceof Error) || e.message !== "EXIT") throw e;
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "already_has_parent");
+
+    await main(["meta", childId, "--parent", secondParentId, "--force"]);
+
+    let index = ExplicitCast.fromAny(
+      JSON.parse(await Deno.readTextFile(`${tempDir}/.worklog/index.json`)),
+    ).dangerousCast<{
+      tasks: Record<string, { parent?: string }>;
+    }>();
+    assertEquals(index.tasks[childId].parent, secondParentId);
+
+    let frontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${childId}.md`),
+    );
+    assertEquals(frontmatter.parent, secondParentId);
+    assertEquals(frontmatter.created_at !== undefined, true);
+    assertEquals(frontmatter.desc, "");
+
+    await main(["meta", childId, "--detach"]);
+
+    index = ExplicitCast.fromAny(
+      JSON.parse(await Deno.readTextFile(`${tempDir}/.worklog/index.json`)),
+    ).dangerousCast<{
+      tasks: Record<string, { parent?: string }>;
+    }>();
+    assertEquals(index.tasks[childId].parent, undefined);
+
+    frontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${childId}.md`),
+    );
+    assertEquals(frontmatter.parent, undefined);
+    assertEquals(frontmatter.created_at !== undefined, true);
+    assertEquals(frontmatter.desc, "");
+
+    await main(["meta", childId, "--parent", firstParentId]);
+    await main(["meta", childId, "--delete", "parent"]);
+
+    index = ExplicitCast.fromAny(
+      JSON.parse(await Deno.readTextFile(`${tempDir}/.worklog/index.json`)),
+    ).dangerousCast<{
+      tasks: Record<string, { parent?: string }>;
+    }>();
+    assertEquals(index.tasks[childId].parent, undefined);
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("subtasks - create --parent fails with unknown parent ID", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

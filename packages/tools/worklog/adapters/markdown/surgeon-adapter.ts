@@ -444,7 +444,11 @@ ${checkpoint.learnings}
 
     // Apply updates
     for (const [key, value] of Object.entries(updates)) {
-      frontmatter[key] = value;
+      if (value === undefined) {
+        delete frontmatter[key];
+      } else {
+        frontmatter[key] = value;
+      }
     }
 
     // Rebuild frontmatter and apply to document

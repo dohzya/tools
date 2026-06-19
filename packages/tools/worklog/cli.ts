@@ -3245,6 +3245,9 @@ async function cmdMeta(
   key?: string,
   value?: string,
   deleteKey?: string,
+  parent?: string,
+  detach?: boolean,
+  force?: boolean,
 ): Promise<{ metadata: Record<string, string> }> {
   await purge();
   taskId = await resolveTaskId(taskId);
@@ -3254,6 +3257,9 @@ async function cmdMeta(
     key,
     value,
     deleteKey,
+    parent,
+    detach,
+    force,
   });
 }
 
@@ -5930,6 +5936,9 @@ const metaCmd = new Command()
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--delete <key:string>", "Delete a metadata key")
+  .option("--parent <taskId:string>", "Attach task under parent")
+  .option("--detach", "Detach task into a top-level task")
+  .option("-f, --force", "Allow reparenting a task that already has a parent")
   .action(async (options, taskId?: string, key?: string, value?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -5964,11 +5973,27 @@ const metaCmd = new Command()
         resolvedValue = value;
       }
 
+      let resolvedParent: string | undefined;
+      if (options.parent) {
+        const targetScopeDir = Deno.cwd();
+        try {
+          resolvedParent = await resolveTaskIdWithEnvFallbackAcrossScopes(
+            options.parent,
+            options.scope ? null : gitRoot,
+          );
+        } finally {
+          Deno.chdir(targetScopeDir);
+        }
+      }
+
       const output = await cmdMeta(
         resolvedTaskId,
         resolvedKey,
         resolvedValue,
         options.delete,
+        resolvedParent,
+        options.detach,
+        options.force,
       );
       console.log(options.json ? JSON.stringify(output) : formatMeta(output));
     } catch (e) {

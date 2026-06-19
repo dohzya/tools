@@ -13,6 +13,9 @@ export interface UpdateMetaInput {
   readonly key?: string;
   readonly value?: string;
   readonly deleteKey?: string;
+  readonly parent?: string;
+  readonly detach?: boolean;
+  readonly force?: boolean;
 }
 
 export interface UpdateMetaOutput {
@@ -40,6 +43,45 @@ export class UpdateMetaUseCase {
     const metadata: Record<string, string> = {
       ...(taskData.meta.metadata ?? {}),
     };
+
+    const shouldDetach = input.detach === true || input.deleteKey === "parent";
+    if (input.parent !== undefined || shouldDetach) {
+      if (input.parent !== undefined && shouldDetach) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --parent and --detach",
+        );
+      }
+
+      if (input.parent !== undefined) {
+        this.validateNewParent(taskId, input.parent, index.tasks);
+        const currentParent = taskData.meta.parent ?? null;
+        if (currentParent && !input.force) {
+          throw new WtError(
+            "already_has_parent",
+            `Task already has parent ${currentParent}. Detach it first or use --force to reparent.`,
+          );
+        }
+
+        let content = await this.taskRepo.loadContent(taskId);
+        content = await this.markdownService.updateFrontmatter(content, {
+          parent: input.parent,
+        });
+        await this.taskRepo.saveContent(taskId, content);
+        await this.indexRepo.updateEntry(taskId, { parent: input.parent });
+
+        return { metadata };
+      }
+
+      let content = await this.taskRepo.loadContent(taskId);
+      content = await this.markdownService.updateFrontmatter(content, {
+        parent: undefined,
+      });
+      await this.taskRepo.saveContent(taskId, content);
+      await this.indexRepo.updateEntry(taskId, { parent: undefined });
+
+      return { metadata };
+    }
 
     // Delete key if requested
     if (input.deleteKey) {
@@ -143,5 +185,29 @@ export class UpdateMetaUseCase {
     }
 
     return matches[0];
+  }
+
+  private validateNewParent(
+    taskId: string,
+    parentId: string,
+    tasks: Readonly<Record<string, IndexEntry>>,
+  ): void {
+    if (parentId === taskId) {
+      throw new WtError("invalid_args", "A task cannot be its own parent");
+    }
+
+    let cursor: string | undefined = parentId;
+    const seen = new Set<string>();
+    while (cursor) {
+      if (cursor === taskId) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot set parent: this would create a task-parent cycle",
+        );
+      }
+      if (seen.has(cursor)) break;
+      seen.add(cursor);
+      cursor = tasks[cursor]?.parent;
+    }
   }
 }
