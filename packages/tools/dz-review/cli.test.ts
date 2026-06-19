@@ -431,6 +431,75 @@ Deno.test("dz-review timestamp - adds timestamps inline", async () => {
   }
 });
 
+Deno.test("dz-review timestamp --format-info reports dominant timestamp format", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "{++%2026-06-16T17:35:35+02:00|one++}",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 open -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      main(["timestamp", "--format-info", file])
+    );
+
+    assertStringIncludes(output.trim(), "file.md: iso 100%");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review timestamp --format-info reports mixed below threshold", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "{++%2026-06-16T17:35:35+02:00|one++}",
+      "<!-- @agent%1WzvP91W open -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      main(["timestamp", "--format-info", file])
+    );
+
+    assertStringIncludes(output.trim(), "file.md: mixed");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review timestamp -i logs existing dominant format", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "{++%2026-06-16T17:35:35+02:00|one++}",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 open -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() => main(["timestamp", "-i", file]));
+
+    assertStringIncludes(output, "2 timestamps updated");
+    assertStringIncludes(output, "existing format: iso 100%");
+    assertStringIncludes(output, "output format: compact");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review now - prints a review timestamp", async () => {
   const output = await captureOutput(() => main(["now"]));
 

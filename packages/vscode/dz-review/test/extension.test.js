@@ -194,7 +194,7 @@ function createHarness() {
   const module = { exports: {} };
   const source =
     fs.readFileSync(path.join(__dirname, "..", "out", "extension.js"), "utf8") +
-    "\nmodule.exports.__test = { activate: module.exports.activate, addHumanComment, addHumanOk, addTimestampToCurrentReviewElement, applyCriticMarkupAnnotation, approveAgentMessage, cancelCriticMarkupAnnotation, collectConversations, collectReviewPanelItems, createCompactCriticMarkupReviewNote, createCompactReviewNote, createReviewConversation, exitReviewMode, fillReviewLineAfterNativeNewline, filterReviewItems, getConversationContentRanges, getConversationMarkerRanges, getConversationOkRanges, getConversationRoleRanges, getConversationStatus, moveToConversation, moveToReviewBlock, provideTimestampHover, removeHumanOk, revealReviewPanelItem, showAllReviewItems, showHandledReviewItems, showOpenReviewItems, showPendingReviewItems, showResolvedReviewItems, showUnresolvedReviewItems, showWipReviewItems, toggleReviewMode, wrapCriticMarkupAnnotation };";
+    "\nmodule.exports.__test = { activate: module.exports.activate, addHumanComment, addHumanOk, addTimestampToCurrentReviewElement, applyCriticMarkupAnnotation, approveAgentMessage, cancelCriticMarkupAnnotation, collectConversations, collectReviewPanelItems, convertTimestampsInActiveEditor, createCompactCriticMarkupReviewNote, createCompactReviewNote, createReviewConversation, exitReviewMode, fillReviewLineAfterNativeNewline, filterReviewItems, getConversationContentRanges, getConversationMarkerRanges, getConversationOkRanges, getConversationRoleRanges, getConversationStatus, moveToConversation, moveToReviewBlock, provideTimestampHover, removeHumanOk, revealReviewPanelItem, showAllReviewItems, showHandledReviewItems, showOpenReviewItems, showPendingReviewItems, showResolvedReviewItems, showUnresolvedReviewItems, showWipReviewItems, toggleReviewMode, wrapCriticMarkupAnnotation };";
 
   vm.runInNewContext(source, {
     require(name) {
@@ -1293,6 +1293,22 @@ test("explicit add timestamp command uses compact timestamps when automatic time
   await harness.api.addTimestampToCurrentReviewElement();
 
   assert.match(editor.document.text, /^\{==%[0-9A-Za-z]{8}\|foo==\}$/);
+});
+
+test("converts all timestamps in the active editor to the configured format", async () => {
+  const harness = createHarness();
+  harness.setTimestampFormat("iso");
+  const editor = harness.createEditor(
+    "{++%1WzvP91W|foo++}\n<!-- @agent%1WzvP91W note -->",
+    { line: 0, character: 0 },
+  );
+
+  await harness.api.convertTimestampsInActiveEditor();
+
+  assert.equal(
+    editor.document.text,
+    "{++%2026-06-16T17:35:35+02:00|foo++}\n<!-- @agent%2026-06-16T17:35:35+02:00 note -->",
+  );
 });
 
 test("wraps empty selections with custom review annotations and places the cursor inside", async () => {

@@ -52,6 +52,7 @@ interface CliOptions {
   timestampInputMode: TimestampInputMode;
   timestampOutputFile: string | undefined;
   timestampOutputMode: TimestampOutputMode;
+  timestampFormatInfo: boolean;
   colorMode: ColorMode | undefined;
 }
 
@@ -117,6 +118,7 @@ interface TimestampCliffyOptions {
   compact?: boolean;
   short?: boolean;
   iso?: boolean;
+  formatInfo?: boolean;
   timestampFormat?: string;
 }
 
@@ -178,6 +180,11 @@ interface LastReviewTimestamp {
   timestamp: ReviewTimestamp;
 }
 
+interface TimestampFormatStats {
+  compact: number;
+  iso: number;
+}
+
 const ANSI = {
   bold: "\x1b[1m",
   blue: "\x1b[34m",
@@ -191,6 +198,7 @@ const ANSI = {
 };
 
 const DEFAULT_CONTEXT: DisplayContext = { before: 2, after: 0 };
+const DOMINANT_TIMESTAMP_FORMAT_RATIO = 0.9;
 const STATUS_TEMPLATE_PLACEHOLDER = "%(status)";
 const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
   .raw`[A-Za-z0-9]{8}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
@@ -284,6 +292,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       options.timestampFormat,
       options.timestampOutputMode,
       options.timestampOutputFile,
+      options.timestampFormatInfo,
     );
     return 0;
   }
@@ -549,6 +558,7 @@ function createTimestampCommand() {
     .option("--compact", "Use compact timestamps.")
     .option("-S, --short", "Use compact timestamps.")
     .option("-I, --iso", "Use ISO timestamps.")
+    .option("--format-info", "Print detected timestamp format information.")
     .option(
       "--timestamp-format <format:string>",
       "Compatibility alias for short or iso.",
@@ -658,6 +668,7 @@ function buildTimestampArgv(
   appendFlag(argv, options.compact, "--compact");
   appendFlag(argv, options.short, "--short");
   appendFlag(argv, options.iso, "--iso");
+  appendFlag(argv, options.formatInfo, "--format-info");
   appendOption(argv, "--timestamp-format", options.timestampFormat);
   argv.push(...files);
   return argv;
@@ -736,6 +747,7 @@ function parseArgs(argv: string[]): CliOptions {
       timestampInputMode: "files",
       timestampOutputFile: undefined,
       timestampOutputMode: "stdout",
+      timestampFormatInfo: false,
       colorMode: undefined,
     };
   }
@@ -757,6 +769,7 @@ function parseArgs(argv: string[]): CliOptions {
       timestampInputMode: "files",
       timestampOutputFile: undefined,
       timestampOutputMode: "stdout",
+      timestampFormatInfo: false,
       colorMode: undefined,
     };
   }
@@ -776,6 +789,7 @@ function parseArgs(argv: string[]): CliOptions {
   let timestampInputMode: TimestampInputMode = "files";
   let timestampOutputFile: string | undefined;
   let timestampOutputMode: TimestampOutputMode = "stdout";
+  let timestampFormatInfo = false;
   let colorMode: ColorMode | undefined;
   const files: string[] = [];
 
@@ -938,6 +952,11 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === "-S" || arg === "--short" || arg === "--compact") {
       timestampFormat = "compact";
+      continue;
+    }
+
+    if (arg === "--format-info") {
+      timestampFormatInfo = true;
       continue;
     }
 
@@ -1140,6 +1159,7 @@ function parseArgs(argv: string[]): CliOptions {
     timestampInputMode,
     timestampOutputFile,
     timestampOutputMode,
+    timestampFormatInfo,
     colorMode,
   };
 }
@@ -1606,9 +1626,22 @@ function writeTimestamps(
   format: TimestampFormat,
   outputMode: TimestampOutputMode,
   outputFile: string | undefined,
+  formatInfo: boolean,
 ): void {
   if (files.length === 0) {
     process.stdout.write("No review annotations found.\n");
+    return;
+  }
+
+  if (formatInfo) {
+    for (const file of files) {
+      const text = fs.readFileSync(file, "utf8");
+      process.stdout.write(
+        `${normalizePath(file)}: ${
+          formatTimestampFormatStats(collectTimestampFormatStats(text))
+        }\n`,
+      );
+    }
     return;
   }
 
@@ -1624,6 +1657,9 @@ function writeTimestamps(
 
   for (const file of files) {
     const text = fs.readFileSync(file, "utf8");
+    const formatSummary = formatTimestampFormatStats(
+      collectTimestampFormatStats(text),
+    );
     const { count, updated } = transformTimestamps(
       text,
       fs.statSync(file).mtime,
@@ -1648,11 +1684,71 @@ function writeTimestamps(
     }
 
     process.stdout.write(
-      `${normalizePath(file)}: ${count} ${
-        plural(count, "timestamp")
-      } updated\n`,
+      `${normalizePath(file)}: ${count} ${plural(count, "timestamp")} updated${
+        formatSummary === "none"
+          ? ""
+          : `; existing format: ${formatSummary}; output format: ${format}`
+      }\n`,
     );
   }
+}
+
+function collectTimestampFormatStats(text: string): TimestampFormatStats {
+  const stats: TimestampFormatStats = { compact: 0, iso: 0 };
+
+  for (const match of text.matchAll(DISPLAY_CONVERSATION_TIMESTAMP_RE)) {
+    incrementTimestampFormatStats(stats, match[2]);
+  }
+
+  for (const match of text.matchAll(DISPLAY_ANNOTATION_TIMESTAMP_RE)) {
+    incrementTimestampFormatStats(stats, match[2]);
+  }
+
+  return stats;
+}
+
+function incrementTimestampFormatStats(
+  stats: TimestampFormatStats,
+  value: string,
+): void {
+  if (/^[A-Za-z0-9]{8}$/.test(value)) {
+    stats.compact += 1;
+    return;
+  }
+
+  stats.iso += 1;
+}
+
+function formatTimestampFormatStats(stats: TimestampFormatStats): string {
+  const total = stats.compact + stats.iso;
+  if (total === 0) {
+    return "none";
+  }
+
+  const compactRatio = stats.compact / total;
+  const isoRatio = stats.iso / total;
+  if (compactRatio >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
+    return formatDominantTimestampFormatStats("compact", stats.compact, total);
+  }
+
+  if (isoRatio >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
+    return formatDominantTimestampFormatStats("iso", stats.iso, total);
+  }
+
+  return "mixed";
+}
+
+function formatDominantTimestampFormatStats(
+  format: TimestampFormat,
+  count: number,
+  total: number,
+): string {
+  const percentage = Math.round((count / total) * 100);
+  if (percentage === 100) {
+    return `${format} 100%`;
+  }
+
+  return `${format} ${percentage}% (${count}/${total} timestamps)`;
 }
 
 function transformTimestamps(
@@ -3000,6 +3096,7 @@ Timestamp Options:
   --stdin                       Read Markdown from stdin.
   -S, --short                   Use compact timestamps.
   -I, --iso                     Use ISO timestamps.
+  --format-info                 Print detected timestamp format information.
   -d, --date <date>             Timestamp the provided date for now.
 
 Interactive Actions:

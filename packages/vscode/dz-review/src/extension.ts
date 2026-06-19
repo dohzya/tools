@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import {
+  encodeCompactTimestamp,
   encodeTimestamp,
   formatTimestampForDisplay,
   parseReviewTimestamp,
@@ -342,6 +343,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       "dzMdReview.addTimestampToCurrentReviewElement",
       addTimestampToCurrentReviewElement,
+    ),
+    vscode.commands.registerCommand(
+      "dzMdReview.convertTimestampsInActiveEditor",
+      convertTimestampsInActiveEditor,
     ),
     vscode.commands.registerCommand(
       "dzMdReview.cancelCriticMarkupAnnotation",
@@ -1424,6 +1429,56 @@ async function addTimestampToCurrentReviewElement(): Promise<void> {
       ),
       edit.text,
     );
+  });
+}
+
+async function convertTimestampsInActiveEditor(): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return;
+  }
+
+  const format = getTimestampFormat();
+  const targetFormat = format === "none" ? "compact" : format;
+  const text = editor.document.getText();
+  const updated = convertReviewTimestamps(text, targetFormat);
+
+  if (updated === text) {
+    void vscode.window.showInformationMessage(
+      "No review timestamps to convert.",
+    );
+    return;
+  }
+
+  await editor.edit((builder) => {
+    builder.replace(
+      new vscode.Range(
+        editor.document.positionAt(0),
+        editor.document.positionAt(text.length),
+      ),
+      updated,
+    );
+  });
+}
+
+function convertReviewTimestamps(
+  text: string,
+  format: TimestampFormat,
+): string {
+  return text.replace(REVIEW_TIMESTAMP_RE, (match: string, value: string) => {
+    const timestamp = parseReviewTimestamp(value);
+    if (!timestamp) {
+      return match;
+    }
+
+    if (format === "iso") {
+      const rendered = formatTimestampForDisplay(timestamp);
+      return rendered ? `%${rendered}` : match;
+    }
+
+    return `%${
+      encodeCompactTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes)
+    }`;
   });
 }
 

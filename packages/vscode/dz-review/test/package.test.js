@@ -225,6 +225,7 @@ test("custom review annotation commands are available through cmd+alt+k chords",
   assert(commands.has("dzMdReview.nextPendingConversation"));
   assert(commands.has("dzMdReview.previousPendingConversation"));
   assert(commands.has("dzMdReview.addTimestampToCurrentReviewElement"));
+  assert(commands.has("dzMdReview.convertTimestampsInActiveEditor"));
 
   assert.equal(
     keybindings.get("dzMdReview.addCriticMarkupAddition"),
@@ -276,6 +277,10 @@ test("custom review annotation commands are available through cmd+alt+k chords",
   assert.equal(
     keybindings.get("dzMdReview.addTimestampToCurrentReviewElement"),
     "cmd+alt+k t",
+  );
+  assert.equal(
+    keybindings.has("dzMdReview.convertTimestampsInActiveEditor"),
+    false,
   );
   assert(
     hasKeybinding("dzMdReview.nextPendingConversation", "cmd+ctrl+alt+down"),

@@ -32,6 +32,7 @@
     "onCommand:dzMdReview.addCriticMarkupHighlight",
     "onCommand:dzMdReview.addCriticMarkupComment",
     "onCommand:dzMdReview.addTimestampToCurrentReviewElement",
+    "onCommand:dzMdReview.convertTimestampsInActiveEditor",
     "onCommand:dzMdReview.createCompactReviewNote",
     "onCommand:dzMdReview.createCriticMarkupDiscussion",
     "onCommand:dzMdReview.cancelCriticMarkupAnnotation",
@@ -162,6 +163,11 @@
       {
         "command": "dzMdReview.addTimestampToCurrentReviewElement",
         "title": "Add Timestamp to Review Element",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.convertTimestampsInActiveEditor",
+        "title": "Convert Review Timestamps",
         "category": "Markdown Review"
       },
       {
