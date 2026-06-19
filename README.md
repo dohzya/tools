@@ -18,14 +18,14 @@ This repository provides three ways to use the tools:
 
 Choose your preferred method:
 
-| Method          | Command                                                       | Best For               |
-| --------------- | ------------------------------------------------------------- | ---------------------- |
-| **Claude Code** | See [CLAUDE_SETUP.md](CLAUDE_SETUP.md)                        | AI-assisted workflows  |
-| **Codex**       | See [CODEX_SETUP.md](CODEX_SETUP.md)                          | AI-assisted workflows  |
-| **Homebrew**    | `brew tap dohzya/tools && brew install md wl recap dz-review` | macOS/Linux users      |
-| **mise**        | `mise use -g https://github.com/dohzya/mise-tools@vX.Y.Z`     | Project-based installs |
-| **Deno**        | `deno install -g jsr:@dohzya/tools/markdown-surgeon/cli`      | Deno users             |
-| **Library**     | `deno add @dohzya/tools`                                      | TypeScript projects    |
+| Method          | Command                                                                                                    | Best For               |
+| --------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------- |
+| **Claude Code** | See [CLAUDE_SETUP.md](CLAUDE_SETUP.md)                                                                     | AI-assisted workflows  |
+| **Codex**       | See [CODEX_SETUP.md](CODEX_SETUP.md)                                                                       | AI-assisted workflows  |
+| **Homebrew**    | `brew tap dohzya/tools && brew install md wl recap dz-review`                                              | macOS/Linux users      |
+| **mise**        | `mise plugins install mise-tools https://github.com/dohzya/mise-tools.git && mise use -g mise-tools@X.Y.Z` | Project-based installs |
+| **Deno**        | `deno install -g jsr:@dohzya/tools/markdown-surgeon/cli`                                                   | Deno users             |
+| **Library**     | `deno add @dohzya/tools`                                                                                   | TypeScript projects    |
 
 See [CLI_SETUP.md](CLI_SETUP.md) for detailed CLI installation options.
 

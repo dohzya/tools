@@ -27,14 +27,15 @@ See [HOMEBREW_SETUP.md](HOMEBREW_SETUP.md) for detailed Homebrew usage.
 Install all tools as a bundle:
 
 ```bash
-mise use https://github.com/dohzya/mise-tools@vX.Y.Z
+mise plugins install mise-tools https://github.com/dohzya/mise-tools.git
+mise use mise-tools@X.Y.Z
 ```
 
 Or add to your `.mise.toml`:
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "X.Y.Z"  # Installs md + wl + recap + dz-review
+mise-tools = "X.Y.Z"  # Installs md + wl + recap + dz-review
 ```
 
 Then run `mise install`.
@@ -198,7 +199,7 @@ brew upgrade md wl recap dz-review
 ### mise
 
 ```bash
-mise upgrade https-github-com-dohzya-mise-tools
+mise upgrade mise-tools
 ```
 
 ### Deno
@@ -223,7 +224,7 @@ brew untap dohzya/tools
 ### mise
 
 ```bash
-mise uninstall https-github-com-dohzya-mise-tools
+mise uninstall mise-tools
 ```
 
 ### Deno

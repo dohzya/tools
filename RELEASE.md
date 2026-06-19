@@ -223,7 +223,7 @@ gh release list | head -5
 git tag v0.6.0 && git push origin v0.6.0
 
 # 3. Update mise-tools repo if its hard-coded bundled tool list changed
-cd ~/bin/share/mise-tools
+cd ~/bin/share/mise-tools-prep
 # Update bundled tools, commit, push, tag
 ```
 

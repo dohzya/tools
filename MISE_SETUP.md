@@ -20,21 +20,22 @@ Install the tools together using the bundle release:
 **Direct Command:**
 
 ```bash
-mise use -g https://github.com/dohzya/mise-tools@vX.Y.Z
+mise plugins install mise-tools https://github.com/dohzya/mise-tools.git
+mise use -g mise-tools@X.Y.Z
 ```
 
 **Project Configuration (`.mise.toml`):**
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "X.Y.Z"  # Installs md + wl + recap + dz-review
+mise-tools = "X.Y.Z"  # Installs md + wl + recap + dz-review
 ```
 
 **Global Configuration (`~/.config/mise/config.toml`):**
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "latest"  # Latest bundle
+mise-tools = "latest"  # Latest bundle
 ```
 
 Then run `mise install`.
@@ -73,8 +74,8 @@ Pin to specific bundle versions:
 
 ```toml
 [tools]
-"https://github.com/dohzya/mise-tools" = "X.Y.Z"  # Specific bundle
-"https://github.com/dohzya/mise-tools" = "latest" # Latest bundle
+mise-tools = "X.Y.Z"  # Specific bundle
+mise-tools = "latest" # Latest bundle
 ```
 
 To upgrade, update the version and run `mise install`.
@@ -84,7 +85,7 @@ To upgrade, update the version and run `mise install`.
 Update to the latest bundle:
 
 ```bash
-mise upgrade github-dohzya-tools
+mise upgrade mise-tools
 ```
 
 Or update your `.mise.toml` version and run:
@@ -106,7 +107,7 @@ Check that bundle releases exist with the expected naming pattern:
 Check which version is active:
 
 ```bash
-mise current github-dohzya-tools
+mise current mise-tools
 wl --version
 md --version
 recap --version
