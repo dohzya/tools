@@ -2,10 +2,16 @@ const BASE62_ALPHABET =
   "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DEFAULT_EPOCH_WIDTH = 6;
 const DEFAULT_TZ_WIDTH = 2;
+const HANGUL_TIMESTAMP_START = 0xac00;
+const HANGUL_TIMESTAMP_END = 0xb3ff;
+const HANGUL_TIMESTAMP_BASE = 2048;
+const HANGUL_EPOCH_WIDTH = 3;
+const HANGUL_TZ_WIDTH = 1;
+const HANGUL_TIMESTAMP_RE = /^[\uac00-\ub3ff]{4}$/u;
 const ISO_TIMESTAMP_RE =
   /^%?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})$/;
 
-export type TimestampFormat = "compact" | "iso";
+export type TimestampFormat = "compact" | "hangul" | "iso";
 
 export interface ReviewTimestamp {
   offsetMinutes: number;
@@ -27,6 +33,10 @@ export function encodeTimestamp(
     }
 
     return rendered;
+  }
+
+  if (format === "hangul") {
+    return encodeHangulTimestamp(date, offsetMinutes);
   }
 
   return encodeCompactTimestamp(date, offsetMinutes);
@@ -89,6 +99,63 @@ export function decodeCompactTimestamp(value: string): ReviewTimestamp {
   };
 }
 
+export function encodeHangulTimestamp(
+  unixSeconds: number | bigint | Date,
+  offsetMinutes: number,
+): string {
+  assertInteger(offsetMinutes, "offsetMinutes");
+
+  const epochSeconds = normalizeUnixSeconds(unixSeconds);
+  const base = BigInt(HANGUL_TIMESTAMP_BASE);
+  const modulus = base ** BigInt(HANGUL_TZ_WIDTH);
+  const minOffset = -(modulus / 2n);
+  const maxOffset = (modulus - 1n) / 2n;
+  const offset = BigInt(offsetMinutes);
+
+  if (offset < minOffset || offset > maxOffset) {
+    throw new RangeError(
+      `offsetMinutes out of hangul timestamp range: ${offsetMinutes}.`,
+    );
+  }
+
+  const encodedOffsetValue = offset >= 0n ? offset : modulus + offset;
+  const maxEpoch = base ** BigInt(HANGUL_EPOCH_WIDTH);
+  if (epochSeconds >= maxEpoch) {
+    throw new RangeError(
+      `unixSeconds out of hangul timestamp range: ${epochSeconds}.`,
+    );
+  }
+
+  return encodeHangulUnsignedInteger(epochSeconds).padStart(
+    HANGUL_EPOCH_WIDTH,
+    String.fromCodePoint(HANGUL_TIMESTAMP_START),
+  ) +
+    encodeHangulUnsignedInteger(encodedOffsetValue).padStart(
+      HANGUL_TZ_WIDTH,
+      String.fromCodePoint(HANGUL_TIMESTAMP_START),
+    );
+}
+
+export function decodeHangulTimestamp(value: string): ReviewTimestamp {
+  if (!HANGUL_TIMESTAMP_RE.test(value)) {
+    throw new Error("Invalid hangul timestamp.");
+  }
+
+  const epochPart = value.slice(0, HANGUL_EPOCH_WIDTH);
+  const offsetPart = value.slice(HANGUL_EPOCH_WIDTH);
+  const base = BigInt(HANGUL_TIMESTAMP_BASE);
+  const modulus = base ** BigInt(HANGUL_TZ_WIDTH);
+  const rawOffset = decodeHangulUnsignedInteger(offsetPart);
+  const signedOffset = rawOffset < modulus / 2n
+    ? rawOffset
+    : rawOffset - modulus;
+
+  return {
+    unixSeconds: decodeHangulUnsignedInteger(epochPart),
+    offsetMinutes: Number(signedOffset),
+  };
+}
+
 export function parseReviewTimestamp(
   value: string,
 ): ReviewTimestamp | undefined {
@@ -109,6 +176,14 @@ export function parseReviewTimestamp(
   if (/^[0-9A-Za-z]{8}$/.test(normalized)) {
     try {
       return decodeCompactTimestamp(normalized);
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (HANGUL_TIMESTAMP_RE.test(normalized)) {
+    try {
+      return decodeHangulTimestamp(normalized);
     } catch {
       return undefined;
     }
@@ -196,6 +271,51 @@ function decodeUnsignedInteger(value: string): bigint {
     }
 
     out = out * base + BigInt(digit);
+  }
+
+  return out;
+}
+
+function encodeHangulUnsignedInteger(value: bigint): string {
+  if (value < 0n) {
+    throw new RangeError("Cannot encode a negative integer as unsigned.");
+  }
+
+  if (value === 0n) {
+    return String.fromCodePoint(HANGUL_TIMESTAMP_START);
+  }
+
+  const base = BigInt(HANGUL_TIMESTAMP_BASE);
+  let remaining = value;
+  let out = "";
+
+  while (remaining > 0n) {
+    const digit = Number(remaining % base);
+    out = String.fromCodePoint(HANGUL_TIMESTAMP_START + digit) + out;
+    remaining /= base;
+  }
+
+  return out;
+}
+
+function decodeHangulUnsignedInteger(value: string): bigint {
+  if (value.length === 0) {
+    throw new Error("Cannot decode an empty integer.");
+  }
+
+  const base = BigInt(HANGUL_TIMESTAMP_BASE);
+  let out = 0n;
+
+  for (const char of value) {
+    const codePoint = char.codePointAt(0);
+    if (
+      codePoint === undefined || codePoint < HANGUL_TIMESTAMP_START ||
+      codePoint > HANGUL_TIMESTAMP_END
+    ) {
+      throw new Error(`Invalid hangul timestamp character: ${char}.`);
+    }
+
+    out = out * base + BigInt(codePoint - HANGUL_TIMESTAMP_START);
   }
 
   return out;

@@ -13,10 +13,10 @@ For exact syntax examples and edge cases, read `references/review-syntax.md`.
 
 Use `dz-review` as a non-interactive inspection and timestamp helper:
 
-1. Before reading or editing annotated files, run `dz-review ts -i -I <file...>` to convert compact timestamps to readable ISO timestamps and add missing timestamps.
+1. Before reading or editing annotated files, run `dz-review ts -i -I <file...>` to convert timestamps to readable ISO timestamps and add missing timestamps; note each file's existing format from the command output.
 2. Inspect the active review state with `dz-review status [file...]`. Add conversation filters such as `--pending-conversations`, `--open-conversations`, or `--resolved-conversations` only when that narrower view helps.
-3. Use `dz-review now -I` or `dz-review now -S` when a manual timestamp is needed.
-4. Before handing edited annotated files back, run `dz-review ts -i -S <file...>` to restore compact timestamps.
+3. Use `dz-review now -I`, `dz-review now -S`, or `dz-review now -H` when a manual timestamp is needed.
+4. Before handing edited annotated files back, restore each file's reported original or dominant timestamp format: compact with `dz-review ts -i -S <file...>`, hangul with `dz-review ts -i -H <file...>`, or ISO with `dz-review ts -i -I <file...>`.
 
 Agents should edit the Markdown threads directly. Do not use the interactive `dz-review review` flow from an agent session.
 
@@ -45,7 +45,7 @@ Active discussions can use either syntax:
 {?? @agent I chose this wording because it matches the glossary. @me Can we make this less categorical? @agent Done. I softened the claim and kept the glossary term. ??}
 ```
 
-Use `@agent` for agent messages and `@me` for human messages. Create and normalize messages without a colon after the role marker. A marker may carry a timestamp, such as `@agent%2026-06-16T17:35:35+0200` or `@agent%1WzvP91W`. Treat timestamps as marker metadata, not message text, and preserve them when editing older messages.
+Use `@agent` for agent messages and `@me` for human messages. Create and normalize messages without a colon after the role marker. A marker may carry a timestamp, such as `@agent%2026-06-16T17:35:35+0200`, `@agent%1WzvP91W`, or `@agent%궨눭녇걸`. Treat timestamps as marker metadata, not message text, and preserve them when editing older messages.
 
 ## Custom Review Annotations
 

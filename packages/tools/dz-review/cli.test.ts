@@ -36,7 +36,12 @@ Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () =>
   assertStringIncludes(output, "DZ Review (`dz-review`):");
   assertStringIncludes(output, "dz-review status");
   assertStringIncludes(output, "dz-review ts -i -I");
+  assertStringIncludes(output, "existing format reported");
+  assertStringIncludes(output, "original/dominant timestamp format");
+  assertStringIncludes(output, "hangul `-H`");
   assertStringIncludes(output, "dz-review --help");
+  assertEquals(output.includes("Before converting timestamps"), false);
+  assertEquals(output.includes("restore compact timestamps"), false);
   assertEquals(output.includes("dz-review status --oneline"), false);
   assertEquals(output.includes("dz-review review"), false);
   assertEquals(output.includes("dz-review stats"), false);
@@ -477,6 +482,29 @@ Deno.test("dz-review timestamp --format-info reports mixed below threshold", asy
   }
 });
 
+Deno.test("dz-review timestamp --format-info reports dominant hangul format", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "{++%\uada8\ub22d\ub147\uac78|one++}",
+      "<!-- @agent%\uada8\ub22d\ub147\uac78 open -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      main(["timestamp", "--format-info", file])
+    );
+
+    assertStringIncludes(output.trim(), "file.md: hangul 100%");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review timestamp -i logs existing dominant format", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -510,6 +538,44 @@ Deno.test("dz-review now --compact - keeps legacy format alias", async () => {
   const output = await captureOutput(() => main(["now", "--compact"]));
 
   assertEquals(/^[A-Za-z0-9]{8}$/.test(output.trim()), true);
+});
+
+Deno.test("dz-review now --timestamp-format hangul - prints a hangul timestamp", async () => {
+  const output = await captureOutput(() =>
+    main([
+      "now",
+      "--timestamp-format",
+      "hangul",
+      "--date",
+      "2026-06-16T17:35:35+02:00",
+    ])
+  );
+
+  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(output.trim()), true);
+});
+
+Deno.test("dz-review now -H - prints a hangul timestamp", async () => {
+  const output = await captureOutput(() =>
+    main(["now", "-H", "--date", "2026-06-16T17:35:35+02:00"])
+  );
+
+  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(output.trim()), true);
+});
+
+Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "{++%1WzvP91W|one++}\n");
+
+  try {
+    const output = await captureOutput(() =>
+      main(["timestamp", "-H", "--stdout", file])
+    );
+
+    assertEquals(output, "{++%\uada8\ub22d\ub147\uac78|one++}\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });
 
 Deno.test("dz-review -C status --oneline - runs from another directory", async () => {

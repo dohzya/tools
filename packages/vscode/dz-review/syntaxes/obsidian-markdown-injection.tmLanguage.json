@@ -141,7 +141,7 @@
     },
     "criticmarkup-addition": {
       "name": "markup.inserted.critic.markdown",
-      "begin": "(\\{\\+\\+)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
+      "begin": "(\\{\\+\\+)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.addition.begin.critic.markdown"
@@ -165,7 +165,7 @@
     },
     "criticmarkup-deletion": {
       "name": "markup.deleted.critic.markdown",
-      "begin": "(\\{--)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
+      "begin": "(\\{--)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.deletion.begin.critic.markdown"
@@ -186,7 +186,7 @@
     },
     "criticmarkup-substitution": {
       "name": "meta.substitution.critic.markdown",
-      "begin": "(\\{~~)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?(.*?)(~>)",
+      "begin": "(\\{~~)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?(.*?)(~>)",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.substitution.begin.critic.markdown"
@@ -211,7 +211,7 @@
     },
     "criticmarkup-highlight": {
       "name": "markup.marked.critic.markdown",
-      "begin": "(\\{==)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
+      "begin": "(\\{==)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.highlight.begin.critic.markdown"
@@ -232,7 +232,7 @@
     },
     "criticmarkup-comment": {
       "name": "comment.block.critic.markdown",
-      "begin": "(\\{>>)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
+      "begin": "(\\{>>)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?",
       "beginCaptures": {
         "1": {
           "name": "punctuation.definition.comment.begin.critic.markdown"

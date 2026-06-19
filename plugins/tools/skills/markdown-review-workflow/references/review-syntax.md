@@ -34,10 +34,13 @@ Conversation markers may carry timestamps:
 <!--
 @agent%2026-06-16T17:35:35+0200 Please validate this claim.
 @me%1WzvP91W Confirmed.
+@agent%궨눭녇걸 Follow-up noted.
 -->
 ```
 
-The long form is ISO with an offset. The compact form is shorter and sortable; `1WzvP91W` represents `2026-06-16T17:35:35+02:00`. Treat timestamps as part of the role marker metadata. Do not include them in the message body when summarizing or changing the thread.
+The long form is ISO with an offset. Compact timestamps are shorter base62 values; `1WzvP91W` represents `2026-06-16T17:35:35+02:00`. Hangul timestamps are 4-character base2048 values in `U+AC00..U+B3FF`; `궨눭녇걸` also represents `2026-06-16T17:35:35+02:00`. Treat timestamps as part of the role marker metadata. Do not include them in the message body when summarizing or changing the thread.
+
+Agents may temporarily convert timestamps to ISO for readability with `dz-review ts -i -I <file...>`. Use the command's `existing format` output to restore each file's original or dominant format before handing work back.
 
 When adding `{??` next to an existing custom review annotation, do not insert a space:
 

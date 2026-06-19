@@ -29,6 +29,7 @@ import {
 } from "./review-core.ts";
 import {
   encodeCompactTimestamp,
+  encodeHangulTimestamp,
   encodeTimestamp,
   formatTimestampForDisplay,
   parseReviewTimestamp,
@@ -117,6 +118,7 @@ interface TimestampCliffyOptions {
   stdin?: boolean;
   compact?: boolean;
   short?: boolean;
+  hangul?: boolean;
   iso?: boolean;
   formatInfo?: boolean;
   timestampFormat?: string;
@@ -125,7 +127,9 @@ interface TimestampCliffyOptions {
 interface NowCliffyOptions {
   compact?: boolean;
   short?: boolean;
+  hangul?: boolean;
   iso?: boolean;
+  timestampFormat?: string;
   date?: string;
 }
 
@@ -182,6 +186,7 @@ interface LastReviewTimestamp {
 
 interface TimestampFormatStats {
   compact: number;
+  hangul: number;
   iso: number;
 }
 
@@ -201,7 +206,7 @@ const DEFAULT_CONTEXT: DisplayContext = { before: 2, after: 0 };
 const DOMINANT_TIMESTAMP_FORMAT_RATIO = 0.9;
 const STATUS_TEMPLATE_PLACEHOLDER = "%(status)";
 const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
-  .raw`[A-Za-z0-9]{8}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
+  .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
 const DISPLAY_CONVERSATION_TIMESTAMP_RE = new RegExp(
   String
     .raw`(@agent|@me|@)%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)`,
@@ -557,11 +562,12 @@ function createTimestampCommand() {
     .option("--stdin", "Read Markdown from stdin.")
     .option("--compact", "Use compact timestamps.")
     .option("-S, --short", "Use compact timestamps.")
+    .option("-H, --hangul", "Use 4-character Hangul timestamps.")
     .option("-I, --iso", "Use ISO timestamps.")
     .option("--format-info", "Print detected timestamp format information.")
     .option(
       "--timestamp-format <format:string>",
-      "Compatibility alias for short or iso.",
+      "Compatibility alias for short, hangul, or iso.",
     )
     .arguments("[files...:string]")
     .action(async (options: TimestampCliffyOptions, ...files: string[]) => {
@@ -574,7 +580,12 @@ function createNowCommand() {
     .description("Print a review timestamp for now or for --date")
     .option("--compact", "Use compact timestamps.")
     .option("-S, --short", "Use compact timestamps.")
+    .option("-H, --hangul", "Use 4-character Hangul timestamps.")
     .option("-I, --iso", "Use ISO timestamps.")
+    .option(
+      "--timestamp-format <format:string>",
+      "Compatibility alias for short, hangul, or iso.",
+    )
     .option("-d, --date <date:string>", "Timestamp the provided date.")
     .action(async (options: NowCliffyOptions) => {
       await runLegacyCommand(buildNowArgv(options));
@@ -667,6 +678,7 @@ function buildTimestampArgv(
   appendFlag(argv, options.stdin, "--stdin");
   appendFlag(argv, options.compact, "--compact");
   appendFlag(argv, options.short, "--short");
+  appendFlag(argv, options.hangul, "-H");
   appendFlag(argv, options.iso, "--iso");
   appendFlag(argv, options.formatInfo, "--format-info");
   appendOption(argv, "--timestamp-format", options.timestampFormat);
@@ -678,7 +690,9 @@ function buildNowArgv(options: NowCliffyOptions): string[] {
   const argv = ["now"];
   appendFlag(argv, options.compact, "--compact");
   appendFlag(argv, options.short, "--short");
+  appendFlag(argv, options.hangul, "-H");
   appendFlag(argv, options.iso, "--iso");
+  appendOption(argv, "--timestamp-format", options.timestampFormat);
   appendOption(argv, "--date", options.date);
   return argv;
 }
@@ -896,7 +910,7 @@ function parseArgs(argv: string[]): CliOptions {
     if (arg === "--timestamp-format") {
       const value = argv[index + 1];
       if (!value) {
-        throw new Error("--timestamp-format requires short or iso.");
+        throw new Error("--timestamp-format requires short, hangul, or iso.");
       }
       timestampFormat = parseTimestampFormat(value);
       index += 1;
@@ -912,6 +926,11 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === "-I" || arg === "--iso") {
       timestampFormat = "iso";
+      continue;
+    }
+
+    if (arg === "-H" || arg === "--hangul") {
+      timestampFormat = "hangul";
       continue;
     }
 
@@ -1694,7 +1713,7 @@ function writeTimestamps(
 }
 
 function collectTimestampFormatStats(text: string): TimestampFormatStats {
-  const stats: TimestampFormatStats = { compact: 0, iso: 0 };
+  const stats: TimestampFormatStats = { compact: 0, hangul: 0, iso: 0 };
 
   for (const match of text.matchAll(DISPLAY_CONVERSATION_TIMESTAMP_RE)) {
     incrementTimestampFormatStats(stats, match[2]);
@@ -1716,19 +1735,29 @@ function incrementTimestampFormatStats(
     return;
   }
 
+  if (/^[\uac00-\ub3ff]{4}$/u.test(value)) {
+    stats.hangul += 1;
+    return;
+  }
+
   stats.iso += 1;
 }
 
 function formatTimestampFormatStats(stats: TimestampFormatStats): string {
-  const total = stats.compact + stats.iso;
+  const total = stats.compact + stats.hangul + stats.iso;
   if (total === 0) {
     return "none";
   }
 
   const compactRatio = stats.compact / total;
+  const hangulRatio = stats.hangul / total;
   const isoRatio = stats.iso / total;
   if (compactRatio >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
     return formatDominantTimestampFormatStats("compact", stats.compact, total);
+  }
+
+  if (hangulRatio >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
+    return formatDominantTimestampFormatStats("hangul", stats.hangul, total);
   }
 
   if (isoRatio >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
@@ -1818,6 +1847,13 @@ function renderTimestampValue(
     return formatTimestampForDisplay(timestamp);
   }
 
+  if (format === "hangul") {
+    return encodeHangulTimestamp(
+      timestamp.unixSeconds,
+      timestamp.offsetMinutes,
+    );
+  }
+
   return encodeCompactTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes);
 }
 
@@ -1838,6 +1874,13 @@ function renderNowTimestamp(
       }
 
       return rendered;
+    }
+
+    if (format === "hangul") {
+      return encodeHangulTimestamp(
+        timestamp.unixSeconds,
+        timestamp.offsetMinutes,
+      );
     }
 
     return encodeCompactTimestamp(
@@ -2263,7 +2306,9 @@ function parseRequiredTimestamp(
 ): ReviewTimestamp {
   const timestamp = parseReviewTimestamp(value);
   if (!timestamp) {
-    throw new Error(`${option} expects an ISO or compact review timestamp.`);
+    throw new Error(
+      `${option} expects an ISO, compact, or hangul review timestamp.`,
+    );
   }
 
   return timestamp;
@@ -2278,7 +2323,11 @@ function parseTimestampFormat(value: string): TimestampFormat {
     return value;
   }
 
-  throw new Error("--timestamp-format expects short or iso.");
+  if (value === "hangul") {
+    return value;
+  }
+
+  throw new Error("--timestamp-format expects short, hangul, or iso.");
 }
 
 function parseColorMode(value: string): ColorMode {
@@ -3095,7 +3144,9 @@ Timestamp Options:
   -s, --stdout                  Write transformed output to stdout.
   --stdin                       Read Markdown from stdin.
   -S, --short                   Use compact timestamps.
+  -H, --hangul                  Use 4-character Hangul timestamps.
   -I, --iso                     Use ISO timestamps.
+  --timestamp-format <format>   Use short, hangul, or iso timestamps.
   --format-info                 Print detected timestamp format information.
   -d, --date <date>             Timestamp the provided date for now.
 

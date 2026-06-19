@@ -15,6 +15,9 @@ function readPackage() {
   );
 }
 
+const GRAMMAR_TIMESTAMP_PATTERN =
+  "[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})";
+
 test("global list fallback starts HTML and custom conversations", () => {
   const grammar = readGrammar("md-review-list-injection.tmLanguage.json");
 
@@ -25,11 +28,11 @@ test("global list fallback starts HTML and custom conversations", () => {
   ]);
   assert.equal(
     grammar.repository["md-review-conversation"].begin,
-    "<!--(?=(?:(?!-->)[\\s\\S])*\\s*@(agent|me)?(?:%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$))",
+    `<!--(?=(?:(?!-->)[\\s\\S])*\\s*@(agent|me)?(?:%(?:${GRAMMAR_TIMESTAMP_PATTERN}))?(?=\\s|$))`,
   );
   assert.equal(
     grammar.repository["md-review-custom-conversation"].begin,
-    "\\{\\?\\?(?=(?:(?!\\?\\?\\})[\\s\\S])*\\s*@(agent|me)?(?:%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$))",
+    `\\{\\?\\?(?=(?:(?!\\?\\?\\})[\\s\\S])*\\s*@(agent|me)?(?:%(?:${GRAMMAR_TIMESTAMP_PATTERN}))?(?=\\s|$))`,
   );
   assert.equal(
     grammar.repository["md-review-custom-conversation"].end,
@@ -67,9 +70,10 @@ test("all conversation grammars include inline role scopes", () => {
       );
     }
 
-    assert.match(
-      grammar.repository["md-review-agent-inline"].match,
-      /%\(\?:\[A-Za-z0-9\]\{8\}/,
+    assert(
+      grammar.repository["md-review-agent-inline"].match.includes(
+        `%(?:${GRAMMAR_TIMESTAMP_PATTERN})`,
+      ),
       `${filename} agent role does not support timestamp metadata`,
     );
     assert.equal(
@@ -162,7 +166,7 @@ test("Obsidian Markdown grammar includes Obsidian and custom review annotation s
   );
   assert.equal(
     grammar.repository["criticmarkup-substitution"].begin,
-    "(\\{~~)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2}))\\|)?(.*?)(~>)",
+    `(\\{~~)(%(?:${GRAMMAR_TIMESTAMP_PATTERN})\\|)?(.*?)(~>)`,
   );
   assert.equal(grammar.repository["criticmarkup-substitution"].end, "~~\\}");
 });

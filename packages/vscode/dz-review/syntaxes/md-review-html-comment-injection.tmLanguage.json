@@ -25,7 +25,7 @@
   "repository": {
     "md-review-agent-inline": {
       "name": "comment.line.md-review.agent.markdown",
-      "match": "(@agent)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$)",
+      "match": "(@agent)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$)",
       "captures": {
         "1": {
           "name": "storage.type.role.md-review.agent.markdown"
@@ -37,7 +37,7 @@
     },
     "md-review-human-inline": {
       "name": "comment.line.md-review.human.markdown",
-      "match": "(@me)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$)",
+      "match": "(@me)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$)",
       "captures": {
         "1": {
           "name": "storage.type.role.md-review.human.markdown"
@@ -49,7 +49,7 @@
     },
     "md-review-human-quick-inline": {
       "name": "comment.line.md-review.human.quick.markdown",
-      "match": "(@)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s(?!agent\\b|me\\b)|$)",
+      "match": "(@)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s(?!agent\\b|me\\b)|$)",
       "captures": {
         "2": {
           "name": "meta.timestamp.review.markdown"
@@ -58,7 +58,7 @@
     },
     "md-review-agent-line": {
       "name": "comment.line.md-review.agent.markdown",
-      "match": "^\\s*(@agent)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$).*$",
+      "match": "^\\s*(@agent)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$).*$",
       "captures": {
         "1": {
           "name": "storage.type.role.md-review.agent.markdown"
@@ -70,7 +70,7 @@
     },
     "md-review-human-line": {
       "name": "comment.line.md-review.human.markdown",
-      "match": "^\\s*(@me)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$).*$",
+      "match": "^\\s*(@me)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s|$).*$",
       "captures": {
         "1": {
           "name": "storage.type.role.md-review.human.markdown"
@@ -82,7 +82,7 @@
     },
     "md-review-human-quick-line": {
       "name": "comment.line.md-review.human.quick.markdown",
-      "match": "^\\s*(@)(%(?:[A-Za-z0-9]{8}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s(?!agent\\b|me\\b)|$).*$",
+      "match": "^\\s*(@)(%(?:[A-Za-z0-9]{8}|[가-돿]{4}|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:Z|[+-]\\d{2}:?\\d{2})))?(?=\\s(?!agent\\b|me\\b)|$).*$",
       "captures": {
         "2": {
           "name": "meta.timestamp.review.markdown"

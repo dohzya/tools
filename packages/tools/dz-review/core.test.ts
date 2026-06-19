@@ -12,7 +12,9 @@ import {
 } from "./review-core.ts";
 import {
   decodeCompactTimestamp,
+  decodeHangulTimestamp,
   encodeCompactTimestamp,
+  encodeHangulTimestamp,
   formatTimestampForDisplay,
   parseReviewTimestamp,
 } from "./timestamp.ts";
@@ -115,6 +117,25 @@ Deno.test("dz-review core - encodes and decodes compact timestamps", () => {
   );
   assertEquals(
     formatTimestampForDisplay(parseReviewTimestamp("%1WzvP91W")),
+    "2026-06-16T17:35:35+02:00",
+  );
+});
+
+Deno.test("dz-review core - encodes and decodes hangul timestamps", () => {
+  const instant = new Date("2026-06-16T17:35:35+02:00");
+  const timestamp = encodeHangulTimestamp(instant, 120);
+
+  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(timestamp), true);
+  assertEquals(decodeHangulTimestamp(timestamp), {
+    offsetMinutes: 120,
+    unixSeconds: 1781624135n,
+  });
+  assertEquals(
+    formatTimestampForDisplay(parseReviewTimestamp(timestamp)),
+    "2026-06-16T17:35:35+02:00",
+  );
+  assertEquals(
+    formatTimestampForDisplay(parseReviewTimestamp(`%${timestamp}`)),
     "2026-06-16T17:35:35+02:00",
   );
 });

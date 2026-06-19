@@ -407,6 +407,33 @@ test("review panel webview lists review items from the active Markdown editor", 
   );
 });
 
+test("review panel webview lists items with hangul timestamps", async () => {
+  const harness = createHarness();
+  harness.createEditor(
+    [
+      "# Draft",
+      "<!-- @agent%\uada8\ub22d\ub147\uac78 open issue -->",
+      "{++%\uada8\ub22d\ub147\uac78|new text++}",
+      "{++%\uada8\ub22f\uaeff\uac78|foo++}",
+    ].join("\n"),
+    { line: 0, character: 0 },
+  );
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const view = harness.createWebviewView();
+  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+
+  assert.match(view.webview.html, /Open conversation/);
+  assert.match(
+    view.webview.html,
+    /Agent · <span class="message-timestamp" title="2026-06-16T17:35:35\+02:00">2026-06-16 17:35:35<\/span>/,
+  );
+  assert.match(view.webview.html, /new text/);
+  assert.match(view.webview.html, /foo/);
+  assert.doesNotMatch(view.webview.html, /%\uada8\ub22d\ub147\uac78\|new text/);
+  assert.doesNotMatch(view.webview.html, /%\uada8\ub22f\uaeff\uac78\|foo/);
+});
+
 test("review panel webview supports review status filters", async () => {
   const harness = createHarness();
   const editor = harness.createEditor(
@@ -753,6 +780,38 @@ test("creates review messages with compact timestamps when configured", async ()
     editor.document.text,
     /^foo \{==bar==\}<!--\n@me%[0-9A-Za-z]{8} \n--> baz$/,
   );
+});
+
+test("creates review messages with hangul timestamps when configured", async () => {
+  const harness = createHarness();
+  harness.setTimestampFormat("hangul");
+  const editor = harness.createEditor(
+    "foo bar baz",
+    { line: 0, character: 4 },
+    { line: 0, character: 7 },
+  );
+
+  await harness.api.createReviewConversation(editor, "");
+
+  assert.match(
+    editor.document.text,
+    /^foo \{==bar==\}<!--\n@me%[\uac00-\ub3ff]{4} \n--> baz$/,
+  );
+});
+
+test("shows readable hover text for hangul timestamps", () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    "<!-- @agent%\uada8\ub22d\ub147\uac78 note -->",
+    { line: 0, character: 13 },
+  );
+
+  const hover = harness.api.provideTimestampHover(editor.document, {
+    line: 0,
+    character: 16,
+  });
+
+  assert.equal(hover.contents.value, "2026-06-16T17:35:35+02:00");
 });
 
 test("shows readable hover text for compact timestamps", () => {

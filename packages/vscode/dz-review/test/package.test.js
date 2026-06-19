@@ -162,7 +162,7 @@ test("timestamp format configuration can disable timestamp insertion", () => {
   const setting =
     pkg.contributes.configuration.properties["dzMdReview.timestampFormat"];
 
-  assert.deepEqual(setting.enum, ["compact", "iso", "none"]);
+  assert.deepEqual(setting.enum, ["compact", "hangul", "iso", "none"]);
   assert.equal(setting.default, "compact");
 });
 

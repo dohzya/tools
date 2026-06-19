@@ -75,7 +75,9 @@ tasks:
     dir: packages/vscode/dz-review
     deps: [vscode:dz-review:vsix]
     cmds:
-      - code --install-extension dz-review-vscode-0.0.1.vsix {{.CLI_ARGS}}
+      - cmd: code --uninstall-extension local.dz-md-review-syntax
+        ignore_error: true
+      - code --install-extension dz-review-vscode-0.0.1.vsix --force {{.CLI_ARGS}}
   compat:install:
     desc: "Install npm deps for Node/Bun compat tests"
     dir: packages/tools

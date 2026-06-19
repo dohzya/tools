@@ -60,7 +60,7 @@
     "test": "npm run compile && node --test test/*.test.js",
     "check": "node -e \"const fs=require('fs'); JSON.parse(fs.readFileSync('package.json','utf8')); for (const file of fs.readdirSync('syntaxes').filter(f => f.endsWith('.json'))) JSON.parse(fs.readFileSync('syntaxes/' + file,'utf8'));\" && node --check out/extension.js",
     "vsix": "npm exec --yes @vscode/vsce -- package",
-    "install:local": "npm run vsix && code --install-extension dz-review-vscode-0.0.1.vsix"
+    "install:local": "npm run vsix && code --uninstall-extension local.dz-md-review-syntax || true && code --install-extension dz-review-vscode-0.0.1.vsix --force"
   },
   "devDependencies": {
     "@types/vscode": "^1.80.0",
@@ -306,6 +306,7 @@
           "type": "string",
           "enum": [
             "compact",
+            "hangul",
             "iso",
             "none"
           ],
