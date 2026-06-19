@@ -353,6 +353,40 @@ Deno.test("dz-review status --oneline - uses Git diff when no files are provided
   }
 });
 
+Deno.test("dz-review status --oneline - includes Git-ignored paths re-included by .dz-review-ignore", async () => {
+  const dir = await Deno.makeTempDir();
+  const docsDir = join(dir, "docs");
+  const file = join(docsDir, "review.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(join(dir, "tracked.md"), "Intro\n");
+    await runGit(dir, ["add", "tracked.md"]);
+    await runGit(dir, ["commit", "-m", "initial"]);
+
+    await Deno.writeTextFile(join(dir, ".git", "info", "exclude"), "docs/\n");
+    await Deno.writeTextFile(join(dir, ".dz-review-ignore"), "!docs/\n");
+    await Deno.mkdir(docsDir);
+    await Deno.writeTextFile(file, "<!-- @agent open -->\n");
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--oneline"]))
+    );
+
+    assertEquals(
+      output.trim(),
+      "1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review diff - lists only review items on added lines", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");

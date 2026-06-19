@@ -107,6 +107,8 @@ Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`,
 
 The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--resolved`, `--conversation`, `--conversations`, `--open-conversations`, `--wip-conversations`, `--handled-conversations`, `--resolved-conversations`, `--pending-conversations`, `--ignore-closed-conversations`, `--since`, `--color`, and `--no-color`. `review`, `status`, and `list` also accept `--git` and `--diff` to restrict output to lines added in the current Git diff.
 
+The CLI reads `.dz-review-ignore` from the current directory. Matching paths are skipped in all modes, and negated patterns such as `!docs/` can re-include paths that are otherwise ignored by Git.
+
 ## Agent Workflow
 
 Agents should use the `markdown-review-workflow` skill when editing Markdown with active review blocks. The durable rules are:

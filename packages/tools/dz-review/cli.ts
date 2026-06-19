@@ -149,6 +149,8 @@ interface DisplayContext {
 
 interface IgnoreRule {
   ignored: boolean;
+  pattern: string;
+  directoryOnly: boolean;
   regex: RegExp;
 }
 
@@ -276,7 +278,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       return 0;
     }
 
-    const { files } = resolveFilesAndDiff(options);
+    const { files } = resolveFilesAndDiff(options, ignoreRules);
     writeTimestamps(
       filterIgnoredFiles(files, ignoreRules),
       options.timestampFormat,
@@ -296,7 +298,10 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
   }
 
   if (options.mode === "status") {
-    const { files, addedLinesByFile } = resolveFilesAndDiff(options);
+    const { files, addedLinesByFile } = resolveFilesAndDiff(
+      options,
+      ignoreRules,
+    );
     writeStatus(
       filterIgnoredFiles(files, ignoreRules),
       addedLinesByFile,
@@ -310,7 +315,10 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
   }
 
   if (options.mode === "list" || options.mode === "diff") {
-    const { files, addedLinesByFile } = resolveFilesAndDiff(options);
+    const { files, addedLinesByFile } = resolveFilesAndDiff(
+      options,
+      ignoreRules,
+    );
     writeReviewItems(
       filterIgnoredFiles(files, ignoreRules),
       addedLinesByFile,
@@ -335,7 +343,10 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
     return 0;
   }
 
-  const { files, addedLinesByFile } = resolveFilesAndDiff(options);
+  const { files, addedLinesByFile } = resolveFilesAndDiff(
+    options,
+    ignoreRules,
+  );
 
   await processFiles(
     filterIgnoredFiles(files, ignoreRules),
@@ -2393,6 +2404,8 @@ function compileIgnoreRule(line: string): IgnoreRule | undefined {
 
   return {
     ignored,
+    pattern,
+    directoryOnly,
     regex: new RegExp(source),
   };
 }
@@ -2457,6 +2470,93 @@ function isIgnoredByReview(file: string, ignoreRules: IgnoreRule[]): boolean {
   }
 
   return ignored;
+}
+
+function findFilesIncludedByReviewIgnore(ignoreRules: IgnoreRule[]): string[] {
+  const files = new Set<string>();
+
+  for (const rule of ignoreRules) {
+    if (rule.ignored) {
+      continue;
+    }
+
+    collectFilesMatchingReviewIgnoreRule(
+      getReviewIgnoreRuleScanRoot(rule),
+      rule,
+      files,
+    );
+  }
+
+  return [...files].sort();
+}
+
+function collectFilesMatchingReviewIgnoreRule(
+  file: string,
+  rule: IgnoreRule,
+  files: Set<string>,
+): void {
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(file);
+  } catch {
+    return;
+  }
+
+  if (stat.isSymbolicLink()) {
+    return;
+  }
+
+  if (stat.isFile()) {
+    const normalized = normalizePath(file);
+    if (rule.regex.test(normalized)) {
+      files.add(normalized);
+    }
+    return;
+  }
+
+  if (!stat.isDirectory() || path.basename(file) === ".git") {
+    return;
+  }
+
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(file, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (
+    const entry of entries.sort((left, right) =>
+      left.name.localeCompare(right.name)
+    )
+  ) {
+    collectFilesMatchingReviewIgnoreRule(
+      path.join(file, entry.name),
+      rule,
+      files,
+    );
+  }
+}
+
+function getReviewIgnoreRuleScanRoot(rule: IgnoreRule): string {
+  if (!hasGlob(rule.pattern) && !rule.directoryOnly) {
+    return rule.pattern;
+  }
+
+  const segments = rule.pattern.split("/");
+  const staticSegments: string[] = [];
+  for (const segment of segments) {
+    if (hasGlob(segment)) {
+      break;
+    }
+    staticSegments.push(segment);
+  }
+
+  return staticSegments.length > 0 ? staticSegments.join("/") : ".";
+}
+
+function hasGlob(pattern: string): boolean {
+  return /[*?\[]/.test(pattern);
 }
 
 interface ConversationReviewItem extends Conversation {
@@ -2547,7 +2647,10 @@ function findNextPendingIndex(
   return undefined;
 }
 
-function resolveFilesAndDiff(options: CliOptions): {
+function resolveFilesAndDiff(
+  options: CliOptions,
+  ignoreRules: IgnoreRule[],
+): {
   addedLinesByFile: Map<string, Set<number>> | undefined;
   files: string[];
 } {
@@ -2560,13 +2663,36 @@ function resolveFilesAndDiff(options: CliOptions): {
 
   const diff = getWorktreeDiff(options.files);
   const addedLinesByFile = getAddedLinesByFile(diff);
+  const files = options.files.length > 0
+    ? options.files
+    : [...addedLinesByFile.keys()];
+
+  if (options.files.length === 0) {
+    for (const file of findFilesIncludedByReviewIgnore(ignoreRules)) {
+      const normalized = normalizePath(file);
+      if (addedLinesByFile.has(normalized)) {
+        continue;
+      }
+
+      files.push(file);
+      addedLinesByFile.set(normalized, collectAllLineNumbers(file));
+    }
+  }
 
   return {
     addedLinesByFile,
-    files: options.files.length > 0
-      ? options.files
-      : [...addedLinesByFile.keys()],
+    files,
   };
+}
+
+function collectAllLineNumbers(file: string): Set<number> {
+  const text = fs.readFileSync(file, "utf8");
+  const lines = new Set<number>();
+  const count = text.split(/\r\n|\r|\n/).length;
+  for (let line = 1; line <= count; line += 1) {
+    lines.add(line);
+  }
+  return lines;
 }
 
 function summarizeReviewItem(item: ReviewItem): string {
