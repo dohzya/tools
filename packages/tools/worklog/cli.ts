@@ -765,6 +765,10 @@ async function readFile(path: string): Promise<string> {
 
 /** Overridable stdin stream — tests inject a custom ReadableStream here. */
 let _stdinReadable: ReadableStream<Uint8Array> | undefined;
+type ClipboardReader = () => Promise<string>;
+type ClipboardCommand = { command: string; args: string[] };
+
+let _clipboardReader: ClipboardReader | undefined;
 
 /**
  * Set the stdin stream used by resolveDescSrc("-").
@@ -774,6 +778,14 @@ export function _setStdinReadable(
   stream: ReadableStream<Uint8Array> | undefined,
 ): void {
   _stdinReadable = stream;
+}
+
+/**
+ * Set the clipboard reader used by --desc-from-clipboard.
+ * Pass undefined to restore OS-specific clipboard command detection.
+ */
+export function _setClipboardReader(reader: ClipboardReader | undefined): void {
+  _clipboardReader = reader;
 }
 
 async function readStdinFully(): Promise<string> {
@@ -790,6 +802,67 @@ async function readStdinFully(): Promise<string> {
     offset += chunk.length;
   }
   return decoder.decode(total);
+}
+
+function clipboardCommandsForOs(os: string): ClipboardCommand[] {
+  switch (os) {
+    case "darwin":
+      return [{ command: "pbpaste", args: [] }];
+    case "linux":
+      return [
+        { command: "wl-paste", args: ["--no-newline"] },
+        { command: "xclip", args: ["-selection", "clipboard", "-o"] },
+        { command: "xsel", args: ["--clipboard", "--output"] },
+      ];
+    case "windows":
+      return [{
+        command: "powershell.exe",
+        args: ["-NoProfile", "-Command", "Get-Clipboard -Raw"],
+      }];
+    default:
+      return [];
+  }
+}
+
+async function readClipboardFromCommand(
+  candidate: ClipboardCommand,
+): Promise<string | undefined> {
+  try {
+    const process = new Deno.Command(candidate.command, {
+      args: candidate.args,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const output = await process.output();
+    if (output.success) {
+      return new TextDecoder().decode(output.stdout);
+    }
+  } catch {
+    // Try the next platform candidate below.
+  }
+  return undefined;
+}
+
+async function readClipboard(): Promise<string> {
+  if (_clipboardReader) {
+    return await _clipboardReader();
+  }
+
+  const candidates = clipboardCommandsForOs(Deno.build.os);
+  for (const candidate of candidates) {
+    const content = await readClipboardFromCommand(candidate);
+    if (content !== undefined) {
+      return content;
+    }
+  }
+
+  const tried = candidates.length === 0
+    ? "no clipboard command configured for this platform"
+    : candidates.map((candidate) => candidate.command).join(", ");
+  throw new WtError(
+    "io_error",
+    `Could not read clipboard. Tried: ${tried}`,
+  );
 }
 
 /**
@@ -4975,6 +5048,10 @@ const createCmd = new Command()
     "--desc-src <source:string>",
     'Read description from file path, or "-" for stdin',
   )
+  .option(
+    "-P, --desc-from-clipboard",
+    "Read description from the system clipboard",
+  )
   .option("--claude", "Launch Claude after creation with WORKLOG_TASK_ID set")
   .option("--codex", "Launch Codex after creation with WORKLOG_TASK_ID set")
   .option("--agent", "Auto-detect and launch AI agent after creation")
@@ -4989,17 +5066,29 @@ const createCmd = new Command()
       // Validate agent flags early (before creating the task)
       const agentType = resolveAgentFlag(options);
 
-      // Validate: can't have both positional desc and --desc-src
-      if (desc !== undefined && options.descSrc !== undefined) {
+      // Validate: can't mix inline descriptions with source-backed descriptions.
+      if (
+        desc !== undefined &&
+        (options.descSrc !== undefined || options.descFromClipboard)
+      ) {
         throw new WtError(
           "invalid_args",
-          "Cannot specify both positional desc and --desc-src",
+          "Cannot specify both positional desc and description source flags",
         );
       }
 
-      // Resolve --desc-src if provided
+      if (options.descSrc !== undefined && options.descFromClipboard) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --desc-src and --desc-from-clipboard",
+        );
+      }
+
+      // Resolve source-backed descriptions if provided.
       if (options.descSrc !== undefined) {
         desc = await resolveDescSrc(options.descSrc);
+      } else if (options.descFromClipboard) {
+        desc = await readClipboard();
       }
 
       // Validate: can't have both --ready and --started
@@ -5837,6 +5926,10 @@ const updateCmd = new Command()
     "--desc-src <source:string>",
     'Read description from file path, or "-" for stdin',
   )
+  .option(
+    "-P, --desc-from-clipboard",
+    "Read description from the system clipboard",
+  )
   .action(async (options, taskId?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -5845,18 +5938,30 @@ const updateCmd = new Command()
         asGlobal(options).worklogDir,
       );
 
-      // Validate: can't have both --desc and --desc-src
-      if (options.desc !== undefined && options.descSrc !== undefined) {
+      // Validate: can't mix inline descriptions with source-backed descriptions.
+      if (
+        options.desc !== undefined &&
+        (options.descSrc !== undefined || options.descFromClipboard)
+      ) {
         throw new WtError(
           "invalid_args",
-          "Cannot specify both --desc and --desc-src",
+          "Cannot specify both --desc and description source flags",
         );
       }
 
-      // Resolve --desc-src if provided
+      if (options.descSrc !== undefined && options.descFromClipboard) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --desc-src and --desc-from-clipboard",
+        );
+      }
+
+      // Resolve source-backed descriptions if provided.
       let resolvedDesc = options.desc;
       if (options.descSrc !== undefined) {
         resolvedDesc = await resolveDescSrc(options.descSrc);
+      } else if (options.descFromClipboard) {
+        resolvedDesc = await readClipboard();
       }
 
       const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(

@@ -44,7 +44,12 @@ Deno.test("WtError - handles different error codes", () => {
 });
 
 // Integration tests for wl trace with timestamp
-import { _canSelectTaskInteractively, _setStdinReadable, main } from "./cli.ts";
+import {
+  _canSelectTaskInteractively,
+  _setClipboardReader,
+  _setStdinReadable,
+  main,
+} from "./cli.ts";
 
 Deno.test("worklog - shows help when no arguments provided", async () => {
   const output = await captureOutput(() => main([]));
@@ -6750,6 +6755,62 @@ Deno.test("create --desc-src - reads description from stdin", async () => {
   }
 });
 
+Deno.test("create --desc-from-clipboard - reads description from clipboard", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    _setClipboardReader(() => Promise.resolve("Description from clipboard"));
+    try {
+      await main(["create", "Clipboard task", "--desc-from-clipboard"]);
+    } finally {
+      _setClipboardReader(undefined);
+    }
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, "Description from clipboard");
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create -P - reads description from clipboard", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    _setClipboardReader(() => Promise.resolve("Description from -P"));
+    try {
+      await main(["create", "Clipboard alias task", "-P"]);
+    } finally {
+      _setClipboardReader(undefined);
+    }
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, "Description from -P");
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create <name> <desc> --desc-src - errors on conflict", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -6793,6 +6854,92 @@ Deno.test("create <name> <desc> --desc-src - errors on conflict", async () => {
   }
 });
 
+Deno.test("create <name> <desc> --desc-from-clipboard - errors on conflict", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+
+    _setClipboardReader(() => Promise.resolve("Clipboard desc"));
+    try {
+      await main([
+        "create",
+        "Task",
+        "Positional desc",
+        "--desc-from-clipboard",
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Cannot specify both");
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create --desc-src --desc-from-clipboard - errors on conflict", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+
+    const descFile = `${tempDir}/desc.txt`;
+    await Deno.writeTextFile(descFile, "File desc");
+
+    _setClipboardReader(() => Promise.resolve("Clipboard desc"));
+    try {
+      await main([
+        "create",
+        "Task",
+        "--desc-src",
+        descFile,
+        "--desc-from-clipboard",
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Cannot specify both");
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create --desc-src nonexistent - errors on missing file", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -6827,6 +6974,62 @@ Deno.test("create --desc-src nonexistent - errors on missing file", async () => 
   }
 });
 
+Deno.test("update --desc-from-clipboard - updates description from clipboard", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "Task to update"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    _setClipboardReader(() => Promise.resolve("Updated desc from clipboard"));
+    try {
+      await main(["update", taskId, "--desc-from-clipboard"]);
+    } finally {
+      _setClipboardReader(undefined);
+    }
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    assert(taskContent.match(/desc:.*Updated desc from clipboard/));
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update -P - updates description from clipboard", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "Task to update"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    _setClipboardReader(() => Promise.resolve("Updated desc from -P"));
+    try {
+      await main(["update", taskId, "-P"]);
+    } finally {
+      _setClipboardReader(undefined);
+    }
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    assert(taskContent.match(/desc:.*Updated desc from -P/));
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("update --desc-src <file> - updates description from file", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -6847,6 +7050,102 @@ Deno.test("update --desc-src <file> - updates description from file", async () =
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     assert(taskContent.match(/desc:.*Updated desc from file/));
   } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update --desc-src --desc-from-clipboard - errors on conflict", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+    await main(["create", "Task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+    const descFile = `${tempDir}/desc.txt`;
+    await Deno.writeTextFile(descFile, "File desc");
+
+    _setClipboardReader(() => Promise.resolve("Clipboard desc"));
+    try {
+      await main([
+        "update",
+        taskId,
+        "--desc-src",
+        descFile,
+        "--desc-from-clipboard",
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Cannot specify both");
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update --desc --desc-from-clipboard - errors on conflict", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+    await main(["create", "Task"]);
+
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+
+    _setClipboardReader(() => Promise.resolve("Clipboard desc"));
+    try {
+      await main([
+        "update",
+        taskId,
+        "--desc",
+        "Inline desc",
+        "--desc-from-clipboard",
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Cannot specify both");
+  } finally {
+    _setClipboardReader(undefined);
+    Deno.exit = originalExit;
+    console.error = originalError;
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
   }
