@@ -305,7 +305,7 @@ const DISPLAY_ANNOTATION_TIMESTAMP_RE = new RegExp(
   String.raw`(\{(?:\+\+|--|==|>>|~~))%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})\|`,
   "g",
 );
-const CLI_VERSION = "0.1.0";
+const CLI_VERSION = "0.2.0";
 let activeColorMode: ColorMode | undefined;
 
 const AgentLastMessageSchema = z.object({

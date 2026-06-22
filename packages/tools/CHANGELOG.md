@@ -11,6 +11,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
 - **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
 
+## [dz-review-v0.2.0] — 2026-06-22
+
+### Added
+
+- **dz-review:** Review items now have stable base62 IDs with shortest unique display prefixes across CLI outputs and the VS Code review panel.
+- **dz-review:** `dz-review agent start`, `agent status`, and `agent done` provide an agent-oriented workflow with local session snapshots, inbox/handoff summaries, timestamp restoration, and guardrail checks.
+- **dz-review:** Status output reports each annotated file's detected timestamp format, and timestamp normalization now supports the Hangul-style review timestamp format.
+
+### Changed
+
+- **dz-review:** `list` and `diff` can include review context with `-c/--context`, keeping source timestamps in the raw context while showing ISO timestamps in the clarified view.
+- **dz-review:** Agent instructions and the Markdown review workflow skill now point agents at the new `agent` workflow instead of direct timestamp-conversion commands.
+- **vscode:** DZ Review extension packaging now bundles the shared review-id logic and keeps the local VSIX install task incremental.
+
+### Fixed
+
+- **dz-review:** File discovery now honors negated ignore rules, so explicitly unignored Markdown files are scanned correctly.
+- **dz-review:** Clarified context rendering no longer rewrites the source timestamp format inside the raw context shown for an item.
+
 ## [dz-review-v0.1.0] — 2026-06-18
 
 ### Added
