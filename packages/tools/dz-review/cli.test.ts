@@ -220,6 +220,8 @@ Deno.test("dz-review list - lists review items", async () => {
     const output = await captureOutput(() => main(["list", file]));
 
     assertStringIncludes(output, `${file}:1`);
+    assertEquals(/addition [0-9A-Za-z]{6} .*file\.md:1-1/.test(output), true);
+    assertEquals(output.includes("rvw_"), false);
     assertStringIncludes(output, "addition");
     assertStringIncludes(output, "open conversation");
   } finally {
@@ -286,6 +288,8 @@ Deno.test("dz-review review --list --diff - keeps legacy diff listing flags", as
     );
 
     assertStringIncludes(output, "file.md:2");
+    assertEquals(/addition [0-9A-Za-z]{6} file\.md:2-2/.test(output), true);
+    assertEquals(output.includes("rvw_"), false);
     assertStringIncludes(output, "addition");
   } finally {
     await Deno.remove(dir, { recursive: true });

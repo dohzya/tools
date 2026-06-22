@@ -36,6 +36,11 @@ import {
   type ReviewTimestamp,
   type TimestampFormat,
 } from "./timestamp.ts";
+import {
+  assignStableReviewItemIds,
+  getShortStableReviewItemId,
+  STABLE_REVIEW_ID_PREFIX,
+} from "./stable-review-id.ts";
 
 interface CliOptions {
   context: DisplayContext;
@@ -175,6 +180,7 @@ type ProcessFileResult = "continue" | "quit";
 type ConversationFilter = "all" | ConversationStatus | "pending";
 interface LocatedReviewItem {
   file: string;
+  id: string;
   item: ReviewItem;
   text: string;
 }
@@ -1463,40 +1469,32 @@ function listReviewItems(
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
 ): void {
-  let count = 0;
+  const items = collectLocatedReviewItems(
+    files,
+    addedLinesByFile,
+    conversationOnly,
+    conversationFilter,
+    since,
+  );
 
-  for (const file of files) {
-    const lines = addedLinesByFile?.get(normalizePath(file));
-    if (addedLinesByFile && !lines) {
-      continue;
-    }
-
-    const text = fs.readFileSync(file, "utf8");
-    for (
-      const item of collectReviewItems(
-        text,
-        conversationOnly,
-        conversationFilter,
-      )
-    ) {
-      if (!reviewItemMatchesSince(item, since)) {
-        continue;
-      }
-
-      if (lines && !reviewItemOverlapsLines(item, lines)) {
-        continue;
-      }
-
-      count += 1;
-      process.stdout.write(
-        formatReviewItemHeader(file, count, undefined, item),
-      );
-      process.stdout.write(`${summarizeReviewItem(item)}\n`);
-    }
+  if (items.length === 0) {
+    process.stdout.write("No review annotations found.\n");
+    return;
   }
 
-  if (count === 0) {
-    process.stdout.write("No review annotations found.\n");
+  const allIds = items.map((item) => item.id);
+  for (let index = 0; index < items.length; index += 1) {
+    const { file, id, item } = items[index];
+    process.stdout.write(
+      formatReviewItemHeader(
+        file,
+        index + 1,
+        undefined,
+        item,
+        formatStableReviewItemIdForDisplay(id, allIds),
+      ),
+    );
+    process.stdout.write(`${summarizeReviewItem(item)}\n`);
   }
 }
 
@@ -1590,9 +1588,18 @@ function writeReviewItems(
     return;
   }
 
+  const allIds = items.map((item) => item.id);
   for (let index = 0; index < items.length; index += 1) {
-    const { file, item, text } = items[index];
-    showReviewItem(file, index + 1, items.length, item, text, context);
+    const { file, id, item, text } = items[index];
+    showReviewItem(
+      file,
+      index + 1,
+      items.length,
+      item,
+      text,
+      context,
+      formatStableReviewItemIdForDisplay(id, allIds),
+    );
   }
 }
 
@@ -1612,13 +1619,15 @@ function collectLocatedReviewItems(
     }
 
     const text = fs.readFileSync(file, "utf8");
-    for (
-      const item of collectReviewItems(
-        text,
-        conversationOnly,
-        conversationFilter,
-      )
-    ) {
+    const itemsWithIds = assignStableReviewItemIds(
+      normalizePath(file),
+      collectReviewItems(text, conversationOnly, "all"),
+    );
+    for (const { id, item } of itemsWithIds) {
+      if (!reviewItemMatchesConversationFilter(item, conversationFilter)) {
+        continue;
+      }
+
       if (!reviewItemMatchesSince(item, since)) {
         continue;
       }
@@ -1627,11 +1636,20 @@ function collectLocatedReviewItems(
         continue;
       }
 
-      locatedItems.push({ file, item, text });
+      locatedItems.push({ file, id, item, text });
     }
   }
 
   return locatedItems;
+}
+
+function formatStableReviewItemIdForDisplay(
+  id: string,
+  allIds: readonly string[],
+): string {
+  return id.startsWith(STABLE_REVIEW_ID_PREFIX)
+    ? getShortStableReviewItemId(id, allIds)
+    : id;
 }
 
 function writeStdinTimestamps(format: TimestampFormat): void {
@@ -2375,8 +2393,9 @@ function showReviewItem(
   item: ReviewItem,
   text: string,
   context: DisplayContext,
+  id?: string,
 ): void {
-  process.stdout.write(formatReviewItemHeader(file, index, total, item));
+  process.stdout.write(formatReviewItemHeader(file, index, total, item, id));
   process.stdout.write(`${formatSourceContext(text, item, context)}\n`);
   process.stdout.write(`${formatReviewItemBody(item)}\n`);
 }
@@ -2386,6 +2405,7 @@ function formatReviewItemHeader(
   index: number,
   total: number | undefined,
   item: ReviewItem,
+  id?: string,
 ): string {
   const progress = total === undefined ? `#${index}` : `${index}/${total}`;
   const width = Math.max(48, process.stdout.isTTY ? 72 : 48);
@@ -2401,9 +2421,9 @@ function formatReviewItemHeader(
   return [
     "",
     color(line, "dim"),
-    `${color(progress, "bold")} ${color(kind, kindColor)} ${
-      color(location, "dim")
-    }`,
+    `${color(progress, "bold")} ${color(kind, kindColor)}${
+      id ? ` ${color(id, "cyan")}` : ""
+    } ${color(location, "dim")}`,
   ].join("\n") + "\n";
 }
 
@@ -2765,6 +2785,22 @@ function collectReviewItems(
   }
 
   return [...conversations, ...discussionAnnotations].filter(keepReviewItem);
+}
+
+function reviewItemMatchesConversationFilter(
+  item: ReviewItem,
+  conversationFilter: ConversationFilter,
+): boolean {
+  if (conversationFilter === "all") {
+    return true;
+  }
+
+  const status = getReviewItemStatus(item);
+  if (conversationFilter === "pending") {
+    return status === "open" || status === "wip";
+  }
+
+  return status === conversationFilter;
 }
 
 function getReviewItemStatus(item: ReviewItem): ConversationStatus {

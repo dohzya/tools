@@ -8,6 +8,11 @@ import {
   type ReviewTimestamp,
   type TimestampFormat,
 } from "./timestamp";
+import {
+  assignStableReviewItemIds,
+  getShortStableReviewItemId,
+  resolveStableReviewItemId,
+} from "../../../tools/dz-review/stable-review-id";
 
 type ReviewRole = "agent" | "me" | "quick-me";
 type ConversationStatus = "open" | "wip" | "handled" | "resolved";
@@ -57,6 +62,8 @@ type ReviewPanelItemKind =
 type ReviewPanelFilter = "all" | "unresolved" | "pending" | ConversationStatus;
 
 interface ReviewPanelItem {
+  id: string;
+  displayId: string;
   start: number;
   end: number;
   kind: ReviewPanelItemKind;
@@ -65,6 +72,11 @@ interface ReviewPanelItem {
   line: number;
   summary: string;
   messages?: ReviewPanelMessage[];
+}
+
+interface ReviewPanelItemCandidate {
+  item: Omit<ReviewPanelItem, "id" | "displayId">;
+  raw: string;
 }
 
 interface ReviewPanelMessage {
@@ -485,8 +497,22 @@ function collectReviewPanelItems(
   document: vscode.TextDocument,
   filter: ReviewPanelFilter = "all",
 ): ReviewPanelItem[] {
+  const items = assignReviewPanelItemIds(
+    document,
+    collectReviewPanelItemCandidates(document, filter),
+  );
+
+  return items.sort((left, right) =>
+    left.start - right.start || left.end - right.end
+  );
+}
+
+function collectReviewPanelItemCandidates(
+  document: vscode.TextDocument,
+  filter: ReviewPanelFilter = "all",
+): ReviewPanelItemCandidate[] {
   const text = document.getText();
-  const items: ReviewPanelItem[] = [];
+  const candidates: ReviewPanelItemCandidate[] = [];
   const conversationSpans = new Set<string>();
 
   for (const conversation of collectConversations(text)) {
@@ -496,17 +522,20 @@ function collectReviewPanelItems(
       continue;
     }
 
-    items.push({
-      start: conversation.start,
-      end: conversation.end,
-      kind: "conversation",
-      status,
-      label: formatReviewPanelConversationLabel(status),
-      line: document.positionAt(conversation.start).line + 1,
-      summary: summarizeReviewPanelText(
-        getConversationContent(conversation.raw),
-      ),
-      messages: getReviewPanelConversationMessages(conversation.raw),
+    candidates.push({
+      raw: conversation.raw,
+      item: {
+        start: conversation.start,
+        end: conversation.end,
+        kind: "conversation",
+        status,
+        label: formatReviewPanelConversationLabel(status),
+        line: document.positionAt(conversation.start).line + 1,
+        summary: summarizeReviewPanelText(
+          getConversationContent(conversation.raw),
+        ),
+        messages: getReviewPanelConversationMessages(conversation.raw),
+      },
     });
   }
 
@@ -523,21 +552,66 @@ function collectReviewPanelItems(
       continue;
     }
 
-    items.push({
-      start,
-      end,
-      kind,
-      label: formatReviewPanelAnnotationLabel(kind),
-      line: document.positionAt(start).line + 1,
-      summary: summarizeReviewPanelText(
-        getReviewPanelAnnotationPayload(raw, kind),
-      ),
+    candidates.push({
+      raw,
+      item: {
+        start,
+        end,
+        kind,
+        label: formatReviewPanelAnnotationLabel(kind),
+        line: document.positionAt(start).line + 1,
+        summary: summarizeReviewPanelText(
+          getReviewPanelAnnotationPayload(raw, kind),
+        ),
+      },
     });
   }
 
-  return items.sort((left, right) =>
-    left.start - right.start || left.end - right.end
+  return candidates;
+}
+
+function assignReviewPanelItemIds(
+  document: vscode.TextDocument,
+  candidates: readonly ReviewPanelItemCandidate[],
+): ReviewPanelItem[] {
+  const ids = assignStableReviewItemIds(
+    getReviewPanelDocumentPath(document),
+    candidates.map(({ item, raw }) => ({ kind: item.kind, raw })),
   );
+  const allIds = ids.map(({ id }) => id);
+  return candidates.map(({ item }, index) => ({
+    ...item,
+    id: ids[index].id,
+    displayId: getShortStableReviewItemId(ids[index].id, allIds),
+  }));
+}
+
+function resolveReviewPanelItem(
+  document: vscode.TextDocument,
+  item: ReviewPanelItem,
+): ReviewPanelItem | undefined {
+  const resolved = resolveStableReviewItemId(
+    item.id,
+    getReviewPanelDocumentPath(document),
+    collectReviewPanelItemCandidates(document, "all").map((candidate) => ({
+      kind: candidate.item.kind,
+      raw: candidate.raw,
+      candidate,
+    })),
+  );
+
+  return resolved
+    ? { ...resolved.candidate.item, id: item.id, displayId: item.displayId }
+    : undefined;
+}
+
+function getReviewPanelDocumentPath(document: vscode.TextDocument): string {
+  if (document.uri) {
+    return vscode.workspace.asRelativePath(document.uri, false);
+  }
+
+  const candidate = document.fileName || "active.md";
+  return vscode.workspace.asRelativePath(candidate, false);
 }
 
 async function filterReviewItems(): Promise<void> {
@@ -654,7 +728,8 @@ function revealReviewPanelItem(item: ReviewPanelItem): void {
     return;
   }
 
-  const position = editor.document.positionAt(item.start);
+  const resolvedItem = resolveReviewPanelItem(editor.document, item) ?? item;
+  const position = editor.document.positionAt(resolvedItem.start);
   editor.selection = new vscode.Selection(position, position);
   editor.revealRange(
     new vscode.Range(position, position),
@@ -764,13 +839,21 @@ async function resolveReviewPanelAnnotation(
     return;
   }
 
+  const resolvedItem = resolveReviewPanelItem(editor.document, item);
+  if (!resolvedItem || resolvedItem.kind === "conversation") {
+    void vscode.window.showInformationMessage(
+      "No review annotation for this panel item.",
+    );
+    return;
+  }
+
   const annotation = findCurrentCriticMarkupAnnotation(
     editor.document.getText(),
-    item.start,
+    resolvedItem.start,
   );
   if (
-    !annotation || annotation.start !== item.start ||
-    annotation.end !== item.end
+    !annotation || annotation.start !== resolvedItem.start ||
+    annotation.end !== resolvedItem.end
   ) {
     void vscode.window.showInformationMessage(
       "No review annotation for this panel item.",
@@ -796,13 +879,15 @@ function findReviewPanelConversation(
   document: vscode.TextDocument,
   item: ReviewPanelItem,
 ): Conversation | undefined {
-  if (item.kind !== "conversation") {
+  const resolvedItem = resolveReviewPanelItem(document, item);
+  if (!resolvedItem || resolvedItem.kind !== "conversation") {
     return undefined;
   }
 
   return collectConversations(document.getText())
     .find((conversation) =>
-      conversation.start === item.start && conversation.end === item.end
+      conversation.start === resolvedItem.start &&
+      conversation.end === resolvedItem.end
     );
 }
 
@@ -1158,7 +1243,9 @@ function renderReviewPanelItem(item: ReviewPanelItem, index: number): string {
   return `
     <section class="item" data-index="${index}">
       <div class="item-header">
-        <div class="meta">#${index + 1} · LINE ${item.line}</div>
+        <div class="meta">#${index + 1} · ${
+    escapeHtml(item.displayId)
+  } · LINE ${item.line}</div>
         <div class="chip">${escapeHtml(item.label)}</div>
       </div>
       ${messages}
@@ -2996,3 +3083,41 @@ function isInlineConversation(raw: string): boolean {
 function isMultilineConversation(raw: string): boolean {
   return /^(?:<!--|\{\?\?)[ \t]*\r?\n/.test(raw);
 }
+
+export const __test = {
+  activate,
+  addHumanComment,
+  addHumanOk,
+  addTimestampToCurrentReviewElement,
+  applyCriticMarkupAnnotation,
+  approveAgentMessage,
+  cancelCriticMarkupAnnotation,
+  collectConversations,
+  collectReviewPanelItems,
+  convertTimestampsInActiveEditor,
+  createCompactCriticMarkupReviewNote,
+  createCompactReviewNote,
+  createReviewConversation,
+  exitReviewMode,
+  fillReviewLineAfterNativeNewline,
+  filterReviewItems,
+  getConversationContentRanges,
+  getConversationMarkerRanges,
+  getConversationOkRanges,
+  getConversationRoleRanges,
+  getConversationStatus,
+  moveToConversation,
+  moveToReviewBlock,
+  provideTimestampHover,
+  removeHumanOk,
+  revealReviewPanelItem,
+  showAllReviewItems,
+  showHandledReviewItems,
+  showOpenReviewItems,
+  showPendingReviewItems,
+  showResolvedReviewItems,
+  showUnresolvedReviewItems,
+  showWipReviewItems,
+  toggleReviewMode,
+  wrapCriticMarkupAnnotation,
+};

@@ -92,6 +92,12 @@ function createHarness() {
       onDidChangeTextDocument() {
         return {};
       },
+      asRelativePath(target) {
+        const value = typeof target === "string" ? target : target.fsPath;
+        return value.startsWith("/workspace/")
+          ? value.slice("/workspace/".length)
+          : value;
+      },
     },
     languages: {
       registerHoverProvider() {
@@ -192,18 +198,20 @@ function createHarness() {
     },
   };
   const module = { exports: {} };
-  const source =
-    fs.readFileSync(path.join(__dirname, "..", "out", "extension.js"), "utf8") +
-    "\nmodule.exports.__test = { activate: module.exports.activate, addHumanComment, addHumanOk, addTimestampToCurrentReviewElement, applyCriticMarkupAnnotation, approveAgentMessage, cancelCriticMarkupAnnotation, collectConversations, collectReviewPanelItems, convertTimestampsInActiveEditor, createCompactCriticMarkupReviewNote, createCompactReviewNote, createReviewConversation, exitReviewMode, fillReviewLineAfterNativeNewline, filterReviewItems, getConversationContentRanges, getConversationMarkerRanges, getConversationOkRanges, getConversationRoleRanges, getConversationStatus, moveToConversation, moveToReviewBlock, provideTimestampHover, removeHumanOk, revealReviewPanelItem, showAllReviewItems, showHandledReviewItems, showOpenReviewItems, showPendingReviewItems, showResolvedReviewItems, showUnresolvedReviewItems, showWipReviewItems, toggleReviewMode, wrapCriticMarkupAnnotation };";
+  const source = fs.readFileSync(
+    path.join(
+      __dirname,
+      "..",
+      "out",
+      "extension.js",
+    ),
+    "utf8",
+  );
 
   vm.runInNewContext(source, {
     require(name) {
       if (name === "vscode") {
         return mockVscode;
-      }
-
-      if (name === "./timestamp") {
-        return require("../out/timestamp.js");
       }
 
       return require(name);
@@ -218,6 +226,8 @@ function createHarness() {
       document: {
         languageId: "markdown",
         text,
+        uri: { fsPath: "/workspace/doc.md" },
+        fileName: "/workspace/doc.md",
         get lineCount() {
           return this.text.split("\n").length;
         },
@@ -364,7 +374,7 @@ test("review mode hides its status bar item immediately on exit", async () => {
 
 test("review panel webview lists review items from the active Markdown editor", async () => {
   const harness = createHarness();
-  harness.createEditor(
+  const editor = harness.createEditor(
     [
       "# Draft",
       "<!-- @agent%2026-06-16T17:35:35+02:00 open issue -->",
@@ -382,6 +392,9 @@ test("review panel webview lists review items from the active Markdown editor", 
   harness.webviewViewProviders[0].provider.resolveWebviewView(view);
 
   assert.match(view.webview.html, /Open conversation/);
+  assert.match(view.webview.html, /#1 · [0-9A-Za-z]{6} · LINE 2/);
+  assert.doesNotMatch(view.webview.html, /<div class="meta">[^<]*rvw_/);
+  assert.match(view.webview.html, /"id":"rvw_[0-9A-Za-z]{1,11}"/);
   assert.match(
     view.webview.html,
     /Agent · <span class="message-timestamp" title="2026-06-16T17:35:35\+02:00">2026-06-16 17:35:35<\/span>/,
@@ -405,6 +418,12 @@ test("review panel webview lists review items from the active Markdown editor", 
     view.webview.html,
     /vscode\.postMessage\(\{ type: "reveal", item \}\)/,
   );
+
+  const [conversation] = harness.api.collectReviewPanelItems(
+    editor.document,
+  );
+  assert.match(conversation.id, /^rvw_[0-9A-Za-z]{1,11}$/);
+  assert.equal(conversation.displayId, conversation.id.slice(4, 10));
 });
 
 test("review panel webview lists items with hangul timestamps", async () => {
@@ -610,6 +629,43 @@ test("review panel webview can reply to a conversation", async () => {
     ].join("\n"),
   );
   assert.match(view.webview.html, /Handled conversation/);
+});
+
+test("review panel webview resolves stale conversation offsets by stable id", async () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    [
+      "# Draft",
+      "<!--",
+      "@agent open issue",
+      "-->",
+    ].join("\n"),
+    { line: 0, character: 0 },
+  );
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const view = harness.createWebviewView();
+  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  const [conversation] = harness.api.collectReviewPanelItems(editor.document);
+  editor.document.text = ["Preamble", editor.document.text].join("\n");
+
+  await view.postMessageFromWebview({
+    type: "reply",
+    item: conversation,
+    body: "offset refreshed",
+  });
+
+  assert.equal(
+    editor.document.text,
+    [
+      "Preamble",
+      "# Draft",
+      "<!--",
+      "@agent open issue",
+      "@me offset refreshed",
+      "-->",
+    ].join("\n"),
+  );
 });
 
 test("review panel webview can mark a conversation ok", async () => {

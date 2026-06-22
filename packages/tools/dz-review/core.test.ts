@@ -18,6 +18,12 @@ import {
   formatTimestampForDisplay,
   parseReviewTimestamp,
 } from "./timestamp.ts";
+import {
+  assignStableReviewItemIds,
+  getShortStableReviewItemId,
+  resolveStableReviewItemId,
+  stableReviewItemFingerprint,
+} from "./stable-review-id.ts";
 
 Deno.test("dz-review core - collects HTML and compact review conversations", () => {
   const text = [
@@ -198,4 +204,51 @@ Deno.test("dz-review core - renders timestamped annotations for display", () => 
 
   assertStringIncludes(annotation.raw, "%1WzvP91W|");
   assertEquals(annotation.timestamp, "1WzvP91W");
+});
+
+Deno.test("dz-review core - stable review ids use the first timestamp as anchor", () => {
+  const before = collectReviewAnnotations(
+    "Intro\n<!-- @agent%1WzvP91W Question? -->\n",
+  );
+  const after = collectReviewAnnotations(
+    "Intro\nInserted\n<!-- @agent%1WzvP91W Question edited a bit? -->\n",
+  );
+
+  const [started] = assignStableReviewItemIds("file.md", before);
+  const [current] = assignStableReviewItemIds("file.md", after);
+
+  assertEquals(started.id, current.id);
+  assertEquals(
+    resolveStableReviewItemId(started.id, "file.md", after)?.raw,
+    after[0].raw,
+  );
+});
+
+Deno.test("dz-review core - stable review fingerprints still ignore timestamps", () => {
+  const before = collectReviewAnnotations(
+    "Intro\n<!-- @agent%1WzvP91W Question? -->\n",
+  );
+  const after = collectReviewAnnotations(
+    "Intro\nInserted\n<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  const [started] = assignStableReviewItemIds("file.md", before);
+  const [current] = assignStableReviewItemIds("file.md", after);
+
+  assertEquals(started.id, current.id);
+  assertEquals(
+    stableReviewItemFingerprint(started.item),
+    stableReviewItemFingerprint(current.item),
+  );
+});
+
+Deno.test("dz-review core - short stable review ids drop namespace and keep safety margin", () => {
+  const ids = [
+    "rvw_abcdef123456",
+    "rvw_abcdeg123456",
+    "rvw_999999123456",
+  ];
+
+  assertEquals(getShortStableReviewItemId(ids[0], ids), "abcdef1");
+  assertEquals(getShortStableReviewItemId(ids[2], ids), "999999");
 });

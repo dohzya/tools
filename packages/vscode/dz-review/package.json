@@ -56,10 +56,10 @@
     "onView:dzMdReview.reviewItems"
   ],
   "scripts": {
-    "compile": "tsc -p ./",
+    "compile": "tsc --noEmit -p ./ && deno bundle --format=cjs --external vscode --sourcemap=external src/extension.ts -o out/extension.js",
     "test": "npm run compile && node --test test/*.test.js",
     "check": "node -e \"const fs=require('fs'); JSON.parse(fs.readFileSync('package.json','utf8')); for (const file of fs.readdirSync('syntaxes').filter(f => f.endsWith('.json'))) JSON.parse(fs.readFileSync('syntaxes/' + file,'utf8'));\" && node --check out/extension.js",
-    "vsix": "npm exec --yes @vscode/vsce -- package",
+    "vsix": "npm run compile && npm exec --yes @vscode/vsce -- package",
     "install:local": "npm run vsix && code --uninstall-extension local.dz-md-review-syntax || true && code --install-extension dz-review-vscode-0.0.1.vsix --force"
   },
   "devDependencies": {
