@@ -1868,13 +1868,13 @@ function runAgentDone(files: string[], json: boolean): void {
     snapshot,
     beforeRestore,
   );
-  const guardrailFailures = collectAgentGuardrailFailures(
-    snapshot,
-    beforeRestore,
-  );
 
   restoreAgentTimestampFormats(snapshot, targetFiles);
   const afterRestore = collectAgentReviewState(targetFiles, true);
+  const guardrailFailures = collectAgentGuardrailFailures(
+    snapshot,
+    afterRestore,
+  );
   guardrailFailures.push(
     ...collectAgentTimestampDriftFailures(snapshot, afterRestore),
   );
@@ -2205,15 +2205,6 @@ function collectAgentGuardrailFailures(
 
       const messages = getConversationMessages(item);
       for (const message of messages) {
-        if (message.marker === "@") {
-          failures.push({
-            id,
-            file: file.path,
-            line: item.lineStart,
-            message: "bare @ marker should be normalized to @me",
-          });
-        }
-
         if (!message.timestamp) {
           failures.push({
             id,
@@ -2598,13 +2589,18 @@ function transformTimestamps(
   const withConvertedConversationTimestamps = text.replace(
     DISPLAY_CONVERSATION_TIMESTAMP_RE,
     (match: string, marker: string, value: string) => {
+      const normalizedMarker = normalizeConversationMarker(marker);
       const timestamp = renderTimestampValue(value, format);
-      if (!timestamp || timestamp === value) {
+      if (!timestamp) {
+        return match;
+      }
+
+      if (timestamp === value && normalizedMarker === marker) {
         return match;
       }
 
       count += 1;
-      return `${marker}%${timestamp}`;
+      return `${normalizedMarker}%${timestamp}`;
     },
   );
 
@@ -2613,7 +2609,9 @@ function transformTimestamps(
       /(^|[ \t\r\n])(@agent|@me|@)(?![%\(])(?=[ \t]*:|[ \t\r\n]|$)/g,
       (_match: string, prefix: string, marker: string) => {
         count += 1;
-        return `${prefix}${marker}%${fallbackTimestamp}`;
+        return `${prefix}${
+          normalizeConversationMarker(marker)
+        }%${fallbackTimestamp}`;
       },
     );
 
@@ -2639,6 +2637,10 @@ function transformTimestamps(
   );
 
   return { count, updated };
+}
+
+function normalizeConversationMarker(marker: string): string {
+  return marker === "@" ? "@me" : marker;
 }
 
 function renderTimestampValue(

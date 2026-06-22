@@ -370,6 +370,56 @@ Deno.test("dz-review agent done - restores timestamps and reports handoff", asyn
   }
 });
 
+Deno.test("dz-review agent start - normalizes bare human markers", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%1WzvP91W Question? @ Answer. -->\n",
+  );
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(updated, "@me%");
+    assertEquals(updated.includes(" @ Answer."), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent done - normalizes bare human markers before guardrails", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent%1WzvP91W Question? -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question?\n@ Answer. -->\n",
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "done", "file.md"]))
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "Agent handoff");
+    assertStringIncludes(output, "guardrail failures: 0");
+    assertStringIncludes(updated, "@me%");
+    assertEquals(updated.includes("@ Answer."), false);
+    assertEquals(updated.includes("2026-06-16T17:35:35+02:00"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent status - reports current session without restoring timestamps", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -444,15 +494,10 @@ Deno.test("dz-review agent done - fails on guardrail violations", async () => {
 
     assertEquals(result.success, false);
     assertStringIncludes(result.stdout, "Agent handoff");
-    assertStringIncludes(result.stdout, "guardrail failures: 3");
-    assertStringIncludes(result.stdout, "bare @ marker");
+    assertStringIncludes(result.stdout, "guardrail failures: 1");
     assertStringIncludes(
       result.stdout,
       "validated conversation remains cleanable",
-    );
-    assertStringIncludes(
-      result.stdout,
-      "conversation message missing timestamp",
     );
     assertStringIncludes(result.stderr, "agent done guardrails failed");
     assertStringIncludes(updated, "@agent%1WzvP91W Question?");
