@@ -288,6 +288,7 @@ test("custom review annotation commands are available through cmd+alt+k chords",
   assert(
     hasKeybinding("dzMdReview.previousPendingConversation", "cmd+ctrl+alt+up"),
   );
+  assert(hasKeybinding("dzMdReview.addHumanOk", "cmd+ctrl+alt+enter"));
   assert(hasKeybinding("dzMdReview.nextPendingConversation", "cmd+alt+k p"));
   assert(
     hasKeybinding(

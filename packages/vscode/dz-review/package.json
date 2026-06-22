@@ -383,6 +383,12 @@
         "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
       },
       {
+        "command": "dzMdReview.addHumanOk",
+        "key": "cmd+ctrl+alt+enter",
+        "mac": "cmd+ctrl+alt+enter",
+        "when": "editorTextFocus && editorLangId == markdown && !editorReadonly"
+      },
+      {
         "command": "dzMdReview.createCompactReviewNote",
         "key": "cmd+alt+shift+enter",
         "mac": "cmd+alt+shift+enter",
