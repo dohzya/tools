@@ -1,6 +1,6 @@
 {
   "name": "@dohzya/tools",
-  "version": "0.9.16",
+  "version": "0.9.17",
   "description": "CLI tools for markdown manipulation, work tracking, context snapshots, and Markdown review workflows.",
   "license": "MIT",
   "exports": {

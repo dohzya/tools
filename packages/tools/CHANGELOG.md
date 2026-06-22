@@ -11,6 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
 - **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
 
+## [dz-review-v0.2.1] — 2026-06-22
+
+### Changed
+
+- **dz-review:** Timestamped human review messages must now use `@me%...`; bare `@` remains a workshop shorthand only before timestamp normalization.
+
+### Fixed
+
+- **dz-review:** `agent start` and `agent done` now normalize bare human `@` replies to `@me` with timestamps before handoff guardrails run.
+
 ## [dz-review-v0.2.0] — 2026-06-22
 
 ### Added
