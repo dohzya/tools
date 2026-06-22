@@ -2205,6 +2205,15 @@ function collectAgentGuardrailFailures(
 
       const messages = getConversationMessages(item);
       for (const message of messages) {
+        if (message.marker === "@" && message.timestamp) {
+          failures.push({
+            id,
+            file: file.path,
+            line: item.lineStart,
+            message: "timestamped bare @ marker should be @me",
+          });
+        }
+
         if (!message.timestamp) {
           failures.push({
             id,
@@ -2589,18 +2598,17 @@ function transformTimestamps(
   const withConvertedConversationTimestamps = text.replace(
     DISPLAY_CONVERSATION_TIMESTAMP_RE,
     (match: string, marker: string, value: string) => {
-      const normalizedMarker = normalizeConversationMarker(marker);
       const timestamp = renderTimestampValue(value, format);
       if (!timestamp) {
         return match;
       }
 
-      if (timestamp === value && normalizedMarker === marker) {
+      if (timestamp === value) {
         return match;
       }
 
       count += 1;
-      return `${normalizedMarker}%${timestamp}`;
+      return `${marker}%${timestamp}`;
     },
   );
 

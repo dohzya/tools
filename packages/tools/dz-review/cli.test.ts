@@ -420,6 +420,37 @@ Deno.test("dz-review agent done - normalizes bare human markers before guardrail
   }
 });
 
+Deno.test("dz-review agent done - rejects timestamped bare human markers", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent%1WzvP91W Question? -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question?\n@%2026-06-16T17:36:35+02:00 Answer. -->\n",
+    );
+
+    const result = await runDzReview(dir, ["agent", "done", "file.md"], "");
+    const updated = await Deno.readTextFile(file);
+
+    assertEquals(result.success, false);
+    assertStringIncludes(result.stdout, "guardrail failures: 1");
+    assertStringIncludes(
+      result.stdout,
+      "timestamped bare @ marker should be @me",
+    );
+    assertStringIncludes(result.stderr, "agent done guardrails failed");
+    assertStringIncludes(updated, "@%1WzvQ71W Answer.");
+    assertEquals(updated.includes("@me%1WzvQ71W Answer."), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent status - reports current session without restoring timestamps", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
