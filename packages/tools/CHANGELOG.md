@@ -11,6 +11,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
 - **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
 
+## [dz-review-v0.2.2] — 2026-06-22
+
+### Added
+
+- **vscode:** `dzMdReview.addHumanOk` is also available through `cmd+ctrl+alt+enter` in Markdown editors.
+
+### Fixed
+
+- **dz-review:** `agent start` now refuses to overwrite an active `.dz-review/agent-session.json` unless `--force` is passed, and the agent instructions direct agents to use `agent status` during an active session.
+
 ## [dz-review-v0.2.1] — 2026-06-22
 
 ### Changed
