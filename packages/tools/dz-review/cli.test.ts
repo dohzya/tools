@@ -248,6 +248,35 @@ Deno.test("dz-review list --conversation - keeps legacy singular alias", async (
   }
 });
 
+Deno.test("dz-review list -c keeps source timestamps in context and ISO in clarified view", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "Before",
+      "<!-- @agent%1WzvP91W open -->",
+      "After",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const result = await runDzReview(dir, ["list", "-c", "1", "file.md"], "");
+
+    assertEquals(result.success, true);
+    assertStringIncludes(result.stdout, "Before");
+    assertStringIncludes(result.stdout, "@agent%1WzvP91W open");
+    assertStringIncludes(result.stdout, "After");
+    assertStringIncludes(
+      result.stdout,
+      "@agent 2026-06-16T17:35:35+02:00 open",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent start - stores a snapshot and prints an inbox", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -604,6 +633,37 @@ Deno.test("dz-review diff - lists only review items on added lines", async () =>
 
     assertStringIncludes(output, "file.md:2");
     assertStringIncludes(output, "addition");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review diff --context shows surrounding source lines", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(file, "Intro\n");
+    await runGit(dir, ["add", "file.md"]);
+    await runGit(dir, ["commit", "-m", "initial"]);
+    await Deno.writeTextFile(file, "Intro\nBefore\n{++new++}\nAfter\n");
+
+    const result = await runDzReview(
+      dir,
+      ["diff", "--context", "1", "file.md"],
+      "",
+    );
+
+    assertEquals(result.success, true);
+    assertStringIncludes(result.stdout, "Before");
+    assertStringIncludes(result.stdout, "{++new++}");
+    assertStringIncludes(result.stdout, "After");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

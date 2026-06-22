@@ -115,9 +115,18 @@ interface StatusCliffyOptions extends CommonCliffyOptions {
 interface ListCliffyOptions extends CommonCliffyOptions {
   git?: boolean;
   diff?: boolean;
+  contextBefore?: string;
+  contextAfter?: string;
+  context?: string;
+  c?: string;
 }
 
-type DiffCliffyOptions = CommonCliffyOptions;
+interface DiffCliffyOptions extends CommonCliffyOptions {
+  contextBefore?: string;
+  contextAfter?: string;
+  context?: string;
+  c?: string;
+}
 
 interface TimestampCliffyOptions {
   inline?: boolean;
@@ -626,6 +635,9 @@ function createListCommand() {
     .option("--no-color", "Disable colored output.")
     .option("--git", "Restrict list output to lines added in git diff HEAD.")
     .option("--diff", "Alias for --git.")
+    .option("-c, --context <beforeAfter:string>", "Display context lines.")
+    .option("--context-before <lines:string>", "Display lines before an item.")
+    .option("--context-after <lines:string>", "Display lines after an item.")
     .arguments("[files...:string]")
     .action(async (options: ListCliffyOptions, ...files: string[]) => {
       await runLegacyCommand(buildListArgv(options, files));
@@ -658,6 +670,9 @@ function createDiffCommand() {
     )
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
+    .option("-c, --context <beforeAfter:string>", "Display context lines.")
+    .option("--context-before <lines:string>", "Display lines before an item.")
+    .option("--context-after <lines:string>", "Display lines after an item.")
     .arguments("[files...:string]")
     .action(async (options: DiffCliffyOptions, ...files: string[]) => {
       await runLegacyCommand(buildDiffArgv(options, files));
@@ -807,6 +822,10 @@ function buildListArgv(options: ListCliffyOptions, files: string[]): string[] {
   appendCommonOptions(argv, options);
   appendFlag(argv, options.git, "--git");
   appendFlag(argv, options.diff, "--git");
+  appendOption(argv, "--context", options.context);
+  appendOption(argv, "--context-before", options.contextBefore);
+  appendOption(argv, "--context-after", options.contextAfter);
+  appendOption(argv, "-c", options.c);
   argv.push(...files);
   return argv;
 }
@@ -814,6 +833,10 @@ function buildListArgv(options: ListCliffyOptions, files: string[]): string[] {
 function buildDiffArgv(options: DiffCliffyOptions, files: string[]): string[] {
   const argv = ["diff"];
   appendCommonOptions(argv, options);
+  appendOption(argv, "--context", options.context);
+  appendOption(argv, "--context-before", options.contextBefore);
+  appendOption(argv, "--context-after", options.contextAfter);
+  appendOption(argv, "-c", options.c);
   argv.push(...files);
   return argv;
 }
@@ -3220,29 +3243,8 @@ function formatSourceContext(
   return rendered.join("\n");
 }
 
-function formatSourceContextLine(line: string, item: ReviewItem): string {
-  if (item.kind === "conversation") {
-    return line.replace(
-      DISPLAY_CONVERSATION_TIMESTAMP_RE,
-      (_match, marker: string, value: string) => {
-        const timestamp = formatTimestampForDisplay(
-          parseReviewTimestamp(value),
-        );
-        return timestamp ? `${marker} ${timestamp}` : `${marker}%${value}`;
-      },
-    );
-  }
-
-  return line.replace(
-    DISPLAY_ANNOTATION_TIMESTAMP_RE,
-    (_match, marker: string, value: string) => {
-      const timestamp = formatTimestampForDisplay(parseReviewTimestamp(value));
-      return timestamp ? `${marker}%${timestamp}|` : `${marker}%${value}|`;
-    },
-  ).replace(
-    renderReviewAnnotationForDisplay(item),
-    formatReviewAnnotationBody(item),
-  );
+function formatSourceContextLine(line: string, _item: ReviewItem): string {
+  return line;
 }
 
 function getWorktreeDiff(files: string[]): string {
