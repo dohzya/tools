@@ -13,10 +13,10 @@ For exact syntax examples and edge cases, read `references/review-syntax.md`.
 
 Use `dz-review` as a non-interactive inspection and timestamp helper:
 
-1. Before reading or editing annotated files, run `dz-review ts -i -I <file...>` to convert timestamps to readable ISO timestamps and add missing timestamps; note each file's existing format from the command output.
-2. Inspect the active review state with `dz-review status [file...]`. Add conversation filters such as `--pending-conversations`, `--open-conversations`, or `--resolved-conversations` only when that narrower view helps.
-3. Use `dz-review now -I`, `dz-review now -S`, or `dz-review now -H` when a manual timestamp is needed.
-4. Before handing edited annotated files back, restore each file's reported original or dominant timestamp format: compact with `dz-review ts -i -S <file...>`, hangul with `dz-review ts -i -H <file...>`, or ISO with `dz-review ts -i -I <file...>`.
+1. For an agent session, run `dz-review agent start [file...]` first. It records `.dz-review/agent-session.json`, detects each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints stable item IDs with suggested actions.
+2. Edit the Markdown threads directly. Use `dz-review agent status [file...]` when you need an in-progress view tied to the active start snapshot.
+3. Before handing edited annotated files back, run `dz-review agent done [file...]`. It compares against the start snapshot, restores each file's recorded timestamp format when possible, and reports answered, cleanable, remaining, and guardrail-failed conversations.
+4. Outside an agent session, use the ordinary `dz-review` inspection and timestamp commands as a manual fallback.
 
 Agents should edit the Markdown threads directly. Do not use the interactive `dz-review review` flow from an agent session.
 

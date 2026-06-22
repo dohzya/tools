@@ -93,6 +93,9 @@ dz-review timestamp -i file.md
 dz-review timestamp --compact -o stamped.md file.md
 dz-review now
 dz-review now --iso --date 2026-06-18T12:00:00+02:00
+dz-review agent start file.md
+dz-review agent status file.md
+dz-review agent done file.md
 dz-review agent-instructions
 dz-review completions bash
 ```
@@ -119,3 +122,11 @@ Agents should use the `markdown-review-workflow` skill when editing Markdown wit
 4. Edit the prose first when a review comment requests a text change.
 5. Remove review chatter only after explicit validation, such as `@me ok`.
 6. Report unresolved conversations in the final answer.
+
+`dz-review agent start [file...]` is the agent-first session entry point. It scans the current review state, writes `.dz-review/agent-session.json`, records each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints an inbox with stable item IDs, file/line, likely state, last message, context, and suggested action. `--json` prints the same structured model for tools.
+
+`dz-review agent status [file...]` reads the active start snapshot and prints an in-progress session view without changing files. It reports annotated files, modified files, answered conversations, cleanable conversations, remaining open items, guardrail failures, and current stable item IDs. `--json` prints the structured session status.
+
+`dz-review agent done [file...]` compares the current review state against the start snapshot, restores timestamps to the recorded file format when the start format was compact, hangul, or ISO, and prints a handoff with annotated files, modified files, answered conversations, cleanable conversations, remaining open items, and guardrail failures. Guardrails currently detect bare `@` human markers, validated `@me ok` or `@ ok` conversations that remain cleanable, missing timestamps, deleted started conversations, and timestamp format drift after restoration. `--json` prints the structured handoff.
+
+V1 assumes one active agent session per worktree because the snapshot path is fixed at `.dz-review/agent-session.json`. A future job-based model could allow concurrent agents by giving each session a job id and routing edits through `dz-review`, but that is intentionally out of scope for the initial workflow.

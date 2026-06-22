@@ -54,10 +54,9 @@ Recap (\`recap\`): compact project context snapshot; it can be useful as assista
 
 const DZ_REVIEW_INSTRUCTIONS = `
 DZ Review (\`dz-review\`): Markdown review syntax scanner and helper CLI.
-- Inspect review state: \`dz-review status [file...]\`.
-- For easier reading while editing, convert timestamps to ISO: \`dz-review ts -i -I <file...>\`; note the existing format reported by the command.
-- Before handing edited annotated files back, restore each file's reported original/dominant timestamp format: compact \`-S\`, hangul \`-H\`, or ISO \`-I\`.
-- Use \`--open-conversations\`, \`--pending-conversations\`, or \`--resolved-conversations\` to narrow conversation status when needed.
+- Start an agent review session with \`dz-review agent start [file...]\`; it records \`.dz-review/agent-session.json\`, normalizes timestamps for editing, and prints stable item IDs with suggested actions.
+- Check current session progress with \`dz-review agent status [file...]\`; it is tied to the active start snapshot and reports modified files, answered conversations, remaining items, and guardrails.
+- Before handing work back, run \`dz-review agent done [file...]\`; it restores each file's recorded timestamp format and reports the final handoff.
 - Reply by editing the Markdown thread: append a new \`@agent\` message and preserve unresolved history until human validation.
 - Help: \`dz-review --help\`.
 `.trim();
