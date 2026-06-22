@@ -151,6 +151,7 @@ interface NowCliffyOptions {
 }
 
 interface AgentCliffyOptions {
+  force?: boolean;
   json?: boolean;
 }
 
@@ -731,10 +732,11 @@ function createAgentCommand() {
 function createAgentStartCommand() {
   return new Command()
     .description("Record a review snapshot and print an agent inbox")
+    .option("-f, --force", "Overwrite an existing agent session snapshot.")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
     .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentStart(files, Boolean(options.json));
+      runAgentStart(files, Boolean(options.json), Boolean(options.force));
     });
 }
 
@@ -1811,7 +1813,17 @@ function collectLocatedReviewItems(
   return locatedItems;
 }
 
-function runAgentStart(files: string[], json: boolean): void {
+function runAgentStart(files: string[], json: boolean, force: boolean): void {
+  if (!force && fs.existsSync(AGENT_SESSION_FILE)) {
+    throw new DzReviewCliError(
+      "invalid_args",
+      [
+        `agent session already exists at ${AGENT_SESSION_FILE}.`,
+        "Use dz-review agent status [file...] to inspect progress, dz-review agent done [file...] to finish, or dz-review agent start --force [file...] to replace the snapshot.",
+      ].join("\n"),
+    );
+  }
+
   const resolvedFiles = resolveAgentFiles(files);
   const originalState = collectAgentReviewState(resolvedFiles, false);
   const timestampFormats = new Map(

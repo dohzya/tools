@@ -37,6 +37,8 @@ Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () =>
   assertStringIncludes(output, "dz-review agent start");
   assertStringIncludes(output, "dz-review agent status");
   assertStringIncludes(output, "dz-review agent done");
+  assertStringIncludes(output, "do not rerun `agent start`");
+  assertStringIncludes(output, "agent start --force");
   assertStringIncludes(output, "dz-review --help");
   assertEquals(output.includes("dz-review status"), false);
   assertEquals(output.includes("dz-review ts"), false);
@@ -334,6 +336,39 @@ Deno.test("dz-review agent start --json - prints structured review items", async
     assertEquals(data.items[0].state, "handled");
     assertEquals(data.items[0].lastMessage.author, "@me");
     assertEquals(data.items[0].suggestedAction, "reply");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent start - refuses to overwrite active session without force", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const sessionFile = join(dir, ".dz-review", "agent-session.json");
+  await Deno.writeTextFile(file, "<!-- @agent%1WzvP91W Question? -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const originalSnapshot = await Deno.readTextFile(sessionFile);
+
+    const result = await runDzReview(dir, ["agent", "start", "file.md"], "");
+    const unchangedSnapshot = await Deno.readTextFile(sessionFile);
+
+    assertEquals(result.success, false);
+    assertStringIncludes(result.stderr, "agent session already exists");
+    assertStringIncludes(result.stderr, "dz-review agent status");
+    assertStringIncludes(result.stderr, "dz-review agent start --force");
+    assertEquals(unchangedSnapshot, originalSnapshot);
+
+    const forcedOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "--force", "file.md"]))
+    );
+    const forcedSnapshot = JSON.parse(await Deno.readTextFile(sessionFile));
+
+    assertStringIncludes(forcedOutput, "Agent inbox");
+    assertEquals(forcedSnapshot.files[0].timestampFormat, "iso");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
