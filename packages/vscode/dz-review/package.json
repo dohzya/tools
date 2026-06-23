@@ -19,9 +19,11 @@
   ],
   "activationEvents": [
     "onLanguage:markdown",
-    "onCommand:dzMdReview.toggleReviewMode",
-    "onCommand:dzMdReview.enterReviewMode",
-    "onCommand:dzMdReview.exitReviewMode",
+    "onCommand:dzMdReview.toggleBatchMode",
+    "onCommand:dzMdReview.cycleReviewMode",
+    "onCommand:dzMdReview.enterEditMode",
+    "onCommand:dzMdReview.enterBatchMode",
+    "onCommand:dzMdReview.enterLiveMode",
     "onCommand:dzMdReview.approveAgentMessage",
     "onCommand:dzMdReview.addHumanComment",
     "onCommand:dzMdReview.addHumanOk",
@@ -101,18 +103,28 @@
     ],
     "commands": [
       {
-        "command": "dzMdReview.toggleReviewMode",
-        "title": "Toggle Review Mode",
+        "command": "dzMdReview.toggleBatchMode",
+        "title": "Toggle Batch Mode",
         "category": "Markdown Review"
       },
       {
-        "command": "dzMdReview.enterReviewMode",
-        "title": "Enter Review Mode",
+        "command": "dzMdReview.cycleReviewMode",
+        "title": "Cycle Review Mode",
         "category": "Markdown Review"
       },
       {
-        "command": "dzMdReview.exitReviewMode",
-        "title": "Exit Review Mode",
+        "command": "dzMdReview.enterEditMode",
+        "title": "Enter Edit Mode",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.enterBatchMode",
+        "title": "Enter Batch Mode",
+        "category": "Markdown Review"
+      },
+      {
+        "command": "dzMdReview.enterLiveMode",
+        "title": "Enter Live Mode",
         "category": "Markdown Review"
       },
       {
@@ -317,64 +329,82 @@
     },
     "keybindings": [
       {
-        "command": "dzMdReview.toggleReviewMode",
-        "key": "cmd+alt+k m",
-        "mac": "cmd+alt+k m",
+        "command": "dzMdReview.toggleBatchMode",
+        "key": "cmd+alt+k k",
+        "mac": "cmd+alt+k k",
         "when": "editorTextFocus && editorLangId == markdown"
       },
       {
-        "command": "dzMdReview.exitReviewMode",
+        "command": "dzMdReview.enterEditMode",
+        "key": "cmd+alt+k e",
+        "mac": "cmd+alt+k e",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.enterBatchMode",
+        "key": "cmd+alt+k b",
+        "mac": "cmd+alt+k b",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.enterLiveMode",
+        "key": "cmd+alt+k l",
+        "mac": "cmd+alt+k l",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "dzMdReview.enterEditMode",
         "key": "escape",
         "mac": "escape",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode"
       },
       {
         "command": "dzMdReview.nextReviewBlock",
         "key": "n",
         "mac": "n",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode"
       },
       {
         "command": "dzMdReview.nextPendingConversation",
         "key": "p",
         "mac": "p",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode"
       },
       {
         "command": "dzMdReview.previousPendingConversation",
         "key": "shift+p",
         "mac": "shift+p",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode"
       },
       {
         "command": "dzMdReview.previousReviewBlock",
         "key": "shift+n",
         "mac": "shift+n",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode"
       },
       {
         "command": "dzMdReview.cancelCriticMarkupAnnotation",
         "key": "x",
         "mac": "x",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly"
       },
       {
         "command": "dzMdReview.applyCriticMarkupAnnotation",
         "key": "shift+x",
         "mac": "shift+x",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly"
       },
       {
         "command": "dzMdReview.addHumanOk",
         "key": "o",
         "mac": "o",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly"
       },
       {
         "command": "dzMdReview.approveAgentMessage",
         "key": "@",
         "mac": "@",
-        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly"
+        "when": "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly"
       },
       {
         "command": "dzMdReview.approveAgentMessage",

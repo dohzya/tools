@@ -104,6 +104,14 @@ interface TimestampEdit {
   text: string;
 }
 
+type ReviewMode = "edit" | "batch" | "live";
+type ReviewMessageTimestampMode = "configured" | "explicit" | "none";
+
+interface ReviewMessageOptions {
+  marker?: ReviewLine["marker"];
+  timestamp?: ReviewMessageTimestampMode;
+}
+
 let openConversationDecorationType: vscode.TextEditorDecorationType | undefined;
 let wipConversationDecorationType: vscode.TextEditorDecorationType | undefined;
 let handledConversationDecorationType:
@@ -120,7 +128,7 @@ let agentDecorationType: vscode.TextEditorDecorationType | undefined;
 let humanDecorationType: vscode.TextEditorDecorationType | undefined;
 let quickHumanDecorationType: vscode.TextEditorDecorationType | undefined;
 let okDecorationType: vscode.TextEditorDecorationType | undefined;
-let reviewModeEnabled = false;
+let reviewMode: ReviewMode = "edit";
 let reviewModeStatusBarItem: vscode.StatusBarItem | undefined;
 let reviewPanelProvider: ReviewPanelProvider | undefined;
 
@@ -150,7 +158,8 @@ const HTML_REVIEW_OPEN = "<!--";
 const HTML_REVIEW_CLOSE = "-->";
 const CRITICMARKUP_REVIEW_OPEN = "{??";
 const CRITICMARKUP_REVIEW_CLOSE = "??}";
-const REVIEW_MODE_CONTEXT = "dzMdReview.inReviewMode";
+const REVIEW_MODE_CONTEXT = "dzMdReview.mode";
+const REVIEW_BATCH_MODE_CONTEXT = "dzMdReview.inBatchMode";
 const REVIEW_PANEL_VIEW_ID = "dzMdReview.reviewItems";
 const REVIEW_PANEL_FILTER_CONTEXT = "dzMdReview.reviewItemsFilter";
 const CATPPUCCIN_LATTE_BLUE = "#1E66F5";
@@ -277,9 +286,8 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.StatusBarAlignment.Left,
     100,
   );
-  reviewModeStatusBarItem.text = "$(comment-discussion) Review";
-  reviewModeStatusBarItem.tooltip = "Markdown Review Mode";
-  reviewModeStatusBarItem.command = "dzMdReview.toggleReviewMode";
+  reviewModeStatusBarItem.command = "dzMdReview.cycleReviewMode";
+  updateReviewModeStatus(reviewMode);
   reviewPanelProvider = new ReviewPanelProvider();
   void vscode.commands.executeCommand(
     "setContext",
@@ -304,16 +312,24 @@ export function activate(context: vscode.ExtensionContext): void {
       reviewPanelProvider,
     ),
     vscode.commands.registerCommand(
-      "dzMdReview.toggleReviewMode",
-      toggleReviewMode,
+      "dzMdReview.toggleBatchMode",
+      toggleBatchMode,
     ),
     vscode.commands.registerCommand(
-      "dzMdReview.enterReviewMode",
-      enterReviewMode,
+      "dzMdReview.cycleReviewMode",
+      cycleReviewMode,
     ),
     vscode.commands.registerCommand(
-      "dzMdReview.exitReviewMode",
-      exitReviewMode,
+      "dzMdReview.enterEditMode",
+      enterEditMode,
+    ),
+    vscode.commands.registerCommand(
+      "dzMdReview.enterBatchMode",
+      enterBatchMode,
+    ),
+    vscode.commands.registerCommand(
+      "dzMdReview.enterLiveMode",
+      enterLiveMode,
     ),
     vscode.commands.registerCommand(
       "dzMdReview.approveAgentMessage",
@@ -450,7 +466,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  void setReviewMode(false);
+  void setReviewMode("edit");
   updateConversationDecorations(vscode.window.activeTextEditor);
 }
 
@@ -458,39 +474,63 @@ export function deactivate(): void {
   // Nothing to dispose manually; subscriptions are owned by VS Code.
 }
 
-async function toggleReviewMode(): Promise<void> {
-  await setReviewMode(!reviewModeEnabled);
+async function toggleBatchMode(): Promise<void> {
+  await setReviewMode(reviewMode === "batch" ? "edit" : "batch");
 }
 
-async function enterReviewMode(): Promise<void> {
-  await setReviewMode(true);
+async function cycleReviewMode(): Promise<void> {
+  const nextMode: ReviewMode = reviewMode === "edit"
+    ? "batch"
+    : reviewMode === "batch"
+    ? "live"
+    : "edit";
+  await setReviewMode(nextMode);
 }
 
-async function exitReviewMode(): Promise<void> {
-  await setReviewMode(false);
+async function enterEditMode(): Promise<void> {
+  await setReviewMode("edit");
 }
 
-async function setReviewMode(enabled: boolean): Promise<void> {
-  reviewModeEnabled = enabled;
-  updateReviewModeStatus(enabled);
+async function enterBatchMode(): Promise<void> {
+  await setReviewMode("batch");
+}
+
+async function enterLiveMode(): Promise<void> {
+  await setReviewMode("live");
+}
+
+async function setReviewMode(mode: ReviewMode): Promise<void> {
+  reviewMode = mode;
+  updateReviewModeStatus(mode);
   await vscode.commands.executeCommand(
     "setContext",
     REVIEW_MODE_CONTEXT,
-    enabled,
+    mode,
+  );
+  await vscode.commands.executeCommand(
+    "setContext",
+    REVIEW_BATCH_MODE_CONTEXT,
+    mode === "batch",
   );
 }
 
-function updateReviewModeStatus(enabled: boolean): void {
+function updateReviewModeStatus(mode: ReviewMode): void {
   if (!reviewModeStatusBarItem) {
     return;
   }
 
-  if (enabled) {
-    reviewModeStatusBarItem.show();
-    return;
+  reviewModeStatusBarItem.text = mode === "batch"
+    ? "$(alert) Review: batch"
+    : `$(comment-discussion) Review: ${mode}`;
+  reviewModeStatusBarItem.tooltip = `Markdown Review: ${mode} mode`;
+  if (mode === "batch") {
+    reviewModeStatusBarItem.backgroundColor = new vscode.ThemeColor(
+      "statusBarItem.warningBackground",
+    );
+  } else {
+    reviewModeStatusBarItem.backgroundColor = undefined;
   }
-
-  reviewModeStatusBarItem.hide();
+  reviewModeStatusBarItem.show();
 }
 
 function collectReviewPanelItems(
@@ -1293,30 +1333,63 @@ async function approveAgentMessage(): Promise<void> {
     return;
   }
 
+  const mode = reviewMode;
+  const quickReply = mode === "live";
+  const leaveBatchAfterFreeText = mode === "batch";
   const conversations = collectConversations(editor.document.getText());
   const offset = editor.document.offsetAt(editor.selection.active);
   const conversation = findCurrentConversation(conversations, offset);
 
   if (!conversation) {
-    await createCompactQuickHumanNote(editor);
+    if (quickReply) {
+      await createCompactQuickHumanNote(editor);
+    } else {
+      await createCompactHumanNote(editor, "", undefined, {
+        timestamp: "explicit",
+      });
+    }
+    if (leaveBatchAfterFreeText) {
+      await setReviewMode("edit");
+    }
     return;
   }
 
-  const trailingQuickReply = getTrailingQuickHumanReply(conversation);
-  if (trailingQuickReply) {
+  const trailingEmptyReply = quickReply
+    ? getTrailingQuickHumanReply(conversation)
+    : getTrailingEmptyHumanReply(conversation);
+  if (trailingEmptyReply) {
     const position = editor.document.positionAt(
-      conversation.start + trailingQuickReply.bodyStart,
+      conversation.start + trailingEmptyReply.bodyStart,
     );
     editor.selection = new vscode.Selection(position, position);
+    if (leaveBatchAfterFreeText) {
+      await setReviewMode("edit");
+    }
     return;
   }
 
   if (isInlineConversation(conversation.raw)) {
-    await appendInlineQuickHumanReply(editor, conversation);
+    if (quickReply) {
+      await appendInlineQuickHumanReply(editor, conversation);
+    } else {
+      await appendInlineHumanReply(editor, conversation, {
+        timestamp: "explicit",
+      });
+    }
+    if (leaveBatchAfterFreeText) {
+      await setReviewMode("edit");
+    }
     return;
   }
 
-  await insertQuickHumanComment();
+  if (quickReply) {
+    await insertQuickHumanComment();
+  } else {
+    await insertHumanComment("", { timestamp: "explicit" });
+  }
+  if (leaveBatchAfterFreeText) {
+    await setReviewMode("edit");
+  }
 }
 
 async function addHumanOk(): Promise<void> {
@@ -1325,12 +1398,16 @@ async function addHumanOk(): Promise<void> {
     return;
   }
 
+  const quickReply = reviewMode === "live";
+  const insertionOptions: ReviewMessageOptions = quickReply
+    ? { marker: "@", timestamp: "none" }
+    : { marker: "@me", timestamp: "explicit" };
   const conversations = collectConversations(editor.document.getText());
   const offset = editor.document.offsetAt(editor.selection.active);
   const conversation = findCurrentConversation(conversations, offset);
 
   if (!conversation) {
-    await createCompactHumanNote(editor, "ok");
+    await createCompactHumanNote(editor, "ok", undefined, insertionOptions);
     return;
   }
 
@@ -1350,11 +1427,11 @@ async function addHumanOk(): Promise<void> {
   }
 
   if (isInlineConversation(conversation.raw)) {
-    await appendInlineHumanOk(editor, conversation);
+    await appendInlineHumanOk(editor, conversation, insertionOptions);
     return;
   }
 
-  await insertHumanComment("ok");
+  await insertHumanComment("ok", insertionOptions);
 }
 
 async function removeHumanOk(): Promise<void> {
@@ -1715,7 +1792,10 @@ async function createReviewConversation(
   await createHumanConversation(editor, body, line.range.end);
 }
 
-async function insertHumanComment(body: string): Promise<void> {
+async function insertHumanComment(
+  body: string,
+  options: ReviewMessageOptions = {},
+): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     return;
@@ -1730,7 +1810,7 @@ async function insertHumanComment(body: string): Promise<void> {
     return;
   }
 
-  const insertion = buildHumanCommentInsertion(conversation, body);
+  const insertion = buildHumanCommentInsertion(conversation, body, options);
   const insertOffset = conversation.start + insertion.offset;
   const insertPosition = editor.document.positionAt(insertOffset);
 
@@ -1814,10 +1894,12 @@ async function createCompactHumanNote(
   editor: vscode.TextEditor,
   body: string,
   markers = getPreferredReviewMarkers(),
+  options: ReviewMessageOptions = {},
 ): Promise<void> {
   const selection = editor.selection;
   const selectedText = editor.document.getText(selection);
-  const message = buildReviewMessage("@me", body).text;
+  const marker = options.marker ?? "@me";
+  const message = buildReviewMessage(marker, body, options).text;
   const compactNote = `${markers.open} ${message} ${markers.close}`;
   const anchor = selectedText.length > 0 ? `{==${selectedText}==}` : "";
   const text = `${anchor}${compactNote}`;
@@ -1858,7 +1940,7 @@ async function createCompactQuickHumanNote(
   const selection = editor.selection;
   const selectedText = editor.document.getText(selection);
   const markers = { open: HTML_REVIEW_OPEN, close: HTML_REVIEW_CLOSE };
-  const message = buildReviewMessage("@", "").text;
+  const message = buildReviewMessage("@", "", { timestamp: "none" }).text;
   const compactNote = `${markers.open} ${message} ${markers.close}`;
   const anchor = selectedText.length > 0 ? `{==${selectedText}==}` : "";
   const text = `${anchor}${compactNote}`;
@@ -1899,7 +1981,7 @@ async function createMultilineQuickHumanConversation(
   if (selectedText.length > 0) {
     const endLine = editor.document.lineAt(selection.end.line);
     const bodyIndent = getReviewBodyIndent(endLine.text);
-    const message = buildReviewMessage("@", "");
+    const message = buildReviewMessage("@", "", { timestamp: "none" });
     const block =
       `{==${selectedText}==}${markers.open}\n${bodyIndent}${message.text}\n${bodyIndent}${markers.close}`;
     const cursorOffset =
@@ -1920,7 +2002,7 @@ async function createMultilineQuickHumanConversation(
   const lineText = line.text;
   const baseIndent = lineText.match(/^[ \t]*/)?.[0] ?? "";
   const bodyIndent = getReviewBodyIndent(lineText);
-  const message = buildReviewMessage("@", "");
+  const message = buildReviewMessage("@", "", { timestamp: "none" });
   const block =
     `${markers.open}\n${bodyIndent}${message.text}\n${bodyIndent}${markers.close}`;
   let cursorOffset = `${markers.open}\n${bodyIndent}`.length +
@@ -2337,6 +2419,7 @@ function getConversationStatus(conversation: Conversation): ConversationStatus {
 function buildHumanCommentInsertion(
   conversation: Conversation,
   body: string,
+  options: ReviewMessageOptions = {},
 ): { offset: number; text: string; cursorOffset: number } {
   const closeMarker = getConversationCloseMarker(conversation.raw);
   const closeIndex = conversation.raw.lastIndexOf(closeMarker);
@@ -2344,7 +2427,8 @@ function buildHumanCommentInsertion(
   const indent = findLastReviewLine(conversation.raw)?.indent ?? "";
   const closeLineStart = beforeClose.lastIndexOf("\n") + 1;
   const beforeCloseLine = conversation.raw.slice(closeLineStart, closeIndex);
-  const message = buildReviewMessage("@me", body);
+  const marker = options.marker ?? "@me";
+  const message = buildReviewMessage(marker, body, options);
   const line = `${indent}${message.text}\n`;
   const cursorInLine = indent.length + message.cursorOffset;
 
@@ -2373,7 +2457,7 @@ function buildQuickHumanCommentInsertion(
   const indent = findLastReviewLine(conversation.raw)?.indent ?? "";
   const closeLineStart = beforeClose.lastIndexOf("\n") + 1;
   const beforeCloseLine = conversation.raw.slice(closeLineStart, closeIndex);
-  const message = buildReviewMessage("@", "");
+  const message = buildReviewMessage("@", "", { timestamp: "none" });
   const line = `${indent}${message.text}\n`;
   const cursorInLine = indent.length + message.cursorOffset;
 
@@ -2449,19 +2533,37 @@ async function expandInlineConversation(
 async function appendInlineHumanOk(
   editor: vscode.TextEditor,
   conversation: Conversation,
+  options: ReviewMessageOptions = {},
+): Promise<void> {
+  await appendInlineHumanReply(editor, conversation, {
+    ...options,
+    body: "ok",
+  });
+}
+
+async function appendInlineHumanReply(
+  editor: vscode.TextEditor,
+  conversation: Conversation,
+  options: ReviewMessageOptions & { body?: string } = {},
 ): Promise<void> {
   const closeStart = getConversationCloseStart(conversation.raw);
   const beforeClose = conversation.raw.slice(0, closeStart);
   const prefix = /[ \t\r\n]$/.test(beforeClose) ? "" : " ";
   const insertOffset = conversation.start + closeStart;
-  const message = buildReviewMessage("@me", "ok");
+  const marker = options.marker ?? "@me";
+  const message = buildReviewMessage(marker, options.body ?? "", options);
+  const insertion = `${prefix}${message.text} `;
 
   await editor.edit((edit) => {
-    edit.insert(
-      editor.document.positionAt(insertOffset),
-      `${prefix}${message.text} `,
-    );
+    edit.insert(editor.document.positionAt(insertOffset), insertion);
   });
+
+  if ((options.body ?? "") === "") {
+    const cursor = editor.document.positionAt(
+      insertOffset + prefix.length + message.cursorOffset,
+    );
+    editor.selection = new vscode.Selection(cursor, cursor);
+  }
 }
 
 async function fillTrailingEmptyHumanReply(
@@ -2501,7 +2603,7 @@ async function appendInlineQuickHumanReply(
   const beforeClose = conversation.raw.slice(0, closeStart);
   const prefix = /[ \t\r\n]$/.test(beforeClose) ? "" : " ";
   const insertOffset = conversation.start + closeStart;
-  const message = buildReviewMessage("@", "");
+  const message = buildReviewMessage("@", "", { timestamp: "none" });
   const insertion = `${prefix}${message.text} `;
 
   await editor.edit((edit) => {
@@ -3023,8 +3125,14 @@ function getPreferredReviewMarkers(): { open: string; close: string } {
 function buildReviewMessage(
   marker: ReviewLine["marker"],
   body: string,
+  options: ReviewMessageOptions = {},
 ): { cursorOffset: number; text: string } {
-  const timestamp = getTimestampSuffix();
+  const timestampMode = options.timestamp ?? "configured";
+  const timestamp = timestampMode === "none"
+    ? ""
+    : timestampMode === "explicit"
+    ? getExplicitTimestampSuffix()
+    : getTimestampSuffix();
   const prefix = `${marker}${timestamp}`;
   const text = body === "" ? `${prefix} ` : `${prefix} ${body}`;
 
@@ -3098,7 +3206,10 @@ export const __test = {
   createCompactCriticMarkupReviewNote,
   createCompactReviewNote,
   createReviewConversation,
-  exitReviewMode,
+  cycleReviewMode,
+  enterBatchMode,
+  enterEditMode,
+  enterLiveMode,
   fillReviewLineAfterNativeNewline,
   filterReviewItems,
   getConversationContentRanges,
@@ -3118,6 +3229,6 @@ export const __test = {
   showResolvedReviewItems,
   showUnresolvedReviewItems,
   showWipReviewItems,
-  toggleReviewMode,
+  toggleBatchMode,
   wrapCriticMarkupAnnotation,
 };

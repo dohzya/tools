@@ -372,7 +372,7 @@ test("review tracking view is contributed to the Explorer", () => {
   );
 });
 
-test("review mode exposes modal single-key shortcuts behind a context", () => {
+test("review modes expose explicit modes and batch shortcuts", () => {
   const pkg = readPackage();
   const commands = new Set(
     pkg.contributes.commands.map((command) => command.command),
@@ -382,48 +382,62 @@ test("review mode exposes modal single-key shortcuts behind a context", () => {
     binding.when,
   ]));
 
-  assert(commands.has("dzMdReview.toggleReviewMode"));
-  assert(commands.has("dzMdReview.enterReviewMode"));
-  assert(commands.has("dzMdReview.exitReviewMode"));
+  assert(commands.has("dzMdReview.toggleBatchMode"));
+  assert(commands.has("dzMdReview.cycleReviewMode"));
+  assert(commands.has("dzMdReview.enterEditMode"));
+  assert(commands.has("dzMdReview.enterBatchMode"));
+  assert(commands.has("dzMdReview.enterLiveMode"));
 
   assert.equal(
-    keybindings.get("dzMdReview.toggleReviewMode:cmd+alt+k m"),
+    keybindings.get("dzMdReview.toggleBatchMode:cmd+alt+k k"),
     "editorTextFocus && editorLangId == markdown",
   );
   assert.equal(
-    keybindings.get("dzMdReview.exitReviewMode:escape"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode",
+    keybindings.get("dzMdReview.enterEditMode:cmd+alt+k e"),
+    "editorTextFocus && editorLangId == markdown",
+  );
+  assert.equal(
+    keybindings.get("dzMdReview.enterBatchMode:cmd+alt+k b"),
+    "editorTextFocus && editorLangId == markdown",
+  );
+  assert.equal(
+    keybindings.get("dzMdReview.enterLiveMode:cmd+alt+k l"),
+    "editorTextFocus && editorLangId == markdown",
+  );
+  assert.equal(
+    keybindings.get("dzMdReview.enterEditMode:escape"),
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode",
   );
   assert.equal(
     keybindings.get("dzMdReview.nextReviewBlock:n"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode",
   );
   assert.equal(
     keybindings.get("dzMdReview.previousReviewBlock:shift+n"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode",
   );
   assert.equal(
     keybindings.get("dzMdReview.cancelCriticMarkupAnnotation:x"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly",
   );
   assert.equal(
     keybindings.get("dzMdReview.applyCriticMarkupAnnotation:shift+x"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly",
   );
   assert.equal(
     keybindings.get("dzMdReview.addHumanOk:o"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly",
   );
   assert.equal(
     keybindings.get("dzMdReview.approveAgentMessage:@"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode && !editorReadonly",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode && !editorReadonly",
   );
   assert.equal(
     keybindings.get("dzMdReview.nextPendingConversation:p"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode",
   );
   assert.equal(
     keybindings.get("dzMdReview.previousPendingConversation:shift+p"),
-    "editorTextFocus && editorLangId == markdown && dzMdReview.inReviewMode",
+    "editorTextFocus && editorLangId == markdown && dzMdReview.inBatchMode",
   );
 });

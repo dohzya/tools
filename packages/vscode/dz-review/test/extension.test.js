@@ -35,6 +35,7 @@ function createHarness() {
   const executedCommands = [];
   const executedCommandCalls = [];
   const pendingSetContextResolutions = [];
+  const statusBarItems = [];
   const webviewViewProviders = [];
   const statusBarCalls = [];
   const mockVscode = {
@@ -44,10 +45,11 @@ function createHarness() {
         return {};
       },
       createStatusBarItem() {
-        return {
+        const item = {
           command: undefined,
           text: "",
           tooltip: "",
+          backgroundColor: undefined,
           dispose() {},
           hide() {
             statusBarCalls.push("hide");
@@ -56,6 +58,8 @@ function createHarness() {
             statusBarCalls.push("show");
           },
         };
+        statusBarItems.push(item);
+        return item;
       },
       registerWebviewViewProvider(id, provider) {
         const registration = {
@@ -138,6 +142,11 @@ function createHarness() {
       dispose() {}
     },
     ThemeIcon: class ThemeIcon {
+      constructor(id) {
+        this.id = id;
+      }
+    },
+    ThemeColor: class ThemeColor {
       constructor(id) {
         this.id = id;
       }
@@ -336,40 +345,64 @@ function createHarness() {
       deferSetContext = value;
     },
     statusBarCalls,
+    statusBarItems,
     webviewViewProviders,
   };
 }
 
-test("review mode toggles the VS Code keybinding context", async () => {
+test("review modes update the VS Code keybinding context", async () => {
   const harness = createHarness();
 
-  await harness.api.toggleReviewMode();
-  await harness.api.toggleReviewMode();
+  await harness.api.enterBatchMode();
+  await harness.api.enterLiveMode();
+  await harness.api.enterEditMode();
 
   assert.deepEqual(harness.executedCommandCalls, [
-    ["setContext", "dzMdReview.inReviewMode", true],
-    ["setContext", "dzMdReview.inReviewMode", false],
+    ["setContext", "dzMdReview.mode", "batch"],
+    ["setContext", "dzMdReview.inBatchMode", true],
+    ["setContext", "dzMdReview.mode", "live"],
+    ["setContext", "dzMdReview.inBatchMode", false],
+    ["setContext", "dzMdReview.mode", "edit"],
+    ["setContext", "dzMdReview.inBatchMode", false],
   ]);
 });
 
-test("review mode hides its status bar item immediately on exit", async () => {
+test("status bar command cycles through review modes", async () => {
+  const harness = createHarness();
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(harness.statusBarItems[0].command, "dzMdReview.cycleReviewMode");
+
+  harness.executedCommandCalls.length = 0;
+  await harness.api.cycleReviewMode();
+  await harness.api.cycleReviewMode();
+  await harness.api.cycleReviewMode();
+
+  assert.deepEqual(harness.executedCommandCalls, [
+    ["setContext", "dzMdReview.mode", "batch"],
+    ["setContext", "dzMdReview.inBatchMode", true],
+    ["setContext", "dzMdReview.mode", "live"],
+    ["setContext", "dzMdReview.inBatchMode", false],
+    ["setContext", "dzMdReview.mode", "edit"],
+    ["setContext", "dzMdReview.inBatchMode", false],
+  ]);
+});
+
+test("review modes keep the status bar visible while changing modes", async () => {
   const harness = createHarness();
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   await Promise.resolve();
   harness.statusBarCalls.length = 0;
 
-  await harness.api.toggleReviewMode();
+  await harness.api.enterBatchMode();
   assert.deepEqual(harness.statusBarCalls, ["show"]);
 
-  harness.setDeferSetContext(true);
-  const exitPromise = harness.api.exitReviewMode();
-  await Promise.resolve();
+  await harness.api.enterEditMode();
 
-  assert.deepEqual(harness.statusBarCalls, ["show", "hide"]);
-
-  harness.resolveSetContexts();
-  await exitPromise;
+  assert.deepEqual(harness.statusBarCalls, ["show", "show"]);
 });
 
 test("review panel webview lists review items from the active Markdown editor", async () => {
@@ -510,7 +543,9 @@ test("review panel webview supports review status filters", async () => {
   assert.match(view.webview.html, /new text/);
   assert.doesNotMatch(view.webview.html, /Resolved conversation/);
   assert.deepEqual(
-    harness.executedCommandCalls.find((call) => call[0] === "setContext"),
+    harness.executedCommandCalls.find((call) =>
+      call[0] === "setContext" && call[1] === "dzMdReview.reviewItemsFilter"
+    ),
     [
       "setContext",
       "dzMdReview.reviewItemsFilter",
@@ -526,11 +561,18 @@ test("review panel webview supports review status filters", async () => {
   assert.match(view.webview.html, /new text/);
   assert.doesNotMatch(view.webview.html, /Handled conversation/);
   assert.doesNotMatch(view.webview.html, /Resolved conversation/);
-  assert.deepEqual(harness.executedCommandCalls.at(-1), [
-    "setContext",
-    "dzMdReview.reviewItemsFilter",
-    "pending",
-  ]);
+  assert.deepEqual(
+    harness.executedCommandCalls
+      .filter((call) =>
+        call[0] === "setContext" && call[1] === "dzMdReview.reviewItemsFilter"
+      )
+      .at(-1),
+    [
+      "setContext",
+      "dzMdReview.reviewItemsFilter",
+      "pending",
+    ],
+  );
 
   await harness.api.showResolvedReviewItems();
 
@@ -926,6 +968,7 @@ test("cmd+alt+enter appends a quick reply inline in a compact inline note", asyn
     character: 8,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "foo {?? @agent note inline @  ??} baz");
@@ -939,6 +982,7 @@ test("cmd+alt+enter appends a quick reply inline in a compact HTML note", async 
     character: 9,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "foo <!-- @agent note inline @  --> baz");
@@ -952,6 +996,7 @@ test("cmd+alt+enter reuses a trailing inline quick reply", async () => {
     character: 5,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "{?? @agent note @  ??}");
@@ -966,16 +1011,66 @@ test("addHumanOk only adds ok and removeHumanOk only removes ok", async () => {
   });
 
   await harness.api.addHumanOk();
-  assert.equal(editor.document.text, "{?? @agent note @me ok ??}");
+  assert.match(
+    editor.document.text,
+    /^\{\?\? @agent note @me%[0-9A-Za-z]{8} ok \?\?\}$/,
+  );
 
   await harness.api.addHumanOk();
-  assert.equal(editor.document.text, "{?? @agent note @me ok ??}");
+  assert.match(
+    editor.document.text,
+    /^\{\?\? @agent note @me%[0-9A-Za-z]{8} ok \?\?\}$/,
+  );
 
   await harness.api.removeHumanOk();
   assert.equal(editor.document.text, "{?? @agent note ??}");
 
   await harness.api.removeHumanOk();
   assert.equal(editor.document.text, "{?? @agent note ??}");
+});
+
+test("cmd+ctrl+alt+enter adds mode-aware ok replies", async () => {
+  const editHarness = createHarness();
+  editHarness.setTimestampFormat("compact");
+  const editEditor = editHarness.createEditor("{?? @agent note ??}", {
+    line: 0,
+    character: 5,
+  });
+
+  await editHarness.api.enterEditMode();
+  await editHarness.api.addHumanOk();
+
+  assert.match(
+    editEditor.document.text,
+    /^\{\?\? @agent note @me%[0-9A-Za-z]{8} ok \?\?\}$/,
+  );
+
+  const batchHarness = createHarness();
+  batchHarness.setTimestampFormat("compact");
+  const batchEditor = batchHarness.createEditor("{?? @agent note ??}", {
+    line: 0,
+    character: 5,
+  });
+
+  await batchHarness.api.enterBatchMode();
+  await batchHarness.api.addHumanOk();
+
+  assert.match(
+    batchEditor.document.text,
+    /^\{\?\? @agent note @me%[0-9A-Za-z]{8} ok \?\?\}$/,
+  );
+
+  const liveHarness = createHarness();
+  liveHarness.setTimestampFormat("compact");
+  const liveEditor = liveHarness.createEditor("{?? @agent note ??}", {
+    line: 0,
+    character: 5,
+  });
+
+  await liveHarness.api.enterLiveMode();
+  await liveHarness.api.addHumanOk();
+
+  assert.equal(liveEditor.document.text, "{?? @agent note @ ok ??}");
 });
 
 test("addHumanOk recognizes timestamped quick ok replies", async () => {
@@ -1028,6 +1123,7 @@ test("compact inline notes in list items keep inline quick replies", async () =>
     character: 8,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "- B {?? @agent note @  ??}");
@@ -1041,6 +1137,7 @@ test("cmd+alt+enter appends a quick reply after a trailing @me ok line", async (
     character: 0,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "<!--\n@agent note\n@me ok\n@ \n-->");
@@ -1054,6 +1151,7 @@ test("cmd+alt+enter preserves colonless @me ok lines and appends a quick reply",
     character: 0,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "<!--\n@agent note\n@me ok\n@ \n-->");
@@ -1067,6 +1165,7 @@ test("cmd+alt+enter adds a quick reply when the conversation does not end with o
     character: 0,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(
@@ -1083,6 +1182,7 @@ test("cmd+alt+enter reuses a trailing multiline quick reply", async () => {
     character: 0,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "<!--\n@agent note\n@ \n-->");
@@ -1210,20 +1310,21 @@ test("cmd+alt+enter creates a compact HTML quick note at the end of the line", a
   const harness = createHarness();
   const editor = harness.createEditor("foo", { line: 0, character: 1 });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "foo <!-- @  -->");
   assert.deepEqual(editor.selection.active, { line: 0, character: 11 });
 });
 
-test("cmd+alt+enter uses the configured timestamp format", async () => {
+test("cmd+alt+enter uses @me and the configured timestamp format in edit mode", async () => {
   const harness = createHarness();
   harness.setTimestampFormat("compact");
   const editor = harness.createEditor("foo", { line: 0, character: 1 });
 
   await harness.api.approveAgentMessage();
 
-  assert.match(editor.document.text, /^foo <!-- @%[0-9A-Za-z]{8}  -->$/);
+  assert.match(editor.document.text, /^foo <!-- @me%[0-9A-Za-z]{8}  -->$/);
 });
 
 test("timestampFormat none keeps workshop quick notes timestamp-free", async () => {
@@ -1231,6 +1332,7 @@ test("timestampFormat none keeps workshop quick notes timestamp-free", async () 
   harness.setTimestampFormat("none");
   const editor = harness.createEditor("foo", { line: 0, character: 1 });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "foo <!-- @  -->");
@@ -1279,7 +1381,10 @@ test("cmd+alt+k o compact custom ok notes are inserted without a leading space",
 
   await harness.api.addHumanOk();
 
-  assert.equal(editor.document.text, "{++foo++}{?? @me ok ??}");
+  assert.match(
+    editor.document.text,
+    /^\{\+\+foo\+\+\}\{\?\? @me%[0-9A-Za-z]{8} ok \?\?\}$/,
+  );
 });
 
 test("discussion shortcut always creates a custom note", async () => {
@@ -1598,10 +1703,52 @@ test("cmd+alt+enter appends a quick reply inline in a compact conversation", asy
     character: 5,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "{?? @agent note @  ??}");
   assert.deepEqual(editor.selection.active, { line: 0, character: 18 });
+});
+
+test("cmd+alt+enter appends a timestamped @me reply in edit mode", async () => {
+  const harness = createHarness();
+  harness.setTimestampFormat("compact");
+  const editor = harness.createEditor("{?? @agent note ??}", {
+    line: 0,
+    character: 5,
+  });
+
+  await harness.api.enterEditMode();
+  await harness.api.approveAgentMessage();
+
+  assert.match(
+    editor.document.text,
+    /^\{\?\? @agent note @me%[0-9A-Za-z]{8}  \?\?\}$/,
+  );
+  assert.deepEqual(editor.selection.active, { line: 0, character: 29 });
+});
+
+test("cmd+alt+enter appends a timestamped @me reply and leaves batch mode", async () => {
+  const harness = createHarness();
+  harness.setTimestampFormat("compact");
+  const editor = harness.createEditor("{?? @agent note ??}", {
+    line: 0,
+    character: 5,
+  });
+
+  await harness.api.enterBatchMode();
+  harness.executedCommandCalls.length = 0;
+  await harness.api.approveAgentMessage();
+
+  assert.match(
+    editor.document.text,
+    /^\{\?\? @agent note @me%[0-9A-Za-z]{8}  \?\?\}$/,
+  );
+  assert.deepEqual(editor.selection.active, { line: 0, character: 29 });
+  assert.deepEqual(harness.executedCommandCalls, [
+    ["setContext", "dzMdReview.mode", "edit"],
+    ["setContext", "dzMdReview.inBatchMode", false],
+  ]);
 });
 
 test("cmd+alt+enter preserves a trailing inline ok reply and appends a quick reply", async () => {
@@ -1611,6 +1758,7 @@ test("cmd+alt+enter preserves a trailing inline ok reply and appends a quick rep
     character: 5,
   });
 
+  await harness.api.enterLiveMode();
   await harness.api.approveAgentMessage();
 
   assert.equal(editor.document.text, "{?? @agent note @me ok @  ??}");
