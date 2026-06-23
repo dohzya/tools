@@ -157,6 +157,45 @@ test("timestamp color rules override annotation colors", () => {
   );
 });
 
+test("critic markup punctuation and inserted substitution text reset inherited styles", () => {
+  const pkg = readPackage();
+  const customizations =
+    pkg.contributes.configurationDefaults["editor.tokenColorCustomizations"];
+  const globalRules = customizations.textMateRules;
+  const latteRules = customizations["[Catppuccin Latte]"].textMateRules;
+
+  for (const rules of [globalRules, latteRules]) {
+    assertRuleExists(
+      rules,
+      "punctuation.definition.addition.end.critic.markdown",
+    );
+    assertRuleExists(
+      rules,
+      "punctuation.definition.deletion.end.critic.markdown",
+    );
+    assertRuleExists(
+      rules,
+      "punctuation.definition.highlight.end.critic.markdown",
+    );
+    assertRuleExists(
+      rules,
+      "punctuation.definition.substitution.end.critic.markdown",
+    );
+    assertRuleExists(
+      rules,
+      "markup.inserted.critic.substitution.markdown markup.strikethrough.markdown",
+    );
+    assertRuleExists(
+      rules,
+      "markup.strikethrough.markdown markup.inserted.critic.substitution.markdown",
+    );
+    assertRuleExists(
+      rules,
+      "meta.substitution.critic.markdown markup.inserted.critic.substitution.markdown",
+    );
+  }
+});
+
 test("timestamp format configuration can disable timestamp insertion", () => {
   const pkg = readPackage();
   const setting =

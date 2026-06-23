@@ -153,11 +153,27 @@ test("Obsidian Markdown grammar includes Obsidian and custom review annotation s
     "meta.timestamp.review.markdown",
   );
   assert.equal(
+    grammar.repository["criticmarkup-addition"].endCaptures["0"].name,
+    "punctuation.definition.addition.end.critic.markdown",
+  );
+  assert.equal(
+    grammar.repository["criticmarkup-deletion"].endCaptures["0"].name,
+    "punctuation.definition.deletion.end.critic.markdown",
+  );
+  assert.equal(
+    grammar.repository["criticmarkup-highlight"].endCaptures["0"].name,
+    "punctuation.definition.highlight.end.critic.markdown",
+  );
+  assert.equal(
     grammar.repository["criticmarkup-comment"].beginCaptures["2"].name,
     "meta.timestamp.review.markdown",
   );
   assert.equal(
-    grammar.repository["criticmarkup-substitution"].beginCaptures["4"].name,
+    grammar.repository["criticmarkup-comment"].endCaptures["0"].name,
+    "punctuation.definition.comment.end.critic.markdown",
+  );
+  assert.equal(
+    grammar.repository["criticmarkup-substitution"].captures["4"].name,
     "punctuation.separator.substitution.critic.markdown",
   );
   assert.equal(
@@ -165,10 +181,29 @@ test("Obsidian Markdown grammar includes Obsidian and custom review annotation s
     "^\\s*%%\\s*$",
   );
   assert.equal(
-    grammar.repository["criticmarkup-substitution"].begin,
-    `(\\{~~)(%(?:${GRAMMAR_TIMESTAMP_PATTERN})\\|)?(.*?)(~>)`,
+    grammar.repository["criticmarkup-substitution"].match,
+    `(\\{~~)(%(?:${GRAMMAR_TIMESTAMP_PATTERN})\\|)?(.*?)(~>)(.*?)(~~\\})`,
   );
-  assert.equal(grammar.repository["criticmarkup-substitution"].end, "~~\\}");
+  assert.equal(
+    grammar.repository["criticmarkup-substitution"].captures["1"].name,
+    "punctuation.definition.substitution.begin.critic.markdown",
+  );
+  assert.equal(
+    grammar.repository["criticmarkup-substitution"].captures["3"].name,
+    "markup.deleted.critic.substitution.markdown",
+  );
+  assert.equal(
+    grammar.repository["criticmarkup-substitution"].captures["5"].name,
+    "markup.inserted.critic.substitution.markdown",
+  );
+  assert.equal(
+    grammar.repository["criticmarkup-substitution"].captures["6"].name,
+    "punctuation.definition.substitution.end.critic.markdown",
+  );
+  assert.equal(
+    grammar.repository["obsidian-highlights"].begin,
+    "(?<!\\{)==(?!\\})",
+  );
 });
 
 test("timestamp metadata has a dim token color rule", () => {

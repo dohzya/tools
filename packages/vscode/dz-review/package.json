@@ -565,9 +565,37 @@
             }
           },
           {
+            "scope": [
+              "punctuation.definition.addition.begin.critic.markdown",
+              "punctuation.definition.addition.end.critic.markdown",
+              "punctuation.definition.deletion.begin.critic.markdown",
+              "punctuation.definition.deletion.end.critic.markdown",
+              "punctuation.definition.substitution.begin.critic.markdown",
+              "punctuation.definition.substitution.end.critic.markdown",
+              "punctuation.definition.highlight.begin.critic.markdown",
+              "punctuation.definition.highlight.end.critic.markdown",
+              "punctuation.definition.comment.begin.critic.markdown",
+              "punctuation.definition.comment.end.critic.markdown"
+            ],
+            "settings": {
+              "foreground": "#8C8FA1",
+              "fontStyle": ""
+            }
+          },
+          {
             "scope": "meta.substitution.critic.markdown markup.strikethrough.markdown",
             "settings": {
               "fontStyle": ""
+            }
+          },
+          {
+            "scope": [
+              "markup.inserted.critic.substitution.markdown markup.strikethrough.markdown",
+              "markup.strikethrough.markdown markup.inserted.critic.substitution.markdown",
+              "meta.substitution.critic.markdown markup.inserted.critic.substitution.markdown"
+            ],
+            "settings": {
+              "fontStyle": "bold"
             }
           },
           {
@@ -629,9 +657,37 @@
               }
             },
             {
+              "scope": [
+                "punctuation.definition.addition.begin.critic.markdown",
+                "punctuation.definition.addition.end.critic.markdown",
+                "punctuation.definition.deletion.begin.critic.markdown",
+                "punctuation.definition.deletion.end.critic.markdown",
+                "punctuation.definition.substitution.begin.critic.markdown",
+                "punctuation.definition.substitution.end.critic.markdown",
+                "punctuation.definition.highlight.begin.critic.markdown",
+                "punctuation.definition.highlight.end.critic.markdown",
+                "punctuation.definition.comment.begin.critic.markdown",
+                "punctuation.definition.comment.end.critic.markdown"
+              ],
+              "settings": {
+                "foreground": "#7c7f93",
+                "fontStyle": ""
+              }
+            },
+            {
               "scope": "punctuation.separator.substitution.critic.markdown",
               "settings": {
                 "foreground": "#8839ef",
+                "fontStyle": "bold"
+              }
+            },
+            {
+              "scope": [
+                "markup.inserted.critic.substitution.markdown markup.strikethrough.markdown",
+                "markup.strikethrough.markdown markup.inserted.critic.substitution.markdown",
+                "meta.substitution.critic.markdown markup.inserted.critic.substitution.markdown"
+              ],
+              "settings": {
                 "fontStyle": "bold"
               }
             },
