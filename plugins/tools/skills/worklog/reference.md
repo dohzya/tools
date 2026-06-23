@@ -54,12 +54,13 @@ This transitions the task back to `started`, clears the `done_at`/`cancelled_at`
 
 ### Completing a task
 
-**Order matters:** commit → `wl show` → `wl done`
+**Order matters:** commit → `wl show` → close when explicitly requested, otherwise propose closing if complete → `wl done`
 
 ```bash
 git commit -m "feat: multi-currency support"
 wl show <id>      # check pending TODOs + traces to consolidate
 
+# If the user already asked to close, proceed. Otherwise, propose closing first.
 # Preferred: let the agent synthesize the final checkpoint
 wl done --claude                # Claude Code
 wl done --codex                 # Codex

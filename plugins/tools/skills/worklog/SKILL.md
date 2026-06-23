@@ -35,10 +35,10 @@ Output: `<id>  <status>  "<name>"  <date>`
 1. **Create & start**: `wl create --started "Task name"`
 2. **Trace** every event: `wl trace <id> "action taken / problem hit / idea / lead explored / finding / learning"`
 3. **Checkpoint** when prompted: prefer `wl checkpoint --agent` (or `--claude` / `--codex`) for synthesis
-4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces)
+4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces), then close when the user asked for it or propose closing if the task appears complete
 5. **Close**: prefer `wl done --agent` (args optional if no new traces since last checkpoint)
 
-**Critical:** commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, learnings · include causes & pistes in traces · checkpoints must be cumulative and self-contained · learnings = reusable discoveries (not a summary)
+**Critical:** after committing, either close on an explicit user signal or propose closing when complete · commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, learnings · include causes & pistes in traces · checkpoints must be cumulative and self-contained · learnings = reusable discoveries (not a summary)
 
 ## Checkpoint Synthesis
 
