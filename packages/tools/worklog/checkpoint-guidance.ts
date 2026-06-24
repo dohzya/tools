@@ -13,6 +13,8 @@ Put this in the second argument, learnings:
 - Reusable learnings: durable patterns, gotchas, workflow rules, and codebase facts.
 
 Do not turn learnings into an activity summary. "Tests passed" is validation; the learning is the reusable reason, constraint, or pattern discovered while getting there.
+
+Before running the command, review every candidate sentence. If it describes a thing done or final state, it belongs in Changes. If it describes a lesson learned, it belongs in Learnings. Then scan the traces for information that could be useful to other projects; when there is one, distill the reusable learning into Learnings.
 `.trim();
 
 export const CHECKPOINT_DELEGATION_GUIDANCE = `

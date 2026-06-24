@@ -39,10 +39,10 @@ export function buildCheckpointPrompt(
     );
   }
 
-  // Section 3: Previous checkpoint (style reference)
+  // Section 3: Previous checkpoint
   if (show.last_checkpoint) {
     sections.push(
-      `## Previous checkpoint (style reference)\n\n` +
+      `## Previous checkpoint\n\n` +
         `**Changes:** ${show.last_checkpoint.changes}\n` +
         `**Learnings:** ${show.last_checkpoint.learnings}`,
     );

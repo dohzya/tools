@@ -51,6 +51,8 @@ Deno.test("checkpoint prompt — with entries + previous checkpoint", () => {
   assertStringIncludes(prompt, "2025-01-15 12:00");
 
   // Previous checkpoint content
+  assertStringIncludes(prompt, "## Previous checkpoint\n\n");
+  assertEquals(prompt.includes("style reference"), false);
   assertStringIncludes(prompt, "Implemented initial parser");
   assertStringIncludes(prompt, "YAML roundtrip loses quote style");
 
@@ -70,6 +72,12 @@ Deno.test("checkpoint prompt — with entries + previous checkpoint", () => {
   assertStringIncludes(prompt, "wl checkpoint --agent");
   assertEquals(prompt.includes("wl done --agent"), false);
   assertStringIncludes(prompt, "dedicated synthesis agent");
+  assertStringIncludes(prompt, "Before running the command");
+  assertStringIncludes(prompt, "thing done or final state");
+  assertStringIncludes(prompt, "belongs in Changes");
+  assertStringIncludes(prompt, "lesson learned");
+  assertStringIncludes(prompt, "belongs in Learnings");
+  assertStringIncludes(prompt, "useful to other projects");
 
   // Command with exact taskId
   assertStringIncludes(prompt, "wl checkpoint abc123def456");

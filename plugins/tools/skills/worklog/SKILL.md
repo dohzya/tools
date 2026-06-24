@@ -65,6 +65,8 @@ Put this in the second argument, `learnings`:
 
 Do not turn learnings into an activity summary. "Tests passed" is validation; the learning is the reusable reason, constraint, or pattern discovered while getting there.
 
+Before running a manual `wl checkpoint ...` or `wl done ...` command, review every candidate sentence. If it describes a thing done or final state, put it in `changes`. If it describes a lesson learned, put it in `learnings`. Then scan the traces for information that could be useful to other projects; when there is one, distill that reusable pattern into `learnings`.
+
 ## Tracing Learnings
 
 When you discover something educational or non-obvious about the codebase, technology, or patterns during your work, **trace it** so checkpoints can capture it:

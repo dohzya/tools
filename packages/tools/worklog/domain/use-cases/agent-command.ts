@@ -5,6 +5,7 @@ import type { RunOutput, ShowOutput } from "../entities/outputs.ts";
 import { WtError } from "../entities/errors.ts";
 import type { IndexRepository } from "../ports/index-repository.ts";
 import type { ProcessRunner } from "../ports/process-runner.ts";
+import { CHECKPOINT_SYNTHESIS_CONTRACT } from "../../checkpoint-guidance.ts";
 
 export interface AgentCommandInput {
   readonly taskId?: string;
@@ -128,6 +129,10 @@ To trace in a **different** task (e.g. a subtask), pass its ID as first argument
 ## Checkpoints
 
 When it's time to consolidate traces, prefer **\`wl checkpoint --${agentType}\`** — it feeds all your traces to a fresh ${this.agentConfig.name} instance with quality guidelines, so you don't have to write the synthesis yourself. It preserves your context window.
+
+If you write a manual \`wl checkpoint "changes" "learnings"\` or \`wl done "changes" "learnings"\` synthesis, follow this contract:
+
+${CHECKPOINT_SYNTHESIS_CONTRACT}
 
 ## Subtasks
 

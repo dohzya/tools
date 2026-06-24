@@ -363,6 +363,11 @@ Deno.test("AgentCommandUseCase (claude) - system prompt contains claude-specific
 
   assertStringIncludes(systemPrompt, "wl checkpoint --claude");
   assertStringIncludes(systemPrompt, "wl claude <subtask-id>");
+  assertStringIncludes(systemPrompt, "thing done or final state");
+  assertStringIncludes(systemPrompt, "belongs in Changes");
+  assertStringIncludes(systemPrompt, "lesson learned");
+  assertStringIncludes(systemPrompt, "belongs in Learnings");
+  assertStringIncludes(systemPrompt, "useful to other projects");
   // Must NOT contain codex references
   assertEquals(systemPrompt.includes("wl checkpoint --codex"), false);
   assertEquals(systemPrompt.includes("wl codex <subtask-id>"), false);
@@ -386,6 +391,11 @@ Deno.test("AgentCommandUseCase (codex) - system prompt contains codex-specific r
 
   assertStringIncludes(systemPrompt, "wl checkpoint --codex");
   assertStringIncludes(systemPrompt, "wl codex <subtask-id>");
+  assertStringIncludes(systemPrompt, "thing done or final state");
+  assertStringIncludes(systemPrompt, "belongs in Changes");
+  assertStringIncludes(systemPrompt, "lesson learned");
+  assertStringIncludes(systemPrompt, "belongs in Learnings");
+  assertStringIncludes(systemPrompt, "useful to other projects");
   // Must NOT contain claude references
   assertEquals(systemPrompt.includes("wl checkpoint --claude"), false);
   assertEquals(systemPrompt.includes("wl claude <subtask-id>"), false);
