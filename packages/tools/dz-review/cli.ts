@@ -2,9 +2,7 @@
 
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
-import { z } from "@zod/zod/mini";
 import * as childProcess from "node:child_process";
-import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
@@ -12,24 +10,55 @@ import * as readline from "node:readline";
 import { agentInstructions } from "../agent-instructions.ts";
 
 import {
+  addAgentSessionFiles,
+  type AgentActionResult,
+  type AgentHandoff,
+  type AgentReviewItem,
+  type AgentSessionStatus,
+  applyAgentReviewItem,
+  cleanAgentReviewItems,
+  collectLocatedReviewItems,
+  finishAgentSession,
+  formatStableReviewItemIdForDisplay,
+  getAgentActionDiff,
+  getAgentSessionStatus,
+  listAgentReviewItems,
+  listReviewItemsJson,
+  respondToAgentReviewItem,
+  rollbackAgentSession,
+  showAgentReviewItem,
+  startAgentSession,
+  toAgentReviewItem,
+} from "./agent-core.ts";
+import {
+  configureDzReviewRuntime,
+  DZ_REVIEW_IGNORE_FILE_ENV,
+  DZ_REVIEW_STATE_DIR_ENV,
+  getDzReviewDefaultIgnorePatterns,
+  getDzReviewIgnoreFile,
+  getDzReviewSessionFile,
+} from "./runtime-config.ts";
+import {
   applyReviewAnnotationAction,
-  collectConversations,
-  collectReviewAnnotations,
-  type Conversation,
+  collectReviewItems,
+  type ConversationFilter,
   type ConversationStatus,
   getAddedLinesByFile,
   getConversationLastMessage,
   getConversationMessages,
   getConversationStatus,
+  isConversationReviewItem,
   renderReviewAnnotationForDisplay,
   type ReviewAnnotation,
   type ReviewAnnotationKind,
+  type ReviewItem,
   reviewItemOverlapsLines,
   type ReviewMessage,
   summarizeConversation,
   summarizeReviewAnnotation,
 } from "./review-core.ts";
 import {
+  collectReviewTimestampFormatStats,
   encodeCompactTimestamp,
   encodeHangulTimestamp,
   encodeTimestamp,
@@ -37,13 +66,10 @@ import {
   parseReviewTimestamp,
   type ReviewTimestamp,
   type TimestampFormat,
+  type TimestampFormatStats,
+  transformReviewTimestamps,
 } from "./timestamp.ts";
-import {
-  assignStableReviewItemIds,
-  getShortStableReviewItemId,
-  STABLE_REVIEW_ID_PREFIX,
-  stableReviewItemFingerprint,
-} from "./stable-review-id.ts";
+import { STABLE_REVIEW_ID_PREFIX } from "./stable-review-id.ts";
 
 interface CliOptions {
   context: DisplayContext;
@@ -52,6 +78,7 @@ interface CliOptions {
   conversationFilter: ConversationFilter;
   files: string[];
   git: boolean;
+  json: boolean;
   list: boolean;
   since: ReviewTimestamp | undefined;
   statusFormat: StatusFormat;
@@ -115,6 +142,7 @@ interface StatusCliffyOptions extends CommonCliffyOptions {
 interface ListCliffyOptions extends CommonCliffyOptions {
   git?: boolean;
   diff?: boolean;
+  json?: boolean;
   contextBefore?: string;
   contextAfter?: string;
   context?: string;
@@ -151,8 +179,36 @@ interface NowCliffyOptions {
 }
 
 interface AgentCliffyOptions {
+  dryRun?: boolean;
   force?: boolean;
   json?: boolean;
+}
+
+interface AgentListCliffyOptions {
+  json?: boolean;
+  limit?: string;
+}
+
+interface AgentShowCliffyOptions {
+  c?: string;
+  context?: string;
+  json?: boolean;
+}
+
+interface AgentMessageCliffyOptions {
+  json?: boolean;
+  message?: string;
+  m?: string;
+}
+
+interface AgentApplyCliffyOptions extends AgentMessageCliffyOptions {
+  replace?: string;
+}
+
+interface AgentCleanCliffyOptions {
+  dryRun?: boolean;
+  json?: boolean;
+  validated?: boolean;
 }
 
 class DzReviewCliError extends Error {
@@ -194,89 +250,10 @@ type ReviewAction =
   | "quit";
 
 type ProcessFileResult = "continue" | "quit";
-type ConversationFilter = "all" | ConversationStatus | "pending";
-interface LocatedReviewItem {
-  file: string;
-  id: string;
-  item: ReviewItem;
-  text: string;
-}
 
 interface LastReviewTimestamp {
   source: ReviewMessage["marker"] | "other";
   timestamp: ReviewTimestamp;
-}
-
-interface TimestampFormatStats {
-  compact: number;
-  hangul: number;
-  iso: number;
-}
-
-type AgentTimestampFormat = TimestampFormat | "mixed" | "none";
-
-interface AgentReviewItem {
-  id: string;
-  file: string;
-  lineStart: number;
-  lineEnd: number;
-  kind: string;
-  state: string;
-  firstMessage?: {
-    author: ReviewMessage["marker"];
-    body: string;
-    timestamp?: string;
-  };
-  lastMessage?: {
-    author: ReviewMessage["marker"];
-    body: string;
-    timestamp?: string;
-  };
-  context: string;
-  suggestedAction: string;
-  rawHash: string;
-}
-
-interface AgentFileSnapshot {
-  path: string;
-  timestampFormat: AgentTimestampFormat;
-  contentHash: string;
-  itemIds: string[];
-}
-
-interface AgentSessionSnapshot {
-  version: number;
-  startedAt: string;
-  cwd: string;
-  files: AgentFileSnapshot[];
-  items: AgentReviewItem[];
-}
-
-interface AgentReviewState {
-  files: AgentFileSnapshot[];
-  items: AgentReviewItem[];
-  texts: Map<string, string>;
-}
-
-interface AgentGuardrailFailure {
-  id: string;
-  file: string;
-  line: number;
-  message: string;
-}
-
-interface AgentHandoff {
-  version: number;
-  filesAnnotated: number;
-  filesModified: number;
-  conversationsAnswered: number;
-  cleanableConversations: AgentReviewItem[];
-  remainingOpenItems: AgentReviewItem[];
-  guardrailFailures: AgentGuardrailFailure[];
-}
-
-interface AgentSessionStatus extends AgentHandoff {
-  items: AgentReviewItem[];
 }
 
 const ANSI = {
@@ -294,61 +271,23 @@ const ANSI = {
 const DEFAULT_CONTEXT: DisplayContext = { before: 2, after: 0 };
 const DOMINANT_TIMESTAMP_FORMAT_RATIO = 0.9;
 const STATUS_TEMPLATE_PLACEHOLDER = "%(status)";
-const AGENT_SESSION_FILE = path.join(".dz-review", "agent-session.json");
 const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
   .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
-const DISPLAY_CONVERSATION_TIMESTAMP_RE = new RegExp(
-  String
-    .raw`(@agent|@me|@)%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)`,
-  "g",
-);
-const DISPLAY_ANNOTATION_TIMESTAMP_RE = new RegExp(
-  String.raw`(\{(?:\+\+|--|==|>>|~~))%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})\|`,
-  "g",
-);
 const CLI_VERSION = "0.2.2";
 let activeColorMode: ColorMode | undefined;
-
-const AgentLastMessageSchema = z.object({
-  author: z.enum(["@", "@me", "@agent"]),
-  body: z.string(),
-  timestamp: z.optional(z.string()),
-});
-const AgentReviewItemSchema = z.object({
-  id: z.string(),
-  file: z.string(),
-  lineStart: z.number(),
-  lineEnd: z.number(),
-  kind: z.string(),
-  state: z.string(),
-  firstMessage: z.optional(AgentLastMessageSchema),
-  lastMessage: z.optional(AgentLastMessageSchema),
-  context: z.string(),
-  suggestedAction: z.string(),
-  rawHash: z.string(),
-});
-const AgentFileSnapshotSchema = z.object({
-  path: z.string(),
-  timestampFormat: z.enum(["compact", "hangul", "iso", "mixed", "none"]),
-  contentHash: z.string(),
-  itemIds: z.array(z.string()),
-});
-const AgentSessionSnapshotSchema = z.object({
-  version: z.number(),
-  startedAt: z.string(),
-  cwd: z.string(),
-  files: z.array(AgentFileSnapshotSchema),
-  items: z.array(AgentReviewItemSchema),
-});
 
 interface GlobalArgs {
   argv: string[];
   cwd: string;
+  ignoreFile: string | undefined;
+  stateDir: string | undefined;
 }
 
 function parseGlobalArgs(argv: string[]): GlobalArgs {
   const remaining: string[] = [];
   let cwd = Deno.cwd();
+  let ignoreFile: string | undefined;
+  let stateDir: string | undefined;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -368,20 +307,55 @@ function parseGlobalArgs(argv: string[]): GlobalArgs {
       continue;
     }
 
+    if (arg === "--state-dir") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error(`${arg} requires a directory.`);
+      }
+      stateDir = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--state-dir=")) {
+      stateDir = arg.slice("--state-dir=".length);
+      continue;
+    }
+
+    if (arg === "--ignore-file") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error(`${arg} requires a file.`);
+      }
+      ignoreFile = value;
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--ignore-file=")) {
+      ignoreFile = arg.slice("--ignore-file=".length);
+      continue;
+    }
+
     remaining.push(arg);
   }
 
-  return { argv: remaining, cwd };
+  return { argv: remaining, cwd, ignoreFile, stateDir };
 }
 
 export async function main(argv: string[]): Promise<number> {
   const global = parseGlobalArgs(argv);
   const previousCwd = Deno.cwd();
   Deno.chdir(global.cwd);
+  configureDzReviewRuntime({
+    ignoreFile: global.ignoreFile,
+    stateDir: global.stateDir,
+  });
 
   try {
     return await runCliffy(global.argv);
   } finally {
+    configureDzReviewRuntime({});
     Deno.chdir(previousCwd);
   }
 }
@@ -455,6 +429,17 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       options,
       ignoreRules,
     );
+    if (options.json) {
+      writeReviewItemsJson(
+        filterIgnoredFiles(files, ignoreRules),
+        addedLinesByFile,
+        options.conversationOnly,
+        options.conversationFilter,
+        options.since,
+      );
+      return 0;
+    }
+
     writeReviewItems(
       filterIgnoredFiles(files, ignoreRules),
       addedLinesByFile,
@@ -506,6 +491,14 @@ function createCli() {
     .globalOption(
       "-C, --cwd <dir:string>",
       "Change directory before running the command.",
+    )
+    .globalOption(
+      "--state-dir <dir:string>",
+      `Agent state directory. Defaults to ${DZ_REVIEW_STATE_DIR_ENV} or .dz-review.`,
+    )
+    .globalOption(
+      "--ignore-file <file:string>",
+      `Review ignore file. Defaults to ${DZ_REVIEW_IGNORE_FILE_ENV} or .dz-review-ignore.`,
     )
     .command("review", createReviewCommand())
     .command("status", createStatusCommand())
@@ -634,6 +627,7 @@ function createListCommand() {
     )
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
+    .option("--json", "Print structured JSON.")
     .option("--git", "Restrict list output to lines added in git diff HEAD.")
     .option("--diff", "Alias for --git.")
     .option("-c, --context <beforeAfter:string>", "Display context lines.")
@@ -725,6 +719,15 @@ function createAgentCommand() {
   return new Command()
     .description("Run agent-oriented review start/done workflow")
     .command("start", createAgentStartCommand())
+    .command("add-file", createAgentAddFileCommand())
+    .command("list", createAgentListCommand())
+    .command("inbox", createAgentListCommand())
+    .command("show", createAgentShowCommand())
+    .command("respond", createAgentRespondCommand())
+    .command("apply", createAgentApplyCommand())
+    .command("clean", createAgentCleanCommand())
+    .command("rollback", createAgentRollbackCommand())
+    .command("diff", createAgentDiffCommand())
     .command("status", createAgentStatusCommand())
     .command("done", createAgentDoneCommand());
 }
@@ -732,11 +735,27 @@ function createAgentCommand() {
 function createAgentStartCommand() {
   return new Command()
     .description("Record a review snapshot and print an agent inbox")
+    .option("--dry-run", "Print the inbox without writing a snapshot or files.")
     .option("-f, --force", "Overwrite an existing agent session snapshot.")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
     .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentStart(files, Boolean(options.json), Boolean(options.force));
+      runAgentStart(
+        files,
+        Boolean(options.json),
+        Boolean(options.force),
+        Boolean(options.dryRun),
+      );
+    });
+}
+
+function createAgentAddFileCommand() {
+  return new Command()
+    .description("Add files to the active agent review session")
+    .option("--json", "Print structured JSON.")
+    .arguments("<files...:string>")
+    .action((options: AgentCliffyOptions, ...files: string[]) => {
+      runAgentAddFile(files, Boolean(options.json));
     });
 }
 
@@ -757,6 +776,95 @@ function createAgentDoneCommand() {
     .arguments("[files...:string]")
     .action((options: AgentCliffyOptions, ...files: string[]) => {
       runAgentDone(files, Boolean(options.json));
+    });
+}
+
+function createAgentListCommand() {
+  return new Command()
+    .description("List current actionable review items for the active session")
+    .option("--json", "Print structured JSON.")
+    .option("--limit <count:string>", "Limit the number of items.")
+    .arguments("[files...:string]")
+    .action((options: AgentListCliffyOptions, ...files: string[]) => {
+      runAgentList(files, options);
+    });
+}
+
+function createAgentShowCommand() {
+  return new Command()
+    .description("Show one review item from the active session by stable ID")
+    .option("--json", "Print structured JSON.")
+    .option("-c, --context <beforeAfter:string>", "Display context lines.")
+    .arguments("<id:string> [files...:string]")
+    .action(
+      (options: AgentShowCliffyOptions, id: string, ...files: string[]) => {
+        runAgentShow(id, files, options);
+      },
+    );
+}
+
+function createAgentRespondCommand() {
+  return new Command()
+    .description("Append an @agent reply to a conversation by stable ID")
+    .option("-m, --message <message:string>", "Reply message.")
+    .option("--json", "Print structured JSON.")
+    .arguments("<id:string> [files...:string]")
+    .action(
+      (options: AgentMessageCliffyOptions, id: string, ...files: string[]) => {
+        runAgentRespond(id, files, options);
+      },
+    );
+}
+
+function createAgentApplyCommand() {
+  return new Command()
+    .description("Apply or replace a review annotation by stable ID")
+    .option(
+      "--replace <text:string>",
+      "Replace the targeted annotation with text.",
+    )
+    .option(
+      "-m, --message <message:string>",
+      "Action note for JSON/text output.",
+    )
+    .option("--json", "Print structured JSON.")
+    .arguments("<id:string> [files...:string]")
+    .action(
+      (options: AgentApplyCliffyOptions, id: string, ...files: string[]) => {
+        runAgentApply(id, files, options);
+      },
+    );
+}
+
+function createAgentCleanCommand() {
+  return new Command()
+    .description("Clean validated conversations by stable ID")
+    .option("--validated", "Only clean conversations validated by a human ok.")
+    .option("--dry-run", "Preview cleanup without editing files.")
+    .option("--json", "Print structured JSON.")
+    .arguments("[ids...:string]")
+    .action((options: AgentCleanCliffyOptions, ...ids: string[]) => {
+      runAgentClean(ids, options);
+    });
+}
+
+function createAgentRollbackCommand() {
+  return new Command()
+    .description("Restore files to their pre-agent-start content")
+    .option("--json", "Print structured JSON.")
+    .arguments("[files...:string]")
+    .action((options: AgentCliffyOptions, ...files: string[]) => {
+      runAgentRollback(files, Boolean(options.json));
+    });
+}
+
+function createAgentDiffCommand() {
+  return new Command()
+    .description("Print a semantic diff for the active agent session")
+    .option("--json", "Print structured JSON.")
+    .arguments("[files...:string]")
+    .action((options: AgentCliffyOptions, ...files: string[]) => {
+      runAgentDiff(files, Boolean(options.json));
     });
 }
 
@@ -824,6 +932,7 @@ function buildListArgv(options: ListCliffyOptions, files: string[]): string[] {
   appendCommonOptions(argv, options);
   appendFlag(argv, options.git, "--git");
   appendFlag(argv, options.diff, "--git");
+  appendFlag(argv, options.json, "--json");
   appendOption(argv, "--context", options.context);
   appendOption(argv, "--context-before", options.contextBefore);
   appendOption(argv, "--context-after", options.contextAfter);
@@ -928,6 +1037,7 @@ function parseArgs(argv: string[]): CliOptions {
       conversationFilter: "all",
       files: [],
       git: false,
+      json: false,
       list: false,
       since: undefined,
       statusFormat: "long",
@@ -950,6 +1060,7 @@ function parseArgs(argv: string[]): CliOptions {
       conversationFilter: "all",
       files: [],
       git: false,
+      json: false,
       list: false,
       since: undefined,
       statusFormat: "long",
@@ -970,6 +1081,7 @@ function parseArgs(argv: string[]): CliOptions {
   let conversationOnly = false;
   let conversationFilter: ConversationFilter = "all";
   let git = command.git;
+  let json = false;
   let list = false;
   let statusFormat: StatusFormat = "long";
   let statusTemplate: string | undefined;
@@ -1214,6 +1326,11 @@ function parseArgs(argv: string[]): CliOptions {
       continue;
     }
 
+    if (arg === "--json") {
+      json = true;
+      continue;
+    }
+
     if (arg === "--list") {
       list = true;
       continue;
@@ -1345,6 +1462,7 @@ function parseArgs(argv: string[]): CliOptions {
     conversationFilter,
     files,
     git,
+    json,
     list,
     since,
     statusFormat,
@@ -1773,95 +1891,46 @@ function writeReviewItems(
   }
 }
 
-function collectLocatedReviewItems(
+function writeReviewItemsJson(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
-): LocatedReviewItem[] {
-  const locatedItems: LocatedReviewItem[] = [];
-
-  for (const file of files) {
-    const lines = addedLinesByFile?.get(normalizePath(file));
-    if (addedLinesByFile && !lines) {
-      continue;
-    }
-
-    const text = fs.readFileSync(file, "utf8");
-    const itemsWithIds = assignStableReviewItemIds(
-      normalizePath(file),
-      collectReviewItems(text, conversationOnly, "all"),
-    );
-    for (const { id, item } of itemsWithIds) {
-      if (!reviewItemMatchesConversationFilter(item, conversationFilter)) {
-        continue;
-      }
-
-      if (!reviewItemMatchesSince(item, since)) {
-        continue;
-      }
-
-      if (lines && !reviewItemOverlapsLines(item, lines)) {
-        continue;
-      }
-
-      locatedItems.push({ file, id, item, text });
-    }
-  }
-
-  return locatedItems;
+): void {
+  process.stdout.write(
+    `${
+      JSON.stringify(
+        listReviewItemsJson(
+          files,
+          addedLinesByFile,
+          conversationOnly,
+          conversationFilter,
+          since,
+        ),
+        null,
+        2,
+      )
+    }\n`,
+  );
 }
 
-function runAgentStart(files: string[], json: boolean, force: boolean): void {
-  if (!force && fs.existsSync(AGENT_SESSION_FILE)) {
-    throw new DzReviewCliError(
-      "invalid_args",
-      [
-        `agent session already exists at ${AGENT_SESSION_FILE}.`,
-        "Use dz-review agent status [file...] to inspect progress, dz-review agent done [file...] to finish, or dz-review agent start --force [file...] to replace the snapshot.",
-      ].join("\n"),
-    );
-  }
-
-  const resolvedFiles = resolveAgentFiles(files);
-  const originalState = collectAgentReviewState(resolvedFiles, false);
-  const timestampFormats = new Map(
-    originalState.files.map((file) => [file.path, file.timestampFormat]),
+function runAgentStart(
+  files: string[],
+  json: boolean,
+  force: boolean,
+  dryRun: boolean,
+): void {
+  const snapshot = startAgentSession(files, force, { dryRun });
+  process.stdout.write(
+    json
+      ? `${JSON.stringify({ ...snapshot, dryRun }, null, 2)}\n`
+      : formatAgentInbox(snapshot, dryRun),
   );
+}
 
-  for (const file of originalState.files) {
-    const text = originalState.texts.get(file.path);
-    if (text === undefined) {
-      continue;
-    }
-
-    const { updated } = transformTimestamps(
-      text,
-      fs.statSync(file.path).mtime,
-      "iso",
-    );
-    if (updated !== text) {
-      fs.writeFileSync(file.path, updated, "utf8");
-    }
-  }
-
-  const state = collectAgentReviewState(
-    originalState.files.map((file) => file.path),
-    false,
-  );
-  const snapshot: AgentSessionSnapshot = {
-    version: 1,
-    startedAt: new Date().toISOString(),
-    cwd: process.cwd(),
-    files: state.files.map((file) => ({
-      ...file,
-      timestampFormat: timestampFormats.get(file.path) ?? "none",
-    })),
-    items: state.items,
-  };
-
-  writeAgentSnapshot(snapshot);
+function runAgentAddFile(files: string[], json: boolean): void {
+  const snapshot = addAgentSessionFiles(files);
   process.stdout.write(
     json
       ? `${JSON.stringify(snapshot, null, 2)}\n`
@@ -1870,42 +1939,7 @@ function runAgentStart(files: string[], json: boolean, force: boolean): void {
 }
 
 function runAgentDone(files: string[], json: boolean): void {
-  const snapshot = readAgentSnapshot();
-  const targetFiles = files.length > 0
-    ? resolveAgentFiles(files)
-    : snapshot.files.map((file) => file.path);
-  const beforeRestore = collectAgentReviewState(targetFiles, true);
-  const modifiedFiles = countModifiedAgentFiles(snapshot, beforeRestore);
-  const conversationsAnswered = countAnsweredAgentConversations(
-    snapshot,
-    beforeRestore,
-  );
-
-  restoreAgentTimestampFormats(snapshot, targetFiles);
-  const afterRestore = collectAgentReviewState(targetFiles, true);
-  const guardrailFailures = collectAgentGuardrailFailures(
-    snapshot,
-    afterRestore,
-  );
-  guardrailFailures.push(
-    ...collectAgentTimestampDriftFailures(snapshot, afterRestore),
-  );
-
-  const handoff: AgentHandoff = {
-    version: 1,
-    filesAnnotated: afterRestore.files.filter((file) => file.itemIds.length > 0)
-      .length,
-    filesModified: modifiedFiles,
-    conversationsAnswered,
-    cleanableConversations: afterRestore.items.filter((item) =>
-      item.kind === "conversation" && item.state === "resolved"
-    ),
-    remainingOpenItems: afterRestore.items.filter((item) =>
-      item.kind === "conversation" &&
-      (item.state === "open" || item.state === "wip")
-    ),
-    guardrailFailures,
-  };
+  const handoff = finishAgentSession(files);
 
   process.stdout.write(
     json
@@ -1913,7 +1947,7 @@ function runAgentDone(files: string[], json: boolean): void {
       : formatAgentHandoff(handoff),
   );
 
-  if (guardrailFailures.length > 0) {
+  if (handoff.guardrailFailures.length > 0) {
     throw new DzReviewCliError(
       "invalid_args",
       "agent done guardrails failed",
@@ -1922,418 +1956,141 @@ function runAgentDone(files: string[], json: boolean): void {
 }
 
 function runAgentStatus(files: string[], json: boolean): void {
-  const snapshot = readAgentSnapshot();
-  const targetFiles = files.length > 0
-    ? resolveAgentFiles(files)
-    : snapshot.files.map((file) => file.path);
-  const state = collectAgentReviewState(targetFiles, true);
-  const status: AgentSessionStatus = {
-    version: 1,
-    filesAnnotated: state.files.filter((file) => file.itemIds.length > 0)
-      .length,
-    filesModified: countModifiedAgentFiles(snapshot, state),
-    conversationsAnswered: countAnsweredAgentConversations(snapshot, state),
-    cleanableConversations: state.items.filter((item) =>
-      item.kind === "conversation" && item.state === "resolved"
-    ),
-    remainingOpenItems: state.items.filter((item) =>
-      item.kind === "conversation" &&
-      (item.state === "open" || item.state === "wip")
-    ),
-    guardrailFailures: collectAgentGuardrailFailures(snapshot, state),
-    items: state.items,
-  };
-
+  const status = getAgentSessionStatus(files);
   process.stdout.write(
     json ? `${JSON.stringify(status, null, 2)}\n` : formatAgentStatus(status),
   );
 }
 
-function resolveAgentFiles(files: string[]): string[] {
-  const ignoreRules = readReviewIgnoreRules();
-  if (files.length > 0) {
-    return filterIgnoredFiles(files, ignoreRules);
-  }
-
-  if (!isInsideGitWorkTree()) {
-    throw new Error(
-      "dz-review agent requires files unless it runs inside a Git worktree.",
-    );
-  }
-
-  const diff = getWorktreeDiff([]);
-  const addedLinesByFile = getAddedLinesByFile(diff);
-  const resolved = [...addedLinesByFile.keys()];
-  for (const file of findFilesIncludedByReviewIgnore(ignoreRules)) {
-    if (!resolved.includes(file)) {
-      resolved.push(file);
-    }
-  }
-
-  return filterIgnoredFiles(resolved, ignoreRules);
-}
-
-function collectAgentReviewState(
+function runAgentList(
   files: string[],
-  includeEmptyFiles: boolean,
-): AgentReviewState {
-  const state: AgentReviewState = {
-    files: [],
-    items: [],
-    texts: new Map(),
-  };
-
-  for (const file of files) {
-    const normalizedFile = normalizePath(file);
-    if (!fs.existsSync(file)) {
-      if (includeEmptyFiles) {
-        state.files.push({
-          path: normalizedFile,
-          timestampFormat: "none",
-          contentHash: "",
-          itemIds: [],
-        });
-      }
-      continue;
-    }
-
-    const text = fs.readFileSync(file, "utf8");
-    const items = assignStableReviewItemIds(
-      normalizedFile,
-      collectReviewItems(text, false, "all"),
-    ).map(({ id, item }) => toAgentReviewItem(normalizedFile, id, item));
-    if (items.length === 0 && !includeEmptyFiles) {
-      continue;
-    }
-
-    state.texts.set(normalizedFile, text);
-    state.items.push(...items);
-    state.files.push({
-      path: normalizedFile,
-      timestampFormat: detectTimestampFormat(collectTimestampFormatStats(text)),
-      contentHash: hashText(text),
-      itemIds: items.map((item) => item.id),
-    });
-  }
-
-  return state;
-}
-
-function toAgentReviewItem(
-  file: string,
-  id: string,
-  item: ReviewItem,
-): AgentReviewItem {
-  const messages = item.kind === "conversation"
-    ? getConversationMessages(item)
-    : [];
-  const firstMessage = messages[0];
-  const lastMessage = messages[messages.length - 1];
-
-  return {
-    id,
-    file,
-    lineStart: item.lineStart,
-    lineEnd: item.lineEnd,
-    kind: item.kind,
-    state: getAgentReviewItemState(item),
-    ...(firstMessage
-      ? {
-        firstMessage: {
-          author: firstMessage.marker,
-          body: firstMessage.body,
-          ...(firstMessage.timestamp
-            ? { timestamp: firstMessage.timestamp }
-            : {}),
-        },
-      }
-      : {}),
-    ...(lastMessage
-      ? {
-        lastMessage: {
-          author: lastMessage.marker,
-          body: lastMessage.body,
-          ...(lastMessage.timestamp
-            ? { timestamp: lastMessage.timestamp }
-            : {}),
-        },
-      }
-      : {}),
-    context: summarizeReviewItem(item),
-    suggestedAction: getAgentSuggestedAction(item),
-    rawHash: stableReviewItemFingerprint(item),
-  };
-}
-
-function getAgentReviewItemState(item: ReviewItem): string {
-  if (item.kind === "conversation") {
-    return getConversationStatus(item);
-  }
-
-  if (item.kind === "discussion") {
-    return "discussion";
-  }
-
-  return "annotation";
-}
-
-function getAgentSuggestedAction(item: ReviewItem): string {
-  if (item.kind !== "conversation") {
-    return "review annotation";
-  }
-
-  const status = getConversationStatus(item);
-  if (status === "open") {
-    return "answer";
-  }
-
-  if (status === "wip") {
-    return "wait for human input";
-  }
-
-  if (status === "handled") {
-    return "reply";
-  }
-
-  return "clean after validation";
-}
-
-function detectTimestampFormat(
-  stats: TimestampFormatStats,
-): AgentTimestampFormat {
-  const total = stats.compact + stats.hangul + stats.iso;
-  if (total === 0) {
-    return "none";
-  }
-
-  if (stats.compact / total >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
-    return "compact";
-  }
-
-  if (stats.hangul / total >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
-    return "hangul";
-  }
-
-  if (stats.iso / total >= DOMINANT_TIMESTAMP_FORMAT_RATIO) {
-    return "iso";
-  }
-
-  return "mixed";
-}
-
-function writeAgentSnapshot(snapshot: AgentSessionSnapshot): void {
-  fs.mkdirSync(path.dirname(AGENT_SESSION_FILE), { recursive: true });
-  fs.writeFileSync(
-    AGENT_SESSION_FILE,
-    `${JSON.stringify(snapshot, null, 2)}\n`,
-    "utf8",
-  );
-}
-
-function readAgentSnapshot(): AgentSessionSnapshot {
-  if (!fs.existsSync(AGENT_SESSION_FILE)) {
-    throw new Error(
-      `No agent session snapshot found at ${AGENT_SESSION_FILE}. Run dz-review agent start first.`,
-    );
-  }
-
-  return AgentSessionSnapshotSchema.parse(
-    JSON.parse(fs.readFileSync(AGENT_SESSION_FILE, "utf8")),
-  );
-}
-
-function countModifiedAgentFiles(
-  snapshot: AgentSessionSnapshot,
-  state: AgentReviewState,
-): number {
-  const currentFiles = new Map(state.files.map((file) => [file.path, file]));
-  return snapshot.files.filter((file) =>
-    currentFiles.get(file.path)?.contentHash !== file.contentHash
-  ).length;
-}
-
-function countAnsweredAgentConversations(
-  snapshot: AgentSessionSnapshot,
-  state: AgentReviewState,
-): number {
-  const startedItems = new Map(snapshot.items.map((item) => [item.id, item]));
-  return state.items.filter((item) => {
-    if (item.kind !== "conversation") {
-      return false;
-    }
-
-    const started = startedItems.get(item.id);
-    if (!started || started.rawHash === item.rawHash) {
-      return false;
-    }
-
-    return item.lastMessage?.author === "@agent";
-  }).length;
-}
-
-function collectAgentGuardrailFailures(
-  snapshot: AgentSessionSnapshot,
-  state: AgentReviewState,
-): AgentGuardrailFailure[] {
-  const failures: AgentGuardrailFailure[] = [];
-  const startedItems = new Map(snapshot.items.map((item) => [item.id, item]));
-  const currentItems = new Map(state.items.map((item) => [item.id, item]));
-
-  for (const item of snapshot.items) {
-    if (item.kind === "conversation" && !currentItems.has(item.id)) {
-      failures.push({
-        id: item.id,
-        file: item.file,
-        line: item.lineStart,
-        message:
-          "started conversation missing; verify no durable rationale was deleted",
-      });
-    }
-  }
-
-  for (const file of state.files) {
-    const text = state.texts.get(file.path);
-    if (text === undefined) {
-      continue;
-    }
-
-    for (
-      const { id, item } of assignStableReviewItemIds(
-        file.path,
-        collectReviewItems(text, false, "all"),
-      )
-    ) {
-      if (item.kind !== "conversation") {
-        if (!item.timestamp) {
-          failures.push({
-            id,
-            file: file.path,
-            line: item.lineStart,
-            message: "review annotation missing timestamp",
-          });
-        }
-        continue;
-      }
-
-      const messages = getConversationMessages(item);
-      for (const message of messages) {
-        if (message.marker === "@" && message.timestamp) {
-          failures.push({
-            id,
-            file: file.path,
-            line: item.lineStart,
-            message: "timestamped bare @ marker should be @me",
-          });
-        }
-
-        if (!message.timestamp) {
-          failures.push({
-            id,
-            file: file.path,
-            line: item.lineStart,
-            message: "conversation message missing timestamp",
-          });
-        }
-      }
-
-      if (getConversationStatus(item) === "resolved") {
-        failures.push({
-          id,
-          file: file.path,
-          line: item.lineStart,
-          message: "validated conversation remains cleanable",
-        });
-      }
-
-      const started = startedItems.get(id);
-      const firstStarted = started?.firstMessage;
-      const firstCurrent = messages[0];
-      if (
-        firstStarted && firstCurrent &&
-        (firstStarted.author !== firstCurrent.marker ||
-          firstStarted.body !== firstCurrent.body)
-      ) {
-        failures.push({
-          id,
-          file: file.path,
-          line: item.lineStart,
-          message: "conversation role order changed suspiciously",
-        });
-      }
-    }
-  }
-
-  return failures;
-}
-
-function restoreAgentTimestampFormats(
-  snapshot: AgentSessionSnapshot,
-  files: string[],
+  options: AgentListCliffyOptions,
 ): void {
-  const snapshotFiles = new Map(
-    snapshot.files.map((file) => [file.path, file]),
+  const limit = options.limit
+    ? parsePositiveInteger(options.limit, "--limit")
+    : undefined;
+  const output = listAgentReviewItems(files, limit);
+
+  process.stdout.write(
+    options.json
+      ? `${JSON.stringify(output, null, 2)}\n`
+      : formatAgentInbox(output),
+  );
+}
+
+function runAgentShow(
+  id: string,
+  files: string[],
+  options: AgentShowCliffyOptions,
+): void {
+  const located = showAgentReviewItem(id, files);
+  const item = toAgentReviewItem(
+    normalizePath(located.file),
+    located.id,
+    located.item,
   );
 
-  for (const file of files) {
-    const normalizedFile = normalizePath(file);
-    const snapshotFile = snapshotFiles.get(normalizedFile);
-    if (
-      !snapshotFile ||
-      snapshotFile.timestampFormat === "mixed" ||
-      snapshotFile.timestampFormat === "none"
-    ) {
-      continue;
-    }
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify({ version: 1, item }, null, 2)}\n`);
+    return;
+  }
 
-    if (!fs.existsSync(file)) {
-      continue;
-    }
+  showReviewItem(
+    located.file,
+    1,
+    1,
+    located.item,
+    located.text,
+    parseAgentShowContext(options),
+    formatStableReviewItemIdForDisplay(
+      located.id,
+      [located.id],
+    ),
+  );
+}
 
-    const text = fs.readFileSync(file, "utf8");
-    const { updated } = transformTimestamps(
-      text,
-      fs.statSync(file).mtime,
-      snapshotFile.timestampFormat,
+function runAgentRespond(
+  id: string,
+  files: string[],
+  options: AgentMessageCliffyOptions,
+): void {
+  const message = getRequiredAgentMessage(options);
+  const result = respondToAgentReviewItem(id, files, message);
+  writeAgentActionResult(result, Boolean(options.json));
+}
+
+function runAgentApply(
+  id: string,
+  files: string[],
+  options: AgentApplyCliffyOptions,
+): void {
+  const result = applyAgentReviewItem(
+    id,
+    files,
+    options.replace,
+    options.message ?? options.m,
+  );
+  writeAgentActionResult(result, Boolean(options.json));
+}
+
+function runAgentClean(
+  ids: string[],
+  options: AgentCleanCliffyOptions,
+): void {
+  if (!options.validated) {
+    throw new DzReviewCliError(
+      "invalid_args",
+      "agent clean requires --validated.",
     );
-    if (updated !== text) {
-      fs.writeFileSync(file, updated, "utf8");
-    }
-  }
-}
-
-function collectAgentTimestampDriftFailures(
-  snapshot: AgentSessionSnapshot,
-  state: AgentReviewState,
-): AgentGuardrailFailure[] {
-  const currentFiles = new Map(state.files.map((file) => [file.path, file]));
-  const failures: AgentGuardrailFailure[] = [];
-
-  for (const file of snapshot.files) {
-    if (file.timestampFormat === "mixed" || file.timestampFormat === "none") {
-      continue;
-    }
-
-    const current = currentFiles.get(file.path);
-    if (!current || current.timestampFormat === file.timestampFormat) {
-      continue;
-    }
-
-    failures.push({
-      id: file.itemIds[0] ?? file.path,
-      file: file.path,
-      line: 1,
-      message:
-        `timestamp format drift: expected ${file.timestampFormat}, found ${current.timestampFormat}`,
-    });
   }
 
-  return failures;
+  const result = cleanAgentReviewItems(ids, Boolean(options.dryRun));
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(
+    options.dryRun
+      ? `would clean ${result.cleanable.length} ${
+        plural(result.cleanable.length, "conversation")
+      }\n`
+      : `cleaned ${result.cleaned} ${plural(result.cleaned, "conversation")}\n`,
+  );
 }
 
-function formatAgentInbox(snapshot: AgentSessionSnapshot): string {
+function runAgentRollback(files: string[], json: boolean): void {
+  const result = rollbackAgentSession(files);
+
+  if (json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(
+    `rolled back ${result.rolledBackFiles.length} ${
+      plural(result.rolledBackFiles.length, "file")
+    }\n`,
+  );
+}
+
+function runAgentDiff(files: string[], json: boolean): void {
+  const status = getAgentActionDiff(files);
+  process.stdout.write(
+    json
+      ? `${JSON.stringify(status, null, 2)}\n`
+      : formatAgentActionDiff(status),
+  );
+}
+
+function formatAgentInbox(
+  snapshot: { items: AgentReviewItem[] },
+  dryRun = false,
+): string {
   const lines = [
     "Agent inbox",
-    `Snapshot: ${AGENT_SESSION_FILE}`,
+    `Snapshot: ${getDzReviewSessionFile()}${dryRun ? " (not written)" : ""}`,
     "",
   ];
 
@@ -2387,7 +2144,7 @@ function formatAgentHandoff(handoff: AgentHandoff): string {
 function formatAgentStatus(status: AgentSessionStatus): string {
   const lines = [
     "Agent status",
-    `Snapshot: ${AGENT_SESSION_FILE}`,
+    `Snapshot: ${getDzReviewSessionFile()}`,
     `files annotated: ${status.filesAnnotated}`,
     `files modified: ${status.filesModified}`,
     `conversations answered: ${status.conversationsAnswered}`,
@@ -2431,13 +2188,55 @@ function collectAgentHandoffIds(handoff: AgentHandoff): string[] {
   ].filter((id) => id.startsWith(STABLE_REVIEW_ID_PREFIX));
 }
 
-function formatStableReviewItemIdForDisplay(
-  id: string,
-  allIds: readonly string[],
-): string {
-  return id.startsWith(STABLE_REVIEW_ID_PREFIX)
-    ? getShortStableReviewItemId(id, allIds)
-    : id;
+function getRequiredAgentMessage(options: AgentMessageCliffyOptions): string {
+  const message = options.message ?? options.m;
+  if (!message || message.trim().length === 0) {
+    throw new DzReviewCliError(
+      "invalid_args",
+      "agent respond requires --message.",
+    );
+  }
+
+  return message.trim();
+}
+
+function writeAgentActionResult(
+  result: AgentActionResult,
+  json: boolean,
+): void {
+  if (json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(
+    `${result.action} ${result.id} ${result.file}:${result.line}\n`,
+  );
+}
+
+function formatAgentActionDiff(status: AgentSessionStatus): string {
+  const lines = [
+    "Agent action diff",
+    `files modified: ${status.filesModified}`,
+    `conversations answered: ${status.conversationsAnswered}`,
+    `validated/cleanable conversations: ${status.cleanableConversations.length}`,
+    `remaining open items: ${status.remainingOpenItems.length}`,
+    `guardrail failures: ${status.guardrailFailures.length}`,
+  ];
+
+  if (status.items.length > 0) {
+    const allIds = status.items.map((item) => item.id);
+    lines.push("");
+    for (const item of status.items) {
+      lines.push(
+        `- ${
+          formatStableReviewItemIdForDisplay(item.id, allIds)
+        } ${item.file}:${item.lineStart} ${item.state} ${item.suggestedAction}`,
+      );
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
 }
 
 function formatAgentLastMessage(item: AgentReviewItem): string {
@@ -2449,13 +2248,9 @@ function formatAgentLastMessage(item: AgentReviewItem): string {
   return `${item.lastMessage.author} ${body}`;
 }
 
-function hashText(text: string): string {
-  return crypto.createHash("sha1").update(text).digest("hex");
-}
-
 function writeStdinTimestamps(format: TimestampFormat): void {
   const text = fs.readFileSync(0, "utf8");
-  const { updated } = transformTimestamps(text, new Date(), format);
+  const { updated } = transformReviewTimestamps(text, new Date(), format);
   process.stdout.write(updated);
 }
 
@@ -2476,7 +2271,7 @@ function writeTimestamps(
       const text = fs.readFileSync(file, "utf8");
       process.stdout.write(
         `${normalizePath(file)}: ${
-          formatTimestampFormatStats(collectTimestampFormatStats(text))
+          formatTimestampFormatStats(collectReviewTimestampFormatStats(text))
         }\n`,
       );
     }
@@ -2496,9 +2291,9 @@ function writeTimestamps(
   for (const file of files) {
     const text = fs.readFileSync(file, "utf8");
     const formatSummary = formatTimestampFormatStats(
-      collectTimestampFormatStats(text),
+      collectReviewTimestampFormatStats(text),
     );
-    const { count, updated } = transformTimestamps(
+    const { count, updated } = transformReviewTimestamps(
       text,
       fs.statSync(file).mtime,
       format,
@@ -2529,37 +2324,6 @@ function writeTimestamps(
       }\n`,
     );
   }
-}
-
-function collectTimestampFormatStats(text: string): TimestampFormatStats {
-  const stats: TimestampFormatStats = { compact: 0, hangul: 0, iso: 0 };
-
-  for (const match of text.matchAll(DISPLAY_CONVERSATION_TIMESTAMP_RE)) {
-    incrementTimestampFormatStats(stats, match[2]);
-  }
-
-  for (const match of text.matchAll(DISPLAY_ANNOTATION_TIMESTAMP_RE)) {
-    incrementTimestampFormatStats(stats, match[2]);
-  }
-
-  return stats;
-}
-
-function incrementTimestampFormatStats(
-  stats: TimestampFormatStats,
-  value: string,
-): void {
-  if (/^[A-Za-z0-9]{8}$/.test(value)) {
-    stats.compact += 1;
-    return;
-  }
-
-  if (/^[\uac00-\ub3ff]{4}$/u.test(value)) {
-    stats.hangul += 1;
-    return;
-  }
-
-  stats.iso += 1;
 }
 
 function formatTimestampFormatStats(stats: TimestampFormatStats): string {
@@ -2597,93 +2361,6 @@ function formatDominantTimestampFormatStats(
   }
 
   return `${format} ${percentage}% (${count}/${total} timestamps)`;
-}
-
-function transformTimestamps(
-  text: string,
-  fallbackDate: Date,
-  format: TimestampFormat,
-): { count: number; updated: string } {
-  const fallbackTimestamp = encodeTimestamp(fallbackDate, format);
-  let count = 0;
-
-  const withConvertedConversationTimestamps = text.replace(
-    DISPLAY_CONVERSATION_TIMESTAMP_RE,
-    (match: string, marker: string, value: string) => {
-      const timestamp = renderTimestampValue(value, format);
-      if (!timestamp) {
-        return match;
-      }
-
-      if (timestamp === value) {
-        return match;
-      }
-
-      count += 1;
-      return `${marker}%${timestamp}`;
-    },
-  );
-
-  const withConversationTimestamps = withConvertedConversationTimestamps
-    .replace(
-      /(^|[ \t\r\n])(@agent|@me|@)(?![%\(])(?=[ \t]*:|[ \t\r\n]|$)/g,
-      (_match: string, prefix: string, marker: string) => {
-        count += 1;
-        return `${prefix}${
-          normalizeConversationMarker(marker)
-        }%${fallbackTimestamp}`;
-      },
-    );
-
-  const withConvertedAnnotationTimestamps = withConversationTimestamps.replace(
-    DISPLAY_ANNOTATION_TIMESTAMP_RE,
-    (match: string, marker: string, value: string) => {
-      const timestamp = renderTimestampValue(value, format);
-      if (!timestamp || timestamp === value) {
-        return match;
-      }
-
-      count += 1;
-      return `${marker}%${timestamp}|`;
-    },
-  );
-
-  const updated = withConvertedAnnotationTimestamps.replace(
-    /\{(\+\+|--|==|>>|~~)(?!%)/g,
-    (_match: string, marker: string) => {
-      count += 1;
-      return `{${marker}%${fallbackTimestamp}|`;
-    },
-  );
-
-  return { count, updated };
-}
-
-function normalizeConversationMarker(marker: string): string {
-  return marker === "@" ? "@me" : marker;
-}
-
-function renderTimestampValue(
-  value: string,
-  format: TimestampFormat,
-): string | undefined {
-  const timestamp = parseReviewTimestamp(value);
-  if (!timestamp) {
-    return undefined;
-  }
-
-  if (format === "iso") {
-    return formatTimestampForDisplay(timestamp);
-  }
-
-  if (format === "hangul") {
-    return encodeHangulTimestamp(
-      timestamp.unixSeconds,
-      timestamp.offsetMinutes,
-    );
-  }
-
-  return encodeCompactTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes);
 }
 
 function renderNowTimestamp(
@@ -3197,6 +2874,21 @@ function parseNonNegativeInteger(value: string, option: string): number {
   return Number(value);
 }
 
+function parsePositiveInteger(value: string, option: string): number {
+  if (!/^[1-9]\d*$/.test(value)) {
+    throw new Error(`${option} expects a positive integer.`);
+  }
+
+  return Number(value);
+}
+
+function parseAgentShowContext(
+  options: AgentShowCliffyOptions,
+): DisplayContext {
+  const value = options.context ?? options.c;
+  return value ? parseContext(value) : DEFAULT_CONTEXT;
+}
+
 function showReviewItem(
   file: string,
   index: number,
@@ -3310,17 +3002,23 @@ function isInsideGitWorkTree(): boolean {
 }
 
 function readReviewIgnoreRules(): IgnoreRule[] {
-  const ignoreFile = path.join(process.cwd(), ".dz-review-ignore");
+  const defaultRules = getDzReviewDefaultIgnorePatterns()
+    .map(compileIgnoreRule)
+    .filter((rule: IgnoreRule | undefined): rule is IgnoreRule =>
+      rule !== undefined
+    );
+  const ignoreFile = getDzReviewIgnoreFile();
   if (!fs.existsSync(ignoreFile)) {
-    return [];
+    return defaultRules;
   }
 
-  return fs.readFileSync(ignoreFile, "utf8")
+  const fileRules = fs.readFileSync(ignoreFile, "utf8")
     .split(/\r?\n/)
     .map(compileIgnoreRule)
     .filter((rule: IgnoreRule | undefined): rule is IgnoreRule =>
       rule !== undefined
     );
+  return [...defaultRules, ...fileRules];
 }
 
 function compileIgnoreRule(line: string): IgnoreRule | undefined {
@@ -3512,91 +3210,6 @@ function getReviewIgnoreRuleScanRoot(rule: IgnoreRule): string {
 
 function hasGlob(pattern: string): boolean {
   return /[*?\[]/.test(pattern);
-}
-
-interface ConversationReviewItem extends Conversation {
-  kind: "conversation";
-}
-
-type ReviewItem = ReviewAnnotation | ConversationReviewItem;
-
-function isConversationReviewItem(
-  item: ReviewItem,
-): item is ConversationReviewItem {
-  return item.kind === "conversation" && "roles" in item;
-}
-
-function collectReviewItems(
-  text: string,
-  conversationOnly: boolean,
-  conversationFilter: ConversationFilter,
-): ReviewItem[] {
-  const keepReviewItem = (item: ReviewItem) => {
-    if (conversationFilter === "all") {
-      return true;
-    }
-
-    if (conversationFilter === "open") {
-      return getReviewItemStatus(item) === "open";
-    }
-
-    if (conversationFilter === "wip") {
-      return getReviewItemStatus(item) === "wip";
-    }
-
-    if (conversationFilter === "handled") {
-      return getReviewItemStatus(item) === "handled";
-    }
-
-    if (conversationFilter === "resolved") {
-      return getReviewItemStatus(item) === "resolved";
-    }
-
-    if (conversationFilter === "pending") {
-      const status = getReviewItemStatus(item);
-      return status === "open" || status === "wip";
-    }
-
-    return true;
-  };
-
-  const conversations: ConversationReviewItem[] = collectConversations(text)
-    .map((conversation) => ({
-      ...conversation,
-      kind: "conversation",
-    }));
-
-  const discussionAnnotations = collectReviewAnnotations(text).filter((item) =>
-    item.kind === "discussion"
-  );
-
-  if (!conversationOnly) {
-    return collectReviewAnnotations(text).filter(keepReviewItem);
-  }
-
-  return [...conversations, ...discussionAnnotations].filter(keepReviewItem);
-}
-
-function reviewItemMatchesConversationFilter(
-  item: ReviewItem,
-  conversationFilter: ConversationFilter,
-): boolean {
-  if (conversationFilter === "all") {
-    return true;
-  }
-
-  const status = getReviewItemStatus(item);
-  if (conversationFilter === "pending") {
-    return status === "open" || status === "wip";
-  }
-
-  return status === conversationFilter;
-}
-
-function getReviewItemStatus(item: ReviewItem): ConversationStatus {
-  return isConversationReviewItem(item)
-    ? getConversationStatus(item)
-    : "handled";
 }
 
 function findNextPendingIndex(
@@ -3942,6 +3555,8 @@ Commands:
 
 Global Options:
   -C, --cwd <dir>               Change directory before running the command.
+  --state-dir <dir>             Agent state directory. Env: DZ_REVIEW_STATE_DIR.
+  --ignore-file <file>          Review ignore file. Env: DZ_REVIEW_IGNORE_FILE.
   -h, --help                    Show this help.
 
 Common Options:
@@ -3993,14 +3608,15 @@ Examples:
   dz-review diff --pending
   dz-review timestamp -i docs/spec.md
   dz-review agent start docs/spec.md
+  dz-review agent add-file docs/extra.md
   dz-review agent status docs/spec.md
   dz-review agent done docs/spec.md
   dz-review -C ../project status --oneline
 
 Notes:
   Without files, explicit commands use the current Git diff when possible.
-  agent start/done assumes one active agent session per worktree.
-  Paths matching .dz-review-ignore are skipped.
+  agent start/done assumes one active agent session per state directory.
+  Paths matching the configured ignore file are skipped.
   Conversation statuses are open, wip, handled, and resolved.
 `);
 }

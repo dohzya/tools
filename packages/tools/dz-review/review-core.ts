@@ -52,6 +52,14 @@ export interface ReviewMessage {
   timestamp?: string;
 }
 
+export interface ConversationReviewItem extends Conversation {
+  kind: "conversation";
+}
+
+export type ReviewItem = ReviewAnnotation | ConversationReviewItem;
+
+export type ConversationFilter = "all" | ConversationStatus | "pending";
+
 interface ReviewLine {
   marker: "@" | "@me" | "@agent";
   markerStart: number;
@@ -169,6 +177,59 @@ export function reviewItemOverlapsLines(
 }
 
 export const conversationOverlapsLines = reviewItemOverlapsLines;
+
+export function collectReviewItems(
+  text: string,
+  conversationOnly: boolean,
+  conversationFilter: ConversationFilter,
+): ReviewItem[] {
+  const keepReviewItem = (item: ReviewItem) =>
+    reviewItemMatchesConversationFilter(item, conversationFilter);
+
+  const conversations: ConversationReviewItem[] = collectConversations(text)
+    .map((conversation) => ({
+      ...conversation,
+      kind: "conversation",
+    }));
+
+  const discussionAnnotations = collectReviewAnnotations(text).filter((item) =>
+    item.kind === "discussion"
+  );
+
+  if (!conversationOnly) {
+    return collectReviewAnnotations(text).filter(keepReviewItem);
+  }
+
+  return [...conversations, ...discussionAnnotations].filter(keepReviewItem);
+}
+
+export function reviewItemMatchesConversationFilter(
+  item: ReviewItem,
+  conversationFilter: ConversationFilter,
+): boolean {
+  if (conversationFilter === "all") {
+    return true;
+  }
+
+  const status = getReviewItemStatus(item);
+  if (conversationFilter === "pending") {
+    return status === "open" || status === "wip";
+  }
+
+  return status === conversationFilter;
+}
+
+export function getReviewItemStatus(item: ReviewItem): ConversationStatus {
+  return isConversationReviewItem(item)
+    ? getConversationStatus(item)
+    : "handled";
+}
+
+export function isConversationReviewItem(
+  item: ReviewItem,
+): item is ConversationReviewItem {
+  return item.kind === "conversation" && "roles" in item;
+}
 
 export function getAddedLinesByFile(diff: string): Map<string, Set<number>> {
   const addedLines = new Map<string, Set<number>>();

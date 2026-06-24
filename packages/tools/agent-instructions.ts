@@ -54,7 +54,7 @@ Recap (\`recap\`): compact project context snapshot; it can be useful as assista
 
 const DZ_REVIEW_INSTRUCTIONS = `
 DZ Review (\`dz-review\`): Markdown review syntax scanner and helper CLI.
-- Start an agent review session once with \`dz-review agent start [file...]\`; it records \`.dz-review/agent-session.json\`, normalizes timestamps for editing, and prints stable item IDs with suggested actions.
+- Start an agent review session once with \`dz-review agent start [file...]\`; it records an \`agent-session.json\` snapshot in the configured state directory, normalizes timestamps for editing, and prints stable item IDs with suggested actions.
 - During that session, use \`dz-review agent status [file...]\` for progress checks; do not rerun \`agent start\` just to refresh state.
 - Before handing work back, run \`dz-review agent done [file...]\`; it restores each file's recorded timestamp format and reports the final handoff.
 - Rerun \`agent start --force [file...]\` only when intentionally replacing the active snapshot.

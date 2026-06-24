@@ -76,6 +76,8 @@ The Deno module lives in `packages/tools/dz-review`. The integrated CLI surface 
 
 ```bash
 dz-review -C path/to/repo status
+dz-review --state-dir .cache/dz-review agent start file.md
+dz-review --ignore-file config/dz-review.ignore status file.md
 dz-review review file.md
 dz-review r --pending file.md
 dz-review r --conversation file.md
@@ -108,9 +110,11 @@ dz-review stats was removed; use dz-review status --oneline.
 
 Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`, and `timestamps`. With an explicit command and no files inside a Git worktree, `dz-review` reads the current `git diff HEAD --unified=0`. `status` defaults to one line per matching file; `status --oneline` is the aggregate form.
 
+The global options are `-C` / `--cwd`, `--state-dir <dir>`, and `--ignore-file <file>`. `--state-dir` controls where agent session state is stored; it defaults to `DZ_REVIEW_STATE_DIR` or `.dz-review`. `--ignore-file` controls the project ignore file; it defaults to `DZ_REVIEW_IGNORE_FILE` or `.dz-review-ignore`. CLI options take precedence over environment variables, and both are resolved after `-C` changes the working directory.
+
 The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--resolved`, `--conversation`, `--conversations`, `--open-conversations`, `--wip-conversations`, `--handled-conversations`, `--resolved-conversations`, `--pending-conversations`, `--ignore-closed-conversations`, `--since`, `--color`, and `--no-color`. `review`, `status`, and `list` also accept `--git` and `--diff` to restrict output to lines added in the current Git diff.
 
-The CLI reads `.dz-review-ignore` from the current directory. Matching paths are skipped in all modes, and negated patterns such as `!docs/` can re-include paths that are otherwise ignored by Git.
+The CLI reads the configured ignore file from the current directory. Matching paths are skipped in all modes, and negated patterns such as `!docs/` can re-include paths that are otherwise ignored by Git. The active agent state directory and the default `.dz-review/` directory are ignored by default even when no ignore file exists. Explicit file arguments for `dz-review agent start` and `dz-review agent add-file` bypass project ignore rules, but still respect the builtin state-directory protections.
 
 ## Agent Workflow
 
@@ -123,10 +127,12 @@ Agents should use the `markdown-review-workflow` skill when editing Markdown wit
 5. Remove review chatter only after explicit validation, such as `@me ok`.
 6. Report unresolved conversations in the final answer.
 
-`dz-review agent start [file...]` is the agent-first session entry point. It scans the current review state, writes `.dz-review/agent-session.json`, records each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints an inbox with stable item IDs, file/line, likely state, last message, context, and suggested action. `--json` prints the same structured model for tools.
+`dz-review agent start [file...]` is the agent-first session entry point. It scans the current review state, writes `agent-session.json` under the configured state directory, records each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints an inbox with stable item IDs, file/line, likely state, last message, context, and suggested action. `--dry-run` prints the inbox without writing the snapshot or changing files. `--json` prints the same structured model for tools.
 
 `dz-review agent status [file...]` reads the active start snapshot and prints an in-progress session view without changing files. It reports annotated files, modified files, answered conversations, cleanable conversations, remaining open items, guardrail failures, and current stable item IDs. `--json` prints the structured session status.
 
+`dz-review agent add-file [file...]` adds files to the active session snapshot after `agent start`. Explicit files can be added even when they match the configured ignore file; the command still avoids builtin state directories.
+
 `dz-review agent done [file...]` compares the current review state against the start snapshot, restores timestamps to the recorded file format when the start format was compact, hangul, or ISO, and prints a handoff with annotated files, modified files, answered conversations, cleanable conversations, remaining open items, and guardrail failures. Guardrails currently detect bare `@` human markers, validated `@me ok` or `@ ok` conversations that remain cleanable, missing timestamps, deleted started conversations, and timestamp format drift after restoration. `--json` prints the structured handoff.
 
-V1 assumes one active agent session per worktree because the snapshot path is fixed at `.dz-review/agent-session.json`. A future job-based model could allow concurrent agents by giving each session a job id and routing edits through `dz-review`, but that is intentionally out of scope for the initial workflow.
+V1 assumes one active agent session per configured state directory. A future job-based model could allow concurrent agents by giving each session a job id and routing edits through `dz-review`, but that is intentionally out of scope for the initial workflow.

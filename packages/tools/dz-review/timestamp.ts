@@ -18,6 +18,24 @@ export interface ReviewTimestamp {
   unixSeconds: bigint;
 }
 
+export interface TimestampFormatStats {
+  compact: number;
+  hangul: number;
+  iso: number;
+}
+
+const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
+  .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
+const DISPLAY_CONVERSATION_TIMESTAMP_RE = new RegExp(
+  String
+    .raw`(@agent|@me|@)%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)`,
+  "g",
+);
+const DISPLAY_ANNOTATION_TIMESTAMP_RE = new RegExp(
+  String.raw`(\{(?:\+\+|--|==|>>|~~))%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})\|`,
+  "g",
+);
+
 export function encodeTimestamp(
   date: Date,
   format: TimestampFormat,
@@ -209,6 +227,126 @@ export function formatTimestampForDisplay(
 
 export function getLocalOffsetMinutes(date: Date = new Date()): number {
   return -date.getTimezoneOffset();
+}
+
+export function collectReviewTimestampFormatStats(
+  text: string,
+): TimestampFormatStats {
+  const stats: TimestampFormatStats = { compact: 0, hangul: 0, iso: 0 };
+
+  for (const match of text.matchAll(DISPLAY_CONVERSATION_TIMESTAMP_RE)) {
+    incrementTimestampFormatStats(stats, match[2]);
+  }
+
+  for (const match of text.matchAll(DISPLAY_ANNOTATION_TIMESTAMP_RE)) {
+    incrementTimestampFormatStats(stats, match[2]);
+  }
+
+  return stats;
+}
+
+export function transformReviewTimestamps(
+  text: string,
+  fallbackDate: Date,
+  format: TimestampFormat,
+): { count: number; updated: string } {
+  const fallbackTimestamp = encodeTimestamp(fallbackDate, format);
+  let count = 0;
+
+  const withConvertedConversationTimestamps = text.replace(
+    DISPLAY_CONVERSATION_TIMESTAMP_RE,
+    (match: string, marker: string, value: string) => {
+      const timestamp = renderTimestampValue(value, format);
+      if (!timestamp) {
+        return match;
+      }
+
+      if (timestamp === value) {
+        return match;
+      }
+
+      count += 1;
+      return `${marker}%${timestamp}`;
+    },
+  );
+
+  const withConversationTimestamps = withConvertedConversationTimestamps
+    .replace(
+      /(^|[ \t\r\n])(@agent|@me|@)(?![%\(])(?=[ \t]*:|[ \t\r\n]|$)/g,
+      (_match: string, prefix: string, marker: string) => {
+        count += 1;
+        return `${prefix}${
+          normalizeConversationMarker(marker)
+        }%${fallbackTimestamp}`;
+      },
+    );
+
+  const withConvertedAnnotationTimestamps = withConversationTimestamps.replace(
+    DISPLAY_ANNOTATION_TIMESTAMP_RE,
+    (match: string, marker: string, value: string) => {
+      const timestamp = renderTimestampValue(value, format);
+      if (!timestamp || timestamp === value) {
+        return match;
+      }
+
+      count += 1;
+      return `${marker}%${timestamp}|`;
+    },
+  );
+
+  const updated = withConvertedAnnotationTimestamps.replace(
+    /\{(\+\+|--|==|>>|~~)(?!%)/g,
+    (_match: string, marker: string) => {
+      count += 1;
+      return `{${marker}%${fallbackTimestamp}|`;
+    },
+  );
+
+  return { count, updated };
+}
+
+function incrementTimestampFormatStats(
+  stats: TimestampFormatStats,
+  value: string,
+): void {
+  if (/^[A-Za-z0-9]{8}$/.test(value)) {
+    stats.compact += 1;
+    return;
+  }
+
+  if (/^[\uac00-\ub3ff]{4}$/u.test(value)) {
+    stats.hangul += 1;
+    return;
+  }
+
+  stats.iso += 1;
+}
+
+function normalizeConversationMarker(marker: string): string {
+  return marker === "@" ? "@me" : marker;
+}
+
+function renderTimestampValue(
+  value: string,
+  format: TimestampFormat,
+): string | undefined {
+  const timestamp = parseReviewTimestamp(value);
+  if (!timestamp) {
+    return undefined;
+  }
+
+  if (format === "iso") {
+    return formatTimestampForDisplay(timestamp);
+  }
+
+  if (format === "hangul") {
+    return encodeHangulTimestamp(
+      timestamp.unixSeconds,
+      timestamp.offsetMinutes,
+    );
+  }
+
+  return encodeCompactTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes);
 }
 
 function normalizeUnixSeconds(value: number | bigint | Date): bigint {

@@ -341,6 +341,165 @@ Deno.test("dz-review agent start --json - prints structured review items", async
   }
 });
 
+Deno.test("dz-review agent start --dry-run - prints inbox without side effects", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const sessionFile = join(dir, ".dz-review", "agent-session.json");
+  const original = "<!-- @agent%1WzvP91W Question? -->\n";
+  await Deno.writeTextFile(file, original);
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "--dry-run", "file.md"]))
+    );
+
+    let sessionExists = true;
+    try {
+      await Deno.stat(sessionFile);
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+      sessionExists = false;
+    }
+
+    assertStringIncludes(output, "Agent inbox");
+    assertStringIncludes(output, "not written");
+    assertStringIncludes(output, "file.md:1");
+    assertEquals(await Deno.readTextFile(file), original);
+    assertEquals(sessionExists, false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent add-file - adds explicit ignored file to session", async () => {
+  const dir = await Deno.makeTempDir();
+  const first = join(dir, "first.md");
+  const second = join(dir, "second.md");
+  await Deno.writeTextFile(join(dir, ".dz-review-ignore"), "second.md\n");
+  await Deno.writeTextFile(first, "<!-- @agent first -->\n");
+  await Deno.writeTextFile(second, "<!-- @agent second -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "first.md"]))
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "add-file", "second.md"]))
+    );
+    const snapshot = JSON.parse(
+      await Deno.readTextFile(join(dir, ".dz-review", "agent-session.json")),
+    );
+
+    assertStringIncludes(output, "Agent inbox");
+    assertStringIncludes(output, "second.md:1");
+    assertEquals(snapshot.files.map((file: { path: string }) => file.path), [
+      "first.md",
+      "second.md",
+    ]);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent start --state-dir - writes snapshot to custom state directory", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const customSessionFile = join(
+    dir,
+    ".cache",
+    "dz-review",
+    "agent-session.json",
+  );
+  await Deno.writeTextFile(file, "<!-- @agent custom state -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () =>
+          main([
+            "--state-dir",
+            ".cache/dz-review",
+            "agent",
+            "start",
+            "file.md",
+          ]),
+      )
+    );
+
+    assertStringIncludes(
+      output,
+      "Snapshot: .cache/dz-review/agent-session.json",
+    );
+    assertEquals(await exists(customSessionFile), true);
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      false,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review -C --state-dir - resolves state directory after cwd change", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent cwd state -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      main([
+        "-C",
+        dir,
+        "--state-dir",
+        ".agent-state",
+        "agent",
+        "start",
+        "file.md",
+      ])
+    );
+
+    assertStringIncludes(output, "Snapshot: .agent-state/agent-session.json");
+    assertEquals(
+      await exists(join(dir, ".agent-state", "agent-session.json")),
+      true,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent start reads DZ_REVIEW_STATE_DIR", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent env state -->\n");
+
+  try {
+    const result = await runDzReview(dir, ["agent", "start", "file.md"], "", {
+      DZ_REVIEW_STATE_DIR: ".state/dz-review",
+    });
+
+    assertEquals(result.success, true);
+    assertStringIncludes(
+      result.stdout,
+      "Snapshot: .state/dz-review/agent-session.json",
+    );
+    assertEquals(
+      await exists(join(dir, ".state", "dz-review", "agent-session.json")),
+      true,
+    );
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      false,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent start - refuses to overwrite active session without force", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -572,10 +731,290 @@ Deno.test("dz-review agent done - fails on guardrail violations", async () => {
   }
 });
 
+Deno.test("dz-review agent list --json - reports current actionable items", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "{++%2026-06-16T17:35:35+02:00|new++}",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->",
+      "<!-- @agent%2026-06-16T17:36:35+02:00 Done? @me%2026-06-16T17:36:35+02:00 ok -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "list", "--json"]))
+    );
+    const data = JSON.parse(output);
+
+    assertEquals(data.version, 1);
+    assertEquals(data.items.length, 2);
+    assertEquals(data.items.map((item: { state: string }) => item.state), [
+      "annotation",
+      "open",
+    ]);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent show - displays one item by stable id", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "Before",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->",
+      "After",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "show", id, "-c", "1"]))
+    );
+
+    assertStringIncludes(output, "file.md:2-2");
+    assertStringIncludes(output, "Before");
+    assertStringIncludes(output, "@agent");
+    assertStringIncludes(output, "After");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent show --json - reports one item by stable id", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "show", id, "--json"]))
+    );
+    const data = JSON.parse(output);
+
+    assertEquals(data.version, 1);
+    assertEquals(data.item.file, "file.md");
+    assertEquals(data.item.state, "open");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent respond - appends an agent reply by stable id", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["agent", "respond", id, "--message", "Done."]),
+      )
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "responded");
+    assertStringIncludes(updated, "@agent%");
+    assertStringIncludes(updated, "Done.");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent apply - replaces an annotation by stable id", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "Use {==%2026-06-16T17:35:35+02:00|old wording==}.\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["agent", "apply", id, "--replace", "new wording"]),
+      )
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "applied");
+    assertEquals(updated, "Use new wording.\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent clean --validated --dry-run - previews resolved conversations", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Done? @me%2026-06-16T17:35:35+02:00 ok -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["agent", "clean", id, "--validated", "--dry-run"]),
+      )
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "would clean 1 conversation");
+    assertStringIncludes(updated, "@agent%");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent clean --validated - removes resolved conversations", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "Text\n<!-- @agent%2026-06-16T17:35:35+02:00 Done? @me%2026-06-16T17:35:35+02:00 ok -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "clean", id, "--validated"]))
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "cleaned 1 conversation");
+    assertEquals(updated, "Text\n\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent diff - prints semantic action summary", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+    await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["agent", "respond", id, "--message", "Done."]),
+      )
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "diff"]))
+    );
+
+    assertStringIncludes(output, "Agent action diff");
+    assertStringIncludes(output, "conversations answered: 1");
+    assertStringIncludes(output, "remaining open items: 1");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent rollback - restores pre-start content", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const original = "<!-- @agent%1WzvP91W Question? -->\n";
+  await Deno.writeTextFile(file, original);
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+    await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["agent", "respond", id, "--message", "Done."]),
+      )
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "rollback"]))
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "rolled back 1 file");
+    assertEquals(updated, original);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review review - applies an annotation from stdin", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
-  await Deno.writeTextFile(file, "Before {++after++}\n");
+  await Deno.writeTextFile(
+    file,
+    "Before {++%2026-06-23T17:47:47+02:00|after++}\n",
+  );
 
   try {
     const result = await runDzReview(
@@ -607,7 +1046,10 @@ Deno.test("dz-review review --list --diff - keeps legacy diff listing flags", as
     await Deno.writeTextFile(file, "Intro\n");
     await runGit(dir, ["add", "file.md"]);
     await runGit(dir, ["commit", "-m", "initial"]);
-    await Deno.writeTextFile(file, "Intro\n{++new++}\n");
+    await Deno.writeTextFile(
+      file,
+      "Intro\n{++%2026-06-23T17:47:47+02:00|new++}\n",
+    );
 
     const output = await captureOutput(() =>
       withCwd(dir, () => main(["review", "--list", "--diff"]))
@@ -625,7 +1067,10 @@ Deno.test("dz-review review --list --diff - keeps legacy diff listing flags", as
 Deno.test("dz-review review --context-before/after - keeps legacy context flags", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
-  await Deno.writeTextFile(file, "Before\n{++after++}\nAfter\n");
+  await Deno.writeTextFile(
+    file,
+    "Before\n{++%2026-06-23T17:47:47+02:00|after++}\nAfter\n",
+  );
 
   try {
     const result = await runDzReview(
@@ -669,8 +1114,8 @@ Deno.test("dz-review status --oneline - uses Git diff when no files are provided
       file,
       [
         "Intro",
-        "{++new++}",
-        "<!-- @agent open -->",
+        "{++%2026-06-23T17:47:47+02:00|new++}",
+        "<!-- @agent%2026-06-23T17:47:47+02:00 open -->",
         "",
       ].join("\n"),
     );
@@ -707,7 +1152,10 @@ Deno.test("dz-review status --oneline - includes Git-ignored paths re-included b
     await Deno.writeTextFile(join(dir, ".git", "info", "exclude"), "docs/\n");
     await Deno.writeTextFile(join(dir, ".dz-review-ignore"), "!docs/\n");
     await Deno.mkdir(docsDir);
-    await Deno.writeTextFile(file, "<!-- @agent open -->\n");
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
 
     const output = await captureOutput(() =>
       withCwd(dir, () => main(["status", "--oneline"]))
@@ -717,6 +1165,62 @@ Deno.test("dz-review status --oneline - includes Git-ignored paths re-included b
       output.trim(),
       "1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
     );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status - ignores internal .dz-review files by default", async () => {
+  const dir = await Deno.makeTempDir();
+  const reviewDir = join(dir, ".dz-review");
+  const file = join(reviewDir, "internal.md");
+  await Deno.mkdir(reviewDir);
+  await Deno.writeTextFile(file, "<!-- @agent internal -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", ".dz-review/internal.md"]))
+    );
+
+    assertEquals(output, "No review annotations found.\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review --ignore-file - reads custom ignore file", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "ignored.md");
+  await Deno.writeTextFile(join(dir, "review.ignore"), "ignored.md\n");
+  await Deno.writeTextFile(file, "<!-- @agent ignored -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["--ignore-file", "review.ignore", "status", "ignored.md"]),
+      )
+    );
+
+    assertEquals(output, "No review annotations found.\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status reads DZ_REVIEW_IGNORE_FILE", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "ignored.md");
+  await Deno.writeTextFile(join(dir, "review.ignore"), "ignored.md\n");
+  await Deno.writeTextFile(file, "<!-- @agent ignored -->\n");
+
+  try {
+    const result = await runDzReview(dir, ["status", "ignored.md"], "", {
+      DZ_REVIEW_IGNORE_FILE: "review.ignore",
+    });
+
+    assertEquals(result.success, true);
+    assertEquals(result.stdout, "No review annotations found.\n");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -736,7 +1240,10 @@ Deno.test("dz-review diff - lists only review items on added lines", async () =>
     await Deno.writeTextFile(file, "Intro\n");
     await runGit(dir, ["add", "file.md"]);
     await runGit(dir, ["commit", "-m", "initial"]);
-    await Deno.writeTextFile(file, "Intro\n{++new++}\n");
+    await Deno.writeTextFile(
+      file,
+      "Intro\n{++%2026-06-23T17:47:47+02:00|new++}\n",
+    );
 
     const output = await captureOutput(() =>
       withCwd(dir, () => main(["diff"]))
@@ -763,7 +1270,10 @@ Deno.test("dz-review diff --context shows surrounding source lines", async () =>
     await Deno.writeTextFile(file, "Intro\n");
     await runGit(dir, ["add", "file.md"]);
     await runGit(dir, ["commit", "-m", "initial"]);
-    await Deno.writeTextFile(file, "Intro\nBefore\n{++new++}\nAfter\n");
+    await Deno.writeTextFile(
+      file,
+      "Intro\nBefore\n{++%2026-06-23T17:47:47+02:00|new++}\nAfter\n",
+    );
 
     const result = await runDzReview(
       dir,
@@ -773,8 +1283,35 @@ Deno.test("dz-review diff --context shows surrounding source lines", async () =>
 
     assertEquals(result.success, true);
     assertStringIncludes(result.stdout, "Before");
-    assertStringIncludes(result.stdout, "{++new++}");
+    assertStringIncludes(result.stdout, "{++%2026-06-23T17:47:47+02:00|new++}");
     assertStringIncludes(result.stdout, "After");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review list --json - reports review items without an agent session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "{++%2026-06-16T17:35:35+02:00|new++}",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["list", "--json", "file.md"]))
+    );
+    const data = JSON.parse(output);
+
+    assertEquals(data.version, 1);
+    assertEquals(data.items.length, 2);
+    assertEquals(data.items[0].file, "file.md");
+    assertEquals(data.items[1].state, "open");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -783,7 +1320,10 @@ Deno.test("dz-review diff --context shows surrounding source lines", async () =>
 Deno.test("dz-review timestamp - adds timestamps inline", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
-  await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
+  await Deno.writeTextFile(
+    file,
+    "{++%2026-06-23T17:47:47+02:00|one++}\n<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+  );
 
   try {
     const output = await captureOutput(() => main(["timestamp", "-i", file]));
@@ -826,8 +1366,8 @@ Deno.test("dz-review timestamp --format-info reports mixed below threshold", asy
   await Deno.writeTextFile(
     file,
     [
-      "{++%2026-06-16T17:35:35+02:00|one++}",
-      "<!-- @agent%1WzvP91W open -->",
+      "{++%1WzvP91W|one++}",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 open -->",
       "",
     ].join("\n"),
   );
@@ -926,7 +1466,7 @@ Deno.test("dz-review now -H - prints a hangul timestamp", async () => {
 Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
-  await Deno.writeTextFile(file, "{++%1WzvP91W|one++}\n");
+  await Deno.writeTextFile(file, "{++%2026-06-16T17:35:35+02:00|one++}\n");
 
   try {
     const output = await captureOutput(() =>
@@ -954,7 +1494,10 @@ Deno.test("dz-review -C status --oneline - runs from another directory", async (
     await Deno.writeTextFile(file, "Intro\n");
     await runGit(repo, ["add", "file.md"]);
     await runGit(repo, ["commit", "-m", "initial"]);
-    await Deno.writeTextFile(file, "Intro\n<!-- @agent open -->\n");
+    await Deno.writeTextFile(
+      file,
+      "Intro\n<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
 
     const output = await captureOutput(() =>
       withCwd(other, () => main(["-C", repo, "status", "--oneline"]))
@@ -980,6 +1523,18 @@ async function withCwd<T>(
     return await fn();
   } finally {
     Deno.chdir(previous);
+  }
+}
+
+async function exists(file: string): Promise<boolean> {
+  try {
+    await Deno.stat(file);
+    return true;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      return false;
+    }
+    throw error;
   }
 }
 

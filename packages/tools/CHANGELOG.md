@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
+- **dz-review:** `--state-dir` / `DZ_REVIEW_STATE_DIR` and `--ignore-file` / `DZ_REVIEW_IGNORE_FILE` configure the agent snapshot directory and review ignore file.
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
 - **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
 

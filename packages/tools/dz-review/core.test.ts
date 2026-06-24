@@ -1,5 +1,13 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
+import { join } from "node:path";
 
+import {
+  addAgentSessionFiles,
+  listReviewItemsJson,
+  respondToAgentReviewItem,
+  rollbackAgentSession,
+  startAgentSession,
+} from "./agent-core.ts";
 import {
   applyConversationAction,
   applyReviewAnnotationAction,
@@ -252,3 +260,196 @@ Deno.test("dz-review core - short stable review ids drop namespace and keep safe
   assertEquals(getShortStableReviewItemId(ids[0], ids), "abcdef1");
   assertEquals(getShortStableReviewItemId(ids[2], ids), "999999");
 });
+
+Deno.test("dz-review agent core - lists items without an agent session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "{++%2026-06-16T17:35:35+02:00|new++}\n<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  try {
+    await withCwd(dir, () => {
+      const listing = listReviewItemsJson(
+        ["file.md"],
+        undefined,
+        false,
+        "all",
+        undefined,
+      );
+
+      assertEquals(listing.version, 1);
+      assertEquals(listing.items.length, 2);
+      assertEquals(listing.items[0].file, "file.md");
+      assertEquals(listing.items[1].state, "open");
+    });
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent core - ignores internal .dz-review files by default", async () => {
+  const dir = await Deno.makeTempDir();
+  const reviewDir = join(dir, ".dz-review");
+  const file = join(reviewDir, "internal.md");
+  await Deno.mkdir(reviewDir);
+  await Deno.writeTextFile(file, "<!-- @agent internal -->\n");
+
+  try {
+    await withCwd(dir, () => {
+      const snapshot = startAgentSession([".dz-review/internal.md"], false);
+
+      assertEquals(snapshot.files, []);
+      assertEquals(snapshot.items, []);
+    });
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent core - explicit start files bypass project ignore", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "ignored.md");
+  await Deno.writeTextFile(join(dir, ".dz-review-ignore"), "*.md\n");
+  await Deno.writeTextFile(file, "<!-- @agent explicit -->\n");
+
+  try {
+    await withCwd(dir, () => {
+      const snapshot = startAgentSession(["ignored.md"], false, {
+        dryRun: true,
+      });
+
+      assertEquals(snapshot.files[0].path, "ignored.md");
+      assertEquals(snapshot.items.length, 1);
+    });
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent core - dry-run start does not write or normalize", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const sessionFile = join(dir, ".dz-review", "agent-session.json");
+  const original = "<!-- @agent%1WzvP91W Question? -->\n";
+  await Deno.writeTextFile(file, original);
+
+  try {
+    await withCwd(dir, () => {
+      const snapshot = startAgentSession(["file.md"], false, {
+        dryRun: true,
+      });
+      let sessionExists = true;
+      try {
+        Deno.statSync(sessionFile);
+      } catch (error) {
+        if (!(error instanceof Deno.errors.NotFound)) {
+          throw error;
+        }
+        sessionExists = false;
+      }
+
+      assertEquals(snapshot.files[0].path, "file.md");
+      assertEquals(snapshot.files[0].timestampFormat, "compact");
+      assertEquals(snapshot.items.length, 1);
+      assertEquals(Deno.readTextFileSync(file), original);
+      assertEquals(sessionExists, false);
+    });
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent core - add-file extends an active session", async () => {
+  const dir = await Deno.makeTempDir();
+  const first = join(dir, "first.md");
+  const second = join(dir, "second.md");
+  await Deno.writeTextFile(join(dir, ".dz-review-ignore"), "second.md\n");
+  await Deno.writeTextFile(first, "<!-- @agent first -->\n");
+  await Deno.writeTextFile(second, "<!-- @agent%1WzvP91W second -->\n");
+
+  try {
+    await withCwd(dir, () => {
+      startAgentSession(["first.md"], false);
+      const snapshot = addAgentSessionFiles(["second.md"]);
+
+      assertEquals(snapshot.files.map((file) => file.path), [
+        "first.md",
+        "second.md",
+      ]);
+      assertEquals(snapshot.files[1].timestampFormat, "compact");
+      assertEquals(snapshot.items.length, 2);
+      assertStringIncludes(
+        Deno.readTextFileSync(second),
+        "2026-06-16T17:35:35+02:00",
+      );
+      assertStringIncludes(
+        Deno.readTextFileSync(join(dir, ".dz-review", "agent-session.json")),
+        '"second.md"',
+      );
+    });
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent core - appends agent replies by stable id", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  try {
+    await withCwd(dir, () => {
+      const snapshot = startAgentSession(["file.md"], false);
+      const id = snapshot.items[0].id;
+      const result = respondToAgentReviewItem(id, [], "Done.");
+
+      assertEquals(result.action, "responded");
+    });
+
+    const updated = await Deno.readTextFile(file);
+    assertStringIncludes(updated, "@agent%");
+    assertStringIncludes(updated, "Done.");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent core - rollback restores pre-start content", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const original = "<!-- @agent%1WzvP91W Question? -->\n";
+  await Deno.writeTextFile(file, original);
+
+  try {
+    await withCwd(dir, () => {
+      const snapshot = startAgentSession(["file.md"], false);
+      const id = snapshot.items[0].id;
+      respondToAgentReviewItem(id, [], "Done.");
+      const result = rollbackAgentSession([]);
+
+      assertEquals(result.rolledBackFiles, ["file.md"]);
+    });
+
+    assertEquals(await Deno.readTextFile(file), original);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+async function withCwd<T>(
+  cwd: string,
+  fn: () => T | Promise<T>,
+): Promise<T> {
+  const previous = Deno.cwd();
+  Deno.chdir(cwd);
+  try {
+    return await fn();
+  } finally {
+    Deno.chdir(previous);
+  }
+}

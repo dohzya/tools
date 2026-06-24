@@ -1,0 +1,15 @@
+*.ts
+*.tsx
+*.js
+*.jsx
+*.mjs
+*.cjs
+*.json
+*.lock
+.git/
+.worklog/
+node_modules/
+packages/tools/CHANGELOG.md
+packages/tools/docs/functional/dz-review*.md
+packages/tools/docs/technical/dz-review*.md
+plugins/tools/skills/markdown-review-workflow/SKILL.md
