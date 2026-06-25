@@ -43,6 +43,11 @@ import {
   type TracesOutput,
 } from "./types.ts";
 import { WtError } from "./domain/entities/errors.ts";
+import {
+  isTraceKind,
+  TRACE_KINDS,
+  type TraceKind,
+} from "./domain/entities/entry.ts";
 import { catppuccinLatte } from "./domain/entities/theme.ts";
 import { createPalette, type Palette } from "./domain/entities/palette.ts";
 import {
@@ -95,6 +100,7 @@ import { UpdateMetaUseCase } from "./domain/use-cases/task/update-meta.ts";
 import { UpdateTaskUseCase } from "./domain/use-cases/task/update-task.ts";
 import { AddTraceUseCase } from "./domain/use-cases/trace/add-trace.ts";
 import { ListTracesUseCase } from "./domain/use-cases/trace/list-traces.ts";
+import { UpdateTraceUseCase } from "./domain/use-cases/trace/update-trace.ts";
 import { CreateCheckpointUseCase } from "./domain/use-cases/trace/checkpoint.ts";
 import { AddTodoUseCase } from "./domain/use-cases/todo/add-todo.ts";
 import { ListTodosUseCase } from "./domain/use-cases/todo/list-todos.ts";
@@ -264,6 +270,7 @@ let updateMetaUseCase: UpdateMetaUseCase;
 let updateTaskUseCase: UpdateTaskUseCase;
 let addTraceUseCase: AddTraceUseCase;
 let listTracesUseCase: ListTracesUseCase;
+let updateTraceUseCase: UpdateTraceUseCase;
 let createCheckpointUseCase: CreateCheckpointUseCase;
 let addTodoUseCase: AddTodoUseCase;
 let listTodosUseCase: ListTodosUseCase;
@@ -337,6 +344,7 @@ function initializeUseCases(): void {
     warn,
   );
   listTracesUseCase = new ListTracesUseCase(indexRepo, taskRepo);
+  updateTraceUseCase = new UpdateTraceUseCase(indexRepo, taskRepo);
   createCheckpointUseCase = new CreateCheckpointUseCase(
     indexRepo,
     taskRepo,
@@ -2130,6 +2138,7 @@ async function parseTaskFile(content: string): Promise<ParsedTask> {
 
   const entries: Entry[] = [];
   const checkpoints: Checkpoint[] = [];
+  const entryOccurrences = new Map<string, number>();
 
   // Parse entries (## sections under # Entries)
   if (entriesSection) {
@@ -2143,11 +2152,33 @@ async function parseTaskFile(content: string): Promise<ParsedTask> {
         section.line > entriesSection.line &&
         section.line <= entriesEnd
       ) {
-        // Title is timestamp, content is under it
+        // Title is timestamp, with optional trace-level metadata suffix.
+        const title = parseEntryTitle(section.title);
+        const occurrence = entryOccurrences.get(title.ts) ?? 0;
+        entryOccurrences.set(title.ts, occurrence + 1);
+        const id = await sectionHash(2, title.ts, occurrence);
         const sectionEnd = getSectionEndLine(doc, section, false);
         const contentLines = doc.lines.slice(section.line, sectionEnd);
-        const msg = contentLines.join("\n").trim();
-        entries.push({ ts: section.title, msg });
+        const rawMsg = contentLines.join("\n").trim();
+        const addedMatch = rawMsg.match(
+          /^\[added::\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\]\n?([\s\S]*)$/,
+        );
+        if (addedMatch) {
+          entries.push({
+            id,
+            ts: title.ts,
+            msg: addedMatch[2].trim(),
+            ...(title.kind ? { kind: title.kind } : {}),
+            added_at: addedMatch[1],
+          });
+        } else {
+          entries.push({
+            id,
+            ts: title.ts,
+            msg: rawMsg,
+            ...(title.kind ? { kind: title.kind } : {}),
+          });
+        }
       }
     }
   }
@@ -2275,6 +2306,30 @@ function _getEntriesAfterCheckpoint(
 function _getLastCheckpoint(checkpoints: Checkpoint[]): Checkpoint | null {
   if (checkpoints.length === 0) return null;
   return checkpoints[checkpoints.length - 1];
+}
+
+function parseEntryTitle(title: string): Pick<Entry, "ts" | "kind"> {
+  const match = title.match(/^(.*?)\s{2}\[kind::\s+([^\]]+)\]\s*$/);
+  if (!match) return { ts: title };
+
+  const kind = match[2].trim();
+  return {
+    ts: match[1].trimEnd(),
+    ...(isTraceKind(kind) ? { kind } : {}),
+  };
+}
+
+function parseTraceKind(value: string): TraceKind {
+  if (isTraceKind(value)) return value;
+  throw new WtError(
+    "invalid_args",
+    `Invalid trace kind: ${value}. Expected one of: ${TRACE_KINDS.join(", ")}`,
+  );
+}
+
+function parseTraceKindList(value: string | undefined): TraceKind[] {
+  if (!value) return [];
+  return value.split(",").map((kind) => parseTraceKind(kind.trim()));
 }
 
 // ============================================================================
@@ -2532,7 +2587,8 @@ function formatShow(
       } ${output.entries_since_checkpoint.length}`,
     );
     for (const entry of output.entries_since_checkpoint) {
-      lines.push(`  ${palette.timestamp(entry.ts)}`);
+      const kind = entry.kind ? `  ${palette.tag(entry.kind)}` : "";
+      lines.push(`  ${palette.timestamp(entry.ts)}${kind}`);
       for (const line of entry.msg.split("\n")) {
         lines.push(`    ${line}`);
       }
@@ -2653,7 +2709,9 @@ function formatTraces(
     lines.push("");
     lines.push(`${h("traces:")} ${output.entries.length}`);
     for (const entry of output.entries) {
-      lines.push(`  ${palette.timestamp(entry.ts)}: ${entry.msg}`);
+      const kind = entry.kind ? `  ${palette.tag(entry.kind)}` : "";
+      const id = entry.id ? `${palette.id(entry.id)}  ` : "";
+      lines.push(`  ${id}${palette.timestamp(entry.ts)}${kind}: ${entry.msg}`);
     }
   }
 
@@ -3015,9 +3073,9 @@ async function cmdAdd(
 async function cmdTrace(
   taskId: string,
   message: string,
+  kind?: TraceKind,
   timestamp?: string,
   force?: boolean,
-  metadata?: Record<string, string>,
 ): Promise<TraceOutput> {
   await purge();
   taskId = await resolveTaskId(taskId);
@@ -3025,9 +3083,9 @@ async function cmdTrace(
   return await addTraceUseCase.execute({
     taskId,
     message,
+    kind,
     timestamp,
     force,
-    metadata,
   });
 }
 
@@ -3049,11 +3107,27 @@ async function cmdShow(
   });
 }
 
-async function cmdTraces(taskId: string): Promise<TracesOutput> {
+async function cmdTraces(
+  taskId: string,
+  kinds: readonly TraceKind[] = [],
+  excludedKinds: readonly TraceKind[] = [],
+): Promise<TracesOutput> {
   await purge();
   taskId = await resolveTaskId(taskId);
 
-  return await listTracesUseCase.execute({ taskId });
+  return await listTracesUseCase.execute({ taskId, kinds, excludedKinds });
+}
+
+async function cmdUpdateTrace(
+  taskId: string,
+  traceId: string,
+  kind?: TraceKind,
+): Promise<StatusOutput> {
+  await purge();
+  taskId = await resolveTaskId(taskId);
+
+  await updateTraceUseCase.execute({ taskId, traceId, kind });
+  return { status: "trace updated" };
 }
 
 async function cmdCheckpoint(
@@ -5188,7 +5262,7 @@ const createCmd = new Command()
 
 const traceCmd = new Command()
   .description(
-    "Log an entry: action taken, problem hit, idea, lead explored, finding, or learning",
+    "Log a typed entry: action, info, state, hypothesis, finding, or learning",
   )
   .arguments(
     HAS_ENV_TASK_ID
@@ -5201,10 +5275,11 @@ const traceCmd = new Command()
     "-t, --timestamp <ts:string>",
     "Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)",
   )
+  .option(
+    "-k, --kind <kind:string>",
+    `Trace kind (${TRACE_KINDS.join(", ")})`,
+  )
   .option("-f, --force", "Force trace on completed tasks")
-  .option("--meta <kv:string>", "Set metadata key=value (repeatable)", {
-    collect: true,
-  })
   .action(async (options, taskId?: string, message?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -5252,13 +5327,13 @@ const traceCmd = new Command()
           );
         }
       }
-      const metadata = parseMetaOption(options.meta);
+      const kind = options.kind ? parseTraceKind(options.kind) : undefined;
       const output = await cmdTrace(
         resolvedTaskId,
         resolvedMessage,
+        kind,
         timestampValue,
         options.force ?? false,
-        metadata,
       );
       console.log(options.json ? JSON.stringify(output) : formatTrace(output));
     } catch (e) {
@@ -5300,11 +5375,76 @@ const showCmd = new Command()
     }
   });
 
+const tracesUpdateCmd = new Command()
+  .description("Update an existing trace entry")
+  .arguments(
+    HAS_ENV_TASK_ID
+      ? "[taskId:string] [traceId:string]"
+      : "<taskId:string> <traceId:string>",
+  )
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .option(
+    "-k, --kind <kind:string>",
+    `Trace kind (${TRACE_KINDS.join(", ")})`,
+  )
+  .action(async (options, taskId?: string, traceId?: string) => {
+    try {
+      const { gitRoot } = await resolveScopeContext(
+        options.scope,
+        asGlobal(options).cwd,
+        asGlobal(options).worklogDir,
+      );
+
+      let resolvedTaskId: string;
+      let resolvedTraceId: string;
+      if (HAS_ENV_TASK_ID && !traceId) {
+        if (!taskId) {
+          throw new WtError("invalid_args", "traceId is required");
+        }
+        resolvedTraceId = taskId;
+        resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
+          undefined,
+          options.scope ? null : gitRoot,
+        );
+      } else {
+        if (!taskId || !traceId) {
+          throw new WtError(
+            "invalid_args",
+            "taskId and traceId are required (or set WORKLOG_TASK_ID)",
+          );
+        }
+        resolvedTaskId = await resolveTaskIdAcrossScopes(
+          taskId,
+          options.scope ? null : gitRoot,
+        );
+        resolvedTraceId = traceId;
+      }
+
+      const kind = options.kind ? parseTraceKind(options.kind) : undefined;
+      const output = await cmdUpdateTrace(
+        resolvedTaskId,
+        resolvedTraceId,
+        kind,
+      );
+      console.log(
+        options.json ? JSON.stringify(output) : formatStatus(output),
+      );
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
 const tracesCmd = new Command()
   .description("List all traces for a task")
   .arguments(HAS_ENV_TASK_ID ? "[taskId:string]" : "<taskId:string>")
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
+  .option("--kind <kinds:string>", "Only include comma-separated trace kinds")
+  .option(
+    "--exclude-kind <kinds:string>",
+    "Exclude comma-separated trace kinds",
+  )
   .action(async (options, taskId?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -5316,7 +5456,9 @@ const tracesCmd = new Command()
         taskId,
         options.scope ? null : gitRoot,
       );
-      const output = await cmdTraces(resolvedTaskId);
+      const kinds = parseTraceKindList(options.kind);
+      const excludedKinds = parseTraceKindList(options.excludeKind);
+      const output = await cmdTraces(resolvedTaskId, kinds, excludedKinds);
       console.log(
         options.json
           ? JSON.stringify(output)
@@ -5325,7 +5467,8 @@ const tracesCmd = new Command()
     } catch (e) {
       handleError(e, options.json ?? false);
     }
-  });
+  })
+  .command("update", tracesUpdateCmd);
 
 const checkpointCmd = new Command()
   .description(
@@ -6562,31 +6705,31 @@ const cli = new Command()
     HAS_ENV_TASK_ID
       ? "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow (WORKLOG_TASK_ID is set):\n" +
-        '  2. wl trace [taskId] "msg"        # Log: actions, problems, ideas, findings, learnings\n' +
+        '  2. wl trace [taskId] -k finding "msg"  # Log typed trace\n' +
         "  3. wl checkpoint [taskId] ...      # Consolidate traces into narrative\n" +
         "  4. wl done [taskId] ...            # Final learnings (after git commit!)\n\n" +
         "Key principles:\n" +
         "  - WORKLOG_TASK_ID is set: [taskId] is optional in most commands\n" +
-        "  - What to trace: actions, problems, ideas, leads, findings, learnings\n" +
+        "  - Trace kinds: action, info, state, hypothesis, finding, learning\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
         "  - Done = final consolidation + learnings with critical distance\n" +
-        '  - Use -t for batch tracing: wl trace [taskId] -t T14:30 "msg"\n' +
+        '  - Use -t for batch tracing: wl trace [taskId] -k state -t T14:30 "msg"\n' +
         '  - Subtasks: wl create --parent taskId "subtask name"\n\n' +
         "See 'wl <command> --help' for details"
       : "Worklog - Track work progress with traces and checkpoints\n\n" +
         "Core workflow:\n" +
         '  1. wl create "task"           # Create worktask (returns ID)\n' +
-        '  2. wl trace taskId "msg"        # Log: actions, problems, ideas, findings, learnings\n' +
+        '  2. wl trace taskId -k finding "msg"  # Log typed trace\n' +
         "  3. wl checkpoint taskId ...      # Consolidate traces into narrative\n" +
         "  4. wl done taskId ...            # Final learnings (after git commit!)\n\n" +
         "Key principles:\n" +
         "  - Always work within a worktask (create with 'wl create' first)\n" +
-        "  - What to trace: actions, problems, ideas, leads, findings, learnings\n" +
+        "  - Trace kinds: action, info, state, hypothesis, finding, learning\n" +
         "  - Traces need context: causes (why failed) + pistes (what next)\n" +
         "  - Checkpoints consolidate traces (not conclusions)\n" +
         "  - Done = final consolidation + learnings with critical distance\n" +
-        '  - Use -t for batch tracing: wl trace taskId -t T14:30 "msg"\n' +
+        '  - Use -t for batch tracing: wl trace taskId -k state -t T14:30 "msg"\n' +
         '  - Subtasks: wl create --parent taskId "subtask name"\n\n' +
         "See 'wl <command> --help' for details",
   )

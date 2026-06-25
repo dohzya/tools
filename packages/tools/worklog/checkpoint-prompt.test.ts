@@ -108,6 +108,35 @@ Deno.test("checkpoint prompt — with entries but no previous checkpoint", () =>
   assertStringIncludes(prompt, "wl checkpoint abc123def456");
 });
 
+Deno.test("checkpoint prompt — includes trace kinds and routing hints", () => {
+  const show: ShowOutput = {
+    ...baseShow,
+    entries_since_checkpoint: [
+      {
+        ts: "2025-01-15 10:10",
+        kind: "finding",
+        msg: "Root cause identified",
+      },
+      {
+        ts: "2025-01-15 10:15",
+        kind: "learning",
+        msg: "Reusable tool rule",
+      },
+    ],
+  };
+
+  const prompt = buildCheckpointPrompt("abc123def456", show);
+
+  assertStringIncludes(prompt, "[kind: finding] Root cause identified");
+  assertStringIncludes(prompt, "[kind: learning] Reusable tool rule");
+  assertStringIncludes(prompt, "Trace kind routing hints");
+  assertStringIncludes(prompt, "learning is almost always");
+  assertStringIncludes(prompt, "Finding may belong in Changes or Learnings");
+  assertStringIncludes(prompt, "routing hints, not hard rules");
+  assertStringIncludes(prompt, "Cheap Learnings check");
+  assertStringIncludes(prompt, "highest-signal candidates for Learnings");
+});
+
 Deno.test("checkpoint prompt — with empty entries", () => {
   const show: ShowOutput = {
     ...baseShow,

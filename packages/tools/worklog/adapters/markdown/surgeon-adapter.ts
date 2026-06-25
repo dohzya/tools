@@ -22,6 +22,7 @@
 import { stringify as stringifyYaml } from "@std/yaml";
 import type { Checkpoint } from "../../domain/entities/checkpoint.ts";
 import type { Entry } from "../../domain/entities/entry.ts";
+import { isTraceKind } from "../../domain/entities/entry.ts";
 import { WtError } from "../../domain/entities/errors.ts";
 import type { TaskMeta } from "../../domain/entities/task.ts";
 import type { Todo, TodoStatus } from "../../domain/entities/todo.ts";
@@ -116,6 +117,7 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
 
     const entries: Entry[] = [];
     const checkpoints: Checkpoint[] = [];
+    const entryOccurrences = new Map<string, number>();
 
     // Parse entries (## sections under # Entries)
     if (entriesSection) {
@@ -141,14 +143,25 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
           const addedMatch = rawMsg.match(
             /^\[added::\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\]\n?([\s\S]*)$/,
           );
+          const title = this.parseEntryTitle(section.title);
+          const occurrence = entryOccurrences.get(title.ts) ?? 0;
+          entryOccurrences.set(title.ts, occurrence + 1);
+          const id = await this.hashService.hash(2, title.ts, occurrence);
           if (addedMatch) {
             entries.push({
-              ts: section.title,
+              id,
+              ts: title.ts,
               msg: addedMatch[2].trim(),
+              ...(title.kind ? { kind: title.kind } : {}),
               added_at: addedMatch[1],
             });
           } else {
-            entries.push({ ts: section.title, msg: rawMsg });
+            entries.push({
+              id,
+              ts: title.ts,
+              msg: rawMsg,
+              ...(title.kind ? { kind: title.kind } : {}),
+            });
           }
         }
       }
@@ -313,7 +326,9 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
     // Add entries
     for (const entry of entries) {
       const addedLine = entry.added_at ? `[added:: ${entry.added_at}]\n` : "";
-      content += `\n## ${entry.ts}\n${addedLine}${entry.msg}\n`;
+      content += `\n## ${
+        this.formatEntryTitle(entry)
+      }\n${addedLine}${entry.msg}\n`;
     }
 
     content += `\n# Checkpoints`;
@@ -378,7 +393,9 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
       : this.readSectionUC.getSectionEndLine(doc, entriesSection, true);
 
     const addedLine = entry.added_at ? `[added:: ${entry.added_at}]\n` : "";
-    const entryText = `\n## ${entry.ts}\n${addedLine}${entry.msg}\n`;
+    const entryText = `\n## ${
+      this.formatEntryTitle(entry)
+    }\n${addedLine}${entry.msg}\n`;
     const entryLines = entryText.split("\n");
 
     // Copy to mutable array (doc.lines is readonly)
@@ -478,5 +495,20 @@ ${checkpoint.learnings}
 
   private findSection(doc: Document, id: string): Section | undefined {
     return this.readSectionUC.findSection(doc, id);
+  }
+
+  private parseEntryTitle(title: string): Pick<Entry, "ts" | "kind"> {
+    const match = title.match(/^(.*?)\s{2}\[kind::\s+([^\]]+)\]\s*$/);
+    if (!match) return { ts: title };
+
+    const kind = match[2].trim();
+    return {
+      ts: match[1].trimEnd(),
+      ...(isTraceKind(kind) ? { kind } : {}),
+    };
+  }
+
+  private formatEntryTitle(entry: Entry): string {
+    return entry.kind ? `${entry.ts}  [kind:: ${entry.kind}]` : entry.ts;
   }
 }

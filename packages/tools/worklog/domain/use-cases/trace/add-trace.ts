@@ -1,7 +1,7 @@
 // AddTraceUseCase - Add a trace entry to a task
 
 import type { TraceOutput } from "../../entities/outputs.ts";
-import type { Entry } from "../../entities/entry.ts";
+import type { Entry, TraceKind } from "../../entities/entry.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
@@ -12,9 +12,9 @@ const CHECKPOINT_THRESHOLD = 50;
 export interface AddTraceInput {
   readonly taskId: string;
   readonly message: string;
+  readonly kind?: TraceKind;
   readonly timestamp?: string;
   readonly force?: boolean;
-  readonly metadata?: Readonly<Record<string, string>>;
 }
 
 export class AddTraceUseCase {
@@ -92,9 +92,12 @@ export class AddTraceUseCase {
     }
 
     const wallclock = this.getTimestamp();
-    const entry: Entry = nowShort !== wallclock
-      ? { ts: nowShort, msg: input.message, added_at: wallclock }
-      : { ts: nowShort, msg: input.message };
+    const entry: Entry = {
+      ts: nowShort,
+      msg: input.message,
+      ...(input.kind ? { kind: input.kind } : {}),
+      ...(nowShort !== wallclock ? { added_at: wallclock } : {}),
+    };
 
     let content = await this.taskRepo.loadContent(taskId);
     content = await this.markdownService.appendEntry(content, entry);
@@ -103,10 +106,6 @@ export class AddTraceUseCase {
     const fmUpdates: Record<string, unknown> = {
       has_uncheckpointed_entries: true,
     };
-
-    if (input.metadata && Object.keys(input.metadata).length > 0) {
-      fmUpdates.metadata = input.metadata;
-    }
 
     content = await this.markdownService.updateFrontmatter(content, fmUpdates);
     await this.taskRepo.saveContent(taskId, content);

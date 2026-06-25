@@ -110,7 +110,10 @@ ${todos ? `## TODO\n${todos}` : ""}
 
 ## Tracing
 
-Trace every event: action taken / problem hit / idea / lead explored / finding / learning.
+Trace every significant event with a kind (action, info, state, hypothesis, finding, learning):
+  wl trace -k <kind> "message"
+
+Action traces are evidence. If an action has a notable result, also trace it as state/finding/learning.
 Include causes (why failed) and pistes (what next) for context.
 
 ## WORKLOG_TASK_ID
@@ -118,11 +121,14 @@ Include causes (why failed) and pistes (what next) for context.
 The environment variable is set to: ${resolvedTaskId}
 
 **All commands work without taskId** — the env var is used automatically:
-  wl trace "msg", wl checkpoint "changes" "learnings", wl done "changes" "learnings",
+  wl trace -k finding "msg", wl checkpoint "changes" "learnings", wl done "changes" "learnings",
   wl show, wl start, wl ready, wl traces, wl update, wl cancel, wl meta, wl todo next
 
 To trace in a **different** task (e.g. a subtask), pass its ID as first argument:
-  wl trace <other-id> "msg"
+  wl trace <other-id> -k finding "msg"
+
+To fix trace metadata:
+  wl traces update <trace-id> --kind finding
 
 **Never** prefix a command with \`WORKLOG_TASK_ID=... wl ...\` — the variable is already set.
 
@@ -133,6 +139,11 @@ When it's time to consolidate traces, prefer **\`wl checkpoint --${agentType}\`*
 If you write a manual \`wl checkpoint "changes" "learnings"\` or \`wl done "changes" "learnings"\` synthesis, follow this contract:
 
 ${CHECKPOINT_SYNTHESIS_CONTRACT}
+
+Before finalizing Learnings, run:
+  wl traces --kind finding,learning
+
+This is a cheap high-signal pass over likely Learnings candidates. It does not guarantee full coverage, but it catches most pre-identified reusable findings with little noise.
 
 ## Subtasks
 

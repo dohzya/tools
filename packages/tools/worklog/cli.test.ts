@@ -70,6 +70,13 @@ Deno.test("worklog agent-instructions - prints AGENTS.md snippet", async () => {
   assertEquals(output.includes("create a subtask: `wl create"), false);
   assertStringIncludes(output, "wl create [--parent <taskid>]");
   assertStringIncludes(output, "wl trace");
+  assertStringIncludes(output, "wl trace <id> -k");
+  assertStringIncludes(
+    output,
+    "action, info, state, hypothesis, finding, learning",
+  );
+  assertStringIncludes(output, "wl traces <id> --kind finding,learning");
+  assertStringIncludes(output, "wl traces update <id> <trace-id> --kind");
   assertStringIncludes(output, "wl done");
   assertStringIncludes(output, "wl checkpoint --agent");
   assertStringIncludes(output, "wl done --agent");
@@ -88,6 +95,12 @@ Deno.test("worklog agent-instructions --mandatory - prints strict AGENTS.md snip
   assertStringIncludes(output, "Worklog (`wl`):");
   assertStringIncludes(output, "MUST create");
   assertStringIncludes(output, "MUST trace");
+  assertStringIncludes(output, "wl trace <id> -k");
+  assertStringIncludes(
+    output,
+    "action, info, state, hypothesis, finding, learning",
+  );
+  assertStringIncludes(output, "wl traces <id> --kind finding,learning");
   assertStringIncludes(output, "create a subtask. `wl create");
   assertEquals(output.includes("create a subtask: `wl create"), false);
   assertStringIncludes(output, "wl create [--parent <taskid>]");
@@ -7704,6 +7717,207 @@ Deno.test("worklog trace - backdated trace stores added_at metadata in task file
     assertStringIncludes(taskContent, "## 2020-06-15 10:00");
     assertStringIncludes(taskContent, "Historical entry");
   } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog trace --kind stores kind metadata in heading", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await captureOutput(() =>
+      main(["create", "--started", "Test task", "--json"])
+    );
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const id = tasks[0].id;
+
+    await main(["trace", id, "--kind", "finding", "Root cause found"]);
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
+    assertStringIncludes(taskContent, "## ");
+    assertStringIncludes(taskContent, "  [kind:: finding]");
+    assertStringIncludes(taskContent, "Root cause found");
+
+    const tracesOutput = await captureOutput(() =>
+      main(["traces", id, "--json"])
+    );
+    const traces = JSON.parse(tracesOutput);
+    assertEquals(traces.entries[0].kind, "finding");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog trace -k validates known kinds", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (...args: unknown[]) => {
+      errorOutput += args.join(" ") + "\n";
+    };
+
+    await main(["init"]);
+    await captureOutput(() =>
+      main(["create", "--started", "Test task", "--json"])
+    );
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const id = tasks[0].id;
+
+    try {
+      await main(["trace", id, "-k", "reflection", "Ambiguous kind"]);
+    } catch (_e) {
+      // Expected
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "Invalid trace kind");
+    assertStringIncludes(errorOutput, "hypothesis");
+    assertStringIncludes(errorOutput, "finding");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog traces filters by included and excluded kind", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await captureOutput(() =>
+      main(["create", "--started", "Test task", "--json"])
+    );
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const id = tasks[0].id;
+
+    await main(["trace", id, "-k", "action", "Read implementation"]);
+    await main(["trace", id, "-k", "finding", "Found parser behavior"]);
+    await main(["trace", id, "-k", "learning", "Reusable rule"]);
+    await main(["trace", id, "Legacy untyped trace"]);
+
+    const findingsOutput = await captureOutput(() =>
+      main(["traces", id, "--kind", "finding,learning", "--json"])
+    );
+    const findings = JSON.parse(findingsOutput);
+    assertEquals(
+      findings.entries.map((entry: { msg: string }) => entry.msg),
+      ["Found parser behavior", "Reusable rule"],
+    );
+
+    const noActionsOutput = await captureOutput(() =>
+      main(["traces", id, "--exclude-kind", "action", "--json"])
+    );
+    const noActions = JSON.parse(noActionsOutput);
+    assertEquals(
+      noActions.entries.map((entry: { msg: string }) => entry.msg),
+      ["Found parser behavior", "Reusable rule", "Legacy untyped trace"],
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog traces exposes stable trace ids and updates kind", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    await main(["init"]);
+    await captureOutput(() => main(["create", "--started", "Test task"]));
+    const listOutput = await captureOutput(() => main(["list", "--json"]));
+    const { tasks } = JSON.parse(listOutput);
+    const id = tasks[0].id;
+
+    await main(["trace", id, "Root cause found"]);
+    const tracesOutput = await captureOutput(() =>
+      main(["traces", id, "--json"])
+    );
+    const traces = JSON.parse(tracesOutput);
+    const traceId = traces.entries[0].id;
+    assertEquals(typeof traceId, "string");
+    assertEquals(traceId.length, 8);
+    assertEquals(traces.entries[0].kind, undefined);
+
+    await main(["traces", "update", id, traceId, "--kind", "finding"]);
+
+    const updatedOutput = await captureOutput(() =>
+      main(["traces", id, "--json"])
+    );
+    const updated = JSON.parse(updatedOutput);
+    assertEquals(updated.entries[0].id, traceId);
+    assertEquals(updated.entries[0].kind, "finding");
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
+    assertStringIncludes(
+      taskContent,
+      `## ${updated.entries[0].ts}  [kind:: finding]`,
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog trace --meta is rejected because trace metadata is explicit", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (...args: unknown[]) => {
+      errorOutput += args.join(" ") + "\n";
+    };
+
+    await main(["init"]);
+    const output = await captureOutput(() =>
+      main(["create", "--started", "Test task", "--json"])
+    );
+    const { id } = JSON.parse(output);
+
+    try {
+      await main(["trace", id, "--meta", "source=cli", "Some trace"]);
+    } catch (_e) {
+      // Expected
+    }
+
+    assertEquals(exitCode, 2);
+    assertStringIncludes(errorOutput, "Unknown option");
+    assertStringIncludes(errorOutput, "--meta");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
   }

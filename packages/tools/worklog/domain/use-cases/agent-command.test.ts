@@ -363,6 +363,16 @@ Deno.test("AgentCommandUseCase (claude) - system prompt contains claude-specific
 
   assertStringIncludes(systemPrompt, "wl checkpoint --claude");
   assertStringIncludes(systemPrompt, "wl claude <subtask-id>");
+  assertStringIncludes(systemPrompt, "wl trace -k finding");
+  assertStringIncludes(
+    systemPrompt,
+    "action, info, state, hypothesis, finding, learning",
+  );
+  assertStringIncludes(systemPrompt, "wl traces --kind finding,learning");
+  assertStringIncludes(
+    systemPrompt,
+    "wl traces update <trace-id> --kind finding",
+  );
   assertStringIncludes(systemPrompt, "thing done or final state");
   assertStringIncludes(systemPrompt, "belongs in Changes");
   assertStringIncludes(systemPrompt, "lesson learned");
@@ -391,6 +401,16 @@ Deno.test("AgentCommandUseCase (codex) - system prompt contains codex-specific r
 
   assertStringIncludes(systemPrompt, "wl checkpoint --codex");
   assertStringIncludes(systemPrompt, "wl codex <subtask-id>");
+  assertStringIncludes(systemPrompt, "wl trace -k finding");
+  assertStringIncludes(
+    systemPrompt,
+    "action, info, state, hypothesis, finding, learning",
+  );
+  assertStringIncludes(systemPrompt, "wl traces --kind finding,learning");
+  assertStringIncludes(
+    systemPrompt,
+    "wl traces update <trace-id> --kind finding",
+  );
   assertStringIncludes(systemPrompt, "thing done or final state");
   assertStringIncludes(systemPrompt, "belongs in Changes");
   assertStringIncludes(systemPrompt, "lesson learned");

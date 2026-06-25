@@ -23,6 +23,7 @@ export type WtErrorCode =
   | "scope_created"
   | "scope_renamed"
   | "todo_not_found"
+  | "trace_not_found"
   | "task_has_pending_todos"
   | "no_agent_detected";
 

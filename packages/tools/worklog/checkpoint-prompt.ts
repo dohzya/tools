@@ -28,7 +28,10 @@ export function buildCheckpointPrompt(
   // Section 2: Traces since last checkpoint
   if (show.entries_since_checkpoint.length > 0) {
     const entries = show.entries_since_checkpoint
-      .map((e) => `- [${e.ts}] ${e.msg}`)
+      .map((e) => {
+        const kind = e.kind ? ` [kind: ${e.kind}]` : "";
+        return `- [${e.ts}]${kind} ${e.msg}`;
+      })
       .join("\n");
     sections.push(
       `## Traces since last checkpoint\n\n${entries}`,
@@ -90,7 +93,18 @@ export function buildCheckpointPrompt(
       `workflow rules, and codebase facts.\n\n` +
       `Good learning: "Deno tests for worklog must run from packages/tools ` +
       `because that directory owns deno.json dependency resolution."\n` +
-      `Bad learning: "Used TDD and tests passed."`,
+      `Bad learning: "Used TDD and tests passed."\n\n` +
+      `Trace kind routing hints: learning is almost always a candidate for ` +
+      `Learnings. Finding may belong in Changes or Learnings depending on ` +
+      `reusability. State usually belongs in Changes, especially validation ` +
+      `or final state. Info and hypothesis belong in Changes only when they ` +
+      `materially changed the work, and may become Learnings after analysis. ` +
+      `Action usually belongs in Changes only when impactful. Treat these as ` +
+      `routing hints, not hard rules.\n\n` +
+      `Cheap Learnings check: review the finding and learning traces as the ` +
+      `highest-signal candidates for Learnings. This does not prove there are ` +
+      `no other reusable lessons, but it catches most pre-identified ` +
+      `candidates with little noise.`,
   );
 
   // Section 7: Command to execute

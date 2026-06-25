@@ -417,6 +417,36 @@ Deno.test("AddTraceUseCase - does not set added_at when no custom timestamp", as
   assertEquals(appended.added_at, undefined);
 });
 
+Deno.test("AddTraceUseCase - sets trace kind when provided", async () => {
+  const indexRepo = createMockIndexRepo({
+    [TASK_ID]: makeIndexEntry({ status: "started" }),
+  });
+  const taskRepo = createMockTaskRepo({
+    [TASK_ID]: makeTaskFileData({ status: "started" }),
+  });
+  const markdownService = createMockMarkdownService();
+
+  const useCase = new AddTraceUseCase(
+    indexRepo,
+    taskRepo,
+    markdownService,
+    () => "2026-05-22 14:00",
+  );
+
+  await useCase.execute({
+    taskId: TASK_ID,
+    message: "Root cause found",
+    kind: "finding",
+  });
+
+  assertEquals(markdownService.appendedEntries.length, 1);
+  // deno-lint-ignore dz-tools/no-type-assertion
+  const appended = markdownService.appendedEntries[0] as {
+    kind?: string;
+  };
+  assertEquals(appended.kind, "finding");
+});
+
 Deno.test("AddTraceUseCase - getEntriesAfterCheckpoint uses added_at for filtering", async () => {
   // Checkpoint at 2026-05-21 12:00.
   // 50 entries all have ts BEFORE checkpoint (2026-05-20) but added_at AFTER (2026-05-22).

@@ -23,7 +23,7 @@ File format and structure documentation for debugging and manual editing.
 
 Each task is a markdown file with YAML frontmatter:
 
-```markdown
+```text
 ---
 id: 04vcuwpmxiygt1oq3hdrf3kob
 uid: 7c8b6bbb-22f9-4b17-a3cb-0c383369826e
@@ -51,11 +51,11 @@ tags: []
 
 # Entries
 
-## 2026-02-05T09:30:00+01:00
+## 2026-02-05 09:30  [kind:: info]
 
 Goal: implement feature X
 
-## 2026-02-05T10:15:00+01:00
+## 2026-02-05 10:15  [kind:: state]
 
 Tried approach A - failed because...
 
@@ -104,8 +104,24 @@ Completed implementation
 
 ### Regular Trace
 
-```markdown
-## YYYY-MM-DDTHH:mm:ss+TZ
+```text
+## YYYY-MM-DD HH:mm  [kind:: finding]
+
+Message content
+```
+
+The `kind` suffix is optional. Existing traces without kind remain valid. Keep two spaces before `[kind:: ...]` so adjacent metadata does not look like a Markdown link.
+
+Valid kinds: `action`, `info`, `state`, `hypothesis`, `finding`, `learning`.
+
+`wl traces` exposes generated trace IDs derived from the cleaned timestamp and duplicate occurrence. They are not stored in the Markdown file. Updating only `[kind:: ...]` preserves the generated ID.
+
+Backdated traces may include an `added` body metadata line:
+
+```text
+## YYYY-MM-DD HH:mm  [kind:: action]
+
+[added:: YYYY-MM-DD HH:mm]
 
 Message content
 ```
@@ -184,7 +200,7 @@ Commands accept `--scope <name>` to target specific scope:
 
 ```bash
 wl list --scope feature-x
-wl trace 260205a --scope main "message"
+wl trace 260205a -k finding --scope main "message"
 ```
 
 ## Manual Editing

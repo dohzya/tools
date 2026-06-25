@@ -4,6 +4,9 @@
  * @module
  */
 
+import type { TraceKind } from "./domain/entities/entry.ts";
+export type { TraceKind } from "./domain/entities/entry.ts";
+
 /** Lifecycle status of a worklog task. */
 export type TaskStatus = "created" | "ready" | "started" | "done" | "cancelled";
 
@@ -88,10 +91,14 @@ export interface Index {
 
 /** A single trace entry recorded against a task. */
 export interface Entry {
+  /** Generated stable identifier for this trace within the task. */
+  id?: string;
   /** Timestamp in short format: "YYYY-MM-DD HH:mm". */
   ts: string;
   /** Trace message content. */
   msg: string;
+  /** Optional classification used to route synthesis and filter noisy traces. */
+  kind?: TraceKind;
   /** Wall-clock time when trace was invoked (set only when ts differs from current time). */
   added_at?: string;
 }

@@ -196,9 +196,17 @@ await main([
   "-t",
   "2024-12-15T14:30+01:00",
 ]);
-await main(["trace", "260120a", "Found root cause"]);
+await main(["trace", "260120a", "-k", "finding", "Found root cause"]);
 // Trace with custom timestamp
-await main(["trace", "260120a", "Earlier finding", "-t", "T10:30"]);
+await main([
+  "trace",
+  "260120a",
+  "-k",
+  "finding",
+  "-t",
+  "T10:30",
+  "Earlier finding",
+]);
 await main([
   "checkpoint",
   "260120a",

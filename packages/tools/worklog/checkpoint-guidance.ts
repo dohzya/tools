@@ -14,6 +14,17 @@ Put this in the second argument, learnings:
 
 Do not turn learnings into an activity summary. "Tests passed" is validation; the learning is the reusable reason, constraint, or pattern discovered while getting there.
 
+Use trace kinds as routing hints, not hard rules:
+- learning: candidate for Learnings, almost always.
+- finding: candidate for Changes or Learnings depending on reusability.
+- state: candidate for Changes, especially validation and final state.
+- info / hypothesis: candidate for Changes if impactful, or Learnings after analysis.
+- action: candidate for Changes only when impactful, rarely Learnings.
+
+As a cheap high-signal review pass, inspect \`wl traces --kind finding,learning\`
+before finalizing Learnings. This does not guarantee every reusable lesson is
+covered, but it catches most pre-identified candidates with little noise.
+
 Before running the command, review every candidate sentence. If it describes a thing done or final state, it belongs in Changes. If it describes a lesson learned, it belongs in Learnings. Then scan the traces for information that could be useful to other projects; when there is one, distill the reusable learning into Learnings.
 `.trim();
 

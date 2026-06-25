@@ -1,5 +1,3 @@
-import { CHECKPOINT_DELEGATION_GUIDANCE } from "./worklog/checkpoint-guidance.ts";
-
 export type AgentInstructionsTool = "wl" | "md" | "recap" | "dz-review";
 
 export type AgentInstructionsOptions = {
@@ -9,25 +7,20 @@ export type AgentInstructionsOptions = {
 const WORKLOG_INSTRUCTIONS = `
 Worklog (\`wl\`): local task log for agent work.
 - Create a worktask at the start of substantive work. If already working in a task, use it or create a subtask. \`wl create [--parent <taskid>] "short task name"\`.
-- Trace each significant action, problem, idea, lead, finding, and insight: \`wl trace <id> "message"\`.
-- Show task context: \`wl show <id>\`; list traces: \`wl traces <id>\`.
-- Agent-assisted synthesis: use only one command, \`wl checkpoint --agent\` to keep working or \`wl done --agent\` to close.
-- If closing with \`wl done --agent\`, do not checkpoint first.
-- If you must synthesize manually, make it self-contained: after this checkpoint, previous traces and checkpoints could be deleted.
-- ${CHECKPOINT_DELEGATION_GUIDANCE.split("\n")[0]}
+- Trace significant events with kind (action, info, state, hypothesis, finding, learning): \`wl trace <id> -k <kind> "message"\`; use \`state\`/\`finding\`/\`learning\` for notable results.
+- Show context with \`wl show <id>\`; filter likely learnings with \`wl traces <id> --kind finding,learning\`; fix kind with \`wl traces update <id> <trace-id> --kind finding\`.
+- Agents do not write manual checkpoint/done content when delegation is available; use only one command: choose \`wl checkpoint --agent\` or \`wl done --agent\`. Do not checkpoint before done.
+- Manual synthesis must be self-contained: previous traces/checkpoints could be deleted afterward.
 - Help: \`wl --help\`.
 `.trim();
 
 const MANDATORY_WORKLOG_INSTRUCTIONS = `
 Worklog (\`wl\`): mandatory local task log for agent work.
 - You MUST create a worktask at the start of any substantive work. If already working in a task, use it or create a subtask. \`wl create [--parent <taskid>] "short task name"\`.
-- You MUST trace each significant action, problem, idea, lead, finding, and insight: \`wl trace <id> "message"\`.
-- Show task context when useful: \`wl show <id>\`; list traces: \`wl traces <id>\`.
-- Use agent-assisted synthesis when useful: choose \`wl checkpoint --agent\` to keep working or \`wl done --agent\` to close.
-- When the user validates completion, close the task, preferably with \`wl done --agent\`.
-- If closing with \`wl done --agent\`, do not checkpoint first.
-- If you must synthesize manually, make it self-contained: after this checkpoint, previous traces and checkpoints could be deleted.
-- ${CHECKPOINT_DELEGATION_GUIDANCE.split("\n")[0]}
+- You MUST trace significant events with kind (action, info, state, hypothesis, finding, learning): \`wl trace <id> -k <kind> "message"\`; use \`state\`/\`finding\`/\`learning\` for notable results.
+- Show context with \`wl show <id>\`; filter likely learnings with \`wl traces <id> --kind finding,learning\`; fix kind with \`wl traces update <id> <trace-id> --kind finding\`.
+- Agents do not write manual checkpoint/done content when delegation is available; use only one command: choose \`wl checkpoint --agent\` or \`wl done --agent\`. Do not checkpoint before done.
+- When the user validates completion, close the task, preferably with \`wl done --agent\`; manual synthesis must be self-contained.
 - Help: \`wl --help\`.
 `.trim();
 

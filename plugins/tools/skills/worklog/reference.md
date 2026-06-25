@@ -8,20 +8,30 @@ Complete reference for the worklog skill.
 
 ```bash
 # ✅ GOOD: include goal, cause, piste
-wl trace <id> "Goal: support multi-currency"
-wl trace <id> "Tried direct field - broke 12 tests (cause: validator expects single total)"
-wl trace <id> "Pivot to CurrencyBucket pattern (piste: isolate currency logic)"
-wl trace <id> "Tests pass - CurrencyBucket works"
+wl trace <id> -k info "Goal: support multi-currency"
+wl trace <id> -k state "Direct field broke 12 tests (cause: validator expects single total)"
+wl trace <id> -k hypothesis "Pivot to CurrencyBucket pattern (piste: isolate currency logic)"
+wl trace <id> -k state "Tests pass - CurrencyBucket works"
 
 # ❌ BAD: no context
 wl trace <id> "Tried X" / "Didn't work" / "Fixed it"
 ```
 
+Kinds: `action`, `info`, `state`, `hypothesis`, `finding`, `learning`. Action traces are evidence; state/finding/learning traces are synthesis anchors. If an action produces a notable result, add a second trace with the result kind.
+
+```bash
+wl traces <id> --kind finding,learning
+wl traces <id> --exclude-kind action
+wl traces update <id> <trace-id> --kind finding
+```
+
+Before checkpoint/done synthesis, `wl traces <id> --kind finding,learning` is a cheap high-signal check for likely learnings. It does not guarantee full coverage, but it catches most pre-identified candidates with little noise.
+
 **Batch tracing with timestamps:**
 
 ```bash
-wl trace <id> -t T14:30 "Started investigation"
-wl trace <id> -t T15:15 "Found root cause"
+wl trace <id> -k action -t T14:30 "Started investigation"
+wl trace <id> -k finding -t T15:15 "Found root cause"
 ```
 
 ### Checkpoints
@@ -76,6 +86,14 @@ wl done <id> \
 
 Learning quality: ❌ "Tests pass" (result) · ❌ "Used CurrencyBucket" (action) · ✅ "Bucket pattern isolates concerns better than direct fields" (learning)
 
+Before writing the Learnings argument, run:
+
+```bash
+wl traces <id> --kind finding,learning
+```
+
+Use it as a focused review pass for likely reusable lessons.
+
 ### Sub-agent communication via subtasks
 
 ```bash
@@ -87,7 +105,7 @@ wl agent <parent-id>                        # auto-detect agent from env
 
 # Sub-agent creates its own scoped subtask
 wl create --parent <parent-id> --started "Analyze existing API"
-wl trace <subtask-id> "Found 3 endpoints to modify"
+wl trace <subtask-id> -k finding "Found 3 endpoints to modify"
 
 # Main agent monitors
 wl show <parent-id>          # shows subtasks-since-checkpoint
@@ -118,7 +136,7 @@ wl run <id> claude -c --model opus    # complex Claude args
 
 1. **Working without worktask** → always create worktask first
 2. **Vague traces** → include causes (why failed) & pistes (what next)
-3. **Narrow traces** → trace all events: actions, problems, ideas, leads, findings, learnings
+3. **Narrow traces** → trace typed events: action, info, state, hypothesis, finding, learning
 4. **Missing timestamps on batch traces** → use `-t`
 5. **Checkpoint = conclusion** → NO: consolidate traces into narrative
 6. **Done before commit** → commit first
@@ -160,6 +178,8 @@ wl update <id> [--name <name>] [--desc <d>]  # Update task name or description
 wl update <id> --desc-src <file>             # Description from file
 wl update <id> --desc-src -                  # Description from stdin
 wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
+wl traces <id> [--kind k1,k2] [--exclude-kind k3] # List traces, optionally filtered by kind
+wl traces update <id> <trace-id> --kind <kind> # Update trace kind
 wl logs <id>                                 # Get context (last checkpoint + recent entries)
 wl checkpoint --claude|--codex|--agent        # Agent synthesizes checkpoint from all traces
 wl checkpoint <id> "changes" "learnings"     # Create checkpoint manually
@@ -348,14 +368,28 @@ todos: 2
 
 **IMPORTANT:** Always place options BETWEEN the task ID and the message content. This ensures options remain visible in truncated UI displays.
 
-✅ **Correct:** `wl trace <id> -t T11:35 "message"` ❌ **Incorrect:** `wl trace <id> "message" -t T11:35`
+✅ **Correct:** `wl trace <id> -k finding -t T11:35 "message"` ❌ **Incorrect:** `wl trace <id> "message" -k finding`
 
 Available options:
 
 - `--timestamp TS` or `-t TS`: Custom timestamp (see format below)
+- `--kind KIND` or `-k KIND`: Trace kind (`action`, `info`, `state`, `hypothesis`, `finding`, `learning`)
 - `--force` or `-f`: Allow tracing on done/cancelled tasks without reopening (prefer `wl start <id>` if you need to work on it again)
 
+`wl trace --meta` is intentionally unsupported. Trace-local classification uses `--kind`; task-level metadata uses `wl meta`, `wl create --meta`, or `wl done --meta`.
+
 **Warning behavior:** `wl trace` warns if the task is not in `started` state (but still records the trace). If the task is `done` or `cancelled`, it errors unless `--force` is used.
+
+## Trace editing
+
+`wl traces` shows generated trace IDs. Use them to update trace metadata:
+
+```bash
+wl traces <id>
+wl traces update <id> <trace-id> --kind finding
+```
+
+Trace IDs are generated from the trace timestamp and duplicate occurrence, so changing only the kind keeps the same ID. Existing traces without kind can be updated.
 
 ## Done command
 
@@ -396,16 +430,16 @@ Examples:
 
 ```bash
 # Time only (today's date, local timezone)
-wl trace <id> -t T11:15 "Quick fix"
+wl trace <id> -k action -t T11:15 "Quick fix"
 
 # Time with seconds
-wl trace <id> -t T11:15:30 "Detailed fix"
+wl trace <id> -k action -t T11:15:30 "Detailed fix"
 
 # Full date + time (local timezone)
-wl trace <id> -t 2024-12-15T11:15 "Session resumed"
+wl trace <id> -k state -t 2024-12-15T11:15 "Session resumed"
 
 # Full ISO timestamp with timezone
-wl trace <id> -t "2024-12-15T11:15:30+01:00" "Fixed validation"
+wl trace <id> -k state -t "2024-12-15T11:15:30+01:00" "Fixed validation"
 ```
 
 **Use case:** Importing historical entries from other logs (e.g., WORKLOG.md) while preserving original timestamps.
@@ -422,7 +456,7 @@ If you only want to append a note without reopening (post-deployment observation
 
 ```bash
 # Add post-completion entry without reopening
-wl trace <id> -f "Found edge case in production"
+wl trace <id> -k finding -f "Found edge case in production"
 
 # Create post-completion checkpoint without reopening
 wl checkpoint <id> -f "Hotfix applied" "Edge case documented"
@@ -526,7 +560,7 @@ For monorepos or worktree-based workflows with separate task namespaces:
 
 ```bash
 wl list --scope main
-wl trace <id> --scope feature-x "message"
+wl trace <id> -k finding --scope feature-x "message"
 ```
 
 See [internals.md](internals.md) for scope configuration (`config.json` format and directory structure).
@@ -572,7 +606,7 @@ wl import -b feature-x --rm
 # In feature worktree
 cd ~/project-feature-x
 wl create --started "Implement feature X"
-wl trace <id> "Working on feature..."
+wl trace <id> -k action "Working on feature..."
 # ... work ...
 
 # Before deleting worktree, import to main
@@ -662,8 +696,8 @@ Status: todo
 You can have multiple active tasks. Always specify the task ID:
 
 ```bash
-wl trace <id1> "Working on currency bucket"
-wl trace <id2> "Fixed unrelated login bug"
+wl trace <id1> -k action "Working on currency bucket"
+wl trace <id2> -k state "Fixed unrelated login bug"
 ```
 
 Use `wl list` to see all active tasks if you lose track.
@@ -779,7 +813,7 @@ Examples:
 # Short ID: acjold
 # You can use any prefix: acjo, acjol, acjold, etc.
 
-wl trace acjold "Working on feature"  # Uses prefix
+wl trace acjold -k action "Working on feature" # Uses prefix
 wl logs acj "message"                  # Works if unambiguous
 ```
 

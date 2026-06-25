@@ -33,12 +33,35 @@ Output: `<id>  <status>  "<name>"  <date>`
 > **Delegating to sub-agents?** Create a subtask: `wl create --parent <id> --started "Sub-task"`, then launch with `wl claude <subtask-id>` (or `wl codex <subtask-id>`, or `wl agent <subtask-id>` to auto-detect).
 
 1. **Create & start**: `wl create --started "Task name"`
-2. **Trace** every event: `wl trace <id> "action taken / problem hit / idea / lead explored / finding / learning"`
+2. **Trace** every event: `wl trace <id> -k action|info|state|hypothesis|finding|learning "message"`
 3. **Checkpoint** when prompted: prefer `wl checkpoint --agent` (or `--claude` / `--codex`) for synthesis
 4. **Commit**, then **review**: `wl show <id>` (check TODOs + pending traces), then close when the user asked for it or propose closing if the task appears complete
 5. **Close**: prefer `wl done --agent` (args optional if no new traces since last checkpoint)
 
-**Critical:** after committing, either close on an explicit user signal or propose closing when complete · commit before `done` · `wl show` before done · trace actions, problems, ideas, leads, findings, learnings · include causes & pistes in traces · checkpoints must be cumulative and self-contained · learnings = reusable discoveries (not a summary)
+**Critical:** after committing, either close on an explicit user signal or propose closing when complete · commit before `done` · `wl show` before done · trace actions, info, states, hypotheses, findings, learnings · include causes & pistes in traces · checkpoints must be cumulative and self-contained · learnings = reusable discoveries (not a summary)
+
+## Trace Kinds
+
+Use `wl trace -k <kind> "message"` with these kinds:
+
+- `action`: action performed, such as editing a file, reading code, or running a command.
+- `info`: external information provided, such as a user spec change or new constraint.
+- `state`: state observed or reached, such as a meaningful failure, validation result, blocker, or final state.
+- `hypothesis`: open reflection, such as a lead, possible cause, or option being considered.
+- `finding`: conclusion reached, such as an identified root cause, confirmed behavior, invalidated hypothesis, or local codebase fact.
+- `learning`: reusable finding already analyzed as durable beyond the current task.
+
+Action traces are evidence. State, finding, and learning traces are synthesis anchors. If an action produces a notable result, add a second trace with the result kind. An action trace should not be the only place where a durable result, blocker, root cause, validation result, or final state is recorded.
+
+Filtering out actions is a good way to reduce trace volume with low risk of losing useful learning inputs:
+
+```bash
+wl traces <id> --exclude-kind action
+wl traces <id> --kind finding,learning
+wl traces update <id> <trace-id> --kind finding
+```
+
+Before checkpoint/done synthesis, use `wl traces <id> --kind finding,learning` as a cheap high-signal check for likely `learnings` candidates. It does not guarantee every reusable lesson is covered, but it catches most pre-identified candidates with little noise.
 
 ## Checkpoint Synthesis
 
@@ -65,14 +88,24 @@ Put this in the second argument, `learnings`:
 
 Do not turn learnings into an activity summary. "Tests passed" is validation; the learning is the reusable reason, constraint, or pattern discovered while getting there.
 
+Use trace kinds as routing hints, not hard rules:
+
+- `learning` -> candidate for `learnings`, almost always.
+- `finding` -> candidate for `changes` or `learnings` depending on reusability.
+- `state` -> candidate for `changes`, especially validation and final state.
+- `info` / `hypothesis` -> candidate for `changes` if impactful, or `learnings` after analysis.
+- `action` -> candidate for `changes` only when impactful, rarely `learnings`.
+
 Before running a manual `wl checkpoint ...` or `wl done ...` command, review every candidate sentence. If it describes a thing done or final state, put it in `changes`. If it describes a lesson learned, put it in `learnings`. Then scan the traces for information that could be useful to other projects; when there is one, distill that reusable pattern into `learnings`.
+
+Use `wl traces <id> --kind finding,learning` before finalizing `learnings` to check likely reusable candidates without rereading every action trace.
 
 ## Tracing Learnings
 
 When you discover something educational or non-obvious about the codebase, technology, or patterns during your work, **trace it** so checkpoints can capture it:
 
 ```bash
-wl trace <id> "Learning: <your observation>"
+wl trace <id> -k learning "<your observation>"
 ```
 
 Don't just display learnings in the conversation — trace them. Checkpoints synthesize from traces only; untraceable conversation content is lost on compaction.
@@ -91,8 +124,8 @@ wl create --started "name" "desc"                    # create + start (desc = sc
 wl create --started "name" --desc-src file.md        # desc from file (multiline context)
 wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent delegation
 
-# Trace — one entry per event: action taken / problem hit / idea / lead explored / finding / learning
-wl trace <id> "msg"         # flags before message: wl trace <id> -t T14:30 "msg"
+# Trace — one entry per event: action, info, state, hypothesis, finding, learning
+wl trace <id> -k finding "msg"  # flags before message: wl trace <id> -k state -t T14:30 "msg"
 
 # Consolidate: choose exactly one delegated command
 wl checkpoint --agent       # synthesize progress and keep working

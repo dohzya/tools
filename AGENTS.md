@@ -25,11 +25,11 @@ Then launch a subagent when available and appropriate. For application code, ste
 **Scope:** `packages/tools/` source code. Does NOT apply to scripts, `Taskfile.yml`, docs, or config files — those can be edited directly without TDD.
 
 ```bash
-wl trace <id> "Writing test for X"              # 2. Trace BEFORE writing test
+wl trace <id> -k action "Writing test for X"   # 2. Trace BEFORE writing test
 # → Write failing test
-wl trace <id> "Test fails as expected: Y"       # 3. Trace confirmed failure
+wl trace <id> -k state "Test fails as expected: Y" # 3. Trace confirmed failure
 # → Implement minimum code to make it pass
-wl trace <id> "Implemented X — tests green"     # 4. Trace after green
+wl trace <id> -k state "Implemented X — tests green" # 4. Trace after green
 task validate                                   # 5. Validate (MANDATORY)
 ```
 
@@ -49,7 +49,11 @@ task validate                                   # 5. Validate (MANDATORY)
 
 ## Worklog (MANDATORY)
 
-Create a worktask at the start. Trace every action taken, problem hit, idea, lead explored, finding, and learning. Complete after commit.
+Create a worktask at the start. Trace every significant event with a kind: `action`, `info`, `state`, `hypothesis`, `finding`, or `learning`. Complete after commit.
+
+Action traces are evidence. State/finding/learning traces are synthesis anchors. If an action produces a notable result, add a second `state`, `finding`, or `learning` trace.
+
+Before checkpoint/done synthesis, run `wl traces <id> --kind finding,learning` as a cheap high-signal check for likely `learnings` candidates.
 
 When creating a task, tag the main tool or skill used for the work, for example `--tag wl`, `--tag homebrew`, or `--tag docs-maintainer`. Reference tags: `wl`, `md`, `recap`, `homebrew`, `release`, `docs`, `tests`, `agentmd`, `codex`, `claude`, `worklog`, `markdown-surgeon`, `docs-maintainer`, `obsidian-journal`, `rex-session`, `agent-context-writing`.
 
@@ -62,9 +66,10 @@ When creating a task, tag the main tool or skill used for the work, for example 
 
 ```bash
 wl create --tag <tag> "..." # Create, tagged by main tool/skill
-wl trace <id> "..."        # Trace
+wl trace <id> -k <kind> "..." # Trace
 wl show <id>               # Context since checkpoint
 wl traces <id>             # All traces
+wl traces update <id> <trace-id> --kind finding # Fix trace kind
 wl done <id> "..." "..."   # Complete (after commit)
 ```
 

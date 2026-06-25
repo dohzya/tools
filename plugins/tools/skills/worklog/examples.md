@@ -8,22 +8,22 @@ Detailed examples showing effective worklog usage.
 
 ```bash
 # Start with goal
-wl trace 260205a "Goal: Add pagination to user list"
+wl trace 260205a -k info "Goal: Add pagination to user list"
 
 # First attempt
-wl trace 260205a "Tried offset-based pagination - simple but has issues with data changes"
+wl trace 260205a -k hypothesis "Tried offset-based pagination - simple but may have issues with data changes"
 
 # Hit problem
-wl trace 260205a "Issue: Users can be skipped if new users added between pages (cause: offset shifts)"
+wl trace 260205a -k state "Issue: users can be skipped if new users added between pages (cause: offset shifts)"
 
 # Pivot with reasoning
-wl trace 260205a "Pivot to cursor-based pagination (piste: stable regardless of insertions)"
+wl trace 260205a -k finding "Offset pagination is unsafe here; cursor-based pagination is stable regardless of insertions"
 
 # Implementation
-wl trace 260205a "Implemented cursor using user.createdAt + user.id composite"
+wl trace 260205a -k action "Implemented cursor using user.createdAt + user.id composite"
 
 # Validation
-wl trace 260205a "Tests pass - pagination stable across insertions"
+wl trace 260205a -k state "Tests pass - pagination stable across insertions"
 ```
 
 ### Good Checkpoint
@@ -71,15 +71,16 @@ Résultat:
 
 ```bash
 # Recreating investigation from earlier
-wl trace 260205b -t T09:30 "User reports: login fails with 'invalid token' error"
+wl trace 260205b -k info -t T09:30 "User reports: login fails with 'invalid token' error"
 
-wl trace 260205b -t T09:45 "Checked logs - token validation throwing TypeError"
+wl trace 260205b -k action -t T09:45 "Checked logs"
+wl trace 260205b -k state -t T09:45 "Token validation throws TypeError"
 
-wl trace 260205b -t T10:00 "Root cause: jwt.verify() expects string, receiving Buffer (cause: req.headers['authorization'] not decoded)"
+wl trace 260205b -k finding -t T10:00 "Root cause: jwt.verify() expects string, receiving Buffer (cause: req.headers['authorization'] not decoded)"
 
-wl trace 260205b -t T10:15 "Fixed by adding .toString() before jwt.verify()"
+wl trace 260205b -k action -t T10:15 "Fixed by adding .toString() before jwt.verify()"
 
-wl trace 260205b -t T10:20 "Tests pass - login working"
+wl trace 260205b -k state -t T10:20 "Tests pass - login working"
 ```
 
 ### Good Done
@@ -129,11 +130,11 @@ wl trace 260205c "Fixed it"
 ### ✅ GOOD Traces
 
 ```bash
-wl trace 260205c "Goal: Fix memory leak in WebSocket handler"
-wl trace 260205c "Tried closing sockets on disconnect - leak persists (cause: event listeners not removed)"
-wl trace 260205c "Found leaked listeners in connection pool (piste: need explicit cleanup)"
-wl trace 260205c "Added removeAllListeners() in disconnect handler"
-wl trace 260205c "Memory leak resolved - heap stable after 1000 connections"
+wl trace 260205c -k info "Goal: Fix memory leak in WebSocket handler"
+wl trace 260205c -k hypothesis "Tried closing sockets on disconnect - leak persists (cause: event listeners not removed)"
+wl trace 260205c -k finding "Found leaked listeners in connection pool (piste: need explicit cleanup)"
+wl trace 260205c -k action "Added removeAllListeners() in disconnect handler"
+wl trace 260205c -k state "Memory leak resolved - heap stable after 1000 connections"
 ```
 
 **Benefits:**
@@ -201,15 +202,15 @@ wl create "Implement email notification system" \
 
 # Work on first TODO
 wl todo set status=wip <todo-1-id>
-wl trace 260205d "Designing email templates using Handlebars"
-wl trace 260205d "Created welcome.hbs and reset-password.hbs"
+wl trace 260205d -k action "Designing email templates using Handlebars"
+wl trace 260205d -k state "Created welcome.hbs and reset-password.hbs"
 wl todo set status=done <todo-1-id>
 
 # Work on second TODO
 wl todo set status=wip <todo-2-id>
-wl trace 260205d "Setting up nodemailer with Gmail SMTP"
-wl trace 260205d "Hit issue: Gmail blocks less secure apps (cause: 2FA required)"
-wl trace 260205d "Switched to app-specific password - working"
+wl trace 260205d -k action "Setting up nodemailer with Gmail SMTP"
+wl trace 260205d -k finding "Gmail blocks less secure apps (cause: 2FA required)"
+wl trace 260205d -k state "Switched to app-specific password - working"
 wl todo set status=done <todo-2-id>
 
 # Continue with remaining TODOs...
@@ -252,8 +253,8 @@ wl create --parent <parent-id> --ready "Audit existing payment code" "Map curren
 
 # Sub-agent starts its subtask and traces independently
 wl start <subtask-id>
-wl trace <subtask-id> "Found 3 payment endpoints: /charge, /refund, /webhook"
-wl trace <subtask-id> "Stripe SDK already imported in payments.ts — no new dep needed"
+wl trace <subtask-id> -k finding "Found 3 payment endpoints: /charge, /refund, /webhook"
+wl trace <subtask-id> -k finding "Stripe SDK already imported in payments.ts — no new dep needed"
 wl done <subtask-id> "Audited payment code" "Stripe SDK available, only /webhook needs auth guard"
 
 # Main agent monitors
@@ -261,7 +262,7 @@ wl show <parent-id>          # subtasks-since-checkpoint section shows sub-agent
 wl list --parent <parent-id> # only children of this task
 
 # Main agent continues based on sub-agent findings
-wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook auth guard"
+wl trace <parent-id> -k state "Subtask done: Stripe SDK available, focusing on webhook auth guard"
 ```
 
 **Key points:**
@@ -279,4 +280,4 @@ wl trace <parent-id> "Subtask done: Stripe SDK available, focusing on webhook au
 5. **Review before done** - Use `wl logs` to see full picture
 6. **Learnings need distance** - Not "what we did" but "what we learned"
 7. **Done after commit** - Link work to code via commit SHA
-8. **Trace everything** - Actions, problems, ideas, leads, findings, learnings -- not just results
+8. **Trace everything** - Actions, info, states, hypotheses, findings, learnings -- not just results

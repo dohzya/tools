@@ -1,24 +1,23 @@
-// ListTracesUseCase - List all traces for a task
+// UpdateTraceUseCase - Update metadata or content for an existing trace entry
 
-import type { TracesOutput } from "../../entities/outputs.ts";
+import type { Entry, TraceKind } from "../../entities/entry.ts";
 import { WtError } from "../../entities/errors.ts";
-import type { TraceKind } from "../../entities/entry.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 
-export interface ListTracesInput {
+export interface UpdateTraceInput {
   readonly taskId: string;
-  readonly kinds?: readonly TraceKind[];
-  readonly excludedKinds?: readonly TraceKind[];
+  readonly traceId: string;
+  readonly kind?: TraceKind;
 }
 
-export class ListTracesUseCase {
+export class UpdateTraceUseCase {
   constructor(
     private readonly indexRepo: IndexRepository,
     private readonly taskRepo: TaskRepository,
   ) {}
 
-  async execute(input: ListTracesInput): Promise<TracesOutput> {
+  async execute(input: UpdateTraceInput): Promise<void> {
     const index = await this.indexRepo.load();
     const taskId = this.resolveTaskId(input.taskId, Object.keys(index.tasks));
 
@@ -27,19 +26,34 @@ export class ListTracesUseCase {
       throw new WtError("task_not_found", `Task not found: ${taskId}`);
     }
 
-    const included = new Set(input.kinds ?? []);
-    const excluded = new Set(input.excludedKinds ?? []);
-    const entries = taskData.entries
-      .filter((entry) =>
-        included.size === 0 || (entry.kind ? included.has(entry.kind) : false)
-      )
-      .filter((entry) => !entry.kind || !excluded.has(entry.kind))
-      .sort((a, b) => a.ts.localeCompare(b.ts));
+    if (!input.kind) {
+      throw new WtError(
+        "invalid_args",
+        "Nothing to update. Provide --kind.",
+      );
+    }
 
-    return {
-      task: taskId,
-      desc: taskData.meta.desc,
+    const entries = taskData.entries.map((entry) =>
+      entry.id === input.traceId ? this.updateEntry(entry, input) : entry
+    );
+
+    if (!entries.some((entry) => entry.id === input.traceId)) {
+      throw new WtError("trace_not_found", `Trace not found: ${input.traceId}`);
+    }
+
+    await this.taskRepo.save(
+      taskId,
+      taskData.meta,
       entries,
+      taskData.checkpoints,
+      taskData.todos,
+    );
+  }
+
+  private updateEntry(entry: Entry, input: UpdateTraceInput): Entry {
+    return {
+      ...entry,
+      ...(input.kind ? { kind: input.kind } : {}),
     };
   }
 
