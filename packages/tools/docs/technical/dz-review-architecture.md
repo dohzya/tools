@@ -55,7 +55,7 @@ The integrated CLI now covers the legacy command surface plus the standard dz-to
 - conversation filters such as `--conversation`, `--conversations`, `--pending`, `--pending-conversations`, and `--ignore-closed-conversations`
 - `dz-review timestamp` / `dz-review ts` / `dz-review timestamps`, including `--stdin`, `--stdout`, `--inline`, `--output`, `--compact`, and `--iso`
 - `dz-review now`, including `--compact`, `--iso`, and `--date`
-- `dz-review agent start`, `dz-review agent status`, and `dz-review agent done`, including `--json`
+- `dz-review agent start`, `dz-review agent status`, `dz-review me status`, and `dz-review agent done`, including `--json`
 - `dz-review -C <dir>` / `dz-review --cwd <dir>`
 - `dz-review --state-dir <dir>` / `DZ_REVIEW_STATE_DIR`
 - `dz-review --ignore-file <file>` / `DZ_REVIEW_IGNORE_FILE`
@@ -63,7 +63,7 @@ The integrated CLI now covers the legacy command surface plus the standard dz-to
 - `dz-review completions`
 - `dz-review stats` as a migration error
 
-The port includes Git diff filtering, configurable review ignore files, color handling, `--since`, timestamp conversion, interactive edit actions, and the agent session start/status/done workflow. `agent start`, `agent status`, and `agent done` reuse the same review item parser and timestamp conversion logic as status/list/review, then persist or read `agent-session.json` under the configured state directory with stable item IDs and per-file timestamp formats. Runtime path configuration is shared through `dz-review/runtime-config.ts`; CLI options take precedence over environment variables and are resolved after `-C` changes the working directory.
+The port includes Git diff filtering, configurable review ignore files, color handling, `--since`, timestamp conversion, interactive edit actions, and the agent session start/status/done workflow. `agent start`, `agent status`, `me status`, and `agent done` reuse the same review item parser and timestamp conversion logic as status/list/review, then persist or read `agent-session.json` under the configured state directory with stable item IDs and per-file timestamp formats. Runtime path configuration is shared through `dz-review/runtime-config.ts`; CLI options take precedence over environment variables and are resolved after `-C` changes the working directory.
 
 The V1 agent session model deliberately assumes one active agent session per configured state directory. A job-based model could support concurrent agents with separate job ids and transaction-like reconciliation, but it would require agents to route edits through `dz-review` instead of editing Markdown directly. Keep that as a future design study rather than part of this initial CLI workflow.
 

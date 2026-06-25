@@ -97,6 +97,7 @@ dz-review now
 dz-review now --iso --date 2026-06-18T12:00:00+02:00
 dz-review agent start file.md
 dz-review agent status file.md
+dz-review me status file.md
 dz-review agent done file.md
 dz-review agent-instructions
 dz-review completions bash
@@ -130,6 +131,8 @@ Agents should use the `markdown-review-workflow` skill when editing Markdown wit
 `dz-review agent start [file...]` is the agent-first session entry point. It scans the current review state, writes `agent-session.json` under the configured state directory, records each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints an inbox with stable item IDs, file/line, likely state, last message, context, and suggested action. `--dry-run` prints the inbox without writing the snapshot or changing files. `--json` prints the same structured model for tools.
 
 `dz-review agent status [file...]` reads the active start snapshot and prints an in-progress session view without changing files. It reports annotated files, modified files, answered conversations, cleanable conversations, remaining open items, guardrail failures, and current stable item IDs. `--json` prints the structured session status.
+
+`dz-review me status [file...]` reads the same active session snapshot as `agent status`, but prints a human-facing TODO view: agent replies or open items to review, validated conversations to clean, and remaining review issues. `--json` prints the same structured session status as `agent status --json`. This command is intentionally scoped under `me` so the existing `status` command can remain unchanged while the human-facing view matures.
 
 `dz-review agent add-file [file...]` adds files to the active session snapshot after `agent start`. Explicit files can be added even when they match the configured ignore file; the command still avoids builtin state directories.
 

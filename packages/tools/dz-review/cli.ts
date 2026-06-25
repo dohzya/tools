@@ -507,6 +507,7 @@ function createCli() {
     .command("timestamp", createTimestampCommand())
     .command("now", createNowCommand())
     .command("agent", createAgentCommand())
+    .command("me", createMeCommand())
     .command("stats", createStatsCommand())
     .command("agent-instructions", createAgentInstructionsCommand())
     .command("completions", new CompletionsCommand());
@@ -732,6 +733,12 @@ function createAgentCommand() {
     .command("done", createAgentDoneCommand());
 }
 
+function createMeCommand() {
+  return new Command()
+    .description("Run human-oriented review commands")
+    .command("status", createMeStatusCommand());
+}
+
 function createAgentStartCommand() {
   return new Command()
     .description("Record a review snapshot and print an agent inbox")
@@ -766,6 +773,16 @@ function createAgentStatusCommand() {
     .arguments("[files...:string]")
     .action((options: AgentCliffyOptions, ...files: string[]) => {
       runAgentStatus(files, Boolean(options.json));
+    });
+}
+
+function createMeStatusCommand() {
+  return new Command()
+    .description("Print things to do for the human")
+    .option("--json", "Print structured JSON.")
+    .arguments("[files...:string]")
+    .action((options: AgentCliffyOptions, ...files: string[]) => {
+      runMeStatus(files, Boolean(options.json));
     });
 }
 
@@ -1962,6 +1979,13 @@ function runAgentStatus(files: string[], json: boolean): void {
   );
 }
 
+function runMeStatus(files: string[], json: boolean): void {
+  const status = getAgentSessionStatus(files);
+  process.stdout.write(
+    json ? `${JSON.stringify(status, null, 2)}\n` : formatHumanStatus(status),
+  );
+}
+
 function runAgentList(
   files: string[],
   options: AgentListCliffyOptions,
@@ -2178,6 +2202,68 @@ function formatAgentStatus(status: AgentSessionStatus): string {
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function formatHumanStatus(status: AgentSessionStatus): string {
+  const allIds = status.items.map((item) => item.id);
+  const humanIssues = status.guardrailFailures.filter((failure) =>
+    failure.message !== "validated conversation remains cleanable"
+  );
+  const lines = [
+    "Human status",
+    `To review: ${status.remainingOpenItems.length}`,
+    `To clean: ${status.cleanableConversations.length}`,
+    `Still open: ${status.remainingOpenItems.length}`,
+    `Issues: ${humanIssues.length}`,
+  ];
+
+  if (
+    status.remainingOpenItems.length === 0 &&
+    status.cleanableConversations.length === 0 &&
+    humanIssues.length === 0
+  ) {
+    lines.push("", "Nothing to do.");
+    return `${lines.join("\n")}\n`;
+  }
+
+  if (status.remainingOpenItems.length > 0) {
+    lines.push("", "Review agent replies:");
+    for (const item of status.remainingOpenItems) {
+      lines.push(formatHumanStatusItem(item, allIds));
+    }
+  }
+
+  if (status.cleanableConversations.length > 0) {
+    lines.push("", "Clean validated conversations:");
+    for (const item of status.cleanableConversations) {
+      lines.push(formatHumanStatusItem(item, allIds));
+    }
+    lines.push("Run: dz-review agent clean --validated");
+  }
+
+  if (humanIssues.length > 0) {
+    lines.push("", "Fix review issues:");
+    for (const failure of humanIssues) {
+      lines.push(
+        `- ${
+          formatStableReviewItemIdForDisplay(failure.id, allIds)
+        } ${failure.file}:${failure.line} ${failure.message}`,
+      );
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+function formatHumanStatusItem(
+  item: AgentReviewItem,
+  allIds: readonly string[],
+): string {
+  return `- ${
+    formatStableReviewItemIdForDisplay(item.id, allIds)
+  } ${item.file}:${item.lineStart} ${item.state} ${
+    formatAgentLastMessage(item)
+  }`;
 }
 
 function collectAgentHandoffIds(handoff: AgentHandoff): string[] {
@@ -3550,6 +3636,7 @@ Commands:
   timestamp, ts, timestamps     Add or convert review timestamps.
   now                           Print a review timestamp for now or for --date.
   agent                         Run agent start/done review workflow.
+  me                            Run human-oriented review commands.
   agent-instructions            Print AGENTS.md guidance for dz-review.
   completions                   Print shell completion script.
 
@@ -3610,6 +3697,7 @@ Examples:
   dz-review agent start docs/spec.md
   dz-review agent add-file docs/extra.md
   dz-review agent status docs/spec.md
+  dz-review me status docs/spec.md
   dz-review agent done docs/spec.md
   dz-review -C ../project status --oneline
 

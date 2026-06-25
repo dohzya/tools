@@ -76,6 +76,7 @@ Deno.test("dz-review --help - prints structured command help", async () => {
   assertStringIncludes(output, "status, st");
   assertStringIncludes(output, "timestamp, ts, timestamps");
   assertStringIncludes(output, "agent");
+  assertStringIncludes(output, "me");
   assertStringIncludes(output, "-C, --cwd");
   assertStringIncludes(output, "<dir>");
   assertStringIncludes(output, "completions");
@@ -95,6 +96,17 @@ Deno.test("dz-review status --help - prints subcommand options", async () => {
   assertStringIncludes(output, "--short");
   assertStringIncludes(output, "--recap");
   assertStringIncludes(output, "--template");
+});
+
+Deno.test("dz-review me status --help - prints human status help", async () => {
+  const output = stripAnsi(
+    await captureOutput(() => main(["me", "status", "--help"])),
+  );
+
+  assertStringIncludes(output, "Usage:");
+  assertStringIncludes(output, "dz-review me status");
+  assertStringIncludes(output, "things to do for the human");
+  assertStringIncludes(output, "--json");
 });
 
 Deno.test("dz-review errors - format stderr with code and color", async () => {
@@ -697,6 +709,87 @@ Deno.test("dz-review agent status --json - prints structured session status", as
     assertEquals(data.filesModified, 0);
     assertEquals(data.items.length, 1);
     assertEquals(data.items[0].state, "open");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me status - focuses on human actions", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "<!-- @agent%1WzvP91W Question? -->",
+      "<!-- @agent%1WzvP91X Validate cleanup? -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const firstId = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1];
+    if (!firstId) {
+      throw new Error("missing first review id in agent start output");
+    }
+    await captureOutput(() =>
+      withCwd(dir, () =>
+        main([
+          "agent",
+          "respond",
+          firstId,
+          "--message",
+          "I changed the wording.",
+        ]))
+    );
+    const updated = await Deno.readTextFile(file);
+    await Deno.writeTextFile(
+      file,
+      updated.replace(
+        "Validate cleanup? -->",
+        "Validate cleanup? @me%2026-06-16T17:37:35+02:00 ok -->",
+      ),
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "status"]))
+    );
+
+    assertStringIncludes(output, "Human status");
+    assertStringIncludes(output, "To review: 1");
+    assertStringIncludes(output, "To clean: 1");
+    assertStringIncludes(output, "Still open: 1");
+    assertStringIncludes(output, "Issues: 0");
+    assertStringIncludes(output, "Review agent replies:");
+    assertStringIncludes(output, "Clean validated conversations:");
+    assertStringIncludes(output, "dz-review agent clean --validated");
+    assertStringIncludes(output, "file.md:1");
+    assertStringIncludes(output, "file.md:2");
+    assertEquals(output.includes("files modified:"), false);
+    assertEquals(output.includes("Agent status"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me status - keeps empty state concise", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "No review items.\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "status"]))
+    );
+
+    assertStringIncludes(output, "Nothing to do.");
+    assertEquals(output.includes("Nothing for the human to do."), false);
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
