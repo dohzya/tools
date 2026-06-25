@@ -34,12 +34,13 @@ Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () =>
 
   assertEquals(output.startsWith("##"), false);
   assertStringIncludes(output, "DZ Review (`dz-review`):");
-  assertStringIncludes(output, "dz-review agent start");
+  assertStringIncludes(output, "dz-review session start");
   assertStringIncludes(output, "dz-review agent status");
-  assertStringIncludes(output, "dz-review agent done");
-  assertStringIncludes(output, "do not rerun `agent start`");
-  assertStringIncludes(output, "agent start --force");
+  assertStringIncludes(output, "dz-review session done");
+  assertStringIncludes(output, "do not rerun `session start`");
+  assertStringIncludes(output, "session start --force");
   assertStringIncludes(output, "dz-review --help");
+  assertEquals(output.includes("dz-review agent start"), false);
   assertEquals(output.includes("dz-review status"), false);
   assertEquals(output.includes("dz-review ts"), false);
   assertEquals(output.includes("timestamp format: compact"), false);
@@ -76,12 +77,29 @@ Deno.test("dz-review --help - prints structured command help", async () => {
   assertStringIncludes(output, "status, st");
   assertStringIncludes(output, "timestamp, ts, timestamps");
   assertStringIncludes(output, "agent");
+  assertStringIncludes(output, "session");
   assertStringIncludes(output, "me");
   assertStringIncludes(output, "-C, --cwd");
   assertStringIncludes(output, "<dir>");
   assertStringIncludes(output, "completions");
   assertEquals(output.includes("Conversation messages may carry"), false);
   assertEquals(output.includes("Review annotations may carry"), false);
+});
+
+Deno.test("dz-review agent --help - hides session lifecycle aliases", async () => {
+  const output = stripAnsi(
+    await captureOutput(() => main(["agent", "--help"])),
+  );
+
+  assertStringIncludes(output, "respond");
+  assertStringIncludes(output, "status");
+  assertStringIncludes(output, "diff");
+  assertEquals(output.includes("Record a review snapshot"), false);
+  assertEquals(output.includes("Compare against the agent snapshot"), false);
+  assertEquals(
+    output.includes("Restore files to their pre-agent-start"),
+    false,
+  );
 });
 
 Deno.test("dz-review status --help - prints subcommand options", async () => {
@@ -310,6 +328,32 @@ Deno.test("dz-review me review --list - reuses review command options", async ()
   }
 });
 
+Deno.test("dz-review me diff - reuses diff command", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(file, "Intro\n");
+    await runGit(dir, ["add", "file.md"]);
+    await runGit(dir, ["commit", "-m", "initial"]);
+    await Deno.writeTextFile(file, "Intro\n<!-- @agent open -->\n");
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "diff"]))
+    );
+
+    assertStringIncludes(output, "open conversation");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review list --conversation - keeps legacy singular alias", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -390,6 +434,26 @@ Deno.test("dz-review agent start - stores a snapshot and prints an inbox", async
     assertEquals(snapshot.files[0].timestampFormat, "compact");
     assertEquals(snapshot.items.length, 2);
     assertEquals(/^rvw_[0-9A-Za-z]{1,11}$/.test(snapshot.items[0].id), true);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review session start - stores a snapshot and prints an inbox", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent%1WzvP91W Question? -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "file.md"]))
+    );
+    const snapshot = JSON.parse(
+      await Deno.readTextFile(join(dir, ".dz-review", "agent-session.json")),
+    );
+
+    assertStringIncludes(output, "Agent inbox");
+    assertEquals(snapshot.files[0].path, "file.md");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -595,7 +659,7 @@ Deno.test("dz-review agent start - refuses to overwrite active session without f
     assertEquals(result.success, false);
     assertStringIncludes(result.stderr, "agent session already exists");
     assertStringIncludes(result.stderr, "dz-review agent status");
-    assertStringIncludes(result.stderr, "dz-review agent start --force");
+    assertStringIncludes(result.stderr, "dz-review session start --force");
     assertEquals(unchangedSnapshot, originalSnapshot);
 
     const forcedOutput = await captureOutput(() =>
@@ -714,7 +778,7 @@ Deno.test("dz-review agent done - rejects timestamped bare human markers", async
       result.stdout,
       "timestamped bare @ marker should be @me",
     );
-    assertStringIncludes(result.stderr, "agent done guardrails failed");
+    assertStringIncludes(result.stderr, "session done guardrails failed");
     assertStringIncludes(updated, "@%1WzvQ71W Answer.");
     assertEquals(updated.includes("@me%1WzvQ71W Answer."), false);
   } finally {
@@ -882,7 +946,7 @@ Deno.test("dz-review agent done - fails on guardrail violations", async () => {
       result.stdout,
       "validated conversation remains cleanable",
     );
-    assertStringIncludes(result.stderr, "agent done guardrails failed");
+    assertStringIncludes(result.stderr, "session done guardrails failed");
     assertStringIncludes(updated, "@agent%1WzvP91W Question?");
   } finally {
     await Deno.remove(dir, { recursive: true });
@@ -1156,6 +1220,42 @@ Deno.test("dz-review agent rollback - restores pre-start content", async () => {
 
     const output = await captureOutput(() =>
       withCwd(dir, () => main(["agent", "rollback"]))
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertStringIncludes(output, "rolled back 1 file");
+    assertStringIncludes(output, "session closed");
+    assertEquals(updated, original);
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      false,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review session rollback - restores pre-start content and closes session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const original = "<!-- @agent%1WzvP91W Question? -->\n";
+  await Deno.writeTextFile(file, original);
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+    assertEquals(id.length > 0, true);
+    await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["agent", "respond", id, "--message", "Done."]),
+      )
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["session", "rollback"]))
     );
     const updated = await Deno.readTextFile(file);
 

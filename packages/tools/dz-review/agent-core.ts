@@ -199,7 +199,7 @@ export function startAgentSession(
     throw new Error(
       [
         `agent session already exists at ${sessionFile}.`,
-        "Use dz-review agent status [file...] to inspect progress, dz-review agent done [file...] to finish, or dz-review agent start --force [file...] to replace the snapshot.",
+        "Use dz-review agent status [file...] to inspect progress, dz-review session done [file...] to finish, or dz-review session start --force [file...] to replace the snapshot.",
       ].join("\n"),
     );
   }
@@ -251,7 +251,7 @@ export function startAgentSession(
 
 export function addAgentSessionFiles(files: string[]): AgentSessionSnapshot {
   if (files.length === 0) {
-    throw new Error("agent add-file requires at least one file.");
+    throw new Error("session add-file requires at least one file.");
   }
 
   const snapshot = readAgentSnapshot();
@@ -510,7 +510,7 @@ export function rollbackAgentSession(files: string[]): AgentRollbackResult {
     if (file.originalContent === undefined) {
       throw new Error(
         [
-          "agent rollback requires a session snapshot with stored file content.",
+          "session rollback requires a session snapshot with stored file content.",
           "This snapshot was created by an older dz-review version; start a new session before using rollback.",
         ].join("\n"),
       );
@@ -560,7 +560,7 @@ export function readAgentSnapshot(): AgentSessionSnapshot {
   const sessionFile = getDzReviewSessionFile();
   if (!fs.existsSync(sessionFile)) {
     throw new Error(
-      `No agent session snapshot found at ${sessionFile}. Run dz-review agent start first.`,
+      `No agent session snapshot found at ${sessionFile}. Run dz-review session start first.`,
     );
   }
 

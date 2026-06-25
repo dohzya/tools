@@ -8,6 +8,7 @@
 *.lock
 .git/
 .worklog/
+docs/refs/*.md
 node_modules/
 packages/tools/CHANGELOG.md
 packages/tools/docs/functional/dz-review*.md

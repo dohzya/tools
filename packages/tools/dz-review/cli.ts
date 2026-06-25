@@ -498,6 +498,7 @@ function createCli() {
     .command("diff", createDiffCommand())
     .command("timestamp", createTimestampCommand())
     .command("now", createNowCommand())
+    .command("session", createSessionCommand())
     .command("agent", createAgentCommand())
     .command("me", createMeCommand())
     .command("stats", createStatsCommand())
@@ -710,19 +711,29 @@ function createNowCommand() {
 
 function createAgentCommand() {
   return new Command()
-    .description("Run agent-oriented review start/done workflow")
-    .command("start", createAgentStartCommand())
-    .command("add-file", createAgentAddFileCommand())
+    .description("Run agent-oriented review actions")
+    .command("start", createAgentStartCommand().hidden())
+    .command("add-file", createAgentAddFileCommand().hidden())
     .command("list", createAgentListCommand())
     .command("inbox", createAgentListCommand())
     .command("show", createAgentShowCommand())
     .command("respond", createAgentRespondCommand())
     .command("apply", createAgentApplyCommand())
     .command("clean", createAgentCleanCommand())
-    .command("rollback", createAgentRollbackCommand())
+    .command("rollback", createAgentRollbackCommand().hidden())
     .command("diff", createAgentDiffCommand())
     .command("status", createAgentStatusCommand())
-    .command("done", createAgentDoneCommand());
+    .command("done", createAgentDoneCommand().hidden());
+}
+
+function createSessionCommand() {
+  return new Command()
+    .description("Run review session lifecycle commands")
+    .command("start", createAgentStartCommand())
+    .command("add-file", createAgentAddFileCommand())
+    .command("status", createAgentStatusCommand())
+    .command("done", createAgentDoneCommand())
+    .command("rollback", createAgentRollbackCommand());
 }
 
 function createMeCommand() {
@@ -730,6 +741,7 @@ function createMeCommand() {
     .description("Run human-oriented review commands")
     .command("review", createReviewCommand())
     .command("list", createListCommand())
+    .command("diff", createDiffCommand())
     .command("status", createMeStatusCommand());
 }
 
@@ -1987,7 +1999,7 @@ function runAgentDone(files: string[], json: boolean): void {
   if (handoff.guardrailFailures.length > 0) {
     throw new DzReviewCliError(
       "invalid_args",
-      "agent done guardrails failed",
+      "session done guardrails failed",
     );
   }
 }
@@ -3760,7 +3772,8 @@ Commands:
   diff, d                       List review items on lines added in the current Git diff.
   timestamp, ts, timestamps     Add or convert review timestamps.
   now                           Print a review timestamp for now or for --date.
-  agent                         Run agent start/done review workflow.
+  session                       Run review session lifecycle commands.
+  agent                         Run agent-oriented review actions.
   me                            Run human-oriented review commands.
   agent-instructions            Print AGENTS.md guidance for dz-review.
   completions                   Print shell completion script.
@@ -3822,16 +3835,16 @@ Examples:
   dz-review me status --short docs/spec.md
   dz-review diff --pending
   dz-review timestamp -i docs/spec.md
-  dz-review agent start docs/spec.md
-  dz-review agent add-file docs/extra.md
+  dz-review session start docs/spec.md
+  dz-review session add-file docs/extra.md
   dz-review agent status docs/spec.md
   dz-review me status docs/spec.md
-  dz-review agent done docs/spec.md
+  dz-review session done docs/spec.md
   dz-review -C ../project status --oneline
 
 Notes:
   Without files, commands use agent session files, then Git status files.
-  agent start/done assumes one active agent session per state directory.
+  session start/done assumes one active agent session per state directory.
   Paths matching the configured ignore file are skipped.
   Conversation statuses are open, wip, handled, and resolved.
 `);
