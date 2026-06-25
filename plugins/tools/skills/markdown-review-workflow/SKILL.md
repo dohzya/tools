@@ -13,10 +13,10 @@ For exact syntax examples and edge cases, read `references/review-syntax.md`.
 
 Use `dz-review` as a non-interactive inspection and timestamp helper:
 
-1. For an agent session, run `dz-review agent start [file...]` once. It records an `agent-session.json` snapshot in the configured state directory, detects each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints stable item IDs with suggested actions.
-2. Edit the Markdown threads directly. Use `dz-review agent status [file...]` for in-progress checks tied to the active start snapshot; do not rerun `agent start` just to refresh state.
-3. Before handing edited annotated files back, run `dz-review agent done [file...]`. It compares against the start snapshot, restores each file's recorded timestamp format when possible, and reports answered, cleanable, remaining, and guardrail-failed conversations.
-4. Rerun `dz-review agent start --force [file...]` only when intentionally replacing the active snapshot.
+1. For an agent session, run `dz-review session start [file...]` once. It records an `agent-session.json` snapshot in the configured state directory, detects each annotated file's original or dominant timestamp format, normalizes timestamps to ISO for editing, and prints stable item IDs with suggested actions.
+2. Edit the Markdown threads directly. Use `dz-review agent status [file...]` for in-progress checks tied to the active start snapshot; do not rerun `session start` just to refresh state.
+3. Before handing edited annotated files back, run `dz-review session done [file...]`. It compares against the start snapshot, restores each file's recorded timestamp format when possible, and reports answered, cleanable, remaining, and guardrail-failed conversations.
+4. Rerun `dz-review session start --force [file...]` only when intentionally replacing the active snapshot.
 5. Outside an agent session, use the ordinary `dz-review` inspection and timestamp commands as a manual fallback.
 
 Agents should edit the Markdown threads directly. Do not use the interactive `dz-review review` flow from an agent session.

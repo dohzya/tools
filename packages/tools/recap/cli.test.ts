@@ -531,8 +531,9 @@ Deno.test("recap CLI - show --json returns only requested sections", async () =>
   const tempDir = await Deno.makeTempDir();
   try {
     await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    const configPath = join(tempDir, ".config", "recap.yaml");
     await Deno.writeTextFile(
-      join(tempDir, ".config", "recap.yaml"),
+      configPath,
       `
 sections:
   - id: alpha
@@ -546,8 +547,8 @@ sections:
       await main([
         "--json",
         "--no-color",
-        "-C",
-        tempDir,
+        "-c",
+        configPath,
         "show",
         "beta",
       ]);

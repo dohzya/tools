@@ -189,6 +189,10 @@ interface AgentCliffyOptions {
   json?: boolean;
 }
 
+interface SessionActiveCliffyOptions {
+  template?: string;
+}
+
 interface AgentListCliffyOptions {
   json?: boolean;
   limit?: string;
@@ -486,7 +490,7 @@ function createCli() {
     )
     .globalOption(
       "--state-dir <dir:string>",
-      `Agent state directory. Defaults to ${DZ_REVIEW_STATE_DIR_ENV} or .dz-review.`,
+      `Agent state directory. Defaults to ${DZ_REVIEW_STATE_DIR_ENV} or Git-root .dz-review.`,
     )
     .globalOption(
       "--ignore-file <file:string>",
@@ -732,6 +736,7 @@ function createSessionCommand() {
     .command("start", createAgentStartCommand())
     .command("add-file", createAgentAddFileCommand())
     .command("status", createAgentStatusCommand())
+    .command("active", createSessionActiveCommand())
     .command("done", createAgentDoneCommand())
     .command("rollback", createAgentRollbackCommand());
 }
@@ -779,6 +784,20 @@ function createAgentStatusCommand() {
     .arguments("[files...:string]")
     .action((options: AgentCliffyOptions, ...files: string[]) => {
       runAgentStatus(files, Boolean(options.json));
+    });
+}
+
+function createSessionActiveCommand() {
+  return new Command()
+    .description(
+      "Print a recap-friendly marker when a review session is active",
+    )
+    .option(
+      "--template <message:string>",
+      "Message to print when a review session is active.",
+    )
+    .action((options: SessionActiveCliffyOptions) => {
+      runSessionActive(options.template);
     });
 }
 
@@ -1859,6 +1878,9 @@ function writeStatus(
   }
 
   const lines: string[] = [];
+  if (statusFormat === "long") {
+    lines.push(formatReviewSessionLine());
+  }
 
   for (const file of files) {
     const stats = collectStats(
@@ -1889,10 +1911,16 @@ function writeStatus(
   }
 
   process.stdout.write(
-    lines.length > 0
+    lines.length > (statusFormat === "long" ? 1 : 0)
       ? `${lines.join("\n")}\n`
-      : "No review annotations found.\n",
+      : `${lines.join("\n")}${
+        lines.length > 0 ? "\n" : ""
+      }No review annotations found.\n`,
   );
+}
+
+function formatReviewSessionLine(): string {
+  return `Review session: ${hasAgentSessionSnapshot() ? "active" : "none"}`;
 }
 
 function formatStatusTemplate(
@@ -2009,6 +2037,12 @@ function runAgentStatus(files: string[], json: boolean): void {
   process.stdout.write(
     json ? `${JSON.stringify(status, null, 2)}\n` : formatAgentStatus(status),
   );
+}
+
+function runSessionActive(template: string | undefined): void {
+  if (hasAgentSessionSnapshot()) {
+    process.stdout.write(`${template ?? "in a review session"}\n`);
+  }
 }
 
 function runMeStatus(files: string[], json: boolean): void {
@@ -2285,11 +2319,8 @@ function formatHumanStatus(status: AgentSessionStatus): string {
     failure.message !== "validated conversation remains cleanable"
   );
   const lines = [
-    "Human status",
-    `To review: ${status.remainingOpenItems.length}`,
-    `To clean: ${status.cleanableConversations.length}`,
-    `Still open: ${status.remainingOpenItems.length}`,
-    `Issues: ${humanIssues.length}`,
+    "In review session",
+    `${status.remainingOpenItems.length} to review - ${status.cleanableConversations.length} to clean - ${status.remainingOpenItems.length} still open - ${humanIssues.length} issues`,
   ];
 
   if (
@@ -2302,7 +2333,7 @@ function formatHumanStatus(status: AgentSessionStatus): string {
   }
 
   if (status.remainingOpenItems.length > 0) {
-    lines.push("", "Review agent replies:");
+    lines.push("", "Open conversations:");
     for (const item of status.remainingOpenItems) {
       lines.push(formatHumanStatusItem(item, allIds));
     }
@@ -2336,9 +2367,15 @@ function formatHumanStatusItem(
 ): string {
   return `- ${
     formatStableReviewItemIdForDisplay(item.id, allIds)
-  } ${item.file}:${item.lineStart} ${item.state} ${
-    formatAgentLastMessage(item)
-  }`;
+  } ${item.file}:${item.lineStart} ${formatAgentLastMessageBody(item)}`;
+}
+
+function formatAgentLastMessageBody(item: AgentReviewItem): string {
+  if (!item.lastMessage) {
+    return "-";
+  }
+
+  return item.lastMessage.body.replace(/\s+/g, " ").trim();
 }
 
 function collectAgentHandoffIds(handoff: AgentHandoff): string[] {
@@ -3780,7 +3817,7 @@ Commands:
 
 Global Options:
   -C, --cwd <dir>               Change directory before running the command.
-  --state-dir <dir>             Agent state directory. Env: DZ_REVIEW_STATE_DIR.
+  --state-dir <dir>             Agent state directory. Env: DZ_REVIEW_STATE_DIR. Default: Git-root .dz-review.
   --ignore-file <file>          Review ignore file. Env: DZ_REVIEW_IGNORE_FILE.
   -h, --help                    Show this help.
 
@@ -3794,6 +3831,7 @@ Common Options:
   --no-color                    Disable colored output.
 
 Status Options:
+  status output                 Default human status starts with Review session: active/none.
   --oneline                     Print one aggregate summary.
   --short                       Print compact per-file stats.
   --recap                       Print <file><TAB><short-status> for recap.
@@ -3837,6 +3875,7 @@ Examples:
   dz-review timestamp -i docs/spec.md
   dz-review session start docs/spec.md
   dz-review session add-file docs/extra.md
+  dz-review session active --template "[review session]"
   dz-review agent status docs/spec.md
   dz-review me status docs/spec.md
   dz-review session done docs/spec.md

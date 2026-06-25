@@ -4,3 +4,4 @@
 .worktrees/
 mise.toml
 *.skill
+/docs/refs/*.md

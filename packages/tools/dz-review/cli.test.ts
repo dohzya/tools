@@ -207,9 +207,35 @@ Deno.test("dz-review status - lists one line per file by default", async () => {
     assertEquals(
       output.trim().split("\n"),
       [
+        "Review session: none",
         "first.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
         "second.md: 1 conversation (0 open, 0 wip, 0 handled, 1 resolved), 1 addition",
       ],
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status - reports active review session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "session.md");
+  await Deno.writeTextFile(file, "<!-- @agent open -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "session.md"]))
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status"]))
+    );
+    const lines = output.trim().split("\n");
+
+    assertEquals(lines[0], "Review session: active");
+    assertStringIncludes(
+      lines[1],
+      "session.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
     );
   } finally {
     await Deno.remove(dir, { recursive: true });
@@ -227,6 +253,43 @@ Deno.test("dz-review status --short - renders compact per-file statuses", async 
     );
 
     assertEquals(output.trim(), "file.md: 1/1 +1");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review session active - prints recap-friendly session state", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "session.md");
+  await Deno.writeTextFile(file, "<!-- @agent open -->\n");
+
+  try {
+    const inactiveOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["session", "active"]))
+    );
+    const templatedInactiveOutput = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["session", "active", "--template", "review in progress"]),
+      )
+    );
+    await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "session.md"]))
+    );
+    const activeOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["session", "active"]))
+    );
+    const templatedActiveOutput = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["session", "active", "--template", "review in progress"]),
+      )
+    );
+
+    assertEquals(inactiveOutput, "");
+    assertEquals(activeOutput, "in a review session\n");
+    assertEquals(templatedInactiveOutput, "");
+    assertEquals(templatedActiveOutput, "review in progress\n");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -613,6 +676,68 @@ Deno.test("dz-review -C --state-dir - resolves state directory after cwd change"
   }
 });
 
+Deno.test("dz-review session start - writes default state at Git root from subdir", async () => {
+  const dir = await Deno.makeTempDir();
+  const subdir = join(dir, "docs");
+  const file = join(subdir, "file.md");
+  await Deno.mkdir(subdir);
+  await Deno.writeTextFile(file, "<!-- @agent root state -->\n");
+
+  try {
+    await runGit(dir, ["init"]);
+    await captureOutput(() =>
+      withCwd(subdir, () => main(["session", "start", "file.md"]))
+    );
+
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      true,
+    );
+    assertEquals(
+      await exists(join(subdir, ".dz-review", "agent-session.json")),
+      false,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review session start --state-dir - stays relative to cwd from subdir", async () => {
+  const dir = await Deno.makeTempDir();
+  const subdir = join(dir, "docs");
+  const file = join(subdir, "file.md");
+  await Deno.mkdir(subdir);
+  await Deno.writeTextFile(file, "<!-- @agent local state -->\n");
+
+  try {
+    await runGit(dir, ["init"]);
+    await captureOutput(() =>
+      withCwd(
+        subdir,
+        () =>
+          main([
+            "--state-dir",
+            ".state",
+            "session",
+            "start",
+            "file.md",
+          ]),
+      )
+    );
+
+    assertEquals(
+      await exists(join(subdir, ".state", "agent-session.json")),
+      true,
+    );
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      false,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent start reads DZ_REVIEW_STATE_DIR", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -886,18 +1011,20 @@ Deno.test("dz-review me status - focuses on human actions", async () => {
       withCwd(dir, () => main(["me", "status"]))
     );
 
-    assertStringIncludes(output, "Human status");
-    assertStringIncludes(output, "To review: 1");
-    assertStringIncludes(output, "To clean: 1");
-    assertStringIncludes(output, "Still open: 1");
-    assertStringIncludes(output, "Issues: 0");
-    assertStringIncludes(output, "Review agent replies:");
+    assertStringIncludes(output, "In review session");
+    assertStringIncludes(
+      output,
+      "1 to review - 1 to clean - 1 still open - 0 issues",
+    );
+    assertStringIncludes(output, "Open conversations:");
+    assertStringIncludes(output, "I changed the wording.");
     assertStringIncludes(output, "Clean validated conversations:");
     assertStringIncludes(output, "dz-review agent clean --validated");
     assertStringIncludes(output, "file.md:1");
     assertStringIncludes(output, "file.md:2");
     assertEquals(output.includes("files modified:"), false);
     assertEquals(output.includes("Agent status"), false);
+    assertEquals(output.includes("Human status"), false);
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -918,6 +1045,11 @@ Deno.test("dz-review me status - keeps empty state concise", async () => {
     );
 
     assertStringIncludes(output, "Nothing to do.");
+    assertStringIncludes(output, "In review session");
+    assertStringIncludes(
+      output,
+      "0 to review - 0 to clean - 0 still open - 0 issues",
+    );
     assertEquals(output.includes("Nothing for the human to do."), false);
   } finally {
     await Deno.remove(dir, { recursive: true });
@@ -1512,6 +1644,7 @@ Deno.test("dz-review me status - works without an agent session", async () => {
       output.trim(),
       "test.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
     );
+    assertStringIncludes(output, "Review session: none");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1563,7 +1696,10 @@ Deno.test("dz-review status - ignores internal .dz-review files by default", asy
       withCwd(dir, () => main(["status", ".dz-review/internal.md"]))
     );
 
-    assertEquals(output, "No review annotations found.\n");
+    assertEquals(
+      output,
+      "Review session: none\nNo review annotations found.\n",
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1583,7 +1719,10 @@ Deno.test("dz-review --ignore-file - reads custom ignore file", async () => {
       )
     );
 
-    assertEquals(output, "No review annotations found.\n");
+    assertEquals(
+      output,
+      "Review session: none\nNo review annotations found.\n",
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1601,7 +1740,10 @@ Deno.test("dz-review status reads DZ_REVIEW_IGNORE_FILE", async () => {
     });
 
     assertEquals(result.success, true);
-    assertEquals(result.stdout, "No review annotations found.\n");
+    assertEquals(
+      result.stdout,
+      "Review session: none\nNo review annotations found.\n",
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

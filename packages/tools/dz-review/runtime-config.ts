@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import * as childProcess from "node:child_process";
 
 export const DZ_REVIEW_STATE_DIR_ENV = "DZ_REVIEW_STATE_DIR";
 export const DZ_REVIEW_IGNORE_FILE_ENV = "DZ_REVIEW_IGNORE_FILE";
@@ -19,11 +20,20 @@ export function configureDzReviewRuntime(
 }
 
 export function getDzReviewStateDir(): string {
-  return normalizeConfigPathCandidate(
+  const configured = normalizeConfiguredPathCandidate(
     activeConfig.stateDir,
     Deno.env.get(DZ_REVIEW_STATE_DIR_ENV),
-    DEFAULT_DZ_REVIEW_STATE_DIR,
   );
+  if (configured) {
+    return configured;
+  }
+
+  const gitRoot = findGitRoot();
+  if (gitRoot && path.resolve(gitRoot) !== path.resolve(Deno.cwd())) {
+    return path.join(gitRoot, DEFAULT_DZ_REVIEW_STATE_DIR);
+  }
+
+  return path.normalize(DEFAULT_DZ_REVIEW_STATE_DIR);
 }
 
 export function getDzReviewSessionFile(): string {
@@ -36,6 +46,36 @@ export function getDzReviewIgnoreFile(): string {
     Deno.env.get(DZ_REVIEW_IGNORE_FILE_ENV),
     DEFAULT_DZ_REVIEW_IGNORE_FILE,
   );
+}
+
+function normalizeConfiguredPathCandidate(
+  cliValue: string | undefined,
+  envValue: string | undefined,
+): string | undefined {
+  for (const value of [cliValue, envValue]) {
+    const normalized = value?.trim();
+    if (normalized) {
+      return path.normalize(normalized);
+    }
+  }
+  return undefined;
+}
+
+function findGitRoot(): string | undefined {
+  const result = childProcess.spawnSync("git", [
+    "rev-parse",
+    "--show-toplevel",
+  ], {
+    cwd: Deno.cwd(),
+    encoding: "utf8",
+  });
+
+  if (result.status !== 0) {
+    return undefined;
+  }
+
+  const root = result.stdout.trim();
+  return root.length > 0 ? root : undefined;
 }
 
 export function getDzReviewDefaultIgnorePatterns(): string[] {
