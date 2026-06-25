@@ -132,6 +132,7 @@ export interface AgentCleanResult {
 export interface AgentRollbackResult {
   version: number;
   rolledBackFiles: string[];
+  sessionClosed: boolean;
 }
 
 export interface LocatedReviewItem {
@@ -495,6 +496,7 @@ export function cleanAgentReviewItems(
 
 export function rollbackAgentSession(files: string[]): AgentRollbackResult {
   const snapshot = readAgentSnapshot();
+  const shouldCloseSession = files.length === 0;
   const targetFiles = files.length > 0
     ? new Set(files.map(normalizePath))
     : undefined;
@@ -518,7 +520,11 @@ export function rollbackAgentSession(files: string[]): AgentRollbackResult {
     rolledBackFiles.push(file.path);
   }
 
-  return { version: 1, rolledBackFiles };
+  if (shouldCloseSession) {
+    fs.rmSync(getDzReviewSessionFile(), { force: true });
+  }
+
+  return { version: 1, rolledBackFiles, sessionClosed: shouldCloseSession };
 }
 
 export function getAgentActionDiff(files: string[]): AgentSessionStatus {

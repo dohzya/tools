@@ -24,6 +24,7 @@ import {
   getAgentSessionStatus,
   listAgentReviewItems,
   listReviewItemsJson,
+  readAgentSnapshot,
   respondToAgentReviewItem,
   rollbackAgentSession,
   showAgentReviewItem,
@@ -137,6 +138,10 @@ interface StatusCliffyOptions extends CommonCliffyOptions {
   short?: boolean;
   recap?: boolean;
   template?: string;
+}
+
+interface MeStatusCliffyOptions extends StatusCliffyOptions {
+  json?: boolean;
 }
 
 interface ListCliffyOptions extends CommonCliffyOptions {
@@ -451,19 +456,6 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (!options.git) {
-    await processFiles(
-      filterIgnoredFiles(options.files, ignoreRules),
-      undefined,
-      options.conversationOnly,
-      options.conversationFilter,
-      options.context,
-      options.list,
-      options.since,
-    );
-    return 0;
-  }
-
   const { files, addedLinesByFile } = resolveFilesAndDiff(
     options,
     ignoreRules,
@@ -736,6 +728,8 @@ function createAgentCommand() {
 function createMeCommand() {
   return new Command()
     .description("Run human-oriented review commands")
+    .command("review", createReviewCommand())
+    .command("list", createListCommand())
     .command("status", createMeStatusCommand());
 }
 
@@ -779,10 +773,41 @@ function createAgentStatusCommand() {
 function createMeStatusCommand() {
   return new Command()
     .description("Print things to do for the human")
+    .option("--pending", "Keep open and wip conversations, plus annotations.")
+    .option("--open", "Keep open conversations, plus annotations.")
+    .option("--wip", "Keep wip conversations, plus annotations.")
+    .option("--handled", "Keep handled conversations, plus annotations.")
+    .option("--resolved", "Keep resolved conversations, plus annotations.")
+    .option("--conversation", "Alias for --conversations.")
+    .option("--conversations", "Keep conversation blocks only.")
+    .option("--open-conversations", "Keep open conversations only.")
+    .option("--wip-conversations", "Keep wip conversations only.")
+    .option("--handled-conversations", "Keep handled conversations only.")
+    .option("--resolved-conversations", "Keep resolved conversations only.")
+    .option("--pending-conversations", "Keep open and wip conversations only.")
+    .option(
+      "--ignore-closed-conversations",
+      "Alias for --pending-conversations.",
+    )
+    .option(
+      "--since <timestamp:string>",
+      "Keep timestamped items from this date onward.",
+    )
+    .option("--color <mode:string>", "Color mode: auto, always, or never.")
+    .option("--no-color", "Disable colored output.")
+    .option("--git", "Restrict status to lines added in git diff HEAD.")
+    .option("--diff", "Alias for --git.")
+    .option("--oneline", "Print one aggregate summary.")
+    .option("--short", "Print compact per-file stats.")
+    .option("--recap", "Print file and compact status separated by a tab.")
+    .option(
+      "--template <template:string>",
+      "Format --recap status with %(status).",
+    )
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runMeStatus(files, Boolean(options.json));
+    .action((options: MeStatusCliffyOptions, ...files: string[]) => {
+      runMeStatusCommand(files, options);
     });
 }
 
@@ -1457,18 +1482,13 @@ function parseArgs(argv: string[]): CliOptions {
   if (
     mode !== "now" &&
     !(mode === "timestamp" && timestampInputMode === "stdin") &&
-    files.length === 0 && isInsideGitWorkTree()
-  ) {
-    git = true;
-  }
-
-  if (
-    mode !== "now" &&
-    !(mode === "timestamp" && timestampInputMode === "stdin") && !git &&
-    files.length === 0
+    files.length === 0 &&
+    !git &&
+    !isInsideGitWorkTree() &&
+    !hasAgentSessionSnapshot()
   ) {
     throw new Error(
-      "dz-review requires at least one Markdown file, unless an explicit command runs inside a Git worktree.",
+      "dz-review requires at least one Markdown file, an active agent session, or a Git worktree.",
     );
   }
 
@@ -1986,6 +2006,49 @@ function runMeStatus(files: string[], json: boolean): void {
   );
 }
 
+function runMeStatusCommand(
+  files: string[],
+  options: MeStatusCliffyOptions,
+): void {
+  if (
+    options.json ||
+    (files.length === 0 && !hasStatusOptions(options) &&
+      hasAgentSessionSnapshot())
+  ) {
+    runMeStatus(files, Boolean(options.json));
+    return;
+  }
+
+  runLegacyCommand(buildStatusArgv(options, files));
+}
+
+function hasStatusOptions(options: MeStatusCliffyOptions): boolean {
+  return Boolean(
+    options.pending ||
+      options.open ||
+      options.wip ||
+      options.handled ||
+      options.resolved ||
+      options.conversation ||
+      options.conversations ||
+      options.openConversations ||
+      options.wipConversations ||
+      options.handledConversations ||
+      options.resolvedConversations ||
+      options.pendingConversations ||
+      options.ignoreClosedConversations ||
+      options.since ||
+      options.color ||
+      options.noColor ||
+      options.git ||
+      options.diff ||
+      options.oneline ||
+      options.short ||
+      options.recap ||
+      options.template,
+  );
+}
+
 function runAgentList(
   files: string[],
   options: AgentListCliffyOptions,
@@ -2095,7 +2158,7 @@ function runAgentRollback(files: string[], json: boolean): void {
   process.stdout.write(
     `rolled back ${result.rolledBackFiles.length} ${
       plural(result.rolledBackFiles.length, "file")
-    }\n`,
+    }${result.sessionClosed ? "\nsession closed" : ""}\n`,
   );
 }
 
@@ -3324,30 +3387,17 @@ function resolveFilesAndDiff(
   addedLinesByFile: Map<string, Set<number>> | undefined;
   files: string[];
 } {
+  const files = resolveReviewFiles(options.files, ignoreRules);
+
   if (!options.git) {
     return {
       addedLinesByFile: undefined,
-      files: options.files,
+      files,
     };
   }
 
-  const diff = getWorktreeDiff(options.files);
+  const diff = getWorktreeDiff(files);
   const addedLinesByFile = getAddedLinesByFile(diff);
-  const files = options.files.length > 0
-    ? options.files
-    : [...addedLinesByFile.keys()];
-
-  if (options.files.length === 0) {
-    for (const file of findFilesIncludedByReviewIgnore(ignoreRules)) {
-      const normalized = normalizePath(file);
-      if (addedLinesByFile.has(normalized)) {
-        continue;
-      }
-
-      files.push(file);
-      addedLinesByFile.set(normalized, collectAllLineNumbers(file));
-    }
-  }
 
   return {
     addedLinesByFile,
@@ -3355,14 +3405,89 @@ function resolveFilesAndDiff(
   };
 }
 
-function collectAllLineNumbers(file: string): Set<number> {
-  const text = fs.readFileSync(file, "utf8");
-  const lines = new Set<number>();
-  const count = text.split(/\r\n|\r|\n/).length;
-  for (let line = 1; line <= count; line += 1) {
-    lines.add(line);
+function resolveReviewFiles(
+  explicitFiles: string[],
+  ignoreRules: IgnoreRule[],
+): string[] {
+  if (explicitFiles.length > 0) {
+    return explicitFiles;
   }
-  return lines;
+
+  if (hasAgentSessionSnapshot()) {
+    return readAgentSnapshot().files.map((file) => file.path);
+  }
+
+  if (!isInsideGitWorkTree()) {
+    return [];
+  }
+
+  return uniqueFiles([
+    ...getGitStatusFiles(),
+    ...findFilesIncludedByReviewIgnore(ignoreRules),
+  ]);
+}
+
+function hasAgentSessionSnapshot(): boolean {
+  return fs.existsSync(getDzReviewSessionFile());
+}
+
+function getGitStatusFiles(): string[] {
+  const result = childProcess.spawnSync("git", [
+    "-c",
+    "core.quotePath=false",
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=all",
+  ], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
+
+  if (result.error) {
+    throw result.error;
+  }
+
+  if (result.status !== 0) {
+    throw new Error(result.stderr || "git status failed");
+  }
+
+  const files: string[] = [];
+  const entries = result.stdout.split("\0");
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!entry) {
+      continue;
+    }
+
+    const status = entry.slice(0, 2);
+    const file = entry.slice(3);
+    if (status.includes("D")) {
+      continue;
+    }
+
+    if (status[0] === "R" || status[0] === "C") {
+      index += 1;
+    }
+
+    if (isExistingFile(file)) {
+      files.push(file);
+    }
+  }
+
+  return uniqueFiles(files);
+}
+
+function isExistingFile(file: string): boolean {
+  try {
+    return fs.statSync(file).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function uniqueFiles(files: string[]): string[] {
+  return [...new Set(files.map(normalizePath))];
 }
 
 function summarizeReviewItem(item: ReviewItem): string {
@@ -3692,6 +3817,9 @@ Examples:
   dz-review status --short
   dz-review status --recap --template "[%(status)]"
   dz-review review docs/spec.md
+  dz-review me review docs/spec.md
+  dz-review me list docs/spec.md
+  dz-review me status --short docs/spec.md
   dz-review diff --pending
   dz-review timestamp -i docs/spec.md
   dz-review agent start docs/spec.md
@@ -3702,7 +3830,7 @@ Examples:
   dz-review -C ../project status --oneline
 
 Notes:
-  Without files, explicit commands use the current Git diff when possible.
+  Without files, commands use agent session files, then Git status files.
   agent start/done assumes one active agent session per state directory.
   Paths matching the configured ignore file are skipped.
   Conversation statuses are open, wip, handled, and resolved.

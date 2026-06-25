@@ -433,9 +433,14 @@ Deno.test("dz-review agent core - rollback restores pre-start content", async ()
       const result = rollbackAgentSession([]);
 
       assertEquals(result.rolledBackFiles, ["file.md"]);
+      assertEquals(result.sessionClosed, true);
     });
 
     assertEquals(await Deno.readTextFile(file), original);
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      false,
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -451,5 +456,14 @@ async function withCwd<T>(
     return await fn();
   } finally {
     Deno.chdir(previous);
+  }
+}
+
+async function exists(file: string): Promise<boolean> {
+  try {
+    await Deno.stat(file);
+    return true;
+  } catch {
+    return false;
   }
 }

@@ -83,11 +83,14 @@ dz-review r --pending file.md
 dz-review r --conversation file.md
 dz-review r --list --diff
 dz-review r --context-before 2 --context-after 1 file.md
+dz-review me review file.md
+dz-review me list file.md
 dz-review status file.md
 dz-review status --oneline file.md
 dz-review status --short file.md
 dz-review status --recap file.md
 dz-review status --recap --template '%(status)' file.md
+dz-review me status --short file.md
 dz-review list file.md
 dz-review list --pending-conversations file.md
 dz-review diff
@@ -97,7 +100,7 @@ dz-review now
 dz-review now --iso --date 2026-06-18T12:00:00+02:00
 dz-review agent start file.md
 dz-review agent status file.md
-dz-review me status file.md
+dz-review me status
 dz-review agent done file.md
 dz-review agent-instructions
 dz-review completions bash
@@ -109,7 +112,7 @@ dz-review completions bash
 dz-review stats was removed; use dz-review status --oneline.
 ```
 
-Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`, and `timestamps`. With an explicit command and no files inside a Git worktree, `dz-review` reads the current `git diff HEAD --unified=0`. `status` defaults to one line per matching file; `status --oneline` is the aggregate form.
+Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`, and `timestamps`. When a command receives no files, `dz-review` first uses the active agent session files when a session exists, then falls back to files reported by `git status` inside a Git worktree, including untracked files. `status` defaults to one line per matching file; `status --oneline` is the aggregate form.
 
 The global options are `-C` / `--cwd`, `--state-dir <dir>`, and `--ignore-file <file>`. `--state-dir` controls where agent session state is stored; it defaults to `DZ_REVIEW_STATE_DIR` or `.dz-review`. `--ignore-file` controls the project ignore file; it defaults to `DZ_REVIEW_IGNORE_FILE` or `.dz-review-ignore`. CLI options take precedence over environment variables, and both are resolved after `-C` changes the working directory.
 
@@ -132,10 +135,12 @@ Agents should use the `markdown-review-workflow` skill when editing Markdown wit
 
 `dz-review agent status [file...]` reads the active start snapshot and prints an in-progress session view without changing files. It reports annotated files, modified files, answered conversations, cleanable conversations, remaining open items, guardrail failures, and current stable item IDs. `--json` prints the structured session status.
 
-`dz-review me status [file...]` reads the same active session snapshot as `agent status`, but prints a human-facing TODO view: agent replies or open items to review, validated conversations to clean, and remaining review issues. `--json` prints the same structured session status as `agent status --json`. This command is intentionally scoped under `me` so the existing `status` command can remain unchanged while the human-facing view matures.
+`dz-review me` is the human-oriented command scope. `dz-review me review ...` and `dz-review me list ...` reuse the regular `review` and `list` command behavior. Bare `dz-review me status` reads the active agent session snapshot and prints a human-facing TODO view: agent replies or open items to review, validated conversations to clean, and remaining review issues. When `me status` receives files or regular status options such as `--short`, `--recap`, or `--template`, it behaves like `dz-review status`. `--json` prints the same structured session status as `agent status --json`.
 
 `dz-review agent add-file [file...]` adds files to the active session snapshot after `agent start`. Explicit files can be added even when they match the configured ignore file; the command still avoids builtin state directories.
 
 `dz-review agent done [file...]` compares the current review state against the start snapshot, restores timestamps to the recorded file format when the start format was compact, hangul, or ISO, and prints a handoff with annotated files, modified files, answered conversations, cleanable conversations, remaining open items, and guardrail failures. Guardrails currently detect bare `@` human markers, validated `@me ok` or `@ ok` conversations that remain cleanable, missing timestamps, deleted started conversations, and timestamp format drift after restoration. `--json` prints the structured handoff.
+
+`dz-review agent rollback` restores files from the active start snapshot and closes the session by deleting `agent-session.json`. When file arguments are provided, rollback is scoped to those files and the session remains active.
 
 V1 assumes one active agent session per configured state directory. A future job-based model could allow concurrent agents by giving each session a job id and routing edits through `dz-review`, but that is intentionally out of scope for the initial workflow.

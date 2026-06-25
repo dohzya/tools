@@ -106,6 +106,9 @@ Deno.test("dz-review me status --help - prints human status help", async () => {
   assertStringIncludes(output, "Usage:");
   assertStringIncludes(output, "dz-review me status");
   assertStringIncludes(output, "things to do for the human");
+  assertStringIncludes(output, "--short");
+  assertStringIncludes(output, "--recap");
+  assertStringIncludes(output, "--template");
   assertStringIncludes(output, "--json");
 });
 
@@ -227,6 +230,34 @@ Deno.test("dz-review status --recap - renders tab-separated recap statuses", asy
   }
 });
 
+Deno.test("dz-review me status - reuses status format options", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
+
+  try {
+    const shortOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "status", "--short", "file.md"]))
+    );
+    const recapOutput = await captureOutput(() =>
+      withCwd(dir, () =>
+        main([
+          "me",
+          "status",
+          "--recap",
+          "--template",
+          "[%(status)]",
+          "file.md",
+        ]))
+    );
+
+    assertEquals(shortOutput.trim(), "file.md: 1/1 +1");
+    assertEquals(recapOutput.trim(), "file.md\t[1/1 +1]");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review list - lists review items", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -238,6 +269,40 @@ Deno.test("dz-review list - lists review items", async () => {
     assertStringIncludes(output, `${file}:1`);
     assertEquals(/addition [0-9A-Za-z]{6} .*file\.md:1-1/.test(output), true);
     assertEquals(output.includes("rvw_"), false);
+    assertStringIncludes(output, "addition");
+    assertStringIncludes(output, "open conversation");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me list - reuses list command", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
+
+  try {
+    const output = await captureOutput(() => main(["me", "list", file]));
+
+    assertStringIncludes(output, `${file}:1`);
+    assertStringIncludes(output, "addition");
+    assertStringIncludes(output, "open conversation");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me review --list - reuses review command options", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      main(["me", "review", "--list", file])
+    );
+
+    assertStringIncludes(output, `${file}:1`);
     assertStringIncludes(output, "addition");
     assertStringIncludes(output, "open conversation");
   } finally {
@@ -1095,7 +1160,12 @@ Deno.test("dz-review agent rollback - restores pre-start content", async () => {
     const updated = await Deno.readTextFile(file);
 
     assertStringIncludes(output, "rolled back 1 file");
+    assertStringIncludes(output, "session closed");
     assertEquals(updated, original);
+    assertEquals(
+      await exists(join(dir, ".dz-review", "agent-session.json")),
+      false,
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1188,7 +1258,7 @@ Deno.test("dz-review review --context-before/after - keeps legacy context flags"
   }
 });
 
-Deno.test("dz-review status --oneline - uses Git diff when no files are provided", async () => {
+Deno.test("dz-review status --oneline - uses Git status files when no files are provided", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
 
@@ -1248,6 +1318,124 @@ Deno.test("dz-review status --oneline - includes Git-ignored paths re-included b
     await Deno.writeTextFile(
       file,
       "<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--oneline"]))
+    );
+
+    assertEquals(
+      output.trim(),
+      "1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status --oneline - includes untracked Git status files", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "test.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--oneline"]))
+    );
+
+    assertEquals(
+      output.trim(),
+      "1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me status --short - includes untracked Git status files", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "test.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "status", "--short"]))
+    );
+
+    assertStringIncludes(output.trim(), "test.md: 1/1");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me status - works without an agent session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "test.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "status"]))
+    );
+
+    assertStringIncludes(
+      output.trim(),
+      "test.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status --oneline - falls back to agent session files before Git status", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "session.md");
+
+  try {
+    await runGit(dir, ["init"]);
+    await runGit(dir, ["config", "user.email", "test@example.invalid"]);
+    await runGit(dir, ["config", "user.name", "Test User"]);
+    await runGit(dir, ["config", "commit.gpgsign", "false"]);
+    await runGit(dir, ["config", "core.hooksPath", "/dev/null"]);
+
+    await Deno.writeTextFile(
+      file,
+      "<!-- @agent%2026-06-23T17:47:47+02:00 open -->\n",
+    );
+    await runGit(dir, ["add", "session.md"]);
+    await runGit(dir, ["commit", "-m", "session"]);
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "session.md"]))
     );
 
     const output = await captureOutput(() =>
