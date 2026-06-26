@@ -83,6 +83,7 @@ interface CliOptions {
   list: boolean;
   since: ReviewTimestamp | undefined;
   statusFormat: StatusFormat;
+  statusQuiet: boolean;
   statusTemplate: string | undefined;
   timestampFormat: TimestampFormat;
   timestampDateInput: string | undefined;
@@ -137,6 +138,7 @@ interface StatusCliffyOptions extends CommonCliffyOptions {
   oneline?: boolean;
   short?: boolean;
   recap?: boolean;
+  quiet?: boolean;
   template?: string;
 }
 
@@ -428,6 +430,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       options.conversationFilter,
       options.since,
       options.statusFormat,
+      options.statusQuiet,
       options.statusTemplate,
     );
     return 0;
@@ -588,6 +591,10 @@ function createStatusCommand() {
     .option("--oneline", "Print one aggregate summary.")
     .option("--short", "Print compact per-file stats.")
     .option("--recap", "Print file and compact status separated by a tab.")
+    .option(
+      "-q, --quiet",
+      "Print nothing when status is empty and no review session is active.",
+    )
     .option(
       "--template <template:string>",
       "Format --recap status with %(status).",
@@ -832,6 +839,10 @@ function createMeStatusCommand() {
     .option("--short", "Print compact per-file stats.")
     .option("--recap", "Print file and compact status separated by a tab.")
     .option(
+      "-q, --quiet",
+      "Print nothing when status is empty and no review session is active.",
+    )
+    .option(
       "--template <template:string>",
       "Format --recap status with %(status).",
     )
@@ -995,6 +1006,7 @@ function buildStatusArgv(
   appendFlag(argv, options.oneline, "--oneline");
   appendFlag(argv, options.short, "--short");
   appendFlag(argv, options.recap, "--recap");
+  appendFlag(argv, options.quiet, "--quiet");
   appendOption(argv, "--template", options.template);
   argv.push(...files);
   return argv;
@@ -1114,6 +1126,7 @@ function parseArgs(argv: string[]): CliOptions {
       list: false,
       since: undefined,
       statusFormat: "long",
+      statusQuiet: false,
       statusTemplate: undefined,
       timestampFormat: "compact",
       timestampDateInput: undefined,
@@ -1137,6 +1150,7 @@ function parseArgs(argv: string[]): CliOptions {
       list: false,
       since: undefined,
       statusFormat: "long",
+      statusQuiet: false,
       statusTemplate: undefined,
       timestampFormat: "compact",
       timestampDateInput: undefined,
@@ -1157,6 +1171,7 @@ function parseArgs(argv: string[]): CliOptions {
   let json = false;
   let list = false;
   let statusFormat: StatusFormat = "long";
+  let statusQuiet = false;
   let statusTemplate: string | undefined;
   let since: ReviewTimestamp | undefined;
   let timestampFormat: TimestampFormat = "compact";
@@ -1230,6 +1245,11 @@ function parseArgs(argv: string[]): CliOptions {
         );
       }
       statusFormat = "oneline";
+      continue;
+    }
+
+    if ((arg === "-q" || arg === "--quiet") && mode === "status") {
+      statusQuiet = true;
       continue;
     }
 
@@ -1534,6 +1554,7 @@ function parseArgs(argv: string[]): CliOptions {
     list,
     since,
     statusFormat,
+    statusQuiet,
     statusTemplate,
     timestampFormat,
     timestampDateInput,
@@ -1861,8 +1882,11 @@ function writeStatus(
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
   statusFormat: StatusFormat,
+  statusQuiet: boolean,
   statusTemplate: string | undefined,
 ): void {
+  const hasActiveSession = hasAgentSessionSnapshot();
+
   if (statusFormat === "oneline") {
     const stats = collectStats(
       files,
@@ -1871,9 +1895,13 @@ function writeStatus(
       conversationFilter,
       since,
     );
+    if (statusQuiet && isEmptyStats(stats) && !hasActiveSession) {
+      return;
+    }
+
     const rendered = formatStats(stats, conversationOnly, conversationFilter);
     process.stdout.write(
-      `${formatActiveReviewSessionPrefix(rendered)}\n`,
+      `${formatActiveReviewSessionPrefix(rendered, hasActiveSession)}\n`,
     );
     return;
   }
@@ -1906,9 +1934,20 @@ function writeStatus(
     }
 
     const rendered = statusFormat === "short"
-      ? formatActiveReviewSessionPrefix(formatShortStatusStats(stats))
+      ? formatActiveReviewSessionPrefix(
+        formatShortStatusStats(stats),
+        hasActiveSession,
+      )
       : formatStatusStats(stats, conversationOnly, conversationFilter);
     lines.push(`${color(normalizePath(file), "bold")}: ${rendered}`);
+  }
+
+  if (
+    statusQuiet &&
+    !hasActiveSession &&
+    lines.length <= (statusFormat === "long" ? 1 : 0)
+  ) {
+    return;
   }
 
   process.stdout.write(
@@ -1924,10 +1963,11 @@ function formatReviewSessionLine(): string {
   return `Review session: ${hasAgentSessionSnapshot() ? "active" : "none"}`;
 }
 
-function formatActiveReviewSessionPrefix(rendered: string): string {
-  return hasAgentSessionSnapshot()
-    ? `active review session - ${rendered}`
-    : rendered;
+function formatActiveReviewSessionPrefix(
+  rendered: string,
+  hasActiveSession: boolean,
+): string {
+  return hasActiveSession ? `active review session - ${rendered}` : rendered;
 }
 
 function formatStatusTemplate(
@@ -2098,6 +2138,7 @@ function hasStatusOptions(options: MeStatusCliffyOptions): boolean {
       options.oneline ||
       options.short ||
       options.recap ||
+      options.quiet ||
       options.template,
   );
 }
@@ -3842,6 +3883,7 @@ Status Options:
   --oneline                     Print one aggregate summary.
   --short                       Print compact per-file stats.
   --recap                       Print <file><TAB><short-status> for recap.
+  -q, --quiet                   Print nothing when status is empty and no review session is active.
   --template <template>         Format --recap status with %(status).
 
 Review Options:

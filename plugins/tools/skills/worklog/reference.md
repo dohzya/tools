@@ -187,6 +187,7 @@ wl done --claude|--codex|--agent             # Agent synthesizes final checkpoin
 wl done <id> ["changes" "learnings"]         # Final checkpoint + close task manually
 wl cancel <id> [reason]                      # Cancel/abandon task (marks as cancelled)
 wl list [--created] [--ready] [--started] [--done] [--cancelled]  # Filter tasks
+wl status [-q]                               # Compact active-work status
 wl show <id>                                 # Detailed task view with history
 wl meta <id> [<key> <value>]                 # View or set task metadata
 wl summary [--since YYYY-MM-DD]              # Aggregate all tasks
@@ -633,6 +634,10 @@ acjold
 acjold  started  "Multi-currency support"  2025-01-16 09:15
 b2x9kf  created  "Fix login bug"  2025-01-16 14:30
 ```
+
+### `wl status`
+
+Compact active-work status. Use `wl status -q` to print nothing when there are no active tasks.
 
 ### `wl show`
 

@@ -4635,6 +4635,58 @@ Deno.test("dashboard from child worklog shows child context header", async () =>
   }
 });
 
+Deno.test("status - mirrors dashboard output", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "--started", "Active task"]);
+
+    const output = await captureOutput(() => main(["status"]));
+
+    assertStringIncludes(output, "Active task");
+    assertStringIncludes(output, "started");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("status -q without active tasks exits silently", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    const output = await captureOutput(() => main(["status", "-q"]));
+
+    assertEquals(output, "");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("status -q with active tasks still prints status", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "--started", "Active task"]);
+
+    const output = await captureOutput(() => main(["status", "--quiet"]));
+
+    assertStringIncludes(output, "Active task");
+    assertStringIncludes(output, "started");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("dashboard from linked worktree shows configured child scope id", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

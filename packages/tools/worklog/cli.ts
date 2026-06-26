@@ -2913,6 +2913,10 @@ function formatDashboard(
   return header ? `${header}\n${body}` : body;
 }
 
+function isQuietDashboardOutput(output: DashboardOutput): boolean {
+  return output.tasks.length === 0 && !output.childWorklog?.warning;
+}
+
 function formatScopes(output: ScopesOutput): string {
   if (output.scopes.length === 0) {
     return "no scopes found";
@@ -6542,6 +6546,7 @@ function createDashboardCommand() {
     .description("Show a compact dashboard of active work")
     .option("--json", "Output as JSON")
     .option("--limit <n:number>", "Limit top-level tasks before expansion")
+    .option("-q, --quiet", "Print nothing when there are no active tasks")
     .action(async (options) => {
       try {
         applyDirOptions(
@@ -6571,6 +6576,9 @@ function createDashboardCommand() {
         }
 
         const output = await cmdDashboard(limit, gitRoot, currentScope);
+        if (options.quiet && isQuietDashboardOutput(output)) {
+          return;
+        }
         console.log(
           options.json ? JSON.stringify(output) : formatDashboard(
             output,
@@ -6760,6 +6768,7 @@ const cli = new Command()
   .command("meta", metaCmd)
   .command("tags", tagsCmd)
   .command("list", listCmd)
+  .command("status", createDashboardCommand())
   .command("dash", createDashboardCommand())
   .command("dashboard", createDashboardCommand())
   .command("summary", summaryCmd)

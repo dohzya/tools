@@ -189,6 +189,41 @@ Deno.test("dz-review status --oneline - summarizes review annotations", async ()
   }
 });
 
+Deno.test("dz-review status --oneline --quiet - prints nothing when empty outside a session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "No review items.\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--oneline", "--quiet", "file.md"]))
+    );
+
+    assertEquals(output, "");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status --oneline --quiet - reports active empty sessions", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "No review items.\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "file.md"]))
+    );
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--oneline", "--quiet"]))
+    );
+
+    assertEquals(output.trim(), "active review session - 0 review annotations");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review status - lists one line per file by default", async () => {
   const dir = await Deno.makeTempDir();
   const first = join(dir, "first.md");
@@ -350,6 +385,38 @@ Deno.test("dz-review status --recap - does not report active review session", as
 
     assertStringIncludes(output.trim(), "file.md\t1/1");
     assertEquals(output.includes("active review session"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status --recap --quiet - prints nothing when empty outside a session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "No review items.\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--recap", "--quiet", "file.md"]))
+    );
+
+    assertEquals(output, "");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review me status --quiet - prints nothing when empty outside a session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "No review items.\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "status", "--quiet", "file.md"]))
+    );
+
+    assertEquals(output, "");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

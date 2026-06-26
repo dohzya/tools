@@ -88,6 +88,7 @@ dz-review me list file.md
 dz-review status file.md
 dz-review status --oneline file.md
 dz-review status --short file.md
+dz-review status --oneline --quiet file.md
 dz-review status --recap file.md
 dz-review status --recap --template '%(status)' file.md
 dz-review me status --short file.md
@@ -115,7 +116,7 @@ dz-review completions bash
 dz-review stats was removed; use dz-review status --oneline.
 ```
 
-Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`, and `timestamps`. When a command receives no files, `dz-review` first uses the active agent session files when a session exists, then falls back to files reported by `git status` inside a Git worktree, including untracked files. `status` defaults to one line per matching file and starts with `Review session: active` or `Review session: none`; `status --oneline` is the aggregate form.
+Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`, and `timestamps`. When a command receives no files, `dz-review` first uses the active agent session files when a session exists, then falls back to files reported by `git status` inside a Git worktree, including untracked files. `status` defaults to one line per matching file and starts with `Review session: active` or `Review session: none`; `status --oneline` is the aggregate form. `status -q` / `status --quiet` prints nothing when there are no annotations and no active review session.
 
 The global options are `-C` / `--cwd`, `--state-dir <dir>`, and `--ignore-file <file>`. `--state-dir` controls where agent session state is stored; it defaults to `DZ_REVIEW_STATE_DIR` or `.dz-review` at the Git root when running inside a worktree. Explicit `--state-dir` and `DZ_REVIEW_STATE_DIR` values stay relative to the effective cwd unless absolute. `--ignore-file` controls the project ignore file; it defaults to `DZ_REVIEW_IGNORE_FILE` or `.dz-review-ignore`. CLI options take precedence over environment variables, and both are resolved after `-C` changes the working directory.
 

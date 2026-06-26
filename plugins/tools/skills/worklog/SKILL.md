@@ -22,6 +22,7 @@ Track work with traces and checkpoints. **Always work within a worktask.**
 wl list                  # Active tasks (created + ready + started)
 wl list --started        # In-progress only
 wl list --all            # All including done/cancelled (<30d)
+wl status -q             # Compact active-work status; silent when empty
 wl show <id>             # Status, history, traces, TODOs, subtasks
 wl logs <id>             # Entries since last checkpoint
 ```
@@ -117,6 +118,7 @@ Don't just display learnings in the conversation — trace them. Checkpoints syn
 wl list                     # active tasks
 wl list --parent <id>       # sub-agent subtasks progress
 wl list --subtasks-of-started # active tasks + children of started tasks
+wl status -q                # compact active-work status; silent when empty
 wl show <id>                # status, history, todos, subtasks
 
 # Create
