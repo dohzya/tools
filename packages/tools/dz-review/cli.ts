@@ -284,7 +284,7 @@ const DOMINANT_TIMESTAMP_FORMAT_RATIO = 0.9;
 const STATUS_TEMPLATE_PLACEHOLDER = "%(status)";
 const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
   .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
-const CLI_VERSION = "0.2.2";
+const CLI_VERSION = "0.3.0";
 let activeColorMode: ColorMode | undefined;
 
 interface GlobalArgs {

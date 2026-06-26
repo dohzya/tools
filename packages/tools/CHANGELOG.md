@@ -8,9 +8,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- **dz-review:** `--state-dir` / `DZ_REVIEW_STATE_DIR` and `--ignore-file` / `DZ_REVIEW_IGNORE_FILE` configure the agent snapshot directory and review ignore file.
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
 - **recap:** `status_enrichers` can append built-in or TSV-produced per-file text to the `status` section.
+
+## [wl-v0.19.0 / dz-review-v0.3.0] — 2026-06-26
+
+### Added
+
+- **worklog:** Traces can now carry an explicit `kind` (`action`, `info`, `state`, `hypothesis`, `finding`, or `learning`), list traces can be filtered by kind, and existing trace kinds can be edited by trace ID.
+- **worklog:** `wl status` now exposes the compact active-work dashboard, with `-q` / `--quiet` to stay silent when there are no active tasks.
+- **worklog:** Agent-facing instructions and synthesis prompts now recommend typed traces and `wl traces --kind finding,learning` as a cheap high-signal review pass for reusable learnings.
+- **dz-review:** The `me` scope now exposes human-facing `status`, `list`, `review`, and `diff` commands, with compact output focused on what the human still needs to do.
+- **dz-review:** Review sessions now have canonical `session start`, `session add-file`, `session status`, `session active`, `session done`, and `session rollback` commands, while agent-specific commands remain under `agent`.
+- **dz-review:** `session active` can emit a custom active-session marker with `--template` for recap or shell integrations.
+- **dz-review:** `--state-dir` / `DZ_REVIEW_STATE_DIR` and `--ignore-file` / `DZ_REVIEW_IGNORE_FILE` configure the agent snapshot directory and review ignore file.
+- **dz-review:** `status`, `status --oneline`, `status --short`, and `me status` now report active review sessions, and `-q` / `--quiet` suppresses empty status output when there are no annotations and no active session.
+
+### Changed
+
+- **dz-review:** Commands without explicit files now inspect CLI arguments first, then the active session snapshot, then files reported by `git status`, including untracked files.
+- **dz-review:** The default `.dz-review` state directory now lives at the Git root; explicit `--state-dir` and `DZ_REVIEW_STATE_DIR` values remain relative to the effective cwd unless absolute.
+- **dz-review:** Full session rollback now restores tracked files and closes the active session snapshot.
+
+### Fixed
+
+- **worklog:** Checkpoint and done guidance better separates reusable learnings from validation or activity summaries.
+- **dz-review:** Review parsing and status flows handle CriticMarkup delimiters, source timestamp formats, and active-session guardrails more consistently across CLI and VS Code surfaces.
 
 ## [dz-review-v0.2.2] — 2026-06-22
 
