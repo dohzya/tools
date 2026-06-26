@@ -177,7 +177,7 @@ Deno.test("dz-review status --oneline - summarizes review annotations", async ()
 
   try {
     const output = await captureOutput(() =>
-      main(["status", "--oneline", file])
+      withCwd(dir, () => main(["status", "--oneline", "file.md"]))
     );
 
     assertEquals(
@@ -258,6 +258,29 @@ Deno.test("dz-review status --short - renders compact per-file statuses", async 
   }
 });
 
+Deno.test("dz-review status --short - reports active review session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent open -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "file.md"]))
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--short"]))
+    );
+
+    assertStringIncludes(
+      output.trim(),
+      "file.md: active review session - 1/1",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review session active - prints recap-friendly session state", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "session.md");
@@ -306,6 +329,27 @@ Deno.test("dz-review status --recap - renders tab-separated recap statuses", asy
     );
 
     assertEquals(output.trim(), "file.md\t1/1 +1");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status --recap - does not report active review session", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "<!-- @agent open -->\n");
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["session", "start", "file.md"]))
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--recap"]))
+    );
+
+    assertStringIncludes(output.trim(), "file.md\t1/1");
+    assertEquals(output.includes("active review session"), false);
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1677,7 +1721,7 @@ Deno.test("dz-review status --oneline - falls back to agent session files before
 
     assertEquals(
       output.trim(),
-      "1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
+      "active review session - 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)",
     );
   } finally {
     await Deno.remove(dir, { recursive: true });

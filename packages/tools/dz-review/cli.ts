@@ -1871,8 +1871,9 @@ function writeStatus(
       conversationFilter,
       since,
     );
+    const rendered = formatStats(stats, conversationOnly, conversationFilter);
     process.stdout.write(
-      `${formatStats(stats, conversationOnly, conversationFilter)}\n`,
+      `${formatActiveReviewSessionPrefix(rendered)}\n`,
     );
     return;
   }
@@ -1905,7 +1906,7 @@ function writeStatus(
     }
 
     const rendered = statusFormat === "short"
-      ? formatShortStatusStats(stats)
+      ? formatActiveReviewSessionPrefix(formatShortStatusStats(stats))
       : formatStatusStats(stats, conversationOnly, conversationFilter);
     lines.push(`${color(normalizePath(file), "bold")}: ${rendered}`);
   }
@@ -1921,6 +1922,12 @@ function writeStatus(
 
 function formatReviewSessionLine(): string {
   return `Review session: ${hasAgentSessionSnapshot() ? "active" : "none"}`;
+}
+
+function formatActiveReviewSessionPrefix(rendered: string): string {
+  return hasAgentSessionSnapshot()
+    ? `active review session - ${rendered}`
+    : rendered;
 }
 
 function formatStatusTemplate(
