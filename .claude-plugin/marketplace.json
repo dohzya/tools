@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Markdown manipulation and productivity skills",
-    "version": "0.18.5"
+    "version": "0.19.0"
   },
   "plugins": [
     {
       "name": "tools",
       "source": "./plugins/tools",
       "description": "Markdown manipulation and productivity skills for Claude Code",
-      "version": "0.18.5",
+      "version": "0.19.0",
       "license": "MIT"
     }
   ]
