@@ -10,6 +10,7 @@ const baseShow: ShowOutput = {
   fullId: "abc123def456",
   name: "Test task",
   desc: "A test task description",
+  desc_parts: ["A test task description"],
   status: "started",
   created: "2025-01-15 10:00",
   ready: null,

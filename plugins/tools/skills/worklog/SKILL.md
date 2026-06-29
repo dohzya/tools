@@ -123,7 +123,8 @@ wl show <id>                # status, history, todos, subtasks
 
 # Create
 wl create --started "name" "desc"                    # create + start (desc = scope/goal)
-wl create --started "name" --desc-src file.md        # desc from file (multiline context)
+wl create --started "name" --desc "scope" --desc "context" # repeatable desc parts
+wl create --started "name" --desc-src file.md        # desc part from file
 wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent delegation
 
 # Trace — one entry per event: action, info, state, hypothesis, finding, learning

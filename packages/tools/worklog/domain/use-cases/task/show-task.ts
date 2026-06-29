@@ -9,6 +9,7 @@ import type { Index, IndexEntry } from "../../entities/index.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
 import type { FileSystem } from "../../ports/filesystem.ts";
 import type { Entry } from "../../entities/entry.ts";
+import { renderDesc } from "../../entities/description.ts";
 import { ExplicitCast } from "../../../../explicit-cast.ts";
 
 export interface ShowTaskInput {
@@ -93,7 +94,8 @@ export class ShowTaskUseCase {
       task: shortId,
       fullId: taskId,
       name: meta.name,
-      desc: meta.desc,
+      desc: renderDesc(meta.desc),
+      desc_parts: meta.desc,
       status: meta.status,
       created: this.formatShort(meta.created_at),
       ready: meta.ready_at ? this.formatShort(meta.ready_at) : null,

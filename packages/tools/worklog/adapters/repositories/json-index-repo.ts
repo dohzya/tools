@@ -27,6 +27,7 @@ import type { FileSystem } from "../../domain/ports/filesystem.ts";
 import type { IndexRepository } from "../../domain/ports/index-repository.ts";
 import type { MarkdownService } from "../../domain/ports/markdown-service.ts";
 import { ExplicitCast } from "../../../explicit-cast.ts";
+import { normalizeDescParts } from "../../domain/entities/description.ts";
 
 export class JsonIndexRepository implements IndexRepository {
   constructor(
@@ -45,21 +46,32 @@ export class JsonIndexRepository implements IndexRepository {
     }
 
     const content = await this.fs.readFile(this.indexPath);
-    const index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
-      Index
-    >();
+    const index = this.normalizeIndex(
+      ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<Index>(),
+    );
 
     // Run migration if needed
     if (!index.version || index.version < 2) {
       await this.migrateToV2();
       // Reload index after migration
       const newContent = await this.fs.readFile(this.indexPath);
-      return ExplicitCast.fromAny(JSON.parse(newContent)).dangerousCast<
-        Index
-      >();
+      return this.normalizeIndex(
+        ExplicitCast.fromAny(JSON.parse(newContent)).dangerousCast<Index>(),
+      );
     }
 
     return index;
+  }
+
+  private normalizeIndex(index: Index): Index {
+    const tasks: Record<string, IndexEntry> = {};
+    for (const [taskId, entry] of Object.entries(index.tasks)) {
+      tasks[taskId] = {
+        ...entry,
+        desc: normalizeDescParts(entry.desc),
+      };
+    }
+    return { ...index, tasks };
   }
 
   async save(index: Index): Promise<void> {
@@ -155,11 +167,11 @@ export class JsonIndexRepository implements IndexRepository {
       frontmatter.started_at = null;
 
       // 4. Extract name from desc (first line)
-      const desc = String(frontmatter.desc || "");
-      const descLines = desc.split("\n");
+      const descParts = normalizeDescParts(frontmatter.desc);
+      const descLines = descParts.join("\n").split("\n");
       const name = descLines[0].trim();
       frontmatter.name = name;
-      // Keep full desc unchanged
+      frontmatter.desc = descParts;
 
       // 5. Update index entry
       indexEntry.name = name;

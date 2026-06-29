@@ -3,6 +3,7 @@
 import type { TracesOutput } from "../../entities/outputs.ts";
 import { WtError } from "../../entities/errors.ts";
 import type { TraceKind } from "../../entities/entry.ts";
+import { renderDesc } from "../../entities/description.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 
@@ -38,7 +39,8 @@ export class ListTracesUseCase {
 
     return {
       task: taskId,
-      desc: taskData.meta.desc,
+      desc: renderDesc(taskData.meta.desc),
+      desc_parts: taskData.meta.desc,
       entries,
     };
   }

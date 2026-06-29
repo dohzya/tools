@@ -29,6 +29,7 @@ export type TraceOutput = {
 export type TracesOutput = {
   readonly task: string;
   readonly desc: string;
+  readonly desc_parts: readonly string[];
   readonly entries: readonly Entry[];
 };
 
@@ -37,6 +38,7 @@ export type ShowOutput = {
   readonly fullId: string; // full ID
   readonly name: string; // short name
   readonly desc: string;
+  readonly desc_parts: readonly string[];
   readonly status: TaskStatus;
   readonly created: string; // formatted date (from created_at)
   readonly ready: string | null; // formatted date (from ready_at)
@@ -58,6 +60,7 @@ export type ListTaskItem = {
   readonly id: string;
   readonly name: string;
   readonly desc: string;
+  readonly desc_parts: readonly string[];
   readonly status: TaskStatus;
   readonly created: string;
   readonly scopePrefix?: string;
@@ -80,6 +83,7 @@ export type DashboardSubtaskItem = {
   readonly id: string;
   readonly name: string;
   readonly desc: string;
+  readonly desc_parts: readonly string[];
   readonly status: TaskStatus;
   readonly scopePrefix?: string;
   readonly created: string;
@@ -91,6 +95,7 @@ export type DashboardTaskItem = {
   readonly id: string;
   readonly name: string;
   readonly desc: string;
+  readonly desc_parts: readonly string[];
   readonly status: TaskStatus;
   readonly scopePrefix?: string;
   readonly created: string;
@@ -113,6 +118,7 @@ export type DashboardOutput = {
 export type SummaryTaskItem = {
   readonly id: string;
   readonly desc: string;
+  readonly desc_parts: readonly string[];
   readonly status: TaskStatus;
   readonly checkpoints: readonly Checkpoint[];
   readonly entries: readonly Entry[];

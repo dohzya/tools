@@ -8,7 +8,7 @@ import type { TaskStatus } from "./task.ts";
  */
 export type IndexEntry = {
   readonly name: string; // Short name for display in list
-  readonly desc: string;
+  readonly desc: readonly string[];
   readonly status: TaskStatus;
   readonly created: string; // Task creation date (no _at suffix in index)
   readonly status_updated_at: string; // ISO 8601 - last status change

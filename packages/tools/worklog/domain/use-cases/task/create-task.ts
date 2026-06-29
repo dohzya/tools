@@ -7,6 +7,7 @@ import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 import type { MarkdownService } from "../../ports/markdown-service.ts";
 import { WtError } from "../../entities/errors.ts";
+import { normalizeDescParts } from "../../entities/description.ts";
 import {
   generateTaskIdBase62,
   generateTodoId,
@@ -16,7 +17,7 @@ import {
 
 export interface CreateTaskInput {
   readonly name: string;
-  readonly desc?: string;
+  readonly desc?: readonly string[];
   readonly initialStatus?: TaskStatus;
   readonly todos?: readonly string[];
   readonly metadata?: Readonly<Record<string, string>>;
@@ -71,7 +72,7 @@ export class CreateTaskUseCase {
     const id = generateId();
     const uid = generateUid();
     const now = input.timestamp ?? getTimestamp();
-    const taskDesc = input.desc ?? "";
+    const taskDesc = normalizeDescParts(input.desc);
     const status = input.initialStatus ?? "created";
 
     // Build TODO items

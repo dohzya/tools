@@ -6,6 +6,7 @@ import type { ListOutput, ListTaskItem } from "../../entities/outputs.ts";
 import type { TaskStatus } from "../../entities/task.ts";
 import type { ScopeConfig } from "../../entities/scope.ts";
 import { WtError } from "../../entities/errors.ts";
+import { normalizeDescParts, renderDesc } from "../../entities/description.ts";
 import { matchesTagPattern } from "../../entities/task-helpers.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { ScopeRepository } from "../../ports/scope-repository.ts";
@@ -87,9 +88,7 @@ export class ListTasksUseCase {
         if (!(await this.fs.exists(indexPath))) continue;
 
         const content = await this.fs.readFile(indexPath);
-        const index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
-          Index
-        >();
+        const index = this.parseIndexContent(content);
         const scopeId = await this.getScopeId(
           scope.absolutePath,
           input.gitRoot,
@@ -107,8 +106,9 @@ export class ListTasksUseCase {
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([id, t]) => ({
             id,
-            name: t.name ?? t.desc,
-            desc: t.desc,
+            name: t.name ?? renderDesc(t.desc),
+            desc: renderDesc(t.desc),
+            desc_parts: t.desc,
             status: t.status,
             created: this.formatShort(t.created),
             scopePrefix: scopeId,
@@ -141,9 +141,7 @@ export class ListTasksUseCase {
       }
 
       const content = await this.fs.readFile(indexPath);
-      const index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
-        Index
-      >();
+      const index = this.parseIndexContent(content);
 
       const scopeTasks = Object.entries(index.tasks)
         .filter(([_, t]) => matchStatus(t.status))
@@ -153,8 +151,9 @@ export class ListTasksUseCase {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
-          name: t.name ?? t.desc,
-          desc: t.desc,
+          name: t.name ?? renderDesc(t.desc),
+          desc: renderDesc(t.desc),
+          desc_parts: t.desc,
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
@@ -190,7 +189,7 @@ export class ListTasksUseCase {
         );
       }
       const content = await this.fs.readFile(indexPath);
-      index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<Index>();
+      index = this.parseIndexContent(content);
     } else {
       index = await this.indexRepo.load();
     }
@@ -203,8 +202,9 @@ export class ListTasksUseCase {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, t]) => ({
         id,
-        name: t.name ?? t.desc,
-        desc: t.desc,
+        name: t.name ?? renderDesc(t.desc),
+        desc: renderDesc(t.desc),
+        desc_parts: t.desc,
         status: t.status,
         created: this.formatShort(t.created),
         tags: t.tags,
@@ -239,8 +239,9 @@ export class ListTasksUseCase {
         .filter(({ task, parentStatus }) => shouldInclude(task, parentStatus))
         .map(({ id, task }) => ({
           id,
-          name: task.name ?? task.desc,
-          desc: task.desc,
+          name: task.name ?? renderDesc(task.desc),
+          desc: renderDesc(task.desc),
+          desc_parts: task.desc,
           status: task.status,
           created: this.formatShort(task.created),
           scopePrefix: undefined,
@@ -282,8 +283,9 @@ export class ListTasksUseCase {
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([id, t]) => ({
             id,
-            name: t.name ?? t.desc,
-            desc: t.desc,
+            name: t.name ?? renderDesc(t.desc),
+            desc: renderDesc(t.desc),
+            desc_parts: t.desc,
             status: t.status,
             created: this.formatShort(t.created),
             scopePrefix: undefined,
@@ -352,8 +354,7 @@ export class ListTasksUseCase {
         const parentIndexPath = `${parentWorklogPath}/index.json`;
         if (await this.fs.exists(parentIndexPath)) {
           const content = await this.fs.readFile(parentIndexPath);
-          const parentIndex = ExplicitCast.fromAny(JSON.parse(content))
-            .dangerousCast<Index>();
+          const parentIndex = this.parseIndexContent(content);
           for (const [id, task] of Object.entries(parentIndex.tasks)) {
             relatedTaskStatuses.set(id, task.status);
             parentScopeTasks.set(id, task);
@@ -368,9 +369,7 @@ export class ListTasksUseCase {
     const currentIndexPath = `${currentScope}/index.json`;
     if (await this.fs.exists(currentIndexPath)) {
       const content = await this.fs.readFile(currentIndexPath);
-      const index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
-        Index
-      >();
+      const index = this.parseIndexContent(content);
       for (const [id, task] of Object.entries(index.tasks)) {
         relatedTaskStatuses.set(id, task.status);
       }
@@ -394,8 +393,9 @@ export class ListTasksUseCase {
           if (!parentTask || !matchStatus(parentTask.status)) continue;
           pushTask({
             id: task.parent,
-            name: parentTask.name ?? parentTask.desc,
-            desc: parentTask.desc,
+            name: parentTask.name ?? renderDesc(parentTask.desc),
+            desc: renderDesc(parentTask.desc),
+            desc_parts: parentTask.desc,
             status: parentTask.status,
             created: this.formatShort(parentTask.created),
             scopePrefix: "^",
@@ -411,8 +411,9 @@ export class ListTasksUseCase {
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
           id,
-          name: t.name ?? t.desc,
-          desc: t.desc,
+          name: t.name ?? renderDesc(t.desc),
+          desc: renderDesc(t.desc),
+          desc_parts: t.desc,
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
@@ -448,8 +449,9 @@ export class ListTasksUseCase {
           )
           .map(({ id, task }) => ({
             id,
-            name: task.name ?? task.desc,
-            desc: task.desc,
+            name: task.name ?? renderDesc(task.desc),
+            desc: renderDesc(task.desc),
+            desc_parts: task.desc,
             status: task.status,
             created: this.formatShort(task.created),
             scopePrefix: "^",
@@ -493,8 +495,7 @@ export class ListTasksUseCase {
             if (!(await this.fs.exists(childIndexPath))) continue;
 
             const content = await this.fs.readFile(childIndexPath);
-            const index = ExplicitCast.fromAny(JSON.parse(content))
-              .dangerousCast<Index>();
+            const index = this.parseIndexContent(content);
 
             const childTasks = Object.entries(index.tasks)
               .filter(([_, t]) => matchStatus(t.status))
@@ -510,8 +511,9 @@ export class ListTasksUseCase {
               .sort(([a], [b]) => a.localeCompare(b))
               .map(([id, t]) => ({
                 id,
-                name: t.name ?? t.desc,
-                desc: t.desc,
+                name: t.name ?? renderDesc(t.desc),
+                desc: renderDesc(t.desc),
+                desc_parts: t.desc,
                 status: t.status,
                 created: this.formatShort(t.created),
                 scopePrefix: child.id,
@@ -790,6 +792,20 @@ export class ListTasksUseCase {
       displayPath = displayPath.slice(0, -1);
     }
     return displayPath;
+  }
+
+  private parseIndexContent(content: string): Index {
+    const rawIndex = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
+      Index
+    >();
+    const tasks: Record<string, IndexEntry> = {};
+    for (const [taskId, entry] of Object.entries(rawIndex.tasks)) {
+      tasks[taskId] = {
+        ...entry,
+        desc: normalizeDescParts(entry.desc),
+      };
+    }
+    return { ...rawIndex, tasks };
   }
 
   private resolveRelativePath(base: string, relative: string): string {

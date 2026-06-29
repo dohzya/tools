@@ -2,6 +2,7 @@
 
 import type { SummaryOutput, SummaryTaskItem } from "../entities/outputs.ts";
 import type { Entry } from "../entities/entry.ts";
+import { renderDesc } from "../entities/description.ts";
 import type { IndexRepository } from "../ports/index-repository.ts";
 import type { TaskRepository } from "../ports/task-repository.ts";
 
@@ -40,7 +41,8 @@ export class GenerateSummaryUseCase {
 
       result.push({
         id,
-        desc: info.desc,
+        desc: renderDesc(info.desc),
+        desc_parts: info.desc,
         status: info.status,
         checkpoints: taskData.checkpoints,
         entries: filteredEntries,

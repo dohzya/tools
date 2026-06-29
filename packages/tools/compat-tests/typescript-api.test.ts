@@ -204,7 +204,7 @@ Deno.test("worklog: TaskMeta type structure", () => {
     id: "260123a",
     uid: "uuid-string",
     name: "Test",
-    desc: "Test task",
+    desc: ["Test task"],
     status: "started",
     created_at: "2026-01-23T10:00:00Z",
     done_at: null,
@@ -213,7 +213,7 @@ Deno.test("worklog: TaskMeta type structure", () => {
   };
   assertEquals(meta.id, "260123a");
   assertEquals(meta.uid, "uuid-string");
-  assertEquals(meta.desc, "Test task");
+  assertEquals(meta.desc, ["Test task"]);
   assertEquals(meta.status, "started");
   assertExists(meta.created_at);
   assertEquals(meta.done_at, null);
@@ -224,13 +224,13 @@ Deno.test("worklog: TaskMeta type structure", () => {
 Deno.test("worklog: IndexEntry type structure", () => {
   const entry: IndexEntry = {
     name: "Test",
-    desc: "Test task",
+    desc: ["Test task"],
     status: "started",
     created: "2026-01-23T10:00:00Z",
     status_updated_at: "2026-01-23T10:00:00Z",
     done_at: null,
   };
-  assertEquals(entry.desc, "Test task");
+  assertEquals(entry.desc, ["Test task"]);
   assertEquals(entry.status, "started");
   assertExists(entry.created);
   assertEquals(entry.done_at, null);
@@ -241,7 +241,7 @@ Deno.test("worklog: Index type structure", () => {
     tasks: {
       "260123a": {
         name: "Test",
-        desc: "Test",
+        desc: ["Test"],
         status: "started",
         created: "2026-01-23T10:00:00Z",
         status_updated_at: "2026-01-23T10:00:00Z",
@@ -300,6 +300,7 @@ Deno.test("worklog: ShowOutput type structure", () => {
     fullId: "260123a-full-uuid",
     name: "Test",
     desc: "Test task",
+    desc_parts: ["Test task"],
     status: "started",
     created: "2026-01-23 10:00",
     ready: null,
@@ -320,6 +321,7 @@ Deno.test("worklog: TracesOutput type structure", () => {
   const output: TracesOutput = {
     task: "260123a",
     desc: "Test task",
+    desc_parts: ["Test task"],
     entries: [{ ts: "2026-01-23 10:00", msg: "Test entry" }],
   };
   assertEquals(output.task, "260123a");
@@ -333,6 +335,7 @@ Deno.test("worklog: ListTaskItem type structure", () => {
     id: "260123a",
     name: "Test",
     desc: "Test task",
+    desc_parts: ["Test task"],
     status: "started",
     created: "2026-01-23T10:00:00Z",
   };
@@ -354,6 +357,7 @@ Deno.test("worklog: SummaryTaskItem type structure", () => {
   const item: SummaryTaskItem = {
     id: "260123a",
     desc: "Test task",
+    desc_parts: ["Test task"],
     status: "started",
     checkpoints: [],
     entries: [],

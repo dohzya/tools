@@ -28,7 +28,9 @@ Each task is a markdown file with YAML frontmatter:
 id: 04vcuwpmxiygt1oq3hdrf3kob
 uid: 7c8b6bbb-22f9-4b17-a3cb-0c383369826e
 name: Implement feature X
-desc: Implement feature X with detailed description
+desc:
+  - Implement feature X with detailed description
+  - Additional context from planning
 status: started
 created_at: "2026-02-05T09:30:00+01:00"
 ready_at: "2026-02-05T09:45:00+01:00"
@@ -84,7 +86,7 @@ Completed implementation
 - `id` (string): Short task ID (25-char base36 UUID encoding, e.g., `04vcuwpmxiygt1oq3hdrf3kob`)
 - `uid` (string): Original UUID (for cross-worktree deduplication on import)
 - `name` (string): Short display name (shown in `wl list`)
-- `desc` (string): Full description
+- `desc` (string[]; legacy string accepted on read): Ordered description parts
 - `status` (string): One of `created`, `ready`, `started`, `done`, `cancelled`
 - `created_at` (ISO timestamp): Creation time
 - `last_checkpoint` (ISO timestamp or null): Time of last checkpoint

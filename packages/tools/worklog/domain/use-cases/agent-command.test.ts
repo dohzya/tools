@@ -72,6 +72,7 @@ function createMockShowTaskFn(
       fullId: taskId,
       name: "Test task",
       desc: "Test description",
+      desc_parts: ["Test description"],
       status: "started",
       created: "2025-01-15 10:00",
       ready: null,
@@ -87,7 +88,7 @@ const FULL_TASK_ID = "test_id_agent_abcdef01";
 
 const MOCK_INDEX_ENTRY: IndexEntry = {
   name: "Test task",
-  desc: "Test description",
+  desc: ["Test description"],
   status: "started",
   created: "2025-01-15T10:00:00+01:00",
   status_updated_at: "2025-01-15T10:01:00+01:00",

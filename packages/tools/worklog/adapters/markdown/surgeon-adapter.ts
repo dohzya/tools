@@ -25,6 +25,7 @@ import type { Entry } from "../../domain/entities/entry.ts";
 import { isTraceKind } from "../../domain/entities/entry.ts";
 import { WtError } from "../../domain/entities/errors.ts";
 import type { TaskMeta } from "../../domain/entities/task.ts";
+import { normalizeDescParts } from "../../domain/entities/description.ts";
 import type { Todo, TodoStatus } from "../../domain/entities/todo.ts";
 import type {
   MarkdownService,
@@ -105,9 +106,13 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
     const yamlContent = this.frontmatterUC.getFrontmatterContent(doc);
 
     // Parse frontmatter into TaskMeta (parser returns {} for corrupted YAML)
-    const rawMeta = this.yamlService.parse(yamlContent);
-    const meta = ExplicitCast.from<Record<string, unknown>>(rawMeta)
-      .dangerousCast<TaskMeta>();
+    const rawMeta = ExplicitCast.from<Record<string, unknown>>(
+      this.yamlService.parse(yamlContent),
+    ).dangerousCast<Record<string, unknown>>();
+    const meta = ExplicitCast.from<Record<string, unknown>>({
+      ...rawMeta,
+      desc: normalizeDescParts(rawMeta.desc),
+    }).dangerousCast<TaskMeta>();
 
     const entriesId = await this.getEntriesId();
     const checkpointsId = await this.getCheckpointsId();

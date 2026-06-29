@@ -69,14 +69,14 @@ Deno.test("ListTasksUseCase - lists tasks from single worklog", async () => {
   const tasks: Record<string, IndexEntry> = {
     task1: {
       name: "First task",
-      desc: "First",
+      desc: ["First"],
       status: "started",
       created: "2025-01-15T10:00:00+01:00",
       status_updated_at: "2025-01-15T10:00:00+01:00",
     },
     task2: {
       name: "Second task",
-      desc: "Second",
+      desc: ["Second"],
       status: "done",
       created: "2025-01-14T10:00:00+01:00",
       status_updated_at: "2025-01-14T10:00:00+01:00",
@@ -84,7 +84,7 @@ Deno.test("ListTasksUseCase - lists tasks from single worklog", async () => {
     },
     task3: {
       name: "Third task",
-      desc: "Third",
+      desc: ["Third"],
       status: "created",
       created: "2025-01-16T10:00:00+01:00",
       status_updated_at: "2025-01-16T10:00:00+01:00",
@@ -112,14 +112,14 @@ Deno.test("ListTasksUseCase - showAll includes done tasks", async () => {
   const tasks: Record<string, IndexEntry> = {
     task1: {
       name: "Active",
-      desc: "Active",
+      desc: ["Active"],
       status: "started",
       created: "2025-01-15T10:00:00+01:00",
       status_updated_at: "2025-01-15T10:00:00+01:00",
     },
     task2: {
       name: "Done",
-      desc: "Done",
+      desc: ["Done"],
       status: "done",
       created: "2025-01-14T10:00:00+01:00",
       status_updated_at: "2025-01-14T10:00:00+01:00",
@@ -146,21 +146,21 @@ Deno.test("ListTasksUseCase - filters by status", async () => {
   const tasks: Record<string, IndexEntry> = {
     task1: {
       name: "Created",
-      desc: "Created",
+      desc: ["Created"],
       status: "created",
       created: "2025-01-15T10:00:00+01:00",
       status_updated_at: "2025-01-15T10:00:00+01:00",
     },
     task2: {
       name: "Started",
-      desc: "Started",
+      desc: ["Started"],
       status: "started",
       created: "2025-01-14T10:00:00+01:00",
       status_updated_at: "2025-01-14T10:00:00+01:00",
     },
     task3: {
       name: "Ready",
-      desc: "Ready",
+      desc: ["Ready"],
       status: "ready",
       created: "2025-01-16T10:00:00+01:00",
       status_updated_at: "2025-01-16T10:00:00+01:00",
@@ -189,21 +189,21 @@ Deno.test("ListTasksUseCase - shows subtasks whose parent is started", async () 
   const tasks: Record<string, IndexEntry> = {
     startedParent: {
       name: "Started parent",
-      desc: "Started parent",
+      desc: ["Started parent"],
       status: "started",
       created: "2025-01-15T10:00:00+01:00",
       status_updated_at: "2025-01-15T10:00:00+01:00",
     },
     readyParent: {
       name: "Ready parent",
-      desc: "Ready parent",
+      desc: ["Ready parent"],
       status: "ready",
       created: "2025-01-15T10:01:00+01:00",
       status_updated_at: "2025-01-15T10:01:00+01:00",
     },
     shownChild: {
       name: "Shown child",
-      desc: "Shown child",
+      desc: ["Shown child"],
       status: "created",
       created: "2025-01-15T10:02:00+01:00",
       status_updated_at: "2025-01-15T10:02:00+01:00",
@@ -211,7 +211,7 @@ Deno.test("ListTasksUseCase - shows subtasks whose parent is started", async () 
     },
     hiddenChild: {
       name: "Hidden child",
-      desc: "Hidden child",
+      desc: ["Hidden child"],
       status: "created",
       created: "2025-01-15T10:03:00+01:00",
       status_updated_at: "2025-01-15T10:03:00+01:00",
@@ -248,7 +248,7 @@ Deno.test("ListTasksUseCase - lists from baseDir", async () => {
     tasks: {
       remote1: {
         name: "Remote task",
-        desc: "Remote",
+        desc: ["Remote"],
         status: "started",
         created: "2025-01-15T10:00:00+01:00",
         status_updated_at: "2025-01-15T10:00:00+01:00",
@@ -283,7 +283,7 @@ Deno.test("ListTasksUseCase - all scopes listing", async () => {
     tasks: {
       root1: {
         name: "Root task",
-        desc: "Root",
+        desc: ["Root"],
         status: "started",
         created: "2025-01-15T10:00:00+01:00",
         status_updated_at: "2025-01-15T10:00:00+01:00",
@@ -296,7 +296,7 @@ Deno.test("ListTasksUseCase - all scopes listing", async () => {
     tasks: {
       child1: {
         name: "Child task",
-        desc: "Child",
+        desc: ["Child"],
         status: "created",
         created: "2025-01-16T10:00:00+01:00",
         status_updated_at: "2025-01-16T10:00:00+01:00",
@@ -356,7 +356,7 @@ Deno.test("ListTasksUseCase - includes child worklog context for current child s
     tasks: {
       child1: {
         name: "Child task",
-        desc: "Child task",
+        desc: ["Child task"],
         status: "started",
         created: "2025-01-15T10:00:00+01:00",
         status_updated_at: "2025-01-15T10:00:00+01:00",
@@ -449,6 +449,7 @@ Deno.test("ListTasksUseCase - skips child scope that resolves to current worklog
       id: "local1",
       name: "Local task",
       desc: "Local task",
+      desc_parts: ["Local task"],
       status: "started",
       created: "2025-01-15 10:00",
       tags: undefined,
@@ -482,7 +483,7 @@ Deno.test("ListTasksUseCase - formats created date as short", async () => {
   const tasks: Record<string, IndexEntry> = {
     task1: {
       name: "Task",
-      desc: "Desc",
+      desc: ["Desc"],
       status: "started",
       created: "2025-01-15T10:30:00+01:00",
       status_updated_at: "2025-01-15T10:30:00+01:00",
@@ -510,7 +511,7 @@ Deno.test("ListTasksUseCase - tag filtering with filter pattern", async () => {
     tasks: {
       tagged1: {
         name: "Tagged task",
-        desc: "Tagged",
+        desc: ["Tagged"],
         status: "started",
         created: "2025-01-15T10:00:00+01:00",
         status_updated_at: "2025-01-15T10:00:00+01:00",
@@ -518,7 +519,7 @@ Deno.test("ListTasksUseCase - tag filtering with filter pattern", async () => {
       },
       untagged1: {
         name: "Untagged task",
-        desc: "Untagged",
+        desc: ["Untagged"],
         status: "started",
         created: "2025-01-15T10:00:00+01:00",
         status_updated_at: "2025-01-15T10:00:00+01:00",

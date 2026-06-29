@@ -2466,7 +2466,7 @@ Deno.test("create - creates task in 'created' state by default", async () => {
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     const fm = parseFrontmatter(taskContent);
     assertEquals(fm.name, "Fix login bug");
-    assertEquals(fm.desc, "");
+    assertEquals(fm.desc, []);
     assertEquals(fm.status, "created");
     assertEquals(fm.ready_at, null);
     assertEquals(fm.started_at, null);
@@ -2501,7 +2501,7 @@ Deno.test("create - accepts name and detailed description", async () => {
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     const fm = parseFrontmatter(taskContent);
     assertEquals(fm.name, "Fix bug");
-    assertEquals(fm.desc, "User cannot login to the system");
+    assertEquals(fm.desc, ["User cannot login to the system"]);
     assertEquals(fm.status, "created");
   } finally {
     Deno.chdir(originalCwd);
@@ -2843,8 +2843,9 @@ Deno.test("start --desc - starts task and sets description", async () => {
     await main(["start", id, "--desc", "My detailed description"]);
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
+    const fm = parseFrontmatter(taskContent);
     assertStringIncludes(taskContent, "status: started");
-    assert(taskContent.match(/desc:.*My detailed description/));
+    assertEquals(fm.desc, ["My detailed description"]);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -2865,9 +2866,10 @@ Deno.test("start --name --desc - starts task and updates both fields", async () 
     await main(["start", id, "--name", "New name", "--desc", "New desc"]);
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
+    const fm = parseFrontmatter(taskContent);
     assertStringIncludes(taskContent, "status: started");
     assert(taskContent.match(/name:.*New name/));
-    assert(taskContent.match(/desc:.*New desc/));
+    assertEquals(fm.desc, ["New desc"]);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -2917,7 +2919,8 @@ Deno.test("update --desc - updates task description", async () => {
     await main(["update", id, "--desc", "New detailed description"]);
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
-    assert(taskContent.match(/desc:.*New detailed description/));
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["New detailed description"]);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -2938,8 +2941,9 @@ Deno.test("update --name --desc - updates both fields", async () => {
     await main(["update", id, "--name", "New name", "--desc", "New desc"]);
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${id}.md`);
+    const fm = parseFrontmatter(taskContent);
     assert(taskContent.match(/name:.*New name/));
-    assert(taskContent.match(/desc:.*New desc/));
+    assertEquals(fm.desc, ["New desc"]);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -3785,7 +3789,7 @@ Deno.test("update - handles YAML special chars in desc", async () => {
     const index = JSON.parse(indexContent);
     assertEquals(
       index.tasks[id].desc,
-      "Fix: handle #tags and key: value pairs",
+      ["Fix: handle #tags and key: value pairs"],
     );
   } finally {
     Deno.chdir(originalCwd);
@@ -3811,7 +3815,7 @@ Deno.test("create - no desc results in empty desc", async () => {
     const indexContent = await Deno.readTextFile(".worklog/index.json");
     const index = JSON.parse(indexContent);
     assertEquals(index.tasks[id].name, "Just a name");
-    assertEquals(index.tasks[id].desc, "");
+    assertEquals(index.tasks[id].desc, []);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -5504,7 +5508,7 @@ Deno.test("subtasks - meta reparents and detaches structural parent", async () =
     );
     assertEquals(frontmatter.parent, secondParentId);
     assertEquals(frontmatter.created_at !== undefined, true);
-    assertEquals(frontmatter.desc, "");
+    assertEquals(frontmatter.desc, []);
 
     await main(["meta", childId, "--detach"]);
 
@@ -5520,7 +5524,7 @@ Deno.test("subtasks - meta reparents and detaches structural parent", async () =
     );
     assertEquals(frontmatter.parent, undefined);
     assertEquals(frontmatter.created_at !== undefined, true);
-    assertEquals(frontmatter.desc, "");
+    assertEquals(frontmatter.desc, []);
 
     await main(["meta", childId, "--parent", firstParentId]);
     await main(["meta", childId, "--delete", "parent"]);
@@ -6762,6 +6766,152 @@ Deno.test("help - description contains Subtasks mention", async () => {
 // --desc-src tests
 // ============================================================================
 
+Deno.test("create --desc repeatable - stores structured description parts and renders compat desc", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main([
+      "create",
+      "Structured task",
+      "--desc",
+      "First part",
+      "--desc",
+      "Second part",
+    ]);
+
+    const listOutput = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const { tasks } = JSON.parse(listOutput);
+    const taskId = tasks[0].id;
+    assertEquals(tasks[0].desc, "First part\n\n---\n\nSecond part");
+    assertEquals(tasks[0].desc_parts, ["First part", "Second part"]);
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["First part", "Second part"]);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update --append-desc - appends structured parts without replacing existing desc", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "Task", "--desc", "Original"]);
+    const listOutput = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const taskId = JSON.parse(listOutput).tasks[0].id;
+
+    await main([
+      "update",
+      taskId,
+      "--append-desc",
+      "Added one",
+      "--append-desc",
+      "Added two",
+    ]);
+
+    const showOutput = await captureOutput(() =>
+      main(["show", taskId, "--json"])
+    );
+    const shown = JSON.parse(showOutput);
+    assertEquals(
+      shown.desc,
+      "Original\n\n---\n\nAdded one\n\n---\n\nAdded two",
+    );
+    assertEquals(shown.desc_parts, ["Original", "Added one", "Added two"]);
+
+    const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["Original", "Added one", "Added two"]);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("update --append-desc empty - is a noop while --desc empty clears desc", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+
+    await main(["create", "Task", "--desc", "Original"]);
+    const listOutput = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const taskId = JSON.parse(listOutput).tasks[0].id;
+
+    await main(["update", taskId, "--append-desc", ""]);
+    let taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    let fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["Original"]);
+
+    await main(["update", taskId, "--desc", ""]);
+    taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
+    fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, []);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("create repeated --desc-src with stdin - errors to avoid ambiguous reads", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let exitCode = 0;
+  let errorOutput = "";
+  try {
+    Deno.chdir(tempDir);
+    // deno-lint-ignore dz-tools/no-type-assertion
+    Deno.exit = ((code: number) => {
+      exitCode = code;
+      throw new Error("EXIT");
+    }) as typeof Deno.exit;
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    await main(["init"]);
+
+    const descFile = `${tempDir}/desc.txt`;
+    await Deno.writeTextFile(descFile, "File desc");
+
+    try {
+      await main([
+        "create",
+        "Task",
+        "--desc-src",
+        "-",
+        "--desc-src",
+        descFile,
+      ]);
+    } catch (_e) { /* expected */ }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "--desc-src - cannot be combined");
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("create --desc-src <file> - reads description from file", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();
@@ -6781,7 +6931,7 @@ Deno.test("create --desc-src <file> - reads description from file", async () => 
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     const fm = parseFrontmatter(taskContent);
-    assertEquals(fm.desc, "Description from file");
+    assertEquals(fm.desc, ["Description from file"]);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -6812,7 +6962,7 @@ Deno.test("create --desc-src - reads description from stdin", async () => {
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     const fm = parseFrontmatter(taskContent);
-    assertEquals(fm.desc, "Description from stdin");
+    assertEquals(fm.desc, ["Description from stdin"]);
   } finally {
     _setStdinReadable(undefined);
     Deno.chdir(originalCwd);
@@ -6840,7 +6990,7 @@ Deno.test("create --desc-from-clipboard - reads description from clipboard", asy
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     const fm = parseFrontmatter(taskContent);
-    assertEquals(fm.desc, "Description from clipboard");
+    assertEquals(fm.desc, ["Description from clipboard"]);
   } finally {
     _setClipboardReader(undefined);
     Deno.chdir(originalCwd);
@@ -6868,7 +7018,7 @@ Deno.test("create -P - reads description from clipboard", async () => {
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
     const fm = parseFrontmatter(taskContent);
-    assertEquals(fm.desc, "Description from -P");
+    assertEquals(fm.desc, ["Description from -P"]);
   } finally {
     _setClipboardReader(undefined);
     Deno.chdir(originalCwd);
@@ -7059,7 +7209,8 @@ Deno.test("update --desc-from-clipboard - updates description from clipboard", a
     }
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
-    assert(taskContent.match(/desc:.*Updated desc from clipboard/));
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["Updated desc from clipboard"]);
   } finally {
     _setClipboardReader(undefined);
     Deno.chdir(originalCwd);
@@ -7087,7 +7238,8 @@ Deno.test("update -P - updates description from clipboard", async () => {
     }
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
-    assert(taskContent.match(/desc:.*Updated desc from -P/));
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["Updated desc from -P"]);
   } finally {
     _setClipboardReader(undefined);
     Deno.chdir(originalCwd);
@@ -7113,7 +7265,8 @@ Deno.test("update --desc-src <file> - updates description from file", async () =
     await main(["update", taskId, "--desc-src", descFile]);
 
     const taskContent = await Deno.readTextFile(`.worklog/tasks/${taskId}.md`);
-    assert(taskContent.match(/desc:.*Updated desc from file/));
+    const fm = parseFrontmatter(taskContent);
+    assertEquals(fm.desc, ["Updated desc from file"]);
   } finally {
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
@@ -7489,6 +7642,7 @@ Deno.test("formatList - no color: byte-for-byte identical to today's output", ()
           id: "c96mqj3ws11xhjmb3k4gzzyfj",
           name: "ajouter les couleurs",
           desc: "",
+          desc_parts: [],
           status: "started",
           created: "2026-05-12 14:45",
           tags: ["recap"],
@@ -7514,6 +7668,7 @@ Deno.test("formatList - child worklog context header", () => {
           id: "c96mqj3ws11xhjmb3k4gzzyfj",
           name: "ajouter les couleurs",
           desc: "",
+          desc_parts: [],
           status: "started",
           created: "2026-05-12 14:45",
         },
@@ -7539,6 +7694,7 @@ Deno.test("formatList - child worklog context header can be hidden", () => {
           id: "c96mqj3ws11xhjmb3k4gzzyfj",
           name: "ajouter les couleurs",
           desc: "",
+          desc_parts: [],
           status: "started",
           created: "2026-05-12 14:45",
         },
@@ -7563,6 +7719,7 @@ Deno.test("formatList - with color: ANSI wraps status/id/tag/timestamp", () => {
           id: "c96mqj3ws11xhjmb3k4gzzyfj",
           name: "ajouter les couleurs",
           desc: "",
+          desc_parts: [],
           status: "started",
           created: "2026-05-12 14:45",
           tags: ["recap"],
@@ -7587,6 +7744,7 @@ Deno.test("formatTraces - with color: header label colored", () => {
     {
       task: "c96mqj",
       desc: "demo",
+      desc_parts: ["demo"],
       entries: [{ ts: "2026-05-12 16:36", msg: "Plan défini" }],
     },
     palette,
@@ -7611,6 +7769,7 @@ Deno.test("formatShow - with color: section labels and status colored", () => {
       started: "2026-05-12 14:50",
       last_checkpoint: null,
       desc: "hello",
+      desc_parts: ["hello"],
       entries_since_checkpoint: [],
       todos: [],
     },

@@ -170,11 +170,13 @@ Transitions: `ready` allows `created → ready` and `started → ready`. `start`
 
 ```bash
 wl create <name> [desc] [--ready|--started]  # Create task → outputs ID
-wl create <name> --desc-src <file>           # Description from file
+wl create <name> --desc <d> [--desc <d2>]    # Description parts
+wl create <name> --desc-src <file>           # Description part from file
 wl create <name> --desc-src -                # Description from stdin
 wl ready <id>                                # Transition to ready
 wl start <id>                                # Transition to started (or reopen done)
-wl update <id> [--name <name>] [--desc <d>]  # Update task name or description
+wl update <id> [--name <name>] [--desc <d>]  # Replace task name or description
+wl update <id> --append-desc <d>             # Append a description part
 wl update <id> --desc-src <file>             # Description from file
 wl update <id> --desc-src -                  # Description from stdin
 wl trace <id> [options] "message"            # Log entry → "ok" or "checkpoint recommended"
@@ -214,7 +216,7 @@ wl todo next [<task-id>]                     # Show next available todo
 wl create <name> [desc] [options]
 ```
 
-Creates a new task. The `name` is displayed in list views, `desc` is the detailed description (defaults to `name` if not provided).
+Creates a new task. The `name` is displayed in list views. `desc` is stored as ordered description parts; legacy positional `desc` is accepted as one part.
 
 **Options:**
 
@@ -224,7 +226,9 @@ Creates a new task. The `name` is displayed in list views, `desc` is the detaile
 - `--todo <text>`: Add a TODO item (repeatable)
 - `--meta <key=value>`: Set metadata (repeatable)
 - `-t, --timestamp <ts>`: Custom creation timestamp
-- `--desc-src <source>`: Read description from file path, or `-` for stdin
+- `--desc <text>`: Add a description part (repeatable)
+- `--desc-src <source>`: Add a description part from file path, or `-` for stdin (repeatable; `-` cannot be combined with another `--desc-src`)
+- `-P, --desc-from-clipboard`: Read one description part from the clipboard
 
 **Examples:**
 
@@ -234,6 +238,9 @@ wl create "Fix login bug"
 
 # With description
 wl create "Fix login bug" "Users can't login after session timeout"
+
+# With explicit description parts
+wl create "Investigate auth" --desc "Scope" --desc "Prior context"
 
 # Description from file (multiline, rich context)
 wl create "Investigate auth" --desc-src ~/notes/auth-context.md
@@ -251,7 +258,7 @@ wl create --parent <parent-id> --started "Analyze existing API"
 wl create "Feature X" --todo "Analyze" --todo "Implement" --todo "Test"
 ```
 
-**Conflicts:** positional `desc` and `--desc-src` cannot be used together.
+**Conflicts:** positional `desc`, `--desc`, `--desc-src`, and `--desc-from-clipboard` are mutually exclusive sources.
 
 ## State transition commands
 
@@ -275,13 +282,14 @@ Updates task name and/or description.
 
 ```bash
 wl update <id> --name "New name"
-wl update <id> --desc "New description"
-wl update <id> --name "New name" --desc "New description"
+wl update <id> --desc "New description"        # replace all desc parts
+wl update <id> --desc "Part 1" --desc "Part 2" # replace with two parts
+wl update <id> --append-desc "Added context"   # append one part
 wl update <id> --desc-src context.md           # from file
 pbpaste | wl update <id> --desc-src -          # from stdin
 ```
 
-Must provide at least one of `--name`, `--desc`, or `--desc-src`. `--desc` and `--desc-src` cannot be used together.
+Must provide at least one of `--name`, a replacement description option, or an append description option. Replacement options (`--desc`, `--desc-src`, `--desc-from-clipboard`) and append options (`--append-desc`, `--append-desc-src`, `--append-desc-from-clipboard`) cannot be mixed. Empty `--desc ""` clears the description; empty `--append-desc ""` is a noop.
 
 ## List command
 
@@ -902,7 +910,8 @@ Add `--json` to any command for machine-readable output.
   "task": "acjold",
   "fullId": "acjold3x5q1m8h2k9n7p0r4w6",
   "name": "Implement feature X",
-  "desc": "Implement feature X",
+  "desc": "Implement feature X\n\n---\n\nAdditional context",
+  "desc_parts": ["Implement feature X", "Additional context"],
   "status": "started",
   "created": "2026-02-05 10:00",
   "ready": null,

@@ -34,7 +34,7 @@ export interface TaskMeta {
   /** Short name for display in list views. */
   name: string;
   /** Longer description of the task. */
-  desc: string;
+  desc: string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** ISO 8601 creation timestamp. */
@@ -64,7 +64,7 @@ export interface IndexEntry {
   /** Short name for display in list views. */
   name: string;
   /** Task description. */
-  desc: string;
+  desc: string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** Task creation date (no _at suffix in index). */
@@ -172,6 +172,8 @@ export interface TracesOutput {
   task: string;
   /** Task description. */
   desc: string;
+  /** Structured task description parts. */
+  desc_parts: readonly string[];
   /** All trace entries for the task. */
   entries: readonly Entry[];
 }
@@ -186,6 +188,8 @@ export interface ShowOutput {
   name: string;
   /** Task description. */
   desc: string;
+  /** Structured task description parts. */
+  desc_parts: readonly string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** Formatted creation date (from created_at). */
@@ -227,6 +231,8 @@ export interface ListTaskItem {
   name: string;
   /** Task description. */
   desc: string;
+  /** Structured task description parts. */
+  desc_parts: readonly string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** Scope prefix prepended in multi-scope listings. */
@@ -266,6 +272,8 @@ export interface DashboardSubtaskItem {
   name: string;
   /** Task description. */
   desc: string;
+  /** Structured task description parts. */
+  desc_parts: readonly string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** Scope prefix prepended for cross-scope subtasks. */
@@ -286,6 +294,8 @@ export interface DashboardTaskItem {
   name: string;
   /** Task description. */
   desc: string;
+  /** Structured task description parts. */
+  desc_parts: readonly string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** Formatted creation date. */
@@ -323,6 +333,8 @@ export interface SummaryTaskItem {
   id: string;
   /** Task description. */
   desc: string;
+  /** Structured task description parts. */
+  desc_parts: readonly string[];
   /** Current lifecycle status. */
   status: TaskStatus;
   /** All checkpoints for the task. */

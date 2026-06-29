@@ -116,7 +116,7 @@ function makeTaskFileData(
       id: "test_task_abcdefghijklmnop",
       uid: "00000000-0000-0000-0000-000000000001",
       name: "Test task",
-      desc: "A test task",
+      desc: ["A test task"],
       status: "created",
       created_at: "2025-01-15T10:00:00+01:00",
       last_checkpoint: null,
@@ -137,7 +137,7 @@ function makeIndexEntry(
 ): IndexEntry {
   return {
     name: "Test task",
-    desc: "A test task",
+    desc: ["A test task"],
     status: "created",
     created: "2025-01-15T10:00:00+01:00",
     status_updated_at: "2025-01-15T10:00:00+01:00",

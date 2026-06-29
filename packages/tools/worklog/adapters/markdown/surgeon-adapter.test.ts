@@ -22,7 +22,7 @@ Deno.test("serializeTask - roundtrips complex description with newlines, colons,
     id: "test_id_12345678901234567",
     uid: "00000000-0000-0000-0000-000000000001",
     name: 'Task with "special" chars',
-    desc: complexDesc,
+    desc: [complexDesc],
     status: "created",
     created_at: "2025-01-15T10:00:00+01:00",
     ready_at: null,
@@ -43,7 +43,7 @@ Deno.test("serializeTask - roundtrips complex description with newlines, colons,
 
   // Roundtrip: parsed values must match original inputs exactly
   assertEquals(parsed.name, 'Task with "special" chars');
-  assertEquals(parsed.desc, complexDesc);
+  assertEquals(parsed.desc, [complexDesc]);
   assertEquals(parsed.status, "created");
   assertEquals(parsed.id, "test_id_12345678901234567");
   assertEquals(parsed.ready_at, null);

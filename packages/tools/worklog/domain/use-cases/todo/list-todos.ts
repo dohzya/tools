@@ -3,6 +3,7 @@
 import type { TodoListOutput } from "../../entities/outputs.ts";
 import type { Todo } from "../../entities/todo.ts";
 import { WtError } from "../../entities/errors.ts";
+import { renderDesc } from "../../entities/description.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 
@@ -49,7 +50,7 @@ export class ListTodosUseCase {
             metadata: {
               ...todo.metadata,
               taskId: id,
-              taskDesc: taskData.meta.desc,
+              taskDesc: renderDesc(taskData.meta.desc),
             },
           });
         }

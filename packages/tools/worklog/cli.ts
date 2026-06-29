@@ -44,6 +44,10 @@ import {
 } from "./types.ts";
 import { WtError } from "./domain/entities/errors.ts";
 import {
+  normalizeDescParts,
+  renderDesc,
+} from "./domain/entities/description.ts";
+import {
   isTraceKind,
   TRACE_KINDS,
   type TraceKind,
@@ -224,7 +228,7 @@ const TaskMetaSchema = z.object({
   id: z.string(),
   uid: z.string(),
   name: z.string(),
-  desc: z.string(),
+  desc: z.union([z.string(), z.array(z.string())]),
   status: z.enum(TASK_STATUSES),
   created_at: z.string(),
   ready_at: z.optional(z.nullable(z.string())),
@@ -884,6 +888,64 @@ async function resolveDescSrc(source: string): Promise<string> {
   return await readFile(source);
 }
 
+async function resolveDescSrcParts(
+  sources: readonly string[],
+): Promise<string[]> {
+  if (sources.includes("-") && sources.length > 1) {
+    throw new WtError(
+      "invalid_args",
+      "--desc-src - cannot be combined with other --desc-src values",
+    );
+  }
+
+  const parts: string[] = [];
+  for (const source of sources) {
+    parts.push(await resolveDescSrc(source));
+  }
+  return normalizeDescParts(parts);
+}
+
+const CLI_EMPTY_DESC_VALUE = "\u0000wl-empty-desc";
+const CLI_DESC_VALUE_OPTIONS = new Set(["--desc", "--append-desc"]);
+
+function preserveEmptyDescriptionOptionValues(
+  args: readonly string[],
+): string[] {
+  const preserved: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    const eqIndex = arg.indexOf("=");
+    if (eqIndex > 0) {
+      const option = arg.slice(0, eqIndex);
+      const value = arg.slice(eqIndex + 1);
+      preserved.push(
+        CLI_DESC_VALUE_OPTIONS.has(option) && value === ""
+          ? `${option}=${CLI_EMPTY_DESC_VALUE}`
+          : arg,
+      );
+      continue;
+    }
+
+    preserved.push(arg);
+    if (
+      CLI_DESC_VALUE_OPTIONS.has(arg) && i + 1 < args.length &&
+      args[i + 1] === ""
+    ) {
+      preserved.push(CLI_EMPTY_DESC_VALUE);
+      i++;
+    }
+  }
+  return preserved;
+}
+
+function normalizeCliDescParts(value: unknown): string[] {
+  return normalizeDescParts(
+    normalizeDescParts(value).map((part) =>
+      part === CLI_EMPTY_DESC_VALUE ? "" : part
+    ),
+  );
+}
+
 async function writeFile(path: string, content: string): Promise<void> {
   try {
     await Deno.writeTextFile(path, content);
@@ -912,19 +974,32 @@ async function loadIndex(): Promise<Index> {
     );
   }
   const content = await readFile(INDEX_FILE);
-  const index = ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<
-    Index
-  >();
+  const index = normalizeIndex(
+    ExplicitCast.fromAny(JSON.parse(content)).dangerousCast<Index>(),
+  );
 
   // Run migration if needed
   if (!index.version || index.version < 2) {
     await migrateIndexToV2();
     // Reload index after migration
     const newContent = await readFile(INDEX_FILE);
-    return ExplicitCast.fromAny(JSON.parse(newContent)).dangerousCast<Index>();
+    return normalizeIndex(
+      ExplicitCast.fromAny(JSON.parse(newContent)).dangerousCast<Index>(),
+    );
   }
 
   return index;
+}
+
+function normalizeIndex(index: Index): Index {
+  const tasks: Record<string, IndexEntry> = {};
+  for (const [taskId, entry] of Object.entries(index.tasks)) {
+    tasks[taskId] = {
+      ...entry,
+      desc: normalizeDescParts(entry.desc),
+    };
+  }
+  return { ...index, tasks };
 }
 
 async function saveIndex(index: Index): Promise<void> {
@@ -975,11 +1050,11 @@ async function migrateIndexToV2(): Promise<void> {
     frontmatter.started_at = null;
 
     // 4. Extract name from desc (first line)
-    const desc = String(frontmatter.desc || "");
-    const descLines = desc.split("\n");
+    const descParts = normalizeDescParts(frontmatter.desc);
+    const descLines = renderDesc(descParts).split("\n");
     const name = descLines[0].trim();
     frontmatter.name = name;
-    // Keep full desc unchanged
+    frontmatter.desc = descParts;
 
     // 5. Update index entry
     indexEntry.name = name;
@@ -2120,15 +2195,19 @@ async function parseTaskFile(content: string): Promise<ParsedTask> {
   const yamlContent = getFrontmatterContent(doc);
 
   // Try strict validation first, fall back to unsafe cast for malformed data
-  let meta: TaskMeta;
+  let rawMeta: Record<string, unknown>;
   try {
-    meta = TaskMetaSchema.parse(parseFrontmatter(yamlContent));
+    rawMeta = TaskMetaSchema.parse(parseFrontmatter(yamlContent));
   } catch {
     // Gracefully handle malformed frontmatter (e.g., in tests or corrupted files)
-    meta = ExplicitCast.from<Record<string, unknown>>(
+    rawMeta = ExplicitCast.from<Record<string, unknown>>(
       parseFrontmatter(yamlContent),
-    ).dangerousCast<TaskMeta>();
+    ).dangerousCast<Record<string, unknown>>();
   }
+  const meta = ExplicitCast.from<Record<string, unknown>>({
+    ...rawMeta,
+    desc: normalizeDescParts(rawMeta.desc),
+  }).dangerousCast<TaskMeta>();
 
   const entriesId = await getEntriesId();
   const checkpointsId = await getCheckpointsId();
@@ -3051,7 +3130,7 @@ async function cmdInit(): Promise<StatusOutput> {
 
 async function cmdAdd(
   name: string,
-  desc?: string,
+  desc?: readonly string[],
   initialStatus?: TaskStatus,
   todos: string[] = [],
   metadata?: Record<string, string>,
@@ -3350,12 +3429,13 @@ function resolveAgentFlag(
 async function cmdUpdate(
   taskId: string,
   name?: string,
-  desc?: string,
+  desc?: readonly string[],
+  appendDesc?: readonly string[],
 ): Promise<StatusOutput> {
-  if (!name && desc === undefined) {
+  if (!name && desc === undefined && appendDesc === undefined) {
     throw new WtError(
       "invalid_args",
-      "Must provide at least one of --name or --desc",
+      "Must provide at least one of --name, --desc, or --append-desc",
     );
   }
 
@@ -3366,6 +3446,7 @@ async function cmdUpdate(
     taskId,
     name,
     desc,
+    appendDesc,
   });
 }
 
@@ -3661,6 +3742,7 @@ async function buildDashboardOutput(
         id: subtask.id,
         name: subtask.name,
         desc: subtask.desc,
+        desc_parts: subtask.desc_parts,
         status: subtask.status,
         scopePrefix: subtask.scopePrefix,
         created: subtask.created,
@@ -3682,6 +3764,7 @@ async function buildDashboardOutput(
       id: task.id,
       name: task.name,
       desc: task.desc,
+      desc_parts: task.desc_parts,
       status: task.status,
       scopePrefix: task.scopePrefix,
       created: task.created,
@@ -5122,9 +5205,13 @@ const createCmd = new Command()
     collect: true,
   })
   .option("--parent <taskId:string>", "Set parent task (creates a subtask)")
+  .option("--desc <desc:string>", "Add a description part (repeatable)", {
+    collect: true,
+  })
   .option(
     "--desc-src <source:string>",
-    'Read description from file path, or "-" for stdin',
+    'Read description part from file path, or "-" for stdin (repeatable)',
+    { collect: true },
   )
   .option(
     "-P, --desc-from-clipboard",
@@ -5145,28 +5232,27 @@ const createCmd = new Command()
       const agentType = resolveAgentFlag(options);
 
       // Validate: can't mix inline descriptions with source-backed descriptions.
-      if (
-        desc !== undefined &&
-        (options.descSrc !== undefined || options.descFromClipboard)
-      ) {
+      const descModes = [
+        desc !== undefined,
+        options.desc !== undefined,
+        options.descSrc !== undefined,
+        options.descFromClipboard === true,
+      ].filter(Boolean).length;
+      if (descModes > 1) {
         throw new WtError(
           "invalid_args",
-          "Cannot specify both positional desc and description source flags",
-        );
-      }
-
-      if (options.descSrc !== undefined && options.descFromClipboard) {
-        throw new WtError(
-          "invalid_args",
-          "Cannot specify both --desc-src and --desc-from-clipboard",
+          "Cannot specify both positional desc, --desc, --desc-src, or --desc-from-clipboard",
         );
       }
 
       // Resolve source-backed descriptions if provided.
-      if (options.descSrc !== undefined) {
-        desc = await resolveDescSrc(options.descSrc);
+      let descParts = normalizeDescParts(desc);
+      if (options.desc !== undefined) {
+        descParts = normalizeCliDescParts(options.desc);
+      } else if (options.descSrc !== undefined) {
+        descParts = await resolveDescSrcParts(options.descSrc);
       } else if (options.descFromClipboard) {
-        desc = await readClipboard();
+        descParts = normalizeDescParts(await readClipboard());
       }
 
       // Validate: can't have both --ready and --started
@@ -5237,7 +5323,7 @@ const createCmd = new Command()
       const metadata = parseMetaOption(options.meta);
       const output = await cmdAdd(
         name,
-        desc,
+        descParts,
         initialStatus,
         todos,
         metadata,
@@ -5745,7 +5831,18 @@ const startCmd = new Command()
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--name <name:string>", "Update task name")
-  .option("--desc <desc:string>", "Update task description")
+  .option(
+    "--desc <desc:string>",
+    "Replace description with part (repeatable)",
+    {
+      collect: true,
+    },
+  )
+  .option(
+    "--append-desc <desc:string>",
+    "Append a description part (repeatable)",
+    { collect: true },
+  )
   .action(async (options, taskId?: string) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -5758,9 +5855,27 @@ const startCmd = new Command()
           taskId,
           options.scope ? null : gitRoot,
         );
+      if (options.desc !== undefined && options.appendDesc !== undefined) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both --desc and --append-desc",
+        );
+      }
       let output = await cmdStart(resolvedTaskId);
-      if (options.name !== undefined || options.desc !== undefined) {
-        output = await cmdUpdate(resolvedTaskId, options.name, options.desc);
+      if (
+        options.name !== undefined || options.desc !== undefined ||
+        options.appendDesc !== undefined
+      ) {
+        output = await cmdUpdate(
+          resolvedTaskId,
+          options.name,
+          options.desc !== undefined
+            ? normalizeCliDescParts(options.desc)
+            : undefined,
+          options.appendDesc !== undefined
+            ? normalizeCliDescParts(options.appendDesc)
+            : undefined,
+        );
       }
       console.log(
         options.json
@@ -6068,14 +6183,35 @@ const updateCmd = new Command()
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
   .option("--name <name:string>", "New name for the task")
-  .option("--desc <desc:string>", "New description for the task")
+  .option(
+    "--desc <desc:string>",
+    "Replace description with part (repeatable)",
+    {
+      collect: true,
+    },
+  )
   .option(
     "--desc-src <source:string>",
-    'Read description from file path, or "-" for stdin',
+    'Replace description with part from file path, or "-" for stdin (repeatable)',
+    { collect: true },
   )
   .option(
     "-P, --desc-from-clipboard",
     "Read description from the system clipboard",
+  )
+  .option(
+    "--append-desc <desc:string>",
+    "Append a description part (repeatable)",
+    { collect: true },
+  )
+  .option(
+    "--append-desc-src <source:string>",
+    'Append a description part from file path, or "-" for stdin (repeatable)',
+    { collect: true },
+  )
+  .option(
+    "--append-desc-from-clipboard",
+    "Append a description part from the system clipboard",
   )
   .action(async (options, taskId?: string) => {
     try {
@@ -6085,30 +6221,53 @@ const updateCmd = new Command()
         asGlobal(options).worklogDir,
       );
 
-      // Validate: can't mix inline descriptions with source-backed descriptions.
-      if (
-        options.desc !== undefined &&
-        (options.descSrc !== undefined || options.descFromClipboard)
-      ) {
+      const replaceModes = [
+        options.desc !== undefined,
+        options.descSrc !== undefined,
+        options.descFromClipboard === true,
+      ].filter(Boolean).length;
+      const appendModes = [
+        options.appendDesc !== undefined,
+        options.appendDescSrc !== undefined,
+        options.appendDescFromClipboard === true,
+      ].filter(Boolean).length;
+
+      if (replaceModes > 1) {
         throw new WtError(
           "invalid_args",
-          "Cannot specify both --desc and description source flags",
+          "Cannot specify both --desc, --desc-src, or --desc-from-clipboard",
         );
       }
-
-      if (options.descSrc !== undefined && options.descFromClipboard) {
+      if (appendModes > 1) {
         throw new WtError(
           "invalid_args",
-          "Cannot specify both --desc-src and --desc-from-clipboard",
+          "Cannot specify both --append-desc, --append-desc-src, or --append-desc-from-clipboard",
+        );
+      }
+      if (replaceModes > 0 && appendModes > 0) {
+        throw new WtError(
+          "invalid_args",
+          "Cannot specify both replacement and append description options",
         );
       }
 
       // Resolve source-backed descriptions if provided.
-      let resolvedDesc = options.desc;
+      let resolvedDesc: string[] | undefined;
       if (options.descSrc !== undefined) {
-        resolvedDesc = await resolveDescSrc(options.descSrc);
+        resolvedDesc = await resolveDescSrcParts(options.descSrc);
       } else if (options.descFromClipboard) {
-        resolvedDesc = await readClipboard();
+        resolvedDesc = normalizeDescParts(await readClipboard());
+      } else if (options.desc !== undefined) {
+        resolvedDesc = normalizeCliDescParts(options.desc);
+      }
+
+      let appendDesc: string[] | undefined;
+      if (options.appendDescSrc !== undefined) {
+        appendDesc = await resolveDescSrcParts(options.appendDescSrc);
+      } else if (options.appendDescFromClipboard) {
+        appendDesc = normalizeDescParts(await readClipboard());
+      } else if (options.appendDesc !== undefined) {
+        appendDesc = normalizeCliDescParts(options.appendDesc);
       }
 
       const resolvedTaskId = await resolveTaskIdWithEnvFallbackAcrossScopes(
@@ -6119,6 +6278,7 @@ const updateCmd = new Command()
         resolvedTaskId,
         options.name,
         resolvedDesc,
+        appendDesc,
       );
       console.log(
         options.json
@@ -6785,7 +6945,7 @@ export async function main(args: string[]): Promise<void> {
     cli.showHelp();
     return;
   }
-  await cli.parse(args);
+  await cli.parse(preserveEmptyDescriptionOptionValues(args));
 }
 
 // Run if executed directly

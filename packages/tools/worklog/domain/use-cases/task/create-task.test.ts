@@ -121,7 +121,7 @@ Deno.test("CreateTaskUseCase - creates task with default status", async () => {
 
   const result = await useCase.execute({
     name: "Test task",
-    desc: "Test description",
+    desc: ["Test description"],
   });
 
   // Should return a short ID
@@ -133,7 +133,7 @@ Deno.test("CreateTaskUseCase - creates task with default status", async () => {
   const savedContent = taskRepo.savedContent.get("test_id_1234567890abcdef")!;
   const fm = parseFrontmatter(savedContent);
   assertEquals(fm.name, "Test task");
-  assertEquals(fm.desc, "Test description");
+  assertEquals(fm.desc, ["Test description"]);
   assertEquals(fm.status, "created");
   assertEquals(fm.created_at, "2025-01-15T10:00:00+01:00");
 
@@ -373,7 +373,7 @@ Deno.test("CreateTaskUseCase - roundtrips complex description with newlines, col
 
   await useCase.execute({
     name: 'Task with "special" chars',
-    desc: complexDesc,
+    desc: [complexDesc],
   });
 
   const savedContent = taskRepo.savedContent.get(
@@ -389,7 +389,7 @@ Deno.test("CreateTaskUseCase - roundtrips complex description with newlines, col
 
   // Roundtrip: parsed values must match original inputs exactly
   assertEquals(parsed.name, 'Task with "special" chars');
-  assertEquals(parsed.desc, complexDesc);
+  assertEquals(parsed.desc, [complexDesc]);
   assertEquals(parsed.status, "created");
   assertEquals(parsed.id, "test_id_complex_desc_abcde");
 });

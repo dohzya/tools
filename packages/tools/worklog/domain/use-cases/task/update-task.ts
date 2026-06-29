@@ -6,11 +6,16 @@ import { WtError } from "../../entities/errors.ts";
 import type { IndexRepository } from "../../ports/index-repository.ts";
 import type { TaskRepository } from "../../ports/task-repository.ts";
 import type { MarkdownService } from "../../ports/markdown-service.ts";
+import {
+  appendDescParts,
+  normalizeDescParts,
+} from "../../entities/description.ts";
 
 export interface UpdateTaskInput {
   readonly taskId: string;
   readonly name?: string;
-  readonly desc?: string;
+  readonly desc?: readonly string[];
+  readonly appendDesc?: readonly string[];
 }
 
 export class UpdateTaskUseCase {
@@ -21,21 +26,33 @@ export class UpdateTaskUseCase {
   ) {}
 
   async execute(input: UpdateTaskInput): Promise<StatusOutput> {
-    if (!input.name && input.desc === undefined) {
+    if (
+      !input.name && input.desc === undefined && input.appendDesc === undefined
+    ) {
       throw new WtError(
         "invalid_args",
-        "Must provide at least one of --name or --desc",
+        "Must provide at least one of --name, --desc, or --append-desc",
       );
     }
 
     const index = await this.indexRepo.load();
     const taskId = this.resolveTaskId(input.taskId, Object.keys(index.tasks));
 
+    let content = await this.taskRepo.loadContent(taskId);
     const updates: Record<string, unknown> = {};
     if (input.name) updates.name = input.name;
-    if (input.desc !== undefined) updates.desc = input.desc;
+    let descUpdate: string[] | undefined;
+    if (input.desc !== undefined) {
+      descUpdate = normalizeDescParts(input.desc);
+    } else if (input.appendDesc !== undefined) {
+      const parsed = await this.markdownService.parseTaskFile(content);
+      descUpdate = appendDescParts(
+        parsed.meta.desc,
+        normalizeDescParts(input.appendDesc),
+      );
+    }
+    if (descUpdate !== undefined) updates.desc = descUpdate;
 
-    let content = await this.taskRepo.loadContent(taskId);
     content = await this.markdownService.updateFrontmatter(content, updates);
     await this.taskRepo.saveContent(taskId, content);
 
@@ -44,7 +61,7 @@ export class UpdateTaskUseCase {
       { -readonly [K in keyof IndexEntry]: IndexEntry[K] }
     > = {};
     if (input.name) indexUpdates.name = input.name;
-    if (input.desc !== undefined) indexUpdates.desc = input.desc;
+    if (descUpdate !== undefined) indexUpdates.desc = descUpdate;
     await this.indexRepo.updateEntry(taskId, indexUpdates);
 
     return { status: "task_updated" };
