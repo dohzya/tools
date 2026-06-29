@@ -68,7 +68,7 @@ deno install -g --allow-read --allow-write --allow-env --allow-run -n dz-review 
 
 Download pre-compiled binaries from [GitHub Releases](https://github.com/dohzya/tools/releases):
 
-1. Find the latest release for your tool (`md-v0.8.0*`, `wl-v0.19.0*`, `recap-v0.3.2*`, or `dz-review-v0.3.0*`)
+1. Find the latest release for your tool (`md-v0.8.0*`, `wl-v0.19.0*`, `recap-v0.4.0*`, or `dz-review-v0.3.0*`)
 2. Download the binary for your platform (e.g., `md-darwin-arm64` for macOS ARM)
 3. Make it executable: `chmod +x md-darwin-arm64`
 4. Move to your PATH: `mv md-darwin-arm64 ~/.local/bin/md`

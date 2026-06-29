@@ -1,26 +1,26 @@
 class Recap < Formula
   desc "Configurable project status dashboard for AI assistants"
   homepage "https://github.com/dohzya/tools"
-  version "0.3.2"
+  version "0.4.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/recap-v0.3.2/recap-darwin-arm64"
-      sha256 "46840d4f88014af6ef059f6b3c43237267bb14e6e656bf4f198bfdf4174b8524"
+      url "https://github.com/dohzya/tools/releases/download/recap-v0.4.0/recap-darwin-arm64"
+      sha256 "77fa5e51216a15a043fdf53ef901483a849612c3f3b081a13bc1ada6b95b375d"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/recap-v0.3.2/recap-darwin-x86_64"
-      sha256 "287a8a0ad4c85df5c5ca996ebdbe3fad603d670e44393db41520bcfc352fc92e"
+      url "https://github.com/dohzya/tools/releases/download/recap-v0.4.0/recap-darwin-x86_64"
+      sha256 "17d166447e3ad73a64ae826cb5ba3568db7c8934723804a7f39449259a684570"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/recap-v0.3.2/recap-linux-arm64"
-      sha256 "4d9ce20ad8a28a446f62603e9b9e5342fe16017105d2c8009a93855ddeca25cd"
+      url "https://github.com/dohzya/tools/releases/download/recap-v0.4.0/recap-linux-arm64"
+      sha256 "b9225490e800c5360ecaf7baa2c6e5969d1d3b8346404199f925e9fbd2ea51d9"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/recap-v0.3.2/recap-linux-x86_64"
-      sha256 "3d5d3944d3d029c250d3534f61cca2943eca06af0c3f481347475d3348b5022c"
+      url "https://github.com/dohzya/tools/releases/download/recap-v0.4.0/recap-linux-x86_64"
+      sha256 "e31caac735a99df0190d1699c74e0e990f79c1b7f097f14eb3090377af2c7052"
     end
   end
 
