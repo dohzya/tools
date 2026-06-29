@@ -7,7 +7,7 @@
 3. Verify the current source material.
 4. Update the closest existing document, or create a new one if the topic is not covered.
 5. Avoid duplicating content that already has a clear home.
-6. Update metadata: `verified_at`, `source_ref`, `themes`, `language`, and `directives` when needed.
+6. Update metadata: `verified_at`, `themes`, `language`, and `directives` when needed.
 7. Validate links, examples, commands, and terminology touched by the change.
 8. Check whether the `docs/*` recap in `AGENTS.md` is present and current. Propose adding or updating it if it is missing or stale.
 
@@ -58,3 +58,5 @@ Before considering a documentation change complete, verify:
 - relative links and source references resolve;
 - procedures include verification signals;
 - compliance and privacy constraints are respected.
+
+Do not add `source_ref` metadata to versioned documentation. Use body text for source references when the evidence matters.

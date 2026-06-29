@@ -47,7 +47,6 @@ themes:
   - architecture
   - api
 verified_at: 2026-06-08
-source_ref: 3a36d9cb
 language: en-US
 ---
 ```
@@ -57,9 +56,10 @@ Use:
 - `category`: logical category, usually matching the directory.
 - `themes`: short, stable tags in English.
 - `verified_at`: ISO 8601 date when the document was last checked against its sources.
-- `source_ref`: commit, ticket, release, transcript, log bundle, or other source reference used for verification.
 - `language`: `en-US` by default; use another language tag only when explicitly requested.
 - `directives`: optional style or form instructions. Do not store domain data in directives; fetch values from source material.
+
+Do not set `source_ref` in versioned documentation files. The commit that will contain the documentation cannot be known before commit time, and using a previous SHA creates ambiguous provenance. Put source references in the document body when useful.
 
 ## Format Rules
 

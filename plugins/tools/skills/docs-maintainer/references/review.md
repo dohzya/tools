@@ -3,7 +3,7 @@
 ## Review Workflow
 
 1. Inventory the documentation scope under review.
-2. Extract metadata: category, themes, source reference, verification date, language, and directives.
+2. Extract metadata: category, themes, verification date, language, and directives; inspect body source references when present.
 3. Compare documented behavior with source material.
 4. Check language, naming, category placement, links, examples, and completeness.
 5. Write a durable review file in `docs/review/` using `YYYY-MM-DD-HHmm-slug.md`.
