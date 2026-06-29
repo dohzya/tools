@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [recap-v0.4.0] — 2026-06-29
+
 ### Added
 
 - **recap:** `recap show <section...>` runs one or more resolved sections by id without executing the other configured sections.
