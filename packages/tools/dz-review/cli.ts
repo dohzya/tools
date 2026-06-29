@@ -8,6 +8,7 @@ import * as path from "node:path";
 import process from "node:process";
 import * as readline from "node:readline";
 import { agentInstructions } from "../agent-instructions.ts";
+import { pageText, shouldUsePager } from "../pager.ts";
 
 import {
   addAgentSessionFiles,
@@ -92,6 +93,7 @@ interface CliOptions {
   timestampOutputMode: TimestampOutputMode;
   timestampFormatInfo: boolean;
   colorMode: ColorMode | undefined;
+  pager: boolean | undefined;
 }
 
 type CliMode = CliOptions["mode"];
@@ -118,6 +120,7 @@ interface CommonCliffyOptions {
   since?: string;
   color?: string | false;
   noColor?: boolean;
+  pager?: boolean;
 }
 
 interface ReviewCliffyOptions extends CommonCliffyOptions {
@@ -452,13 +455,14 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       return 0;
     }
 
-    writeReviewItems(
+    await writeReviewItems(
       filterIgnoredFiles(files, ignoreRules),
       addedLinesByFile,
       options.conversationOnly,
       options.conversationFilter,
       options.context,
       options.since,
+      options.pager,
     );
     return 0;
   }
@@ -476,6 +480,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
     options.context,
     options.list,
     options.since,
+    options.pager,
   );
   return 0;
 }
@@ -539,6 +544,8 @@ function createReviewCommand() {
     )
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
+    .option("--pager", "Page list output with $PAGER.")
+    .option("--no-pager", "Print list output directly.")
     .option("--git", "Review only items on lines added in git diff HEAD.")
     .option("--diff", "Alias for --git.")
     .option("--list", "List matching review items without editing files.")
@@ -633,6 +640,8 @@ function createListCommand() {
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
     .option("--json", "Print structured JSON.")
+    .option("--pager", "Page text output with $PAGER.")
+    .option("--no-pager", "Print text output directly.")
     .option("--git", "Restrict list output to lines added in git diff HEAD.")
     .option("--diff", "Alias for --git.")
     .option("-c, --context <beforeAfter:string>", "Display context lines.")
@@ -670,6 +679,8 @@ function createDiffCommand() {
     )
     .option("--color <mode:string>", "Color mode: auto, always, or never.")
     .option("--no-color", "Disable colored output.")
+    .option("--pager", "Page text output with $PAGER.")
+    .option("--no-pager", "Print text output directly.")
     .option("-c, --context <beforeAfter:string>", "Display context lines.")
     .option("--context-before <lines:string>", "Display lines before an item.")
     .option("--context-after <lines:string>", "Display lines after an item.")
@@ -1091,6 +1102,7 @@ function appendCommonOptions(
   appendOption(argv, "--since", options.since);
   appendOption(argv, "--color", options.color);
   appendFlag(argv, options.noColor, "--no-color");
+  appendPagerOption(argv, options.pager);
 }
 
 function appendFlag(
@@ -1100,6 +1112,17 @@ function appendFlag(
 ): void {
   if (enabled) {
     argv.push(flag);
+  }
+}
+
+function appendPagerOption(argv: string[], pager: boolean | undefined): void {
+  if (pager === true) {
+    argv.push("--pager");
+    return;
+  }
+
+  if (pager === false) {
+    argv.push("--no-pager");
   }
 }
 
@@ -1135,6 +1158,7 @@ function parseArgs(argv: string[]): CliOptions {
       timestampOutputMode: "stdout",
       timestampFormatInfo: false,
       colorMode: undefined,
+      pager: undefined,
     };
   }
 
@@ -1159,6 +1183,7 @@ function parseArgs(argv: string[]): CliOptions {
       timestampOutputMode: "stdout",
       timestampFormatInfo: false,
       colorMode: undefined,
+      pager: undefined,
     };
   }
 
@@ -1181,6 +1206,7 @@ function parseArgs(argv: string[]): CliOptions {
   let timestampOutputMode: TimestampOutputMode = "stdout";
   let timestampFormatInfo = false;
   let colorMode: ColorMode | undefined;
+  let pager: boolean | undefined;
   const files: string[] = [];
 
   for (let index = 1; index < argv.length; index += 1) {
@@ -1270,6 +1296,16 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === "--no-color") {
       colorMode = "never";
+      continue;
+    }
+
+    if (arg === "--pager") {
+      pager = true;
+      continue;
+    }
+
+    if (arg === "--no-pager") {
+      pager = false;
       continue;
     }
 
@@ -1563,6 +1599,7 @@ function parseArgs(argv: string[]): CliOptions {
     timestampOutputMode,
     timestampFormatInfo,
     colorMode,
+    pager,
   };
 }
 
@@ -1616,6 +1653,7 @@ async function processFiles(
   context: DisplayContext,
   list: boolean,
   since: ReviewTimestamp | undefined,
+  pager: boolean | undefined,
 ): Promise<void> {
   if (files.length === 0) {
     process.stdout.write("No review annotations found.\n");
@@ -1623,12 +1661,13 @@ async function processFiles(
   }
 
   if (list) {
-    listReviewItems(
+    await listReviewItems(
       files,
       addedLinesByFile,
       conversationOnly,
       conversationFilter,
       since,
+      pager,
     );
     return;
   }
@@ -1839,13 +1878,50 @@ function actionPrompt(kind: "annotation" | "conversation"): string {
   }]ile ${color("[q]", "red")}uit [?]: `;
 }
 
-function listReviewItems(
+async function emitPagerAwareText(
+  text: string,
+  pager: boolean | undefined,
+): Promise<void> {
+  if (
+    shouldUsePager({
+      pager,
+      stdoutIsTerminal: process.stdout.isTTY === true,
+    })
+  ) {
+    await pageText(text);
+    return;
+  }
+
+  process.stdout.write(text);
+}
+
+async function listReviewItems(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
-): void {
+  pager: boolean | undefined,
+): Promise<void> {
+  await emitPagerAwareText(
+    formatReviewItemsList(
+      files,
+      addedLinesByFile,
+      conversationOnly,
+      conversationFilter,
+      since,
+    ),
+    pager,
+  );
+}
+
+function formatReviewItemsList(
+  files: string[],
+  addedLinesByFile: Map<string, Set<number>> | undefined,
+  conversationOnly: boolean,
+  conversationFilter: ConversationFilter,
+  since: ReviewTimestamp | undefined,
+): string {
   const items = collectLocatedReviewItems(
     files,
     addedLinesByFile,
@@ -1855,14 +1931,14 @@ function listReviewItems(
   );
 
   if (items.length === 0) {
-    process.stdout.write("No review annotations found.\n");
-    return;
+    return "No review annotations found.\n";
   }
 
+  const lines: string[] = [];
   const allIds = items.map((item) => item.id);
   for (let index = 0; index < items.length; index += 1) {
     const { file, id, item } = items[index];
-    process.stdout.write(
+    lines.push(
       formatReviewItemHeader(
         file,
         index + 1,
@@ -1871,8 +1947,10 @@ function listReviewItems(
         formatStableReviewItemIdForDisplay(id, allIds),
       ),
     );
-    process.stdout.write(`${summarizeReviewItem(item)}\n`);
+    lines.push(`${summarizeReviewItem(item)}\n`);
   }
+
+  return lines.join("");
 }
 
 function writeStatus(
@@ -1979,14 +2057,36 @@ function formatStatusTemplate(
     : status;
 }
 
-function writeReviewItems(
+async function writeReviewItems(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   context: DisplayContext,
   since: ReviewTimestamp | undefined,
-): void {
+  pager: boolean | undefined,
+): Promise<void> {
+  await emitPagerAwareText(
+    formatReviewItemsWithContext(
+      files,
+      addedLinesByFile,
+      conversationOnly,
+      conversationFilter,
+      context,
+      since,
+    ),
+    pager,
+  );
+}
+
+function formatReviewItemsWithContext(
+  files: string[],
+  addedLinesByFile: Map<string, Set<number>> | undefined,
+  conversationOnly: boolean,
+  conversationFilter: ConversationFilter,
+  context: DisplayContext,
+  since: ReviewTimestamp | undefined,
+): string {
   const items = collectLocatedReviewItems(
     files,
     addedLinesByFile,
@@ -1996,23 +2096,27 @@ function writeReviewItems(
   );
 
   if (items.length === 0) {
-    process.stdout.write("No review annotations found.\n");
-    return;
+    return "No review annotations found.\n";
   }
 
+  const lines: string[] = [];
   const allIds = items.map((item) => item.id);
   for (let index = 0; index < items.length; index += 1) {
     const { file, id, item, text } = items[index];
-    showReviewItem(
-      file,
-      index + 1,
-      items.length,
-      item,
-      text,
-      context,
-      formatStableReviewItemIdForDisplay(id, allIds),
+    lines.push(
+      formatReviewItem(
+        file,
+        index + 1,
+        items.length,
+        item,
+        text,
+        context,
+        formatStableReviewItemIdForDisplay(id, allIds),
+      ),
     );
   }
+
+  return lines.join("");
 }
 
 function writeReviewItemsJson(
@@ -3144,9 +3248,23 @@ function showReviewItem(
   context: DisplayContext,
   id?: string,
 ): void {
-  process.stdout.write(formatReviewItemHeader(file, index, total, item, id));
-  process.stdout.write(`${formatSourceContext(text, item, context)}\n`);
-  process.stdout.write(`${formatReviewItemBody(item)}\n`);
+  process.stdout.write(
+    formatReviewItem(file, index, total, item, text, context, id),
+  );
+}
+
+function formatReviewItem(
+  file: string,
+  index: number,
+  total: number,
+  item: ReviewItem,
+  text: string,
+  context: DisplayContext,
+  id?: string,
+): string {
+  return `${formatReviewItemHeader(file, index, total, item, id)}${
+    formatSourceContext(text, item, context)
+  }\n${formatReviewItemBody(item)}\n`;
 }
 
 function formatReviewItemHeader(
@@ -3877,6 +3995,7 @@ Common Options:
   --since <timestamp>           Keep only timestamped items from this date onward.
   --color <mode>                auto, always, or never.
   --no-color                    Disable colored output.
+  --pager, --no-pager           Page or directly print list-style output.
 
 Status Options:
   status output                 Default human status starts with Review session: active/none.

@@ -70,6 +70,7 @@ import {
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "@zod/zod/mini";
 import { ExplicitCast } from "../explicit-cast.ts";
+import { pageText, shouldUsePager } from "../pager.ts";
 import { buildCheckpointPrompt } from "./checkpoint-prompt.ts";
 import { CHECKPOINT_SYNTHESIS_CONTRACT } from "./checkpoint-guidance.ts";
 import { agentInstructions } from "../agent-instructions.ts";
@@ -3680,6 +3681,38 @@ async function cmdList(
   });
 }
 
+interface ListOutputDisplayOptions {
+  readonly json?: boolean;
+  readonly all?: boolean;
+  readonly header?: boolean;
+  readonly pager?: boolean;
+}
+
+async function emitListOutput(
+  output: ListOutput,
+  options: ListOutputDisplayOptions,
+): Promise<void> {
+  const text = options.json ? JSON.stringify(output) : formatList(
+    output,
+    options.all,
+    computePalette(),
+    options.header !== false,
+  );
+
+  if (
+    shouldUsePager({
+      pager: options.pager,
+      json: options.json,
+      stdoutIsTerminal: Deno.stdout.isTerminal(),
+    })
+  ) {
+    await pageText(`${text}\n`);
+    return;
+  }
+
+  console.log(text);
+}
+
 async function cmdDashboard(
   limit?: number,
   gitRoot?: string | null,
@@ -6594,6 +6627,8 @@ const listCmd = new Command()
   .option("--subtasks-of-started", "Include subtasks of started tasks")
   .option("--parent <taskId:string>", "Show only subtasks of this parent")
   .option("--no-header", "Hide contextual header lines")
+  .option("--pager", "Page text output with $PAGER")
+  .option("--no-pager", "Print text output directly")
   .action(async (options, pattern) => {
     try {
       // Build status filter from flags
@@ -6653,14 +6688,7 @@ const listCmd = new Command()
           options.subtasksOfStarted ?? false,
           resolvedParentFilter,
         );
-        console.log(
-          options.json ? JSON.stringify(output) : formatList(
-            output,
-            options.all,
-            computePalette(),
-            options.header !== false,
-          ),
-        );
+        await emitListOutput(output, options);
         return;
       }
 
@@ -6688,14 +6716,7 @@ const listCmd = new Command()
         options.subtasksOfStarted ?? false,
         resolvedParentFilter,
       );
-      console.log(
-        options.json ? JSON.stringify(output) : formatList(
-          output,
-          options.all,
-          computePalette(),
-          options.header !== false,
-        ),
-      );
+      await emitListOutput(output, options);
     } catch (e) {
       handleError(e, options.json ?? false);
     }

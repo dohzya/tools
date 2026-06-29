@@ -1,4 +1,9 @@
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import {
+  assert,
+  assertEquals,
+  assertRejects,
+  assertStringIncludes,
+} from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
 import { WtError } from "./domain/entities/errors.ts";
 import { ExplicitCast } from "../explicit-cast.ts";
@@ -513,6 +518,22 @@ async function captureOutput(fn: () => Promise<void>): Promise<string> {
   }
 }
 
+async function createPagerCaptureScript(dir: string): Promise<string> {
+  const script = `${dir}/pager.sh`;
+  await Deno.writeTextFile(script, '#!/bin/sh\ncat > "$PAGER_CAPTURE"\n');
+  await Deno.chmod(script, 0o755);
+  return script;
+}
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    Deno.env.delete(name);
+    return;
+  }
+
+  Deno.env.set(name, value);
+}
+
 // Tests for force flag and uncheckpointed entries
 Deno.test("worklog trace - sets has_uncheckpointed_entries flag", async () => {
   const tempDir = await Deno.makeTempDir();
@@ -535,6 +556,68 @@ Deno.test("worklog trace - sets has_uncheckpointed_entries flag", async () => {
     assertStringIncludes(taskContent, "has_uncheckpointed_entries: true");
   } finally {
     Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog list - sends text output to pager when forced", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const previousPager = Deno.env.get("PAGER");
+  const previousPagerCapture = Deno.env.get("PAGER_CAPTURE");
+  const previousForcePager = Deno.env.get("FORCE_PAGER");
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "Pager task"]);
+
+    const pager = await createPagerCaptureScript(tempDir);
+    const pagerCapture = `${tempDir}/pager-output.txt`;
+    Deno.env.set("PAGER", pager);
+    Deno.env.set("PAGER_CAPTURE", pagerCapture);
+    Deno.env.set("FORCE_PAGER", "1");
+
+    const output = await captureOutput(() => main(["list"]));
+
+    assertEquals(output, "");
+    assertStringIncludes(await Deno.readTextFile(pagerCapture), "Pager task");
+  } finally {
+    Deno.chdir(originalCwd);
+    restoreEnv("PAGER", previousPager);
+    restoreEnv("PAGER_CAPTURE", previousPagerCapture);
+    restoreEnv("FORCE_PAGER", previousForcePager);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("worklog list --no-pager overrides FORCE_PAGER", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  const previousPager = Deno.env.get("PAGER");
+  const previousPagerCapture = Deno.env.get("PAGER_CAPTURE");
+  const previousForcePager = Deno.env.get("FORCE_PAGER");
+
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "No pager task"]);
+
+    const pager = await createPagerCaptureScript(tempDir);
+    const pagerCapture = `${tempDir}/pager-output.txt`;
+    Deno.env.set("PAGER", pager);
+    Deno.env.set("PAGER_CAPTURE", pagerCapture);
+    Deno.env.set("FORCE_PAGER", "1");
+
+    const output = await captureOutput(() => main(["list", "--no-pager"]));
+
+    assertStringIncludes(output, "No pager task");
+    await assertRejects(() => Deno.stat(pagerCapture), Deno.errors.NotFound);
+  } finally {
+    Deno.chdir(originalCwd);
+    restoreEnv("PAGER", previousPager);
+    restoreEnv("PAGER_CAPTURE", previousPagerCapture);
+    restoreEnv("FORCE_PAGER", previousForcePager);
     await Deno.remove(tempDir, { recursive: true });
   }
 });

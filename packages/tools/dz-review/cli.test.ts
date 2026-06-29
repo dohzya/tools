@@ -29,6 +29,22 @@ function stripAnsi(text: string): string {
   return text.replace(new RegExp(String.raw`\x1b\[[0-9;]*m`, "g"), "");
 }
 
+async function createPagerCaptureScript(dir: string): Promise<string> {
+  const script = join(dir, "pager.sh");
+  await Deno.writeTextFile(script, '#!/bin/sh\ncat > "$PAGER_CAPTURE"\n');
+  await Deno.chmod(script, 0o755);
+  return script;
+}
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    Deno.env.delete(name);
+    return;
+  }
+
+  Deno.env.set(name, value);
+}
+
 Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () => {
   const output = await captureOutput(() => main(["agent-instructions"]));
 
@@ -464,6 +480,64 @@ Deno.test("dz-review list - lists review items", async () => {
     assertStringIncludes(output, "addition");
     assertStringIncludes(output, "open conversation");
   } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review list - sends text output to pager when forced", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const previousPager = Deno.env.get("PAGER");
+  const previousPagerCapture = Deno.env.get("PAGER_CAPTURE");
+  const previousForcePager = Deno.env.get("FORCE_PAGER");
+  await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
+
+  try {
+    const pager = await createPagerCaptureScript(dir);
+    const pagerCapture = join(dir, "pager-output.txt");
+    Deno.env.set("PAGER", pager);
+    Deno.env.set("PAGER_CAPTURE", pagerCapture);
+    Deno.env.set("FORCE_PAGER", "1");
+
+    const output = await captureOutput(() => main(["list", file]));
+
+    assertEquals(output, "");
+    const paged = await Deno.readTextFile(pagerCapture);
+    assertStringIncludes(paged, `${file}:1`);
+    assertStringIncludes(paged, "addition");
+  } finally {
+    restoreEnv("PAGER", previousPager);
+    restoreEnv("PAGER_CAPTURE", previousPagerCapture);
+    restoreEnv("FORCE_PAGER", previousForcePager);
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review list --no-pager overrides FORCE_PAGER", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const previousPager = Deno.env.get("PAGER");
+  const previousPagerCapture = Deno.env.get("PAGER_CAPTURE");
+  const previousForcePager = Deno.env.get("FORCE_PAGER");
+  await Deno.writeTextFile(file, "{++one++}\n");
+
+  try {
+    const pager = await createPagerCaptureScript(dir);
+    const pagerCapture = join(dir, "pager-output.txt");
+    Deno.env.set("PAGER", pager);
+    Deno.env.set("PAGER_CAPTURE", pagerCapture);
+    Deno.env.set("FORCE_PAGER", "1");
+
+    const output = await captureOutput(() =>
+      main(["list", "--no-pager", file])
+    );
+
+    assertStringIncludes(output, `${file}:1`);
+    await assertRejects(() => Deno.stat(pagerCapture), Deno.errors.NotFound);
+  } finally {
+    restoreEnv("PAGER", previousPager);
+    restoreEnv("PAGER_CAPTURE", previousPagerCapture);
+    restoreEnv("FORCE_PAGER", previousForcePager);
     await Deno.remove(dir, { recursive: true });
   }
 });
