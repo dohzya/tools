@@ -9,6 +9,7 @@ Before starting ANY release:
 - [ ] On `main` branch and up-to-date with origin
 - [ ] Know which tool(s) you're releasing and their NEW version numbers
 - [ ] Know the NEW `deno.json` version (JSR package - must always increment)
+- [ ] Audit every tool changed since its previous tag; release it now or leave it explicitly in `Unreleased`
 
 ## Version Semantics (CRITICAL)
 
@@ -29,6 +30,32 @@ Before starting ANY release:
 - `packages/tools/dz-review/cli.ts` → `dz-review` version (what `dz-review --version` shows)
 - Can differ from each other and from the JSR package version
 - These are independent version numbers for each CLI tool
+
+### Release Scope Audit (CRITICAL)
+
+Before `task bump-prepare`, identify every tool changed since its previous tool tag:
+
+```bash
+git log --oneline wl-vX.Y.Z..HEAD -- packages/tools/worklog packages/tools/CHANGELOG.md
+git log --oneline md-vX.Y.Z..HEAD -- packages/tools/markdown-surgeon packages/tools/CHANGELOG.md
+git log --oneline recap-vX.Y.Z..HEAD -- packages/tools/recap packages/tools/CHANGELOG.md
+git log --oneline dz-review-vX.Y.Z..HEAD -- packages/tools/dz-review packages/tools/CHANGELOG.md
+```
+
+The default proposed release scope is **all changed tools**. The agent must show the maintainer the detected scope before bumping versions, for example:
+
+| Tool    | Evidence since previous tag | Proposed action |
+| ------- | --------------------------- | --------------- |
+| `wl`    | source/changelog changed    | release now     |
+| `recap` | source/changelog changed    | release now     |
+| `md`    | no changes                  | exclude         |
+
+The maintainer may remove a changed tool from the release scope. Only then is the tool deferred:
+
+- **Release it now:** bump its `cli.ts` version, include its tool tag, run `task bump-finalize` for that tool, update its Homebrew formula, and verify the installed binary.
+- **Defer it intentionally:** keep its notes under `## Unreleased`, exclude it from the released changelog section, and record the maintainer decision plus why it is acceptable for the shared JSR package to contain that source before the CLI binary is released.
+
+`@dohzya/tools` is one shared JSR package. Publishing it for `wl` or `dz-review` can also publish newer `recap` or `md` source to JSR, but that does not release those Homebrew binaries. If a changed tool is needed for the release scenario, release that tool too.
 
 ### Example Scenario
 
@@ -54,6 +81,10 @@ JSR package: @dohzya/tools@0.6.1
 ```bash
 # 0. ALWAYS validate first (code + plugin manifests)
 task validate  # ✅ Must be green (validate:code + validate:plugin)
+
+# 0a. Audit release scope before bumping:
+#     - check each tool's previous tag against HEAD
+#     - release every changed tool now or keep it explicitly in Unreleased
 
 # 1. Prepare version bump (updates deno.json + tool cli.ts + skill imports only)
 #    The script prompts for confirmation. For non-interactive use (e.g. inside a subagent):
@@ -114,6 +145,7 @@ git tag v0.6.2 && git push origin v0.6.2
 | Step | Validation                | Command                                                                    | Why                                                                                                              |
 | ---- | ------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | 0    | `task validate` ✅        | Must pass (runs validate:code + validate:plugin)                           | Ensure clean starting state + plugin manifests                                                                   |
+| 0a   | Scope audit               | Compare each tool's previous tag to `HEAD`; inspect `CHANGELOG.md`         | Decide which changed tools are released now vs intentionally deferred                                            |
 | 1    | N/A                       | `echo y \| task bump-prepare TOOL=wl TOOL_VERSION=X.Y.Z JSR_VERSION=X.Y.Z` | Updates deno.json, cli.ts, skill imports ONLY (script prompts for confirmation; `echo y \|` for non-interactive) |
 | 1b   | N/A                       | Update `CHANGELOG.md` — add `[wl-vX.Y.Z] — YYYY-MM-DD` section             | Document what changed — read actual diffs, not just commit subjects                                              |
 | 1c   | `task validate` ✅        | Must pass                                                                  | Verify bump didn't break anything                                                                                |
@@ -131,6 +163,7 @@ git tag v0.6.2 && git push origin v0.6.2
 **Key gates:**
 
 - ✅ Step 0: Clean validation before starting
+- ✅ Step 0a: Scope audit covers every changed tool
 - ✅ Step 1c: Validation after version bump
 - ✅ Step 4: **CI MUST BE GREEN** before publishing to JSR or tagging
 - ✅ Step 5: JSR publish must succeed before tagging
@@ -143,6 +176,7 @@ git tag v0.6.2 && git push origin v0.6.2
 - JSR publish (step 5) MUST succeed before git tag (step 6)
 - Checksums calculated from **downloaded GitHub release binaries**, never from local builds
 - `task update-tap` handles everything: download, checksum, formula update, tap push
+- Do not leave changed, user-facing CLI behavior in an unreleased tool by accident just because the shared JSR package is being published for another tool
 
 ## Claude Code Integration
 
@@ -156,7 +190,8 @@ When assisting with releases, Claude should:
 6. **ALWAYS update CHANGELOG.md** (step 1b) before committing — add a new dated section with notable changes (`git log prev-tag..HEAD --oneline --no-merges`) — **read actual diffs to verify each change, never infer from commit subjects alone**
 7. **ALWAYS run `task validate`** before ANY commit
 8. **ALWAYS verify CI is green** before creating tags
-9. Never skip validation steps even if "it should work"
+9. **ALWAYS challenge the release scope** when `CHANGELOG.md` still has `Unreleased` entries for another tool touched since its previous tag
+10. Never skip validation steps even if "it should work"
 
 ## Version Files
 
@@ -291,6 +326,7 @@ brew upgrade wl && wl --version
 | Binary shows wrong version             | JSR published from wrong commit      | Ensure CI is green, re-run `gh workflow run publish.yml` |
 | Tag triggered build failure            | CI wasn't green on main              | **Never tag until CI passes** - delete tag and retry     |
 | deno.json at wrong version             | Only bumped tool version             | deno.json MUST bump every release (it's the JSR pkg)     |
+| Tool feature missing from Homebrew     | Changed tool was not included in tag | Run the scope audit; bump, tag, finalize, and verify it  |
 | Homebrew checksum mismatch             | Checksums from local build           | Re-run `task update-tap` (downloads from GH release)     |
 | Homebrew/docs point to missing release | bump script ran too early            | These files updated AFTER release exists                 |
 | "Package not found" during build       | JSR publish missing or wrong version | Check JSR has correct version, republish if needed       |
