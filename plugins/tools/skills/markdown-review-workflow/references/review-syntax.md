@@ -56,6 +56,46 @@ Review annotations may carry timestamp metadata without a role:
 
 Do not use `@agent` or `@me` inside annotation metadata. Keep roles for conversation messages only.
 
+## Passage References
+
+Use `ref:` comments to point at a source passage without copying it:
+
+```markdown
+<!-- ref: source.md:82; ../other.md:80-82^stable-id -->
+<!-- ref%궩거깇걸: 02_trame_commentee.md:82~GdwjSq -->
+```
+
+The timestamped form is `ref%...:`. Separate multiple targets with `;`. Canonical line syntax is `:82` for one line and `:80-82` for a range. The parser also accepts `:L82`, `:L80-L82`, and `:L80-82`, but rejects `:80-L82`.
+
+Targets may combine hints:
+
+- `~GdwjSq` is a generated dz-review item id, without a `rvw_` prefix.
+- `^stable-id` is a stable passage id defined in the target document with `<!-- ^stable-id -->`.
+
+References can be embedded in a conversation message:
+
+```markdown
+<!--
+@me%궩거깇걸 Pourquoi parler du SAS ici ?
+@agent%궩거깇걸 ref: 02_trame_commentee.md:82~GdwjSq
+@me Je vois, on reformule.
+-->
+```
+
+Refs may carry source snapshots using labelled delimiters:
+
+```markdown
+<!-- ref%궩거깇걸:
+  02_trame_commentee.md:82~GdwjSq {&&rFZEOtB
+  SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+  rFZEOtB&&};
+-->
+```
+
+Nested snapshots are valid when labels differ. `dz-review ref check` rejects duplicate nested labels, missing files, invalid targets, missing `~` or `^` ids, and stale snapshots. Snapshot comparison ignores delimiter-label changes. Generated snapshots are limited to 10 source lines by default; use `dz-review ref show --snapshot-lines <count>` to change the limit, or `--snapshot-lines 0` for unlimited snapshots.
+
+Use `dz-review ref snapshots [file...]` to print only snapshot blocks with a short provenance header. Add repeated `--ref <selector>` filters to keep only specific refs; selectors match the source location (`doc.md:12`), target location (`source.md:82`), or snapshot label (`rFZEOtB`). `ref snapshots` also accepts `--snapshot-lines <count>`.
+
 ## Roles
 
 Use only these durable roles in active conversations:

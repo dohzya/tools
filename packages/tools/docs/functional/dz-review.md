@@ -59,6 +59,49 @@ Annotations may carry timestamp metadata after the opening marker:
 {++%1WzvP91W|new text++} {--%2026-06-16T17:35:35+0200|old text--}
 ```
 
+Passage references use HTML comments. `ref:` and timestamped `ref%...:` are both accepted:
+
+```markdown
+<!-- ref: source.md:82; ../other.md:80-82^stable-id -->
+<!-- ref%궩거깇걸: 02_trame_commentee.md:82~GdwjSq -->
+```
+
+Line references are canonical without `L`: use `:82` for one line and `:80-82` for a range. The parser also accepts `:L82`, `:L80-L82`, and `:L80-82`; it rejects mixed suffix-only forms such as `:80-L82`.
+
+Reference targets may combine independent hints:
+
+| Marker       | Meaning                                      |
+| ------------ | -------------------------------------------- |
+| `~GdwjSq`    | Generated dz-review item id, without `rvw_`. |
+| `^stable-id` | Stable passage id defined in the target doc. |
+
+Define a stable passage id in the target document with:
+
+```markdown
+<!-- ^stable-id -->
+```
+
+References can appear inside conversation messages:
+
+```markdown
+<!-- @me%궩거깇걸 Pourquoi parler du SAS ici ?
+@agent%궩거깇걸 ref: 02_trame_commentee.md:82~GdwjSq
+@ Je vois, on reformule.
+-->
+```
+
+References may embed an explicit snapshot with a labelled delimiter. Labels are generated per reference occurrence, and nested snapshots are allowed when labels differ:
+
+```markdown
+<!-- ref%궩거깇걸:
+  02_trame_commentee.md:82~GdwjSq {&&rFZEOtB
+  SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+  rFZEOtB&&};
+-->
+```
+
+`dz-review ref check` validates files, line ranges, `~` ids, `^` ids, snapshot freshness, and duplicate nested snapshot labels. Snapshot comparison ignores only delimiter label changes. `dz-review ref list` lists each reference and the live referenced passage, using the pager for long text output. `dz-review ref show` prints a source-replaceable version of the document: refs without snapshots are rewritten with labelled `{&&...&&}` snapshots, while existing snapshots are preserved. `dz-review ref snapshots` prints only snapshot blocks with a short provenance header, and repeated `--ref <selector>` filters keep selected refs by source location, target location, or snapshot label. Generated snapshots include up to 10 source lines by default; use `--snapshot-lines <count>` to change the limit, or `--snapshot-lines 0` for unlimited snapshots.
+
 ## Conversation Status
 
 The status is derived from the final conversation message.
@@ -95,6 +138,11 @@ dz-review me status --short file.md
 dz-review list file.md
 dz-review list --pending-conversations file.md
 dz-review diff
+dz-review ref check file.md
+dz-review ref list file.md
+dz-review ref show file.md
+dz-review ref show --snapshot-lines 0 file.md
+dz-review ref snapshots --ref rFZEOtB --ref source.md:82 file.md
 dz-review timestamp -i file.md
 dz-review timestamp --compact -o stamped.md file.md
 dz-review now
@@ -120,9 +168,11 @@ Aliases from the standalone tool are preserved: `r`, `st`, `l`, `ls`, `d`, `ts`,
 
 The global options are `-C` / `--cwd`, `--state-dir <dir>`, and `--ignore-file <file>`. `--state-dir` controls where agent session state is stored; it defaults to `DZ_REVIEW_STATE_DIR` or `.dz-review` at the Git root when running inside a worktree. Explicit `--state-dir` and `DZ_REVIEW_STATE_DIR` values stay relative to the effective cwd unless absolute. `--ignore-file` controls the project ignore file; it defaults to `DZ_REVIEW_IGNORE_FILE` or `.dz-review-ignore`. CLI options take precedence over environment variables, and both are resolved after `-C` changes the working directory.
 
-The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--resolved`, `--conversation`, `--conversations`, `--open-conversations`, `--wip-conversations`, `--handled-conversations`, `--resolved-conversations`, `--pending-conversations`, `--ignore-closed-conversations`, `--since`, `--color`, and `--no-color`. `review`, `status`, and `list` also accept `--git` and `--diff` to restrict output to lines added in the current Git diff.
+The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--resolved`, `--conversation`, `--conversations`, `--open-conversations`, `--wip-conversations`, `--handled-conversations`, `--resolved-conversations`, `--pending-conversations`, `--ignore-closed-conversations`, `--since`, `--color`, and `--no-color`. `review`, `status`, and `list` also accept `--git` and `--diff` to restrict output to lines added in the current Git diff. `ref list` text output uses the pager by default when appropriate, with `--pager` and `--no-pager` overrides. `ref show --snapshot-lines <count>` and `ref snapshots --snapshot-lines <count>` control generated snapshot size; `0` means unlimited. `ref snapshots --ref <selector>` is repeatable and matches snapshot labels, source ref locations such as `doc.md:12`, and target locations such as `source.md:82`.
 
 The CLI reads the configured ignore file from the current directory. Matching paths are skipped in all modes, and negated patterns such as `!docs/` can re-include paths that are otherwise ignored by Git. The active agent state directory and the default `.dz-review/` directory are ignored by default even when no ignore file exists. Explicit file arguments for `dz-review session start` and `dz-review session add-file` bypass project ignore rules, but still respect the builtin state-directory protections.
+
+The DZ Review VS Code extension recognizes passage refs in Markdown. Hovering a ref shows the referenced passage, including refs to HTML conversation comments, and go-to-definition opens the target file at the referenced line. The `dzMdReview.refSnapshotLines` setting limits hover previews with the same default of 10 lines; `0` means unlimited.
 
 ## Agent Workflow
 

@@ -13,6 +13,16 @@ import {
   getShortStableReviewItemId,
   resolveStableReviewItemId,
 } from "../../../tools/dz-review/stable-review-id";
+import {
+  collectReviewReferences,
+  formatReferenceTarget,
+  type ReferenceTarget,
+  type ReviewReference,
+} from "../../../tools/dz-review/ref-core";
+
+declare const TextDecoder: {
+  new (): { decode(input: Uint8Array): string };
+};
 
 type ReviewRole = "agent" | "me" | "quick-me";
 type ConversationStatus = "open" | "wip" | "handled" | "resolved";
@@ -158,6 +168,7 @@ const HTML_REVIEW_OPEN = "<!--";
 const HTML_REVIEW_CLOSE = "-->";
 const CRITICMARKUP_REVIEW_OPEN = "{??";
 const CRITICMARKUP_REVIEW_CLOSE = "??}";
+const DEFAULT_REF_SNAPSHOT_LINES = 10;
 const REVIEW_MODE_CONTEXT = "dzMdReview.mode";
 const REVIEW_BATCH_MODE_CONTEXT = "dzMdReview.inBatchMode";
 const REVIEW_PANEL_VIEW_ID = "dzMdReview.reviewItems";
@@ -450,7 +461,10 @@ export function activate(context: vscode.ExtensionContext): void {
       showResolvedReviewItems,
     ),
     vscode.languages.registerHoverProvider({ language: "markdown" }, {
-      provideHover: provideTimestampHover,
+      provideHover: provideReviewHover,
+    }),
+    vscode.languages.registerDefinitionProvider({ language: "markdown" }, {
+      provideDefinition: provideReferenceDefinition,
     }),
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       updateConversationDecorations(editor);
@@ -2747,6 +2761,228 @@ function provideTimestampHover(
   return undefined;
 }
 
+async function provideReviewHover(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+): Promise<vscode.Hover | undefined> {
+  return await provideReferenceHover(document, position) ??
+    provideTimestampHover(document, position);
+}
+
+async function provideReferenceHover(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+): Promise<vscode.Hover | undefined> {
+  const located = findReferenceTargetAt(document, position);
+  if (!located.target.lineRange) {
+    return undefined;
+  }
+
+  const targetFile = resolveReferenceTargetFile(document, located.target);
+  const targetText = await readReferenceTargetText(targetFile);
+  if (targetText === undefined) {
+    return undefined;
+  }
+
+  const excerpt = extractReferenceExcerpt(
+    targetText,
+    located.target,
+  );
+  const limitedExcerpt = limitReferenceHoverExcerpt(
+    excerpt,
+    getReferenceSnapshotLines(),
+  );
+  const formatted = formatReferenceTarget(located.target);
+  const markdown = new vscode.MarkdownString(
+    [`**${formatted.canonical}**`, "", formatHoverExcerpt(limitedExcerpt)]
+      .join("\n"),
+  );
+
+  return new vscode.Hover(
+    markdown,
+    new vscode.Range(
+      document.positionAt(located.start),
+      document.positionAt(located.end),
+    ),
+  );
+}
+
+function provideReferenceDefinition(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+): vscode.Location | undefined {
+  const located = findReferenceTargetAt(document, position);
+  if (!located.target.lineRange) {
+    return undefined;
+  }
+
+  const targetFile = resolveReferenceTargetFile(document, located.target);
+  const line = Math.max(0, located.target.lineRange.start - 1);
+  const targetPosition = new vscode.Position(line, 0);
+
+  return new vscode.Location(
+    vscode.Uri.file(targetFile),
+    new vscode.Range(targetPosition, targetPosition),
+  );
+}
+
+function findReferenceTargetAt(
+  document: vscode.TextDocument,
+  position: vscode.Position,
+): {
+  end: number;
+  reference: ReviewReference;
+  start: number;
+  target: ReferenceTarget;
+} {
+  const offset = document.offsetAt(position);
+  for (const reference of collectReviewReferences(document.getText())) {
+    let searchStart = 0;
+    for (const target of reference.targets) {
+      const relativeStart = reference.raw.indexOf(target.raw, searchStart);
+      if (relativeStart < 0) {
+        continue;
+      }
+
+      const start = reference.start + relativeStart;
+      const end = start + target.raw.length;
+      if (start <= offset && offset <= end) {
+        return { end, reference, start, target };
+      }
+
+      searchStart = relativeStart + target.raw.length;
+    }
+  }
+
+  return {
+    end: 0,
+    reference: {
+      end: 0,
+      index: 0,
+      lineEnd: 0,
+      lineStart: 0,
+      raw: "",
+      start: 0,
+      targets: [],
+    },
+    start: 0,
+    target: { path: "", raw: "" },
+  };
+}
+
+function resolveReferenceTargetFile(
+  document: vscode.TextDocument,
+  target: ReferenceTarget,
+): string {
+  if (isAbsoluteReferencePath(target.path)) {
+    return target.path;
+  }
+
+  return normalizeReferencePath(
+    `${dirnameReferencePath(getDocumentPath(document))}/${target.path}`,
+  );
+}
+
+function getDocumentPath(document: vscode.TextDocument): string {
+  return document.uri?.fsPath || document.fileName || "active.md";
+}
+
+async function readReferenceTargetText(
+  targetFile: string,
+): Promise<string | undefined> {
+  try {
+    const content = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(targetFile),
+    );
+    return new TextDecoder().decode(content);
+  } catch {
+    return undefined;
+  }
+}
+
+function isAbsoluteReferencePath(value: string): boolean {
+  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
+}
+
+function dirnameReferencePath(value: string): string {
+  const normalized = value.replace(/\\/g, "/");
+  const index = normalized.lastIndexOf("/");
+  return index >= 0 ? normalized.slice(0, index) : ".";
+}
+
+function normalizeReferencePath(value: string): string {
+  const absolutePrefix = value.startsWith("/") ? "/" : "";
+  const segments = value.replace(/\\/g, "/").split("/");
+  const normalized: string[] = [];
+
+  for (const segment of segments) {
+    if (segment.length === 0 || segment === ".") {
+      continue;
+    }
+
+    if (segment === "..") {
+      normalized.pop();
+      continue;
+    }
+
+    normalized.push(segment);
+  }
+
+  return `${absolutePrefix}${normalized.join("/")}`;
+}
+
+function extractReferenceExcerpt(
+  text: string,
+  target: ReferenceTarget,
+): string {
+  if (!target.lineRange) {
+    return "";
+  }
+
+  const lines = text.split(/\r?\n/);
+  return lines.slice(target.lineRange.start - 1, target.lineRange.end).join(
+    "\n",
+  );
+}
+
+function formatHoverExcerpt(excerpt: string): string {
+  if (excerpt.length === 0) {
+    return "> ";
+  }
+
+  return excerpt.split(/\r?\n/).map((line) => `> ${escapeMarkdownHtml(line)}`)
+    .join("\n");
+}
+
+function limitReferenceHoverExcerpt(
+  excerpt: string,
+  snapshotLines: number,
+): string {
+  if (snapshotLines === 0 || excerpt.length === 0) {
+    return excerpt;
+  }
+
+  const lines = excerpt.split(/\r?\n/);
+  if (lines.length <= snapshotLines) {
+    return excerpt;
+  }
+
+  const omitted = lines.length - snapshotLines;
+  return [
+    ...lines.slice(0, snapshotLines),
+    `[ref snapshot truncated: ${omitted} ${
+      omitted === 1 ? "line" : "lines"
+    } omitted]`,
+  ].join("\n");
+}
+
+function escapeMarkdownHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function getConversationContentRanges(
   document: vscode.TextDocument,
   conversation: Conversation,
@@ -3168,6 +3404,15 @@ function getTimestampFormat(): ExtensionTimestampFormat {
   return "compact";
 }
 
+function getReferenceSnapshotLines(): number {
+  const value = vscode.workspace.getConfiguration("dzMdReview").get<number>(
+    "refSnapshotLines",
+  );
+  return typeof value === "number" && Number.isInteger(value) && value >= 0
+    ? value
+    : DEFAULT_REF_SNAPSHOT_LINES;
+}
+
 function getConversationMarkers(raw: string): { open: string; close: string } {
   if (raw.startsWith(CRITICMARKUP_REVIEW_OPEN)) {
     return { open: CRITICMARKUP_REVIEW_OPEN, close: CRITICMARKUP_REVIEW_CLOSE };
@@ -3219,6 +3464,8 @@ export const __test = {
   getConversationStatus,
   moveToConversation,
   moveToReviewBlock,
+  provideReferenceDefinition,
+  provideReviewHover,
   provideTimestampHover,
   removeHumanOk,
   revealReviewPanelItem,

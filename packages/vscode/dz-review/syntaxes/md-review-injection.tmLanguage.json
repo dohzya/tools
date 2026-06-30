@@ -52,6 +52,9 @@
         },
         {
           "include": "#md-review-human-quick-line"
+        },
+        {
+          "include": "#md-review-ref-snapshot"
         }
       ]
     },
@@ -87,6 +90,32 @@
         },
         {
           "include": "#md-review-human-quick-line"
+        },
+        {
+          "include": "#md-review-ref-snapshot"
+        }
+      ]
+    },
+    "md-review-ref-snapshot": {
+      "name": "meta.ref.snapshot.md-review.markdown",
+      "begin": "\\{&&([A-Za-z0-9_-]+)",
+      "beginCaptures": {
+        "0": {
+          "name": "punctuation.definition.ref-snapshot.begin.md-review.markdown"
+        },
+        "1": {
+          "name": "entity.name.label.ref-snapshot.md-review.markdown"
+        }
+      },
+      "end": "\\1&&\\}",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.ref-snapshot.end.md-review.markdown"
+        }
+      },
+      "patterns": [
+        {
+          "include": "#md-review-ref-snapshot"
         }
       ]
     },

@@ -18,6 +18,7 @@ Use `dz-review` as a non-interactive inspection and timestamp helper:
 3. Before handing edited annotated files back, run `dz-review session done [file...]`. It compares against the start snapshot, restores each file's recorded timestamp format when possible, and reports answered, cleanable, remaining, and guardrail-failed conversations.
 4. Rerun `dz-review session start --force [file...]` only when intentionally replacing the active snapshot.
 5. Outside an agent session, use the ordinary `dz-review` inspection and timestamp commands as a manual fallback.
+6. For passage references, use `dz-review ref check [file...]` to validate them, `dz-review ref list [file...]` to inspect live referenced passages, `dz-review ref show [file...]` to print source-replaceable refs with embedded snapshots, and `dz-review ref snapshots [file...]` to print only snapshot blocks.
 
 Agents should edit the Markdown threads directly. Do not use the interactive `dz-review review` flow from an agent session.
 

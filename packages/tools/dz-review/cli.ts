@@ -33,6 +33,15 @@ import {
   toAgentReviewItem,
 } from "./agent-core.ts";
 import {
+  collectReferenceIds,
+  collectReviewReferences,
+  formatReferenceTarget,
+  normalizeReferenceSnapshotContent,
+  type ReferenceTarget,
+  type ReviewReference,
+  validateReferenceSnapshots,
+} from "./ref-core.ts";
+import {
   configureDzReviewRuntime,
   DZ_REVIEW_IGNORE_FILE_ENV,
   DZ_REVIEW_STATE_DIR_ENV,
@@ -71,7 +80,10 @@ import {
   type TimestampFormatStats,
   transformReviewTimestamps,
 } from "./timestamp.ts";
-import { STABLE_REVIEW_ID_PREFIX } from "./stable-review-id.ts";
+import {
+  assignStableReviewItemIds,
+  STABLE_REVIEW_ID_PREFIX,
+} from "./stable-review-id.ts";
 
 interface CliOptions {
   context: DisplayContext;
@@ -224,6 +236,61 @@ interface AgentCleanCliffyOptions {
   json?: boolean;
   validated?: boolean;
 }
+
+interface RefCliffyOptions {
+  json?: boolean;
+  pager?: boolean;
+  snapshotLines?: string;
+}
+
+interface RefCheckCliffyOptions extends RefCliffyOptions {}
+
+interface RefSnapshotCliffyOptions extends RefCliffyOptions {
+  ref?: string[];
+}
+
+type RefIssueKind =
+  | "duplicate-nested-label"
+  | "invalid-target"
+  | "missing-file"
+  | "missing-review-id"
+  | "missing-stable-id"
+  | "stale-snapshot"
+  | "unclosed-snapshot";
+
+interface LocatedReference {
+  file: string;
+  reference: ReviewReference;
+}
+
+interface ResolvedReferenceTarget {
+  excerpt?: string;
+  reference: ReviewReference;
+  sourceFile: string;
+  target: ReferenceTarget;
+  targetFile: string;
+}
+
+interface RefIssue {
+  kind: RefIssueKind;
+  message: string;
+  reference: ReviewReference;
+  sourceFile: string;
+  target?: ReferenceTarget;
+}
+
+interface RefSnapshotItem {
+  label: string;
+  reference: ReviewReference;
+  snapshot: string;
+  sourceFile: string;
+  target: ReferenceTarget;
+  targetFile: string;
+}
+
+const DEFAULT_REF_SNAPSHOT_LINES = 10;
+const REF_SNAPSHOT_TRUNCATED_RE =
+  /^\[ref snapshot truncated: (\d+) lines? omitted\]$/;
 
 class DzReviewCliError extends Error {
   constructor(
@@ -513,12 +580,77 @@ function createCli() {
     .command("diff", createDiffCommand())
     .command("timestamp", createTimestampCommand())
     .command("now", createNowCommand())
+    .command("ref", createRefCommand())
     .command("session", createSessionCommand())
     .command("agent", createAgentCommand())
     .command("me", createMeCommand())
     .command("stats", createStatsCommand())
     .command("agent-instructions", createAgentInstructionsCommand())
     .command("completions", new CompletionsCommand());
+}
+
+function createRefCommand() {
+  return new Command()
+    .description("Inspect and validate Markdown passage references")
+    .command("check", createRefCheckCommand())
+    .command("list", createRefListCommand())
+    .command("show", createRefShowCommand())
+    .command("snapshots", createRefSnapshotsCommand());
+}
+
+function createRefCheckCommand() {
+  return new Command()
+    .description("Validate dz-review refs")
+    .option("--json", "Print structured JSON.")
+    .arguments("[files...:string]")
+    .action((options: RefCheckCliffyOptions, ...files: string[]) => {
+      runRefCheck(files, options);
+    });
+}
+
+function createRefListCommand() {
+  return new Command()
+    .description("List dz-review refs and referenced passages")
+    .option("--json", "Print structured JSON.")
+    .option("--pager", "Page text output with $PAGER.")
+    .option("--no-pager", "Print text output directly.")
+    .arguments("[files...:string]")
+    .action(async (options: RefCliffyOptions, ...files: string[]) => {
+      await runRefList(files, options);
+    });
+}
+
+function createRefShowCommand() {
+  return new Command()
+    .description("Print documents with referenced passages expanded")
+    .option("--json", "Print structured JSON.")
+    .option(
+      "--snapshot-lines <count:string>",
+      `Maximum source lines in generated snapshots. Defaults to ${DEFAULT_REF_SNAPSHOT_LINES}; 0 means unlimited.`,
+    )
+    .arguments("[files...:string]")
+    .action((options: RefCliffyOptions, ...files: string[]) => {
+      runRefShow(files, options);
+    });
+}
+
+function createRefSnapshotsCommand() {
+  return new Command()
+    .description("Print only reference snapshots")
+    .option("--json", "Print structured JSON.")
+    .option(
+      "--snapshot-lines <count:string>",
+      `Maximum source lines in generated snapshots. Defaults to ${DEFAULT_REF_SNAPSHOT_LINES}; 0 means unlimited.`,
+    )
+    .option(
+      "--ref <selector:string>",
+      "Filter snapshots by source location, target, or snapshot label. Repeatable.",
+      { collect: true },
+    )
+    .arguments("[files...:string]")
+    .action((options: RefSnapshotCliffyOptions, ...files: string[]) => {
+      runRefSnapshots(files, options);
+    });
 }
 
 function createReviewCommand() {
@@ -2370,6 +2502,525 @@ function runAgentDiff(files: string[], json: boolean): void {
       ? `${JSON.stringify(status, null, 2)}\n`
       : formatAgentActionDiff(status),
   );
+}
+
+function runRefCheck(
+  files: string[],
+  options: RefCheckCliffyOptions,
+): void {
+  const located = collectLocatedReferences(resolveRefFiles(files));
+  const issues = collectRefIssues(located);
+
+  if (options.json) {
+    process.stdout.write(
+      `${JSON.stringify({ version: 1, issues }, null, 2)}\n`,
+    );
+  } else if (issues.length === 0) {
+    process.stdout.write("ref check ok\n");
+  } else {
+    process.stdout.write(formatRefIssues(issues));
+  }
+
+  if (issues.length > 0) {
+    throw new DzReviewCliError("invalid_args", "ref check failed");
+  }
+}
+
+async function runRefList(
+  files: string[],
+  options: RefCliffyOptions,
+): Promise<void> {
+  const resolved = collectResolvedReferenceTargets(
+    collectLocatedReferences(resolveRefFiles(files)),
+  );
+
+  if (options.json) {
+    process.stdout.write(
+      `${JSON.stringify({ version: 1, refs: resolved }, null, 2)}\n`,
+    );
+    return;
+  }
+
+  await emitPagerAwareText(formatRefList(resolved), options.pager);
+}
+
+function runRefShow(files: string[], options: RefCliffyOptions): void {
+  const refFiles = resolveRefFiles(files);
+  const snapshotLines = options.snapshotLines
+    ? parseNonNegativeInteger(options.snapshotLines, "--snapshot-lines")
+    : DEFAULT_REF_SNAPSHOT_LINES;
+
+  if (options.json) {
+    process.stdout.write(
+      `${JSON.stringify({ version: 1, files: refFiles }, null, 2)}\n`,
+    );
+    return;
+  }
+
+  process.stdout.write(formatRefShow(refFiles, snapshotLines));
+}
+
+function runRefSnapshots(
+  files: string[],
+  options: RefSnapshotCliffyOptions,
+): void {
+  const snapshotLines = options.snapshotLines
+    ? parseNonNegativeInteger(options.snapshotLines, "--snapshot-lines")
+    : DEFAULT_REF_SNAPSHOT_LINES;
+  const snapshots = collectRefSnapshots(
+    collectLocatedReferences(resolveRefFiles(files)),
+    snapshotLines,
+    options.ref ?? [],
+  );
+
+  if (options.json) {
+    process.stdout.write(
+      `${JSON.stringify({ version: 1, snapshots }, null, 2)}\n`,
+    );
+    return;
+  }
+
+  process.stdout.write(formatRefSnapshots(snapshots));
+}
+
+function resolveRefFiles(files: string[]): string[] {
+  const ignoreRules = readReviewIgnoreRules();
+  return filterImplicitIgnoredFiles(
+    resolveReviewFiles(files, ignoreRules),
+    ignoreRules,
+    files,
+  );
+}
+
+function collectLocatedReferences(files: string[]): LocatedReference[] {
+  const located: LocatedReference[] = [];
+
+  for (const file of files) {
+    if (!fs.existsSync(file)) {
+      continue;
+    }
+
+    const text = fs.readFileSync(file, "utf8");
+    for (const reference of collectReviewReferences(text)) {
+      located.push({ file, reference });
+    }
+  }
+
+  return located;
+}
+
+function collectRefIssues(located: LocatedReference[]): RefIssue[] {
+  const issues: RefIssue[] = [];
+
+  for (const item of located) {
+    for (const snapshotIssue of validateReferenceSnapshots(item.reference)) {
+      issues.push({
+        kind: snapshotIssue.kind,
+        message: `snapshot label ${snapshotIssue.label} is invalid`,
+        reference: item.reference,
+        sourceFile: item.file,
+      });
+    }
+
+    for (const target of item.reference.targets) {
+      if (!target.lineRange) {
+        issues.push({
+          kind: "invalid-target",
+          message: "invalid target",
+          reference: item.reference,
+          sourceFile: item.file,
+          target,
+        });
+        continue;
+      }
+
+      const targetFile = resolveReferenceTargetFile(item.file, target);
+      if (!fs.existsSync(targetFile)) {
+        issues.push({
+          kind: "missing-file",
+          message: `missing file ${target.path}`,
+          reference: item.reference,
+          sourceFile: item.file,
+          target,
+        });
+        continue;
+      }
+
+      const targetText = fs.readFileSync(targetFile, "utf8");
+      if (
+        target.reviewId &&
+        !targetReviewIdExists(targetFile, targetText, target.reviewId)
+      ) {
+        issues.push({
+          kind: "missing-review-id",
+          message: `missing review id ~${target.reviewId}`,
+          reference: item.reference,
+          sourceFile: item.file,
+          target,
+        });
+      }
+
+      if (
+        target.stableId &&
+        !collectReferenceIds(targetText).some((id) => id.id === target.stableId)
+      ) {
+        issues.push({
+          kind: "missing-stable-id",
+          message: `missing stable ref id ^${target.stableId}`,
+          reference: item.reference,
+          sourceFile: item.file,
+          target,
+        });
+      }
+
+      if (target.snapshot) {
+        const excerpt = extractReferenceExcerpt(targetText, target);
+        if (
+          !referenceSnapshotMatchesExcerpt(target.snapshot.content, excerpt)
+        ) {
+          issues.push({
+            kind: "stale-snapshot",
+            message: "stale snapshot",
+            reference: item.reference,
+            sourceFile: item.file,
+            target,
+          });
+        }
+      }
+    }
+  }
+
+  return issues;
+}
+
+function referenceSnapshotMatchesExcerpt(
+  snapshotContent: string,
+  excerpt: string,
+): boolean {
+  if (
+    normalizeReferenceSnapshotContent(snapshotContent) ===
+      normalizeReferenceSnapshotContent(excerpt)
+  ) {
+    return true;
+  }
+
+  const snapshotLines = splitSnapshotContentLines(snapshotContent);
+  const marker = snapshotLines[snapshotLines.length - 1]?.trim().match(
+    REF_SNAPSHOT_TRUNCATED_RE,
+  );
+  if (!marker) {
+    return false;
+  }
+
+  const omitted = Number(marker[1]);
+  const prefixLines = snapshotLines.slice(0, -1);
+  const excerptLines = splitSnapshotContentLines(excerpt);
+  if (excerptLines.length !== prefixLines.length + omitted) {
+    return false;
+  }
+
+  return normalizeReferenceSnapshotContent(prefixLines.join("\n")) ===
+    normalizeReferenceSnapshotContent(
+      excerptLines.slice(0, prefixLines.length).join("\n"),
+    );
+}
+
+function splitSnapshotContentLines(value: string): string[] {
+  const normalized = normalizeReferenceSnapshotLabels(value)
+    .replace(/\r\n/g, "\n")
+    .trim();
+  return normalized.length === 0 ? [] : normalized.split("\n");
+}
+
+function normalizeReferenceSnapshotLabels(value: string): string {
+  return value
+    .replace(/\{&&[A-Za-z0-9_-]+/g, "{&&")
+    .replace(/[A-Za-z0-9_-]+&&\}/g, "&&}");
+}
+
+function collectResolvedReferenceTargets(
+  located: LocatedReference[],
+): ResolvedReferenceTarget[] {
+  const resolved: ResolvedReferenceTarget[] = [];
+
+  for (const item of located) {
+    for (const target of item.reference.targets) {
+      const targetFile = resolveReferenceTargetFile(item.file, target);
+      const excerpt = fs.existsSync(targetFile) && target.lineRange
+        ? extractReferenceExcerpt(fs.readFileSync(targetFile, "utf8"), target)
+        : undefined;
+      resolved.push({
+        ...(excerpt !== undefined ? { excerpt } : {}),
+        reference: item.reference,
+        sourceFile: item.file,
+        target,
+        targetFile,
+      });
+    }
+  }
+
+  return resolved;
+}
+
+function collectRefSnapshots(
+  located: LocatedReference[],
+  snapshotLines: number,
+  selectors: string[],
+): RefSnapshotItem[] {
+  const snapshots: RefSnapshotItem[] = [];
+
+  for (const item of located) {
+    for (const [targetIndex, target] of item.reference.targets.entries()) {
+      const targetFile = resolveReferenceTargetFile(item.file, target);
+      const excerpt = fs.existsSync(targetFile) && target.lineRange
+        ? extractReferenceExcerpt(fs.readFileSync(targetFile, "utf8"), target)
+        : "";
+      const label = target.snapshot?.label ??
+        makeGeneratedSnapshotLabel(item.reference, targetIndex);
+      const snapshot = target.snapshot?.raw ??
+        formatGeneratedSnapshot(
+          item.reference,
+          targetIndex,
+          excerpt,
+          snapshotLines,
+        );
+      const snapshotItem = {
+        label,
+        reference: item.reference,
+        snapshot,
+        sourceFile: item.file,
+        target,
+        targetFile,
+      };
+      if (refSnapshotMatchesSelectors(snapshotItem, selectors)) {
+        snapshots.push(snapshotItem);
+      }
+    }
+  }
+
+  return snapshots;
+}
+
+function refSnapshotMatchesSelectors(
+  item: RefSnapshotItem,
+  selectors: string[],
+): boolean {
+  if (selectors.length === 0) {
+    return true;
+  }
+
+  const formatted = formatReferenceTarget(item.target);
+  const sourceFile = normalizePath(item.sourceFile);
+  const candidates = [
+    item.label,
+    sourceFile,
+    `${sourceFile}:${item.reference.lineStart}`,
+    formatted.canonical,
+    formatted.location,
+    item.target.raw,
+  ];
+
+  return selectors.some((selector) =>
+    candidates.some((candidate) =>
+      candidate === selector || candidate.endsWith(`/${selector}`)
+    )
+  );
+}
+
+function targetReviewIdExists(
+  file: string,
+  text: string,
+  reviewId: string,
+): boolean {
+  const itemsWithIds = assignStableReviewItemIds(
+    normalizePath(file),
+    collectReviewItems(text, false, "all"),
+  );
+  const allIds = itemsWithIds.map((item) => item.id);
+  return itemsWithIds.some(({ id }) =>
+    id === reviewId ||
+    formatStableReviewItemIdForDisplay(id, allIds) === reviewId
+  );
+}
+
+function extractReferenceExcerpt(
+  text: string,
+  target: ReferenceTarget,
+): string {
+  if (!target.lineRange) {
+    return "";
+  }
+
+  const lines = text.split(/\r?\n/);
+  return lines.slice(target.lineRange.start - 1, target.lineRange.end).join(
+    "\n",
+  );
+}
+
+function resolveReferenceTargetFile(
+  sourceFile: string,
+  target: ReferenceTarget,
+): string {
+  return path.isAbsolute(target.path)
+    ? target.path
+    : path.resolve(path.dirname(sourceFile), target.path);
+}
+
+function formatRefIssues(issues: RefIssue[]): string {
+  return issues.map((issue) => {
+    const target = issue.target
+      ? ` ${formatReferenceTarget(issue.target).canonical}`
+      : "";
+    return `${
+      normalizePath(issue.sourceFile)
+    }:${issue.reference.lineStart}${target}: ${issue.message}\n`;
+  }).join("");
+}
+
+function formatRefList(items: ResolvedReferenceTarget[]): string {
+  if (items.length === 0) {
+    return "No references found.\n";
+  }
+
+  const lines: string[] = [];
+  for (const item of items) {
+    const formatted = formatReferenceTarget(item.target);
+    lines.push(
+      `${
+        normalizePath(item.sourceFile)
+      }:${item.reference.lineStart} -> ${formatted.location}`,
+    );
+    if (item.excerpt) {
+      lines.push(indentRefExcerpt(item.excerpt));
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}
+
+function formatRefShow(files: string[], snapshotLines: number): string {
+  if (files.length === 0) {
+    return "";
+  }
+
+  return files.map((file) => formatRefShowFile(file, snapshotLines)).join("\n");
+}
+
+function formatRefShowFile(file: string, snapshotLines: number): string {
+  const text = fs.readFileSync(file, "utf8");
+  const references = collectReviewReferences(text);
+  if (references.length === 0) {
+    return text.endsWith("\n") ? text : `${text}\n`;
+  }
+
+  let output = "";
+  let cursor = 0;
+  for (const reference of references) {
+    output += text.slice(cursor, reference.start);
+    output += formatReferenceWithSnapshots(file, reference, snapshotLines);
+    cursor = reference.end;
+  }
+  output += text.slice(cursor);
+  return output.endsWith("\n") ? output : `${output}\n`;
+}
+
+function formatRefSnapshots(items: RefSnapshotItem[]): string {
+  if (items.length === 0) {
+    return "No reference snapshots found.\n";
+  }
+
+  return `${items.map(formatRefSnapshot).join("\n\n")}\n`;
+}
+
+function formatRefSnapshot(item: RefSnapshotItem): string {
+  const formatted = formatReferenceTarget(item.target);
+  return [
+    `${
+      normalizePath(item.sourceFile)
+    }:${item.reference.lineStart} -> ${formatted.location} ${item.label}`,
+    item.snapshot,
+  ].join("\n");
+}
+
+function formatReferenceWithSnapshots(
+  sourceFile: string,
+  reference: ReviewReference,
+  snapshotLines: number,
+): string {
+  const timestamp = reference.timestamp ? `%${reference.timestamp}` : "";
+  const renderedTargets = reference.targets.map((target, index) => {
+    if (target.snapshot) {
+      return target.raw;
+    }
+
+    const targetFile = resolveReferenceTargetFile(sourceFile, target);
+    const formatted = formatReferenceTarget(target);
+    const excerpt = fs.existsSync(targetFile) && target.lineRange
+      ? extractReferenceExcerpt(fs.readFileSync(targetFile, "utf8"), target)
+      : "";
+
+    return `${formatted.canonical} ${
+      formatGeneratedSnapshot(reference, index, excerpt, snapshotLines)
+    }`;
+  });
+
+  if (renderedTargets.length === 0) {
+    return reference.raw;
+  }
+
+  if (
+    renderedTargets.length === 1 &&
+    !renderedTargets[0].includes("\n")
+  ) {
+    return `<!-- ref${timestamp}: ${renderedTargets[0]} -->`;
+  }
+
+  return `<!-- ref${timestamp}:\n  ${renderedTargets.join(";\n  ")}\n-->`;
+}
+
+function formatGeneratedSnapshot(
+  reference: ReviewReference,
+  targetIndex: number,
+  excerpt: string,
+  snapshotLines: number,
+): string {
+  const label = makeGeneratedSnapshotLabel(reference, targetIndex);
+  return `{&&${label}\n${
+    limitReferenceSnapshotExcerpt(excerpt, snapshotLines)
+  }\n${label}&&}`;
+}
+
+function limitReferenceSnapshotExcerpt(
+  excerpt: string,
+  snapshotLines: number,
+): string {
+  if (snapshotLines === 0 || excerpt.length === 0) {
+    return excerpt;
+  }
+
+  const lines = excerpt.split(/\r?\n/);
+  if (lines.length <= snapshotLines) {
+    return excerpt;
+  }
+
+  const omitted = lines.length - snapshotLines;
+  return [
+    ...lines.slice(0, snapshotLines),
+    `[ref snapshot truncated: ${omitted} ${plural(omitted, "line")} omitted]`,
+  ].join("\n");
+}
+
+function makeGeneratedSnapshotLabel(
+  reference: ReviewReference,
+  targetIndex: number,
+): string {
+  return `r${reference.lineStart.toString(36)}${reference.index.toString(36)}${
+    (targetIndex + 1).toString(36)
+  }`;
+}
+
+function indentRefExcerpt(excerpt: string): string {
+  return excerpt.split(/\r?\n/).map((line) => `  ${line}`).join("\n");
 }
 
 function formatAgentInbox(

@@ -53,6 +53,11 @@ Deno.test("dz-review agent-instructions - prints AGENTS.md snippet", async () =>
   assertStringIncludes(output, "dz-review session start");
   assertStringIncludes(output, "dz-review agent status");
   assertStringIncludes(output, "dz-review session done");
+  assertStringIncludes(output, "dz-review ref check");
+  assertStringIncludes(output, "dz-review ref list");
+  assertStringIncludes(output, "dz-review ref show");
+  assertStringIncludes(output, "dz-review ref snapshots");
+  assertStringIncludes(output, "--ref <selector>");
   assertStringIncludes(output, "do not rerun `session start`");
   assertStringIncludes(output, "session start --force");
   assertStringIncludes(output, "dz-review --help");
@@ -2205,6 +2210,286 @@ Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => 
     );
 
     assertEquals(output, "{++%\uada8\ub22d\ub147\uac78|one++}\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref check - validates line refs, ids, and snapshots", async () => {
+  const dir = await Deno.makeTempDir();
+  const doc = join(dir, "doc.md");
+  const source = join(dir, "source.md");
+  await Deno.writeTextFile(
+    source,
+    [
+      "# Source",
+      "<!-- ^sas-ines -->",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 SAS source -->",
+      "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "",
+    ].join("\n"),
+  );
+  await Deno.writeTextFile(
+    doc,
+    [
+      "# Doc",
+      "<!-- ref%궩거깇걸: source.md:4~K2mmpo^sas-ines {&&rFZEOtB",
+      "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "rFZEOtB&&} -->",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "check", "doc.md"]))
+    );
+
+    assertEquals(output.trim(), "ref check ok");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref check - rejects mixed line prefix and stale snapshot", async () => {
+  const dir = await Deno.makeTempDir();
+  const doc = join(dir, "doc.md");
+  const source = join(dir, "source.md");
+  await Deno.writeTextFile(source, "one\ntwo\n");
+  await Deno.writeTextFile(
+    doc,
+    [
+      "<!-- ref: source.md:1-L2 {&&rBad",
+      "changed",
+      "rBad&&} -->",
+    ].join("\n"),
+  );
+
+  try {
+    const result = await runDzReview(dir, ["ref", "check", "doc.md"], "");
+
+    assertEquals(result.success, false);
+    assertStringIncludes(result.stdout, "invalid target");
+    assertStringIncludes(result.stderr, "ref check failed");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref list - lists references with resolved passages", async () => {
+  const dir = await Deno.makeTempDir();
+  await Deno.writeTextFile(
+    join(dir, "source.md"),
+    ["one", "two", "three", ""].join("\n"),
+  );
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    "<!-- ref: source.md:2; source.md:L1-L2 -->\n",
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "list", "doc.md"]))
+    );
+
+    assertStringIncludes(output, "doc.md:1 -> source.md:2");
+    assertStringIncludes(output, "two");
+    assertStringIncludes(output, "doc.md:1 -> source.md:1-2");
+    assertStringIncludes(output, "one\n  two");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref list - sends text output to pager when forced", async () => {
+  const dir = await Deno.makeTempDir();
+  const previousPager = Deno.env.get("PAGER");
+  const previousPagerCapture = Deno.env.get("PAGER_CAPTURE");
+  const previousForcePager = Deno.env.get("FORCE_PAGER");
+  await Deno.writeTextFile(join(dir, "source.md"), "one\ntwo\n");
+  await Deno.writeTextFile(join(dir, "doc.md"), "<!-- ref: source.md:2 -->\n");
+
+  try {
+    const pager = await createPagerCaptureScript(dir);
+    const pagerCapture = join(dir, "pager-output.txt");
+    Deno.env.set("PAGER", pager);
+    Deno.env.set("PAGER_CAPTURE", pagerCapture);
+    Deno.env.set("FORCE_PAGER", "1");
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "list", "doc.md"]))
+    );
+
+    assertEquals(output, "");
+    const paged = await Deno.readTextFile(pagerCapture);
+    assertStringIncludes(paged, "doc.md:1 -> source.md:2");
+    assertStringIncludes(paged, "two");
+  } finally {
+    restoreEnv("PAGER", previousPager);
+    restoreEnv("PAGER_CAPTURE", previousPagerCapture);
+    restoreEnv("FORCE_PAGER", previousForcePager);
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref show - emits source-replaceable refs with snapshots", async () => {
+  const dir = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(dir, "source.md"), "one\ntwo\n");
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    ["# Doc", "<!-- ref: source.md:2 -->", "Body"].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "show", "doc.md"]))
+    );
+
+    assertStringIncludes(output, "<!-- ref:");
+    assertStringIncludes(output, "source.md:2 {&&");
+    assertStringIncludes(output, "two");
+    assertStringIncludes(output, "&&}");
+    assertEquals(output.includes("ref-content"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref show - preserves existing snapshots", async () => {
+  const dir = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(dir, "source.md"), "one\ntwo\n");
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    [
+      "# Doc",
+      "<!-- ref: source.md:2 {&&rKeep",
+      "two",
+      "rKeep&&} -->",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "show", "doc.md"]))
+    );
+
+    assertEquals((output.match(/\{&&rKeep/g) ?? []).length, 1);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref show - limits generated snapshots by default", async () => {
+  const dir = await Deno.makeTempDir();
+  const sourceLines = Array.from(
+    { length: 12 },
+    (_, index) => `line ${index + 1}`,
+  );
+  await Deno.writeTextFile(
+    join(dir, "source.md"),
+    `${sourceLines.join("\n")}\n`,
+  );
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    "<!-- ref: source.md:1-12 -->\n",
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "show", "doc.md"]))
+    );
+
+    assertStringIncludes(output, "line 10");
+    assertEquals(output.includes("line 11"), false);
+    assertStringIncludes(output, "[ref snapshot truncated: 2 lines omitted]");
+
+    await Deno.writeTextFile(join(dir, "doc.md"), output);
+    const checkOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "check", "doc.md"]))
+    );
+
+    assertEquals(checkOutput.trim(), "ref check ok");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref show --snapshot-lines changes snapshot size", async () => {
+  const dir = await Deno.makeTempDir();
+  const sourceLines = Array.from(
+    { length: 12 },
+    (_, index) => `line ${index + 1}`,
+  );
+  await Deno.writeTextFile(
+    join(dir, "source.md"),
+    `${sourceLines.join("\n")}\n`,
+  );
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    "<!-- ref: source.md:1-12 -->\n",
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["ref", "show", "--snapshot-lines", "12", "doc.md"]),
+      )
+    );
+
+    assertStringIncludes(output, "line 12");
+    assertEquals(output.includes("[ref snapshot truncated:"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref snapshots - prints only reference snapshots", async () => {
+  const dir = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(dir, "source.md"), "one\ntwo\nthree\n");
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    ["# Doc", "<!-- ref: source.md:2; source.md:3 -->", "Body"].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["ref", "snapshots", "doc.md"]))
+    );
+
+    assertStringIncludes(output, "doc.md:2 -> source.md:2 r211");
+    assertStringIncludes(output, "{&&r211\ntwo\nr211&&}");
+    assertStringIncludes(output, "doc.md:2 -> source.md:3 r212");
+    assertStringIncludes(output, "{&&r212\nthree\nr212&&}");
+    assertEquals(output.includes("# Doc"), false);
+    assertEquals(output.includes("Body"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref snapshots --ref filters selected snapshots", async () => {
+  const dir = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(dir, "source.md"), "one\ntwo\nthree\n");
+  await Deno.writeTextFile(
+    join(dir, "doc.md"),
+    [
+      "<!-- ref: source.md:2 {&&rKeep",
+      "old two",
+      "rKeep&&}; source.md:3 -->",
+    ].join("\n"),
+  );
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["ref", "snapshots", "--ref", "rKeep", "doc.md"]),
+      )
+    );
+
+    assertStringIncludes(output, "doc.md:1 -> source.md:2 rKeep");
+    assertStringIncludes(output, "{&&rKeep\nold two\nrKeep&&}");
+    assertEquals(output.includes("three"), false);
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

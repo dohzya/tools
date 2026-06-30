@@ -324,6 +324,12 @@
           ],
           "default": "compact",
           "description": "Timestamp format used when creating review conversation messages and review annotations. Use none for timestamp-free workshop notes."
+        },
+        "dzMdReview.refSnapshotLines": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0,
+          "description": "Maximum source lines shown in reference hover previews. Use 0 for unlimited."
         }
       }
     },

@@ -19,6 +19,13 @@ import {
   isClosedConversation,
 } from "./review-core.ts";
 import {
+  collectReferenceIds,
+  collectReviewReferences,
+  formatReferenceTarget,
+  parseReferenceLineRange,
+  validateReferenceSnapshots,
+} from "./ref-core.ts";
+import {
   decodeCompactTimestamp,
   decodeHangulTimestamp,
   encodeCompactTimestamp,
@@ -259,6 +266,110 @@ Deno.test("dz-review core - short stable review ids drop namespace and keep safe
 
   assertEquals(getShortStableReviewItemId(ids[0], ids), "abcdef1");
   assertEquals(getShortStableReviewItemId(ids[2], ids), "999999");
+});
+
+Deno.test("dz-review ref core - parses canonical and tolerated line ranges", () => {
+  assertEquals(parseReferenceLineRange("82"), { start: 82, end: 82 });
+  assertEquals(parseReferenceLineRange("82-82"), { start: 82, end: 82 });
+  assertEquals(parseReferenceLineRange("80-82"), { start: 80, end: 82 });
+  assertEquals(parseReferenceLineRange("L82"), { start: 82, end: 82 });
+  assertEquals(parseReferenceLineRange("L80-L82"), { start: 80, end: 82 });
+  assertEquals(parseReferenceLineRange("L80-82"), { start: 80, end: 82 });
+  assertEquals(parseReferenceLineRange("80-L82"), undefined);
+});
+
+Deno.test("dz-review ref core - collects refs with timestamp, ids, and labelled snapshots", () => {
+  const text = [
+    "# Doc",
+    "<!-- ref%궩거깇걸:",
+    "  02_trame_commentee.md:82~GdwjSq {&&rFZEOtB",
+    "  SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+    "  rFZEOtB&&};",
+    "  ../source2.md:L80-L82^stable-id",
+    "-->",
+  ].join("\n");
+
+  const references = collectReviewReferences(text);
+
+  assertEquals(references.length, 1);
+  assertEquals(references[0].timestamp, "궩거깇걸");
+  assertEquals(
+    references[0].targets.map((target) => ({
+      path: target.path,
+      lineRange: target.lineRange,
+      reviewId: target.reviewId,
+      stableId: target.stableId,
+      snapshot: target.snapshot
+        ? { label: target.snapshot.label, content: target.snapshot.content }
+        : undefined,
+    })),
+    [
+      {
+        path: "02_trame_commentee.md",
+        lineRange: { start: 82, end: 82 },
+        reviewId: "GdwjSq",
+        stableId: undefined,
+        snapshot: {
+          label: "rFZEOtB",
+          content:
+            "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+        },
+      },
+      {
+        path: "../source2.md",
+        lineRange: { start: 80, end: 82 },
+        reviewId: undefined,
+        stableId: "stable-id",
+        snapshot: undefined,
+      },
+    ],
+  );
+  assertEquals(formatReferenceTarget(references[0].targets[1]), {
+    canonical: "../source2.md:80-82^stable-id",
+    location: "../source2.md:80-82",
+  });
+});
+
+Deno.test("dz-review ref core - collects inline refs inside conversations", () => {
+  const text =
+    "<!-- @me%궩거깇걸 Pourquoi ? @agent%궩거깇걸 ref: 02_trame_commentee.md:82~GdwjSq @ Je vois. -->";
+
+  const references = collectReviewReferences(text);
+
+  assertEquals(references.length, 1);
+  assertEquals(references[0].targets.length, 1);
+  assertEquals(references[0].targets[0].path, "02_trame_commentee.md");
+  assertEquals(references[0].targets[0].lineRange, { start: 82, end: 82 });
+  assertEquals(references[0].targets[0].reviewId, "GdwjSq");
+});
+
+Deno.test("dz-review ref core - detects duplicate nested snapshot labels", () => {
+  const text = [
+    "<!-- ref: source.md:1 {&&rSame",
+    "outer",
+    "{&&rSame",
+    "inner",
+    "rSame&&}",
+    "rSame&&} -->",
+  ].join("\n");
+  const [reference] = collectReviewReferences(text);
+
+  assertEquals(
+    validateReferenceSnapshots(reference).map((issue) => issue.kind),
+    [
+      "duplicate-nested-label",
+    ],
+  );
+});
+
+Deno.test("dz-review ref core - collects stable ref ids", () => {
+  const text = ["# Source", "<!-- ^sas-ines -->", "SAS INES details."].join(
+    "\n",
+  );
+
+  assertEquals(collectReferenceIds(text), [
+    { id: "sas-ines", line: 2, start: 9, end: 27 },
+  ]);
 });
 
 Deno.test("dz-review agent core - lists items without an agent session", async () => {

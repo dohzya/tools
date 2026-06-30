@@ -98,6 +98,29 @@ test("HTML comment injection supports inline role scopes", () => {
   assert(includes.includes("#md-review-human-quick-inline"));
 });
 
+test("ref snapshots use labelled recursive TextMate rules", () => {
+  for (
+    const filename of [
+      "md-review-injection.tmLanguage.json",
+      "md-review-list-injection.tmLanguage.json",
+      "md-review-html-comment-injection.tmLanguage.json",
+    ]
+  ) {
+    const grammar = readGrammar(filename);
+    const snapshot = grammar.repository["md-review-ref-snapshot"];
+
+    assert.equal(snapshot.begin, "\\{&&([A-Za-z0-9_-]+)");
+    assert.equal(snapshot.end, "\\1&&\\}");
+    assert.deepEqual(snapshot.patterns, [
+      { include: "#md-review-ref-snapshot" },
+    ]);
+    assert.equal(
+      snapshot.beginCaptures["1"].name,
+      "entity.name.label.ref-snapshot.md-review.markdown",
+    );
+  }
+});
+
 test("comment marker colors target review and native HTML punctuation scopes", () => {
   const pkg = readPackage();
   const rules =

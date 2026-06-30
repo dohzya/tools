@@ -29,12 +29,15 @@ function positionAt(text, offset) {
 function createHarness() {
   let commentSyntax = "html";
   let timestampFormat = "none";
+  let refSnapshotLines = 10;
   let deferSetContext = false;
   let quickPickLabel;
   const quickPickCalls = [];
   const executedCommands = [];
   const executedCommandCalls = [];
   const pendingSetContextResolutions = [];
+  const definitionProviders = [];
+  const hoverProviders = [];
   const statusBarItems = [];
   const webviewViewProviders = [];
   const statusBarCalls = [];
@@ -82,11 +85,23 @@ function createHarness() {
       showInformationMessage() {},
     },
     workspace: {
+      fs: {
+        readFile(uri) {
+          return Promise.resolve(fs.readFileSync(uri.fsPath));
+        },
+      },
+      openTextDocument() {
+        return Promise.resolve(undefined);
+      },
       getConfiguration() {
         return {
           get(key) {
             if (key === "timestampFormat") {
               return timestampFormat;
+            }
+
+            if (key === "refSnapshotLines") {
+              return refSnapshotLines;
             }
 
             return commentSyntax;
@@ -104,7 +119,12 @@ function createHarness() {
       },
     },
     languages: {
-      registerHoverProvider() {
+      registerHoverProvider(selector, provider) {
+        hoverProviders.push({ selector, provider });
+        return {};
+      },
+      registerDefinitionProvider(selector, provider) {
+        definitionProviders.push({ selector, provider });
         return {};
       },
     },
@@ -161,15 +181,30 @@ function createHarness() {
       None: 0,
     },
     Uri: {
+      file(file) {
+        return { fsPath: file };
+      },
       joinPath() {
         return "icon";
       },
+    },
+    Location: class Location {
+      constructor(uri, range) {
+        this.uri = uri;
+        this.range = range;
+      }
     },
     OverviewRulerLane: {
       Right: 1,
     },
     StatusBarAlignment: {
       Left: 1,
+    },
+    Position: class Position {
+      constructor(line, character) {
+        this.line = line;
+        this.character = character;
+      }
     },
     Range: class Range {
       constructor(start, endOrStartCharacter, endLine, endCharacter) {
@@ -227,6 +262,7 @@ function createHarness() {
     },
     module,
     exports: module.exports,
+    TextDecoder,
   });
 
   function createEditor(text, start, end = start) {
@@ -324,8 +360,10 @@ function createHarness() {
     api: module.exports.__test,
     createEditor,
     createWebviewView,
+    definitionProviders,
     executedCommandCalls,
     executedCommands,
+    hoverProviders,
     quickPickCalls,
     resolveSetContexts() {
       for (const resolve of pendingSetContextResolutions.splice(0)) {
@@ -337,6 +375,9 @@ function createHarness() {
     },
     setTimestampFormat(value) {
       timestampFormat = value;
+    },
+    setRefSnapshotLines(value) {
+      refSnapshotLines = value;
     },
     setQuickPickLabel(value) {
       quickPickLabel = value;
@@ -925,6 +966,118 @@ test("shows readable hover text for compact timestamps", () => {
   });
 
   assert.equal(hover.contents.value, "2026-06-16T17:35:35+02:00");
+});
+
+test("shows referenced passage on ref hover", async () => {
+  const harness = createHarness();
+  const dir = fs.mkdtempSync(path.join(__dirname, "ref-hover-"));
+  fs.writeFileSync(path.join(dir, "source.md"), "one\ntwo\nthree\n");
+  const editor = harness.createEditor("<!-- ref: source.md:2 -->\n", {
+    line: 0,
+    character: 12,
+  });
+  editor.document.uri = { fsPath: path.join(dir, "doc.md") };
+  editor.document.fileName = path.join(dir, "doc.md");
+
+  try {
+    const hover = await harness.api.provideReviewHover(editor.document, {
+      line: 0,
+      character: 12,
+    });
+
+    assert.match(hover.contents.value, /source\.md:2/);
+    assert.match(hover.contents.value, /> two/);
+  } finally {
+    fs.rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("shows referenced HTML conversation text on ref hover", async () => {
+  const harness = createHarness();
+  const dir = fs.mkdtempSync(path.join(__dirname, "ref-hover-comment-"));
+  fs.writeFileSync(
+    path.join(dir, "source.md"),
+    "<!-- @agent%궩거깇걸 Pourquoi parler du SAS ici ? -->\n",
+  );
+  const editor = harness.createEditor("<!-- ref: source.md:1 -->\n", {
+    line: 0,
+    character: 12,
+  });
+  editor.document.uri = { fsPath: path.join(dir, "doc.md") };
+  editor.document.fileName = path.join(dir, "doc.md");
+
+  try {
+    const hover = await harness.api.provideReviewHover(editor.document, {
+      line: 0,
+      character: 12,
+    });
+
+    assert.match(hover.contents.value, /source\.md:1/);
+    assert.match(
+      hover.contents.value,
+      /&lt;!-- @agent%궩거깇걸 Pourquoi parler du SAS ici \? --&gt;/,
+    );
+  } finally {
+    fs.rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("limits referenced passage lines on ref hover", async () => {
+  const harness = createHarness();
+  const dir = fs.mkdtempSync(path.join(__dirname, "ref-hover-limit-"));
+  const sourceLines = Array.from(
+    { length: 12 },
+    (_, index) => `line ${index + 1}`,
+  );
+  fs.writeFileSync(path.join(dir, "source.md"), `${sourceLines.join("\n")}\n`);
+  const editor = harness.createEditor("<!-- ref: source.md:1-12 -->\n", {
+    line: 0,
+    character: 12,
+  });
+  editor.document.uri = { fsPath: path.join(dir, "doc.md") };
+  editor.document.fileName = path.join(dir, "doc.md");
+
+  try {
+    const hover = await harness.api.provideReviewHover(editor.document, {
+      line: 0,
+      character: 12,
+    });
+
+    assert.match(hover.contents.value, /> line 10/);
+    assert.doesNotMatch(hover.contents.value, /line 11/);
+    assert.match(
+      hover.contents.value,
+      /> \[ref snapshot truncated: 2 lines omitted\]/,
+    );
+  } finally {
+    fs.rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("goes to referenced line from a ref", () => {
+  const harness = createHarness();
+  const dir = fs.mkdtempSync(path.join(__dirname, "ref-definition-"));
+  const editor = harness.createEditor("<!-- ref: source.md:2 -->\n", {
+    line: 0,
+    character: 12,
+  });
+  editor.document.uri = { fsPath: path.join(dir, "doc.md") };
+  editor.document.fileName = path.join(dir, "doc.md");
+
+  try {
+    const definition = harness.api.provideReferenceDefinition(
+      editor.document,
+      {
+        line: 0,
+        character: 12,
+      },
+    );
+
+    assert.equal(definition.uri.fsPath, path.join(dir, "source.md"));
+    assert.deepEqual({ ...definition.range.start }, { line: 1, character: 0 });
+  } finally {
+    fs.rmSync(dir, { force: true, recursive: true });
+  }
 });
 
 test("cmd+enter expands a compact inline note and adds @me", async () => {

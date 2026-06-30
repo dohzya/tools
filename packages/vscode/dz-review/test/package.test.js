@@ -205,6 +205,16 @@ test("timestamp format configuration can disable timestamp insertion", () => {
   assert.equal(setting.default, "compact");
 });
 
+test("reference snapshot line limit is configurable", () => {
+  const pkg = readPackage();
+  const setting =
+    pkg.contributes.configuration.properties["dzMdReview.refSnapshotLines"];
+
+  assert.equal(setting.type, "number");
+  assert.equal(setting.default, 10);
+  assert.equal(setting.minimum, 0);
+});
+
 function assertRuleAfter(rules, laterScope, earlierScope) {
   const laterIndex = rules.findIndex((rule) =>
     scopeIncludes(rule.scope, laterScope)
