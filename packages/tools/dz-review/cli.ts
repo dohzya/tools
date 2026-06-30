@@ -427,7 +427,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       ignoreRules,
     );
     writeStatus(
-      filterIgnoredFiles(files, ignoreRules),
+      filterImplicitIgnoredFiles(files, ignoreRules, options.files),
       addedLinesByFile,
       options.conversationOnly,
       options.conversationFilter,
@@ -444,9 +444,12 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       options,
       ignoreRules,
     );
+    const reviewFiles = options.mode === "list"
+      ? filterImplicitIgnoredFiles(files, ignoreRules, options.files)
+      : filterIgnoredFiles(files, ignoreRules);
     if (options.json) {
       writeReviewItemsJson(
-        filterIgnoredFiles(files, ignoreRules),
+        reviewFiles,
         addedLinesByFile,
         options.conversationOnly,
         options.conversationFilter,
@@ -456,7 +459,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
     }
 
     await writeReviewItems(
-      filterIgnoredFiles(files, ignoreRules),
+      reviewFiles,
       addedLinesByFile,
       options.conversationOnly,
       options.conversationFilter,
@@ -3476,6 +3479,18 @@ function filterIgnoredFiles(
   return files.filter((file) => !isIgnoredByReview(file, ignoreRules));
 }
 
+function filterImplicitIgnoredFiles(
+  files: string[],
+  ignoreRules: IgnoreRule[],
+  explicitFiles: string[],
+): string[] {
+  if (explicitFiles.length > 0) {
+    return files;
+  }
+
+  return filterIgnoredFiles(files, ignoreRules);
+}
+
 function isIgnoredByReview(file: string, ignoreRules: IgnoreRule[]): boolean {
   const normalized = normalizePath(file);
   let ignored = false;
@@ -4052,7 +4067,7 @@ Examples:
 Notes:
   Without files, commands use agent session files, then Git status files.
   session start/done assumes one active agent session per state directory.
-  Paths matching the configured ignore file are skipped.
+  Auto-discovered paths matching the configured ignore file are skipped.
   Conversation statuses are open, wip, handled, and resolved.
 `);
 }

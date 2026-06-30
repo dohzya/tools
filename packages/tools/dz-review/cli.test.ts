@@ -1869,7 +1869,7 @@ Deno.test("dz-review status --oneline - falls back to agent session files before
   }
 });
 
-Deno.test("dz-review status - ignores internal .dz-review files by default", async () => {
+Deno.test("dz-review status - ignores auto-discovered internal .dz-review files by default", async () => {
   const dir = await Deno.makeTempDir();
   const reviewDir = join(dir, ".dz-review");
   const file = join(reviewDir, "internal.md");
@@ -1877,8 +1877,10 @@ Deno.test("dz-review status - ignores internal .dz-review files by default", asy
   await Deno.writeTextFile(file, "<!-- @agent internal -->\n");
 
   try {
+    await runGit(dir, ["init"]);
+
     const output = await captureOutput(() =>
-      withCwd(dir, () => main(["status", ".dz-review/internal.md"]))
+      withCwd(dir, () => main(["status"]))
     );
 
     assertEquals(
@@ -1890,7 +1892,7 @@ Deno.test("dz-review status - ignores internal .dz-review files by default", asy
   }
 });
 
-Deno.test("dz-review --ignore-file - reads custom ignore file", async () => {
+Deno.test("dz-review status - explicit files bypass custom ignore file", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "ignored.md");
   await Deno.writeTextFile(join(dir, "review.ignore"), "ignored.md\n");
@@ -1906,8 +1908,29 @@ Deno.test("dz-review --ignore-file - reads custom ignore file", async () => {
 
     assertEquals(
       output,
-      "Review session: none\nNo review annotations found.\n",
+      "Review session: none\nignored.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)\n",
     );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review list - explicit files bypass custom ignore file", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "ignored.md");
+  await Deno.writeTextFile(join(dir, "review.ignore"), "ignored.md\n");
+  await Deno.writeTextFile(file, "<!-- @agent ignored -->\n");
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(
+        dir,
+        () => main(["--ignore-file", "review.ignore", "list", "ignored.md"]),
+      )
+    );
+
+    assertStringIncludes(output, "ignored.md:1");
+    assertStringIncludes(output, "open conversation");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1927,7 +1950,7 @@ Deno.test("dz-review status reads DZ_REVIEW_IGNORE_FILE", async () => {
     assertEquals(result.success, true);
     assertEquals(
       result.stdout,
-      "Review session: none\nNo review annotations found.\n",
+      "Review session: none\nignored.md: 1 conversation (1 open, 0 wip, 0 handled, 0 resolved)\n",
     );
   } finally {
     await Deno.remove(dir, { recursive: true });
