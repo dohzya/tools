@@ -271,6 +271,26 @@ wl trace <parent-id> -k state "Subtask done: Stripe SDK available, focusing on w
 - Sub-agent creates traces on its own subtask — main agent sees progress via `wl show <parent-id>`
 - Context injection via `wl claude`, `wl codex`, or `wl agent` sets `WORKLOG_TASK_ID` so sub-agent commands work without specifying `<id>`
 
+## Example 6: Non-Hierarchical Task Links
+
+Use task links when two tasks are related but one is not a subtask of the other:
+
+```bash
+# Existing tasks
+wl link <ui-task> depends-on <api-task>
+wl link <release-task> blocks <cleanup-task>
+wl link <investigation-task> related <notes-task>
+
+# At creation time, options are repeatable and can appear before name/desc
+wl create --depends-on <api-task> --depends-on <schema-task> "Build UI" "Needs API and schema"
+```
+
+**Key points:**
+
+- `depends-on` and `blocks` are reciprocal views of the same dependency link
+- `related` is symmetric and has no blocking semantics
+- Use `--parent` only for actual decomposition/delegation
+
 ## Tips for Better Worklogs
 
 1. **Trace immediately** - Don't batch unless using timestamps

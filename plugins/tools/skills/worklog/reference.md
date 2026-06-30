@@ -191,6 +191,7 @@ wl cancel <id> [reason]                      # Cancel/abandon task (marks as can
 wl list [--created] [--ready] [--started] [--done] [--cancelled]  # Filter tasks
 wl status [-q]                               # Compact active-work status
 wl show <id>                                 # Detailed task view with history
+wl link <id> depends-on|blocks|related <other-id> # Link tasks without parentage
 wl meta <id> [<key> <value>]                 # View or set task metadata
 wl summary [--since YYYY-MM-DD]              # Aggregate all tasks
 wl import [-p PATH | -b BRANCH] [--rm]       # Import from other worktree
@@ -223,6 +224,9 @@ Creates a new task. The `name` is displayed in list views. `desc` is stored as o
 - `--ready`: Create in 'ready' state
 - `--started`: Create in 'started' state
 - `--parent <id>`: Set parent task (creates a subtask — use for sub-agent delegation)
+- `--depends-on <id>`: Link the new task as depending on another task (repeatable)
+- `--blocks <id>`: Link the new task as blocking another task (repeatable)
+- `--related <id>`: Link the new task to another task without dependency semantics (repeatable)
 - `--todo <text>`: Add a TODO item (repeatable)
 - `--meta <key=value>`: Set metadata (repeatable)
 - `-t, --timestamp <ts>`: Custom creation timestamp
@@ -254,11 +258,38 @@ wl create --started "Urgent hotfix"
 # As a subtask (for sub-agent delegation)
 wl create --parent <parent-id> --started "Analyze existing API"
 
+# With non-hierarchical task links
+wl create --depends-on <api-task> --depends-on <schema-task> "Build UI" "Needs API and schema"
+wl create --blocks <release-task> --related <notes-task> "Fix packaging"
+
 # With TODOs
 wl create "Feature X" --todo "Analyze" --todo "Implement" --todo "Test"
 ```
 
 **Conflicts:** positional `desc`, `--desc`, `--desc-src`, and `--desc-from-clipboard` are mutually exclusive sources.
+
+## Task links
+
+```bash
+wl link <id> depends-on <other-id>
+wl link <id> blocks <other-id>
+wl link <id> related <other-id>
+```
+
+Task links connect related work without making either task a subtask. Use `--parent` only for decomposition/delegation; use links for dependencies, blockers, and loose references.
+
+Link types are reciprocal:
+
+- `A depends-on B` stores `A -> depends_on B` and `B -> blocks A`
+- `A blocks B` stores `A -> blocks B` and `B -> depends_on A`
+- `A related B` stores `related` on both tasks
+
+The link options on `wl create` use the same semantics and are repeatable:
+
+```bash
+wl create --depends-on abc --depends-on cde "Title" "Description"
+wl create --blocks rel --related notes "Follow-up"
+```
 
 ## State transition commands
 
@@ -309,6 +340,10 @@ wl list [options]
 
 When any status filter is specified, only those statuses are shown. Multiple filters are combined with OR logic.
 
+Task links appear as compact suffixes in list-like output: `dep:<id>` for dependencies, `blk:<id>` for blockers, and `rel:<id>` for related tasks. `wl status`, `wl dash`, and `wl dashboard` use the same suffixes.
+
+Open tasks with an open `depends_on` dependency are hidden from default `wl list`, `wl status`, `wl dash`, and `wl dashboard` output. Use `--include-blocked` to show them. Explicit link filters show matching tasks even when they are currently blocked.
+
 **Other options:**
 
 - `--all` or `-a`: Show all tasks including completed (<30d)
@@ -316,6 +351,11 @@ When any status filter is specified, only those statuses are shown. Multiple fil
 - `--subtasks`: Include all subtasks, indented under their parent when present
 - `--subtasks-of-started`: Include subtasks whose parent task is `started`
 - `--parent <id>`: Show only direct children of a parent task
+- `--depends-on <id>`: Show tasks depending on a task
+- `--blocks <id>`: Show tasks blocking a task
+- `--related-to <id>`: Show tasks with a `related` link to a task
+- `--linked-to <id>`: Show tasks linked to a task by any link type
+- `--include-blocked`: Include open tasks blocked by open dependencies
 
 **Examples:**
 
@@ -326,6 +366,11 @@ wl list --subtasks-of-started        # Active tasks + children of started tasks
 wl list --created --ready            # Created OR ready tasks
 wl list --done                       # Only done tasks
 wl list --all                        # Everything including done/cancelled
+wl list --include-blocked            # Also show tasks blocked by open dependencies
+wl list --depends-on <id>            # Tasks depending on <id>
+wl list --blocks <id>                # Tasks blocking <id>
+wl list --related-to <id>            # Tasks related to <id>
+wl list --linked-to <id>             # Tasks linked to <id> by any link type
 ```
 
 ## Show command
@@ -640,12 +685,12 @@ acjold
 
 ```
 acjold  started  "Multi-currency support"  2025-01-16 09:15
-b2x9kf  created  "Fix login bug"  2025-01-16 14:30
+b2x9kf  created  "Fix login bug"  2025-01-16 14:30  dep:acjold rel:jkl345
 ```
 
 ### `wl status`
 
-Compact active-work status. Use `wl status -q` to print nothing when there are no active tasks.
+Compact active-work status. Use `wl status -q` to print nothing when there are no active tasks. Use `--include-blocked` to include tasks blocked by open dependencies.
 
 ### `wl show`
 

@@ -43,6 +43,11 @@ metadata:
   commit: abc1234567890def
   author: alice
 parent: null
+links:
+  - type: depends_on
+    task: 0bcxbtkydvyqfr46n0juf4zgy
+  - type: related
+    task: 0ixtz8k5n9ra6gzl63m5d7c2p
 tags: []
 ---
 
@@ -101,6 +106,7 @@ Completed implementation
 - `metadata` (object): Custom key-value pairs — common: `commit`, `author`, `pr`, `ticket`
 - `tags` (array): Tag strings
 - `parent` (string): Parent task ID for subtasks
+- `links` (array): Non-hierarchical task links as `{ type, task }`; `type` is `depends_on`, `blocks`, or `related`
 
 ## Log Entry Format
 

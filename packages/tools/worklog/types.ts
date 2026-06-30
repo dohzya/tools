@@ -25,6 +25,15 @@ export function isValidTaskStatus(value: string): value is TaskStatus {
   return statuses.includes(value);
 }
 
+/** Supported non-hierarchical task link types. */
+export type TaskLinkType = "depends_on" | "blocks" | "related";
+
+/** A non-hierarchical relation to another task. */
+export interface TaskLink {
+  type: TaskLinkType;
+  task: string;
+}
+
 /** Full metadata for a task, as stored in the task's Markdown frontmatter. */
 export interface TaskMeta {
   /** Full task ID (25-char base36). */
@@ -57,6 +66,8 @@ export interface TaskMeta {
   tags?: string[];
   /** Full parent task ID if this is a subtask. */
   parent?: string | null;
+  /** Non-hierarchical links to other tasks. */
+  links?: TaskLink[];
 }
 
 /** Denormalized task entry stored in the worklog index for fast listing. */
@@ -79,6 +90,8 @@ export interface IndexEntry {
   tags?: string[];
   /** Full parent task ID if this is a subtask. */
   parent?: string;
+  /** Non-hierarchical links to other tasks. */
+  links?: TaskLink[];
 }
 
 /** Top-level worklog index mapping task IDs to their index entries. */
@@ -219,6 +232,19 @@ export interface ShowOutput {
       status: TaskStatus;
     }
     | null;
+  /** Non-hierarchical task links with display metadata. */
+  links?: readonly {
+    /** Link type relative to this task. */
+    type: TaskLinkType;
+    /** Full linked task ID. */
+    task: string;
+    /** Display-length prefix of the linked task ID. */
+    shortId: string;
+    /** Linked task name. */
+    name: string;
+    /** Linked task status. */
+    status: TaskStatus;
+  }[];
   /** Summaries of direct subtasks. */
   subtasks?: readonly SubtaskSummary[];
 }
@@ -245,6 +271,8 @@ export interface ListTaskItem {
   filterPattern?: string;
   /** Full parent task ID (present in --subtasks mode). */
   parent?: string;
+  /** Non-hierarchical links to other tasks. */
+  links?: readonly TaskLink[];
   /** Source worklog path, requested only by commands that need task details. */
   sourceWorklogPath?: string;
 }
@@ -280,6 +308,8 @@ export interface DashboardSubtaskItem {
   scopePrefix?: string;
   /** Formatted creation date. */
   created: string;
+  /** Non-hierarchical links to other tasks. */
+  links?: readonly TaskLink[];
   /** Open todo items attached to the subtask. */
   todos: readonly Todo[];
   /** Open nested subtasks attached to this subtask. */
@@ -302,6 +332,8 @@ export interface DashboardTaskItem {
   created: string;
   /** Effective tags for the task. */
   tags?: readonly string[];
+  /** Non-hierarchical links to other tasks. */
+  links?: readonly TaskLink[];
   /** Open todo items attached to a started task. */
   todos: readonly Todo[];
   /** Open subtasks attached to a started task. */

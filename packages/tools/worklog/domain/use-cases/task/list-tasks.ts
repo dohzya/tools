@@ -3,7 +3,7 @@
 
 import type { Index, IndexEntry } from "../../entities/index.ts";
 import type { ListOutput, ListTaskItem } from "../../entities/outputs.ts";
-import type { TaskStatus } from "../../entities/task.ts";
+import type { TaskLinkType, TaskStatus } from "../../entities/task.ts";
 import type { ScopeConfig } from "../../entities/scope.ts";
 import { WtError } from "../../entities/errors.ts";
 import { normalizeDescParts, renderDesc } from "../../entities/description.ts";
@@ -28,6 +28,11 @@ export interface ListTasksInput {
   readonly showSubtasks?: boolean; // Include subtasks (hidden by default)
   readonly showSubtasksOfStarted?: boolean; // Include subtasks whose parent is started
   readonly parentFilter?: string; // Full parent task ID — show only direct children
+  readonly linkFilter?: {
+    readonly taskId: string;
+    readonly type?: TaskLinkType;
+  };
+  readonly includeBlocked?: boolean; // Include tasks blocked by open dependencies
   readonly includeSourceWorklogPath?: boolean;
 }
 
@@ -37,6 +42,38 @@ export class ListTasksUseCase {
     private readonly scopeRepo: ScopeRepository,
     private readonly fs: FileSystem,
   ) {}
+
+  private linkFields(task: IndexEntry): Pick<ListTaskItem, "links"> {
+    return task.links && task.links.length > 0 ? { links: task.links } : {};
+  }
+
+  private isClosedStatus(status: TaskStatus | undefined): boolean {
+    return status === "done" || status === "cancelled";
+  }
+
+  private hasLinkTo(
+    task: IndexEntry,
+    taskId: string,
+    type?: TaskLinkType,
+  ): boolean {
+    return (task.links ?? []).some((link) =>
+      link.task === taskId && (type === undefined || link.type === type)
+    );
+  }
+
+  private isBlockedByOpenDependency(
+    task: IndexEntry,
+    tasks: Readonly<Record<string, IndexEntry>>,
+    relatedTaskStatuses?: ReadonlyMap<string, TaskStatus>,
+  ): boolean {
+    if (this.isClosedStatus(task.status)) return false;
+    return (task.links ?? []).some((link) => {
+      if (link.type !== "depends_on") return false;
+      const dependencyStatus = tasks[link.task]?.status ??
+        relatedTaskStatuses?.get(link.task);
+      return !this.isClosedStatus(dependencyStatus);
+    });
+  }
 
   async execute(input: ListTasksInput): Promise<ListOutput> {
     const defaultStatuses: TaskStatus[] = ["created", "ready", "started"];
@@ -50,7 +87,22 @@ export class ListTasksUseCase {
     const shouldInclude = (
       t: IndexEntry,
       parentStatus?: TaskStatus,
+      tasks: Readonly<Record<string, IndexEntry>> = {},
+      relatedTaskStatuses?: ReadonlyMap<string, TaskStatus>,
     ): boolean => {
+      if (input.parentFilter && t.parent !== input.parentFilter) return false;
+      if (
+        input.linkFilter &&
+        !this.hasLinkTo(t, input.linkFilter.taskId, input.linkFilter.type)
+      ) {
+        return false;
+      }
+      if (
+        !input.includeBlocked && !input.linkFilter &&
+        this.isBlockedByOpenDependency(t, tasks, relatedTaskStatuses)
+      ) {
+        return false;
+      }
       if (input.parentFilter) return t.parent === input.parentFilter;
       if (input.showSubtasks) return true;
       if (!t.parent) return true;
@@ -101,6 +153,7 @@ export class ListTasksUseCase {
             shouldInclude(
               t,
               t.parent ? index.tasks[t.parent]?.status : undefined,
+              index.tasks,
             )
           )
           .sort(([a], [b]) => a.localeCompare(b))
@@ -113,6 +166,7 @@ export class ListTasksUseCase {
             created: this.formatShort(t.created),
             scopePrefix: scopeId,
             tags: t.tags,
+            ...this.linkFields(t),
             ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
           }));
 
@@ -146,7 +200,11 @@ export class ListTasksUseCase {
       const scopeTasks = Object.entries(index.tasks)
         .filter(([_, t]) => matchStatus(t.status))
         .filter(([_, t]) =>
-          shouldInclude(t, t.parent ? index.tasks[t.parent]?.status : undefined)
+          shouldInclude(
+            t,
+            t.parent ? index.tasks[t.parent]?.status : undefined,
+            index.tasks,
+          )
         )
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([id, t]) => ({
@@ -157,6 +215,7 @@ export class ListTasksUseCase {
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
+          ...this.linkFields(t),
           ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
         }));
 
@@ -197,7 +256,11 @@ export class ListTasksUseCase {
     const singleTasks = Object.entries(index.tasks)
       .filter(([_, t]) => matchStatus(t.status))
       .filter(([_, t]) =>
-        shouldInclude(t, t.parent ? index.tasks[t.parent]?.status : undefined)
+        shouldInclude(
+          t,
+          t.parent ? index.tasks[t.parent]?.status : undefined,
+          index.tasks,
+        )
       )
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, t]) => ({
@@ -208,6 +271,7 @@ export class ListTasksUseCase {
         status: t.status,
         created: this.formatShort(t.created),
         tags: t.tags,
+        ...this.linkFields(t),
         ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
       }));
 
@@ -221,7 +285,12 @@ export class ListTasksUseCase {
     worklogDir: string,
     depthLimit: number,
     matchStatus: (status: string) => boolean,
-    shouldInclude: (t: IndexEntry, parentStatus?: TaskStatus) => boolean,
+    shouldInclude: (
+      t: IndexEntry,
+      parentStatus?: TaskStatus,
+      tasks?: Readonly<Record<string, IndexEntry>>,
+      relatedTaskStatuses?: ReadonlyMap<string, TaskStatus>,
+    ) => boolean,
     shouldDisplayParent: boolean,
   ): Promise<ListOutput> {
     // Try tag filtering first
@@ -236,7 +305,9 @@ export class ListTasksUseCase {
     if (taggedTasks.length > 0) {
       const filteredTasks = taggedTasks
         .filter(({ task }) => matchStatus(task.status))
-        .filter(({ task, parentStatus }) => shouldInclude(task, parentStatus))
+        .filter(({ task, parentStatus, taskIndex }) =>
+          shouldInclude(task, parentStatus, taskIndex)
+        )
         .map(({ id, task }) => ({
           id,
           name: task.name ?? renderDesc(task.desc),
@@ -246,6 +317,7 @@ export class ListTasksUseCase {
           created: this.formatShort(task.created),
           scopePrefix: undefined,
           tags: task.tags,
+          ...this.linkFields(task),
           filterPattern,
           ...(shouldDisplayParent && task.parent
             ? { parent: task.parent }
@@ -278,6 +350,7 @@ export class ListTasksUseCase {
             shouldInclude(
               t,
               t.parent ? index.tasks[t.parent]?.status : undefined,
+              index.tasks,
             )
           )
           .sort(([a], [b]) => a.localeCompare(b))
@@ -290,6 +363,7 @@ export class ListTasksUseCase {
             created: this.formatShort(t.created),
             scopePrefix: undefined,
             tags: t.tags,
+            ...this.linkFields(t),
             filterPattern,
             ...(shouldDisplayParent && t.parent ? { parent: t.parent } : {}),
           }));
@@ -313,7 +387,12 @@ export class ListTasksUseCase {
     worklogDir: string,
     depthLimit: number,
     matchStatus: (status: string) => boolean,
-    shouldInclude: (t: IndexEntry, parentStatus?: TaskStatus) => boolean,
+    shouldInclude: (
+      t: IndexEntry,
+      parentStatus?: TaskStatus,
+      tasks?: Readonly<Record<string, IndexEntry>>,
+      relatedTaskStatuses?: ReadonlyMap<string, TaskStatus>,
+    ) => boolean,
     shouldDisplayParent: boolean,
     includeSourceWorklogPath: boolean,
   ): Promise<ListOutput> {
@@ -383,6 +462,8 @@ export class ListTasksUseCase {
               ? index.tasks[t.parent]?.status ??
                 relatedTaskStatuses.get(t.parent)
               : undefined,
+            index.tasks,
+            relatedTaskStatuses,
           )
         );
 
@@ -400,6 +481,7 @@ export class ListTasksUseCase {
             created: this.formatShort(parentTask.created),
             scopePrefix: "^",
             tags: parentTask.tags,
+            ...this.linkFields(parentTask),
             ...(includeSourceWorklogPath && parentWorklogPath
               ? { sourceWorklogPath: parentWorklogPath }
               : {}),
@@ -417,6 +499,7 @@ export class ListTasksUseCase {
           status: t.status,
           created: this.formatShort(t.created),
           tags: t.tags,
+          ...this.linkFields(t),
           ...(includeSourceWorklogPath
             ? { sourceWorklogPath: currentScope }
             : {}),
@@ -444,7 +527,7 @@ export class ListTasksUseCase {
         const activeParentTasks = parentTasks
           .filter(({ task, scopePath }) =>
             matchStatus(task.status) &&
-            shouldInclude(task) &&
+            shouldInclude(task, undefined, {}, relatedTaskStatuses) &&
             scopePath === parentWorklogPath
           )
           .map(({ id, task }) => ({
@@ -456,6 +539,7 @@ export class ListTasksUseCase {
             created: this.formatShort(task.created),
             scopePrefix: "^",
             tags: task.tags,
+            ...this.linkFields(task),
             ...(includeSourceWorklogPath && parentWorklogPath
               ? { sourceWorklogPath: parentWorklogPath }
               : {}),
@@ -496,6 +580,9 @@ export class ListTasksUseCase {
 
             const content = await this.fs.readFile(childIndexPath);
             const index = this.parseIndexContent(content);
+            for (const [id, task] of Object.entries(index.tasks)) {
+              relatedTaskStatuses.set(id, task.status);
+            }
 
             const childTasks = Object.entries(index.tasks)
               .filter(([_, t]) => matchStatus(t.status))
@@ -506,6 +593,8 @@ export class ListTasksUseCase {
                     ? index.tasks[t.parent]?.status ??
                       relatedTaskStatuses.get(t.parent)
                     : undefined,
+                  index.tasks,
+                  relatedTaskStatuses,
                 )
               )
               .sort(([a], [b]) => a.localeCompare(b))
@@ -518,6 +607,7 @@ export class ListTasksUseCase {
                 created: this.formatShort(t.created),
                 scopePrefix: child.id,
                 tags: t.tags,
+                ...this.linkFields(t),
                 ...(includeSourceWorklogPath
                   ? { sourceWorklogPath: childWorklogPath }
                   : {}),
@@ -549,6 +639,7 @@ export class ListTasksUseCase {
     Array<{
       id: string;
       task: IndexEntry;
+      taskIndex: Readonly<Record<string, IndexEntry>>;
       parentStatus?: TaskStatus;
       scopeId: string;
       scopePath: string;
@@ -557,6 +648,7 @@ export class ListTasksUseCase {
     const results: Array<{
       id: string;
       task: IndexEntry;
+      taskIndex: Readonly<Record<string, IndexEntry>>;
       parentStatus?: TaskStatus;
       scopeId: string;
       scopePath: string;
@@ -578,6 +670,7 @@ export class ListTasksUseCase {
           results.push({
             id,
             task,
+            taskIndex: index.tasks,
             parentStatus: task.parent
               ? index.tasks[task.parent]?.status
               : undefined,

@@ -15,6 +15,15 @@ export const TASK_STATUSES = [
   "cancelled",
 ] as const;
 
+export const TASK_LINK_TYPES = ["depends_on", "blocks", "related"] as const;
+
+export type TaskLinkType = typeof TASK_LINK_TYPES[number];
+
+export type TaskLink = {
+  readonly type: TaskLinkType;
+  readonly task: string;
+};
+
 export function isValidTaskStatus(value: string): value is TaskStatus {
   const statuses: readonly string[] = TASK_STATUSES;
   return statuses.includes(value);
@@ -39,6 +48,7 @@ export type Task = {
   readonly metadata: Readonly<Record<string, string>>;
   readonly tags: readonly string[];
   readonly parent?: string | null;
+  readonly links: readonly TaskLink[];
 };
 
 /**
@@ -61,6 +71,7 @@ export type TaskMeta = {
   readonly metadata?: Readonly<Record<string, string>>;
   readonly tags?: readonly string[];
   readonly parent?: string | null;
+  readonly links?: readonly TaskLink[];
 };
 
 /**
@@ -90,6 +101,7 @@ export function createTask(params: {
     hasUncheckpointedEntries: false,
     metadata: params.metadata ?? {},
     tags: params.tags ?? [],
+    links: [],
   };
 }
 
@@ -113,6 +125,7 @@ export function taskFromMeta(meta: TaskMeta): Task {
     metadata: meta.metadata ?? {},
     tags: meta.tags ?? [],
     parent: meta.parent ?? null,
+    links: meta.links ?? [],
   };
 }
 
@@ -136,5 +149,6 @@ export function taskToMeta(task: Task): TaskMeta {
     metadata: task.metadata,
     tags: task.tags,
     parent: task.parent,
+    links: task.links,
   };
 }

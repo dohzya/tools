@@ -1,6 +1,6 @@
 // Index entity - the worklog index tracking all tasks
 
-import type { TaskStatus } from "./task.ts";
+import type { TaskLink, TaskStatus } from "./task.ts";
 
 /**
  * Immutable index entry for a single task in the worklog index.
@@ -16,6 +16,7 @@ export type IndexEntry = {
   readonly cancelled_at?: string | null;
   readonly tags?: readonly string[]; // Denormalized from task frontmatter for fast filtering
   readonly parent?: string; // Full parent task ID (if this is a subtask)
+  readonly links?: readonly TaskLink[]; // Non-hierarchical task links
 };
 
 /**

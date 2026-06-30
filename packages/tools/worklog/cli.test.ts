@@ -74,6 +74,8 @@ Deno.test("worklog agent-instructions - prints AGENTS.md snippet", async () => {
   assertStringIncludes(output, "create a subtask. `wl create");
   assertEquals(output.includes("create a subtask: `wl create"), false);
   assertStringIncludes(output, "wl create [--parent <taskid>]");
+  assertStringIncludes(output, "wl link <id> depends-on|blocks|related");
+  assertStringIncludes(output, "repeatable `--depends-on`, `--blocks`");
   assertStringIncludes(output, "wl trace");
   assertStringIncludes(output, "wl trace <id> -k");
   assertStringIncludes(
@@ -109,6 +111,8 @@ Deno.test("worklog agent-instructions --mandatory - prints strict AGENTS.md snip
   assertStringIncludes(output, "create a subtask. `wl create");
   assertEquals(output.includes("create a subtask: `wl create"), false);
   assertStringIncludes(output, "wl create [--parent <taskid>]");
+  assertStringIncludes(output, "wl link <id> depends-on|blocks|related");
+  assertStringIncludes(output, "repeatable `--depends-on`, `--blocks`");
   assertStringIncludes(output, "user validates completion");
   assertEquals(output.includes("MUST show"), false);
   assertEquals(output.includes("MUST consolidate"), false);
@@ -5464,6 +5468,314 @@ Deno.test("cross-scope - resolves task in worktree scope outside git root", asyn
     Deno.chdir(originalCwd);
     await Deno.remove(rootDir, { recursive: true });
     await Deno.remove(siblingDir, { recursive: true });
+  }
+});
+
+// ============================================================================
+// Task links tests
+// ============================================================================
+
+Deno.test("task links - link command stores reciprocal dependency and related links", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "task A"]);
+    await main(["create", "task B"]);
+    await main(["create", "task C"]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listOut)).dangerousCast<{
+      tasks: Array<{ id: string; name: string }>;
+    }>().tasks;
+    const taskA = tasks.find((task) => task.name === "task A")!.id;
+    const taskB = tasks.find((task) => task.name === "task B")!.id;
+    const taskC = tasks.find((task) => task.name === "task C")!.id;
+
+    await main(["link", taskA, "depends-on", taskB]);
+    await main(["link", taskC, "blocks", taskA]);
+    await main(["link", taskA, "related", taskC]);
+
+    const taskAFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${taskA}.md`),
+    );
+    const taskBFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${taskB}.md`),
+    );
+    const taskCFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${taskC}.md`),
+    );
+
+    assertEquals(taskAFrontmatter.links, [
+      { type: "depends_on", task: taskB },
+      { type: "depends_on", task: taskC },
+      { type: "related", task: taskC },
+    ]);
+    assertEquals(taskBFrontmatter.links, [
+      { type: "blocks", task: taskA },
+    ]);
+    assertEquals(taskCFrontmatter.links, [
+      { type: "blocks", task: taskA },
+      { type: "related", task: taskA },
+    ]);
+
+    const showJson = await captureOutput(() => main(["show", taskA, "--json"]));
+    const showOutput = ExplicitCast.fromAny(JSON.parse(showJson))
+      .dangerousCast<{
+        links: Array<{ type: string; task: string; name: string }>;
+      }>();
+    assertEquals(showOutput.links.map((link) => link.type), [
+      "depends_on",
+      "depends_on",
+      "related",
+    ]);
+    assertEquals(showOutput.links[0].name, "task B");
+
+    const listJson = await captureOutput(() =>
+      main(["list", "--all", "--include-blocked", "--json"])
+    );
+    const listOutput = ExplicitCast.fromAny(JSON.parse(listJson))
+      .dangerousCast<{
+        tasks: Array<{
+          id: string;
+          links?: Array<{ type: string; task: string }>;
+        }>;
+      }>();
+    assertEquals(
+      listOutput.tasks.find((task) => task.id === taskA)?.links?.map((link) =>
+        link.type
+      ),
+      ["depends_on", "depends_on", "related"],
+    );
+
+    const listText = await captureOutput(() =>
+      main(["list", "--all", "--include-blocked"])
+    );
+    assertStringIncludes(listText, "dep:");
+    assertStringIncludes(listText, "rel:");
+
+    const dashJson = await captureOutput(() =>
+      main(["dash", "--include-blocked", "--json"])
+    );
+    const dashOutput = ExplicitCast.fromAny(JSON.parse(dashJson))
+      .dangerousCast<{
+        tasks: Array<{
+          id: string;
+          links?: Array<{ type: string; task: string }>;
+        }>;
+      }>();
+    assertEquals(
+      dashOutput.tasks.find((task) => task.id === taskA)?.links?.map((link) =>
+        link.type
+      ),
+      ["depends_on", "depends_on", "related"],
+    );
+
+    const dashText = await captureOutput(() =>
+      main(["dash", "--include-blocked"])
+    );
+    assertStringIncludes(dashText, "dep:");
+    assertStringIncludes(dashText, "rel:");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("task links - create can add dependency, blocker, and related links", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "dependency"]);
+    await main(["create", "second dependency"]);
+    await main(["create", "blocked task"]);
+    await main(["create", "reference task"]);
+
+    const baseListOut = await captureOutput(() =>
+      main(["list", "--all", "--json"])
+    );
+    const baseTasks = ExplicitCast.fromAny(JSON.parse(baseListOut))
+      .dangerousCast<{ tasks: Array<{ id: string; name: string }> }>().tasks;
+    const dependency = baseTasks.find((task) => task.name === "dependency")!.id;
+    const secondDependency = baseTasks.find((task) =>
+      task.name === "second dependency"
+    )!.id;
+    const blockedTask = baseTasks.find((task) => task.name === "blocked task")!
+      .id;
+    const referenceTask = baseTasks.find((task) =>
+      task.name === "reference task"
+    )!.id;
+
+    await main([
+      "create",
+      "--depends-on",
+      dependency,
+      "--depends-on",
+      secondDependency,
+      "--blocks",
+      blockedTask,
+      "--related",
+      referenceTask,
+      "new task",
+      "new task desc",
+    ]);
+
+    const listOut = await captureOutput(() =>
+      main(["list", "--all", "--include-blocked", "--json"])
+    );
+    const tasks = ExplicitCast.fromAny(JSON.parse(listOut)).dangerousCast<{
+      tasks: Array<{ id: string; name: string }>;
+    }>().tasks;
+    const newTask = tasks.find((task) => task.name === "new task")!.id;
+
+    const newTaskFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${newTask}.md`),
+    );
+    const dependencyFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${dependency}.md`),
+    );
+    const blockedFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${blockedTask}.md`),
+    );
+    const referenceFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(`${tempDir}/.worklog/tasks/${referenceTask}.md`),
+    );
+
+    assertEquals(newTaskFrontmatter.links, [
+      { type: "depends_on", task: dependency },
+      { type: "depends_on", task: secondDependency },
+      { type: "blocks", task: blockedTask },
+      { type: "related", task: referenceTask },
+    ]);
+    assertEquals(dependencyFrontmatter.links, [
+      { type: "blocks", task: newTask },
+    ]);
+    const secondDependencyFrontmatter = parseFrontmatter(
+      await Deno.readTextFile(
+        `${tempDir}/.worklog/tasks/${secondDependency}.md`,
+      ),
+    );
+    assertEquals(secondDependencyFrontmatter.links, [
+      { type: "blocks", task: newTask },
+    ]);
+    assertEquals(blockedFrontmatter.links, [
+      { type: "depends_on", task: newTask },
+    ]);
+    assertEquals(referenceFrontmatter.links, [
+      { type: "related", task: newTask },
+    ]);
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("task links - list and dash hide blocked tasks by default", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+    await main(["init"]);
+    await main(["create", "--started", "dependency"]);
+    await main(["create", "--started", "blocked task"]);
+    await main(["create", "--started", "independent task"]);
+
+    const baseListOut = await captureOutput(() =>
+      main(["list", "--json", "--all"])
+    );
+    const baseTasks = ExplicitCast.fromAny(JSON.parse(baseListOut))
+      .dangerousCast<{ tasks: Array<{ id: string; name: string }> }>().tasks;
+    const dependency = baseTasks.find((task) => task.name === "dependency")!.id;
+    const blockedTask = baseTasks.find((task) => task.name === "blocked task")!
+      .id;
+    const independentTask = baseTasks.find((task) =>
+      task.name === "independent task"
+    )!.id;
+
+    await main(["link", blockedTask, "depends-on", dependency]);
+
+    const defaultListOut = await captureOutput(() => main(["list", "--json"]));
+    const defaultList = ExplicitCast.fromAny(JSON.parse(defaultListOut))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(
+      defaultList.some((task) => task.name === "blocked task"),
+      false,
+    );
+    assertEquals(
+      defaultList.some((task) => task.name === "independent task"),
+      true,
+    );
+
+    const includeBlockedListOut = await captureOutput(() =>
+      main(["list", "--json", "--include-blocked"])
+    );
+    const includeBlockedList = ExplicitCast.fromAny(
+      JSON.parse(includeBlockedListOut),
+    ).dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(
+      includeBlockedList.some((task) => task.name === "blocked task"),
+      true,
+    );
+
+    const dependsOnListOut = await captureOutput(() =>
+      main(["list", "--json", "--depends-on", dependency])
+    );
+    const dependsOnList = ExplicitCast.fromAny(JSON.parse(dependsOnListOut))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(dependsOnList.map((task) => task.name), ["blocked task"]);
+
+    const blocksListOut = await captureOutput(() =>
+      main(["list", "--json", "--blocks", blockedTask])
+    );
+    const blocksList = ExplicitCast.fromAny(JSON.parse(blocksListOut))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(blocksList.map((task) => task.name), ["dependency"]);
+
+    await main(["link", independentTask, "related", dependency]);
+
+    const relatedToListOut = await captureOutput(() =>
+      main(["list", "--json", "--related-to", dependency])
+    );
+    const relatedToList = ExplicitCast.fromAny(JSON.parse(relatedToListOut))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(relatedToList.map((task) => task.name), ["independent task"]);
+
+    const linkedToListOut = await captureOutput(() =>
+      main(["list", "--json", "--linked-to", dependency])
+    );
+    const linkedToList = ExplicitCast.fromAny(JSON.parse(linkedToListOut))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(linkedToList.map((task) => task.name).sort(), [
+      "blocked task",
+      "independent task",
+    ]);
+
+    const defaultDashOut = await captureOutput(() => main(["dash", "--json"]));
+    const defaultDash = ExplicitCast.fromAny(JSON.parse(defaultDashOut))
+      .dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(
+      defaultDash.some((task) => task.name === "blocked task"),
+      false,
+    );
+
+    const includeBlockedDashOut = await captureOutput(() =>
+      main(["dash", "--json", "--include-blocked"])
+    );
+    const includeBlockedDash = ExplicitCast.fromAny(
+      JSON.parse(includeBlockedDashOut),
+    ).dangerousCast<{ tasks: Array<{ name: string }> }>().tasks;
+    assertEquals(
+      includeBlockedDash.some((task) => task.name === "blocked task"),
+      true,
+    );
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
   }
 });
 

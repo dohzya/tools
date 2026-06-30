@@ -324,6 +324,14 @@ export class MarkdownSurgeonAdapter implements MarkdownService {
       frontmatter.tags = [...meta.tags];
     }
 
+    if (meta.parent) {
+      frontmatter.parent = meta.parent;
+    }
+
+    if (meta.links && meta.links.length > 0) {
+      frontmatter.links = [...meta.links];
+    }
+
     const yaml = stringifyYaml(frontmatter, { lineWidth: -1 }).trim();
 
     let content = `---\n${yaml}\n---\n\n# Entries\n`;

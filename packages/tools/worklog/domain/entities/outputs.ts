@@ -2,7 +2,7 @@
 
 import type { Checkpoint } from "./checkpoint.ts";
 import type { Entry } from "./entry.ts";
-import type { TaskStatus } from "./task.ts";
+import type { TaskLink, TaskLinkType, TaskStatus } from "./task.ts";
 import type { Todo } from "./todo.ts";
 
 export type SubtaskSummary = {
@@ -53,6 +53,13 @@ export type ShowOutput = {
     readonly name: string;
     readonly status: TaskStatus;
   } | null;
+  readonly links?: readonly {
+    readonly type: TaskLinkType;
+    readonly task: string;
+    readonly shortId: string;
+    readonly name: string;
+    readonly status: TaskStatus;
+  }[];
   readonly subtasks?: readonly SubtaskSummary[];
 };
 
@@ -67,6 +74,7 @@ export type ListTaskItem = {
   readonly tags?: readonly string[];
   readonly filterPattern?: string; // Pattern used for filtering (to hide from display)
   readonly parent?: string; // Full parent task ID (set in --subtasks mode)
+  readonly links?: readonly TaskLink[];
   readonly sourceWorklogPath?: string;
 };
 
@@ -87,6 +95,7 @@ export type DashboardSubtaskItem = {
   readonly status: TaskStatus;
   readonly scopePrefix?: string;
   readonly created: string;
+  readonly links?: readonly TaskLink[];
   readonly todos: readonly Todo[];
   readonly subtasks: readonly DashboardSubtaskItem[];
 };
@@ -100,6 +109,7 @@ export type DashboardTaskItem = {
   readonly scopePrefix?: string;
   readonly created: string;
   readonly tags?: readonly string[];
+  readonly links?: readonly TaskLink[];
   readonly todos: readonly Todo[];
   readonly subtasks: readonly DashboardSubtaskItem[];
 };

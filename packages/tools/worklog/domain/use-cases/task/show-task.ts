@@ -77,6 +77,20 @@ export class ShowTaskUseCase {
       }
     }
 
+    const links = (meta.links ?? [])
+      .map((link) => {
+        const linkedTask = index.tasks[link.task];
+        if (!linkedTask) return null;
+        return {
+          type: link.type,
+          task: link.task,
+          shortId: getShortId(index, link.task),
+          name: linkedTask.name,
+          status: linkedTask.status,
+        };
+      })
+      .filter((link) => link !== null);
+
     // Find and build subtasks
     const children = Object.entries(index.tasks).filter(
       ([_, e]) => e.parent === taskId,
@@ -105,6 +119,7 @@ export class ShowTaskUseCase {
       todos: filteredTodos,
       tags: effectiveTags.length > 0 ? effectiveTags : undefined,
       parent: parentOutput,
+      links: links.length > 0 ? links : undefined,
       subtasks,
     };
   }

@@ -20,10 +20,16 @@ Track work with traces and checkpoints. **Always work within a worktask.**
 
 ```bash
 wl list                  # Active tasks (created + ready + started)
+wl list --include-blocked # Include tasks blocked by open dependencies
+wl list --depends-on <id> # Tasks depending on another task
+wl list --blocks <id>    # Tasks blocking another task
+wl list --related-to <id> # Tasks related to another task
+wl list --linked-to <id> # Tasks linked to another task by any link type
 wl list --started        # In-progress only
 wl list --all            # All including done/cancelled (<30d)
 wl status -q             # Compact active-work status; silent when empty
 wl show <id>             # Status, history, traces, TODOs, subtasks
+wl link <id> depends-on|blocks|related <other-id> # Non-hierarchical task link
 wl logs <id>             # Entries since last checkpoint
 ```
 
@@ -117,6 +123,8 @@ Don't just display learnings in the conversation — trace them. Checkpoints syn
 # Orient
 wl list                     # active tasks
 wl list --parent <id>       # sub-agent subtasks progress
+wl list --depends-on <id>   # tasks depending on another task
+wl list --linked-to <id>    # tasks linked to another task by any link type
 wl list --subtasks-of-started # active tasks + children of started tasks
 wl status -q                # compact active-work status; silent when empty
 wl show <id>                # status, history, todos, subtasks
@@ -126,6 +134,8 @@ wl create --started "name" "desc"                    # create + start (desc = sc
 wl create --started "name" --desc "scope" --desc "context" # repeatable desc parts
 wl create --started "name" --desc-src file.md        # desc part from file
 wl create --parent <id> --started "Sub-task" "desc"  # subtask for sub-agent delegation
+wl create --depends-on <id> --related <id2> "name"   # non-hierarchical links at creation
+wl link <id> depends-on|blocks|related <other-id>    # link existing tasks without parentage
 
 # Trace — one entry per event: action, info, state, hypothesis, finding, learning
 wl trace <id> -k finding "msg"  # flags before message: wl trace <id> -k state -t T14:30 "msg"

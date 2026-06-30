@@ -33,6 +33,8 @@ import {
   type SubtaskSummary,
   type SummaryOutput,
   TASK_STATUSES,
+  type TaskLink,
+  type TaskLinkType,
   type TaskMeta,
   type TaskStatus,
   type Todo,
@@ -98,6 +100,10 @@ import { ManageFrontmatterUseCase } from "../markdown-surgeon/domain/use-cases/m
 // Worklog use cases
 import { InitUseCase } from "./domain/use-cases/task/init.ts";
 import { CreateTaskUseCase } from "./domain/use-cases/task/create-task.ts";
+import {
+  LinkTaskUseCase,
+  type TaskLinkInputType,
+} from "./domain/use-cases/task/link-task.ts";
 import { ShowTaskUseCase } from "./domain/use-cases/task/show-task.ts";
 import { ListTasksUseCase } from "./domain/use-cases/task/list-tasks.ts";
 import { UpdateStatusUseCase } from "./domain/use-cases/task/update-status.ts";
@@ -241,6 +247,10 @@ const TaskMetaSchema = z.object({
   metadata: z.optional(z.record(z.string(), z.string())),
   tags: z.optional(z.array(z.string())),
   parent: z.optional(z.nullable(z.string())),
+  links: z.optional(z.array(z.object({
+    type: z.enum(["depends_on", "blocks", "related"]),
+    task: z.string(),
+  }))),
 });
 
 // ============================================================================
@@ -268,6 +278,7 @@ let scopeRepo: JsonScopeRepository;
 // Use cases (will be re-instantiated when repositories change)
 let initUseCase: InitUseCase;
 let createTaskUseCase: CreateTaskUseCase;
+let linkTaskUseCase: LinkTaskUseCase;
 let showTaskUseCase: ShowTaskUseCase;
 let listTasksUseCase: ListTasksUseCase;
 let updateStatusUseCase: UpdateStatusUseCase;
@@ -322,6 +333,7 @@ function initializeUseCases(): void {
     taskRepo,
     markdownService,
   });
+  linkTaskUseCase = new LinkTaskUseCase(indexRepo, taskRepo, markdownService);
   showTaskUseCase = new ShowTaskUseCase(indexRepo, taskRepo, scopeRepo, fs);
   listTasksUseCase = new ListTasksUseCase(indexRepo, scopeRepo, fs);
   updateStatusUseCase = new UpdateStatusUseCase(
@@ -2596,6 +2608,44 @@ function formatMeta(output: { metadata: Record<string, string> }): string {
   return lines.join("\n");
 }
 
+function formatLink(output: {
+  sourceTaskId: string;
+  sourceType: string;
+  targetTaskId: string;
+  targetType: string;
+}): string {
+  return `${output.sourceTaskId} ${output.sourceType} ${output.targetTaskId} (${output.targetType} reciprocal)`;
+}
+
+function parseTaskLinkType(type: string): TaskLinkInputType {
+  if (type === "depends-on" || type === "depends_on") return "depends_on";
+  if (type === "blocks") return "blocks";
+  if (type === "related" || type === "relates-to") return "related";
+  throw new WtError(
+    "invalid_args",
+    "Invalid link type. Use depends-on, blocks, or related.",
+  );
+}
+
+function formatTaskLinks(
+  links: readonly TaskLink[] | undefined,
+  allTaskIds: readonly string[],
+  palette: Palette,
+): string {
+  if (!links || links.length === 0) return "";
+  const labels: Record<TaskLink["type"], string> = {
+    depends_on: "dep",
+    blocks: "blk",
+    related: "rel",
+  };
+  const ids = [...allTaskIds];
+  return links
+    .map((link) =>
+      `${labels[link.type]}:${palette.id(getShortId(link.task, ids))}`
+    )
+    .join(" ");
+}
+
 function formatShow(
   output: ShowOutput,
   palette: Palette = createPalette(false, catppuccinLatte),
@@ -2621,6 +2671,16 @@ function formatShow(
     lines.push(
       `${h("tags:")} ${output.tags.map((t) => palette.tag(`#${t}`)).join(" ")}`,
     );
+  }
+  if (output.links && output.links.length > 0) {
+    lines.push(h("links:"));
+    for (const link of output.links) {
+      lines.push(
+        `  ${h(link.type + ":")} ${
+          palette.id(link.shortId)
+        }  "${link.name}"  (${colorStatus(link.status, palette)})`,
+      );
+    }
   }
 
   // History
@@ -2826,7 +2886,10 @@ function formatList(
   );
 
   // Calculate short IDs
-  const allIds = sortedTasks.map((t) => t.id);
+  const allIds = [
+    ...sortedTasks.map((t) => t.id),
+    ...sortedTasks.flatMap((t) => (t.links ?? []).map((link) => link.task)),
+  ];
 
   const renderTask = (t: ListTaskItem, extraIndent: string): string => {
     const shortId = getShortId(t.id, allIds);
@@ -2854,9 +2917,12 @@ function formatList(
       ? tagsToShow.map((tag) => palette.tag(`#${tag}`)).join(" ") + "  "
       : "";
 
+    const linksStr = formatTaskLinks(t.links, allIds, palette);
+    const linksSuffix = linksStr ? `  ${linksStr}` : "";
+
     return `${prefix}${tagsStr}${palette.id(shortId)}  ${
       colorStatus(t.status, palette)
-    }  "${t.name}"  ${palette.timestamp(t.created)}`;
+    }  "${t.name}"  ${palette.timestamp(t.created)}${linksSuffix}`;
   };
 
   if (isSubtasksMode) {
@@ -2919,6 +2985,12 @@ function formatDashboard(
   const allTaskIds = [
     ...output.tasks.map((task) => task.id),
     ...allSubtasks.map((subtask) => subtask.id),
+    ...output.tasks.flatMap((task) =>
+      (task.links ?? []).map((link) => link.task)
+    ),
+    ...allSubtasks.flatMap((subtask) =>
+      (subtask.links ?? []).map((link) => link.task)
+    ),
   ];
   const allTodoIds = [
     ...output.tasks.flatMap((task) => task.todos.map((todo) => todo.id)),
@@ -2940,6 +3012,7 @@ function formatDashboard(
       readonly created: string;
       readonly scopePrefix?: string;
       readonly tags?: readonly string[];
+      readonly links?: readonly TaskLink[];
     },
     indent: string,
   ): string => {
@@ -2950,11 +3023,13 @@ function formatDashboard(
     const tagsStr = task.tags && task.tags.length > 0
       ? task.tags.map((tag) => palette.tag(`#${tag}`)).join(" ") + "  "
       : "";
+    const linksStr = formatTaskLinks(task.links, allTaskIds, palette);
+    const linksSuffix = linksStr ? `  ${linksStr}` : "";
     return `${prefix}${tagsStr}${
       palette.id(getShortId(task.id, allTaskIds))
     }  ${colorStatus(task.status, palette)}  "${task.name}"  ${
       palette.timestamp(task.created)
-    }`;
+    }${linksSuffix}`;
   };
 
   const formatTodoLine = (todo: Todo, indent: string): string => {
@@ -3496,6 +3571,25 @@ async function cmdMeta(
   });
 }
 
+async function cmdLink(
+  sourceTaskId: string,
+  type: TaskLinkInputType,
+  targetTaskId: string,
+): Promise<{
+  sourceTaskId: string;
+  sourceType: string;
+  targetTaskId: string;
+  targetType: string;
+}> {
+  await purge();
+
+  return await linkTaskUseCase.execute({
+    sourceTaskId,
+    type,
+    targetTaskId,
+  });
+}
+
 /**
  * List all unique tags across all scopes with counts.
  */
@@ -3656,6 +3750,11 @@ async function cmdList(
   showSubtasks?: boolean,
   showSubtasksOfStarted?: boolean,
   parentFilter?: string,
+  linkFilter?: {
+    readonly taskId: string;
+    readonly type?: TaskLinkType;
+  },
+  includeBlocked?: boolean,
   includeSourceWorklogPath?: boolean,
 ): Promise<ListOutput> {
   if (!baseDir) {
@@ -3677,6 +3776,8 @@ async function cmdList(
     showSubtasks,
     showSubtasksOfStarted,
     parentFilter,
+    linkFilter,
+    includeBlocked,
     includeSourceWorklogPath,
   });
 }
@@ -3717,6 +3818,7 @@ async function cmdDashboard(
   limit?: number,
   gitRoot?: string | null,
   currentScope?: string,
+  includeBlocked?: boolean,
 ): Promise<DashboardOutput> {
   const listOutput = await cmdList(
     false,
@@ -3731,6 +3833,8 @@ async function cmdDashboard(
     true,
     false,
     undefined,
+    undefined,
+    includeBlocked,
     true,
   );
   return await buildDashboardOutput(listOutput, limit);
@@ -3779,6 +3883,7 @@ async function buildDashboardOutput(
         status: subtask.status,
         scopePrefix: subtask.scopePrefix,
         created: subtask.created,
+        links: subtask.links,
         todos: await loadOpenTodosForTask(subtask),
         subtasks: await buildSubtasks(subtask.id, nextSeenTaskIds),
       });
@@ -3802,6 +3907,7 @@ async function buildDashboardOutput(
       scopePrefix: task.scopePrefix,
       created: task.created,
       tags: task.tags,
+      links: task.links,
       todos: shouldExpand ? await loadOpenTodosForTask(task) : [],
       subtasks,
     });
@@ -5238,6 +5344,19 @@ const createCmd = new Command()
     collect: true,
   })
   .option("--parent <taskId:string>", "Set parent task (creates a subtask)")
+  .option(
+    "--depends-on <taskId:string>",
+    "Link new task as depending on task",
+    {
+      collect: true,
+    },
+  )
+  .option("--blocks <taskId:string>", "Link new task as blocking task", {
+    collect: true,
+  })
+  .option("--related <taskId:string>", "Link new task as related to task", {
+    collect: true,
+  })
   .option("--desc <desc:string>", "Add a description part (repeatable)", {
     collect: true,
   })
@@ -5353,6 +5472,41 @@ const createCmd = new Command()
         }
       }
 
+      const requestedLinks: Array<{
+        type: TaskLinkInputType;
+        taskId: string;
+      }> = [];
+      for (const taskId of options.dependsOn ?? []) {
+        requestedLinks.push({ type: "depends_on", taskId });
+      }
+      for (const taskId of options.blocks ?? []) {
+        requestedLinks.push({ type: "blocks", taskId });
+      }
+      for (const taskId of options.related ?? []) {
+        requestedLinks.push({ type: "related", taskId });
+      }
+
+      const resolvedLinks: Array<{
+        type: TaskLinkInputType;
+        taskId: string;
+      }> = [];
+      if (requestedLinks.length > 0) {
+        const targetScopeDir = Deno.cwd();
+        try {
+          for (const link of requestedLinks) {
+            resolvedLinks.push({
+              type: link.type,
+              taskId: await resolveTaskIdAcrossScopes(
+                link.taskId,
+                options.scope ? null : gitRoot,
+              ),
+            });
+          }
+        } finally {
+          Deno.chdir(targetScopeDir);
+        }
+      }
+
       const metadata = parseMetaOption(options.meta);
       const output = await cmdAdd(
         name,
@@ -5364,6 +5518,10 @@ const createCmd = new Command()
         timestampValue,
         parentId,
       );
+      const createdTaskId = await resolveTaskId(output.id);
+      for (const link of resolvedLinks) {
+        await cmdLink(createdTaskId, link.type, link.taskId);
+      }
       console.log(options.json ? JSON.stringify(output) : formatAdd(output));
       if (agentType) {
         const extraArgs = this.getLiteralArgs();
@@ -6446,6 +6604,46 @@ const metaCmd = new Command()
     }
   });
 
+const linkCmd = new Command()
+  .description("Link two tasks without making either task a subtask")
+  .arguments("<sourceTaskId:string> <type:string> <targetTaskId:string>")
+  .option("--json", "Output as JSON")
+  .option("--scope <scope:string>", "Target specific scope")
+  .action(async (options, sourceTaskId, type, targetTaskId) => {
+    try {
+      const { gitRoot } = await resolveScopeContext(
+        options.scope,
+        asGlobal(options).cwd,
+        asGlobal(options).worklogDir,
+      );
+      const linkType = parseTaskLinkType(type);
+      const targetScopeDir = Deno.cwd();
+      let resolvedSourceTaskId: string;
+      let resolvedTargetTaskId: string;
+      try {
+        resolvedSourceTaskId = await resolveTaskIdAcrossScopes(
+          sourceTaskId,
+          options.scope ? null : gitRoot,
+        );
+        resolvedTargetTaskId = await resolveTaskIdAcrossScopes(
+          targetTaskId,
+          options.scope ? null : gitRoot,
+        );
+      } finally {
+        Deno.chdir(targetScopeDir);
+      }
+
+      const output = await cmdLink(
+        resolvedSourceTaskId,
+        linkType,
+        resolvedTargetTaskId,
+      );
+      console.log(options.json ? JSON.stringify(output) : formatLink(output));
+    } catch (e) {
+      handleError(e, options.json ?? false);
+    }
+  });
+
 const tagsAddCmd = new Command()
   .description("Add a tag to a task")
   .arguments("<tag:string> <taskId:string>")
@@ -6626,6 +6824,11 @@ const listCmd = new Command()
   .option("--subtasks", "Include subtasks (hidden by default)")
   .option("--subtasks-of-started", "Include subtasks of started tasks")
   .option("--parent <taskId:string>", "Show only subtasks of this parent")
+  .option("--depends-on <taskId:string>", "Show tasks depending on this task")
+  .option("--blocks <taskId:string>", "Show tasks blocking this task")
+  .option("--related-to <taskId:string>", "Show tasks related to this task")
+  .option("--linked-to <taskId:string>", "Show tasks linked to this task")
+  .option("--include-blocked", "Include tasks blocked by open dependencies")
   .option("--no-header", "Hide contextual header lines")
   .option("--pager", "Page text output with $PAGER")
   .option("--no-pager", "Print text output directly")
@@ -6653,6 +6856,41 @@ const listCmd = new Command()
           options.parent,
           gitRoot,
         );
+      }
+
+      const linkFilterInputs = [
+        options.dependsOn
+          ? { type: "depends_on" as const, taskId: options.dependsOn }
+          : undefined,
+        options.blocks
+          ? { type: "blocks" as const, taskId: options.blocks }
+          : undefined,
+        options.relatedTo
+          ? { type: "related" as const, taskId: options.relatedTo }
+          : undefined,
+        options.linkedTo ? { taskId: options.linkedTo } : undefined,
+      ].filter((input) => input !== undefined);
+      if (linkFilterInputs.length > 1) {
+        throw new WtError(
+          "invalid_args",
+          "Use only one link filter: --depends-on, --blocks, --related-to, or --linked-to",
+        );
+      }
+
+      let resolvedLinkFilter:
+        | { readonly taskId: string; readonly type?: TaskLinkType }
+        | undefined;
+      if (linkFilterInputs.length === 1) {
+        const cwd = Deno.cwd();
+        const gitRoot = await findGitRoot(cwd);
+        const linkFilterInput = linkFilterInputs[0];
+        resolvedLinkFilter = {
+          ...linkFilterInput,
+          taskId: await resolveTaskIdWithEnvFallbackAcrossScopes(
+            linkFilterInput.taskId,
+            gitRoot,
+          ),
+        };
       }
 
       if (explicitWorklog) {
@@ -6687,6 +6925,8 @@ const listCmd = new Command()
           options.subtasks ?? false,
           options.subtasksOfStarted ?? false,
           resolvedParentFilter,
+          resolvedLinkFilter,
+          options.includeBlocked ?? false,
         );
         await emitListOutput(output, options);
         return;
@@ -6715,6 +6955,8 @@ const listCmd = new Command()
         options.subtasks ?? false,
         options.subtasksOfStarted ?? false,
         resolvedParentFilter,
+        resolvedLinkFilter,
+        options.includeBlocked ?? false,
       );
       await emitListOutput(output, options);
     } catch (e) {
@@ -6727,6 +6969,7 @@ function createDashboardCommand() {
     .description("Show a compact dashboard of active work")
     .option("--json", "Output as JSON")
     .option("--limit <n:number>", "Limit top-level tasks before expansion")
+    .option("--include-blocked", "Include tasks blocked by open dependencies")
     .option("-q, --quiet", "Print nothing when there are no active tasks")
     .action(async (options) => {
       try {
@@ -6756,7 +6999,12 @@ function createDashboardCommand() {
           );
         }
 
-        const output = await cmdDashboard(limit, gitRoot, currentScope);
+        const output = await cmdDashboard(
+          limit,
+          gitRoot,
+          currentScope,
+          options.includeBlocked ?? false,
+        );
         if (options.quiet && isQuietDashboardOutput(output)) {
           return;
         }
@@ -6947,6 +7195,7 @@ const cli = new Command()
   .command("done", doneCmd)
   .command("cancel", cancelCmd)
   .command("meta", metaCmd)
+  .command("link", linkCmd)
   .command("tags", tagsCmd)
   .command("list", listCmd)
   .command("status", createDashboardCommand())
