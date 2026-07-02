@@ -1,6 +1,7 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { MdError } from "./types.ts";
 import { main } from "./cli.ts";
+import { ExplicitCast } from "../explicit-cast.ts";
 
 // ============================================================================
 // MdError tests
@@ -107,6 +108,137 @@ Deno.test("md outline --json - outputs valid JSON", async () => {
   }
 });
 
+Deno.test("md outline --mrfi - includes resolvable MRFI references", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const output = await captureOutput(() => main(["outline", file, "--mrfi"]));
+
+    assertStringIncludes(output, "# Installation ^");
+    assertEquals(/~[\uAC00-\uB3FF]+/.test(output), true);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md outline --mrfi --format debug - includes debug MRFI references", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["outline", file, "--mrfi", "--format", "debug"])
+    );
+
+    assertStringIncludes(output, "~{v0;");
+    assertStringIncludes(output, "a=install_sdk");
+    assertStringIncludes(output, "hh=smh64:");
+    assertEquals(output.includes("q=Installation"), false);
+    assertEquals(output.includes("/8"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md outline --mrfi --format debug - computes smh64 with SHA-256 feature hashes", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    const output = await captureOutput(() =>
+      main(["outline", file, "--mrfi", "--format", "debug"])
+    );
+
+    assertStringIncludes(output, "hh=smh64:1cfbb49a5e5ddc6b");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md outline --mrfi --format debug - ignores anchors inside fenced code blocks", async () => {
+  const file = await createTempFile(
+    [
+      "# Example",
+      "",
+      "```markdown",
+      "<!-- ^not_real -->",
+      "```",
+    ].join("\n"),
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["outline", file, "--mrfi", "--format", "debug"])
+    );
+
+    assertStringIncludes(output, "~{v0;");
+    assertEquals(output.includes("a=not_real"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md outline --mrfi --json - includes MRFI references", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    const output = await captureOutput(() =>
+      main(["outline", file, "--mrfi", "--json"])
+    );
+    const sections = JSON.parse(output);
+
+    assertEquals(typeof sections[0].mrfi, "string");
+    assertEquals(/^~[\uAC00-\uB3FF]+$/.test(sections[0].mrfi), true);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md outline --mrfi --format debug --quote - includes q when explicitly requested", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    const output = await captureOutput(() =>
+      main(["outline", file, "--mrfi", "--format", "debug", "--quote"])
+    );
+
+    assertStringIncludes(output, "q=Installation");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md outline --fuzzy - is not a supported alias", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    let exitCode: number | undefined;
+    const originalExit = Deno.exit;
+    const originalError = console.error;
+    let errorOutput = "";
+
+    Deno.exit = ExplicitCast.from<unknown>((code?: number) => {
+      exitCode = code;
+      throw new Error("Deno.exit");
+    }).dangerousCast<typeof Deno.exit>();
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    try {
+      await main(["outline", file, "--fuzzy"]);
+    } catch (error) {
+      assertEquals(
+        ExplicitCast.from<unknown>(error).dangerousCast<Error>().message,
+        "Deno.exit",
+      );
+    } finally {
+      Deno.exit = originalExit;
+      console.error = originalError;
+    }
+
+    assertEquals(exitCode, 2);
+    assertStringIncludes(errorOutput, "Unknown option");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
 Deno.test("md outline --count - shows section count", async () => {
   const file = await createTempFile(`# A\n## B\n## C`);
   try {
@@ -148,6 +280,696 @@ Deno.test("md outline --after - shows subsections only", async () => {
     assertEquals(filtered.length, 2);
     assertEquals(filtered[0].title, "Child 1");
     assertEquals(filtered[1].title, "Child 2");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+// ============================================================================
+// CLI resolve command tests
+// ============================================================================
+
+Deno.test("md resolve - resolves a stable anchor to its containing section", async () => {
+  const file = await createTempFile(
+    [
+      "# Installation",
+      "",
+      "Run the installer.",
+      "<!-- ^install_sdk -->",
+      "",
+      "# Configuration",
+      "",
+      "Set the option.",
+    ].join("\n"),
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["resolve", file, "^install_sdk"])
+    );
+
+    assertStringIncludes(output, "^install_sdk exact 1.00 L1-L4");
+    assertStringIncludes(output, "    # Installation");
+    assertStringIncludes(output, "    Run the installer.");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - ignores anchors inside fenced code blocks", async () => {
+  const file = await createTempFile(
+    [
+      "# Example",
+      "",
+      "```markdown",
+      "<!-- ^not_real -->",
+      "```",
+    ].join("\n"),
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["resolve", file, "^not_real", "--json"])
+    );
+    const results = JSON.parse(output);
+
+    assertEquals(results[0].status, "not_found");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve --json - resolves multiple references with passages", async () => {
+  const file = await createTempFile(
+    [
+      "# Installation",
+      "",
+      "Run the installer.",
+      "<!-- ^install_sdk -->",
+      "",
+      "# Configuration",
+      "",
+      "Set the option.",
+    ].join("\n"),
+  );
+  try {
+    const output = await captureOutput(() =>
+      main([
+        "resolve",
+        file,
+        "^install_sdk",
+        "~{v0;r=6:1-8:16;q=Set%20the%20option.}::Set the option.",
+        "--json",
+      ])
+    );
+    const results = JSON.parse(output);
+
+    assertEquals(results.length, 2);
+    assertEquals(results[0].ref, "^install_sdk");
+    assertEquals(results[0].status, "exact");
+    assertStringIncludes(results[0].passage, "# Installation");
+    assertEquals(results[1].ref, "~{v0;r=6:1-8:16;q=Set%20the%20option.}");
+    assertEquals(results[1].status, "confident");
+    assertStringIncludes(results[1].passage, "# Configuration");
+    assertEquals("witness" in results[1], false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - uses hh to recover a moved section when range is stale", async () => {
+  const originalFile = await createTempFile(
+    "# Installation rapide\n\nRun the installer.",
+  );
+  const movedFile = await createTempFile(
+    [
+      "# Intro",
+      "",
+      "Different text.",
+      "",
+      "# Installation rapide!",
+      "",
+      "Run the installer.",
+    ].join("\n"),
+  );
+  try {
+    const outlineOutput = await captureOutput(() =>
+      main(["outline", originalFile, "--mrfi", "--json"])
+    );
+    const sections = JSON.parse(outlineOutput);
+    const mrfi = sections[0].mrfi;
+
+    const output = await captureOutput(() =>
+      main(["resolve", movedFile, mrfi])
+    );
+
+    assertStringIncludes(output, `${mrfi} confident`);
+    assertStringIncludes(output, "L5-L7");
+    assertStringIncludes(output, "fuzzy heading match");
+    assertStringIncludes(output, "    # Installation rapide");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - keeps the last content line from outline section MRFI ranges", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    const outlineOutput = await captureOutput(() =>
+      main(["outline", file, "--mrfi", "--json"])
+    );
+    const sections = JSON.parse(outlineOutput);
+    const mrfi = sections[0].mrfi;
+
+    const output = await captureOutput(() => main(["resolve", file, mrfi]));
+
+    assertStringIncludes(output, "L1-L3");
+    assertStringIncludes(output, "    # Installation");
+    assertStringIncludes(output, "    Run the installer.");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - accepts compact Hangul MRFI references", async () => {
+  const originalFile = await createTempFile(
+    "# Installation rapide\n\nRun the installer.",
+  );
+  const movedFile = await createTempFile(
+    [
+      "# Intro",
+      "",
+      "Different text.",
+      "",
+      "# Installation rapide!",
+      "",
+      "Run the installer.",
+    ].join("\n"),
+  );
+  try {
+    const outlineOutput = await captureOutput(() =>
+      main(["outline", originalFile, "--mrfi", "--json"])
+    );
+    const sections = JSON.parse(outlineOutput);
+    const mrfi = sections[0].mrfi;
+
+    assertEquals(/^~[\uAC00-\uB3FF]+$/.test(mrfi), true);
+
+    const output = await captureOutput(() =>
+      main(["resolve", movedFile, mrfi])
+    );
+
+    assertStringIncludes(output, `${mrfi} confident`);
+    assertStringIncludes(output, "L5-L7");
+    assertStringIncludes(output, "fuzzy heading match");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - does not let a stale range beat exact and context evidence", async () => {
+  const originalFile = await createTempFile(
+    ["# Section", "", "Alpha", "Target sentence.", "Beta"].join("\n"),
+  );
+  const editedFile = await createTempFile(
+    ["# Section", "", "Alpha", "", "Target sentence.", "Beta"].join("\n"),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "4:1-4:17", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() =>
+      main(["resolve", editedFile, ref])
+    );
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L5");
+    assertStringIncludes(output, "exact fragment hash match");
+    assertStringIncludes(output, "    Target sentence.");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(editedFile);
+  }
+});
+
+Deno.test("md resolve - recovers exact hash matches when normalization changes source length", async () => {
+  const originalFile = await createTempFile(
+    ["# Section", "", "Foo   bar", "end"].join("\n"),
+  );
+  const editedFile = await createTempFile(
+    ["# Section", "", "Foo bar", "end"].join("\n"),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "3:1-3:10", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() =>
+      main(["resolve", editedFile, ref])
+    );
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "exact fragment hash match");
+    assertStringIncludes(output, "    Foo bar");
+    assertEquals(output.includes("oo bar\nen"), false);
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(editedFile);
+  }
+});
+
+Deno.test("md resolve - uses fh to recover a moved exact passage", async () => {
+  const originalFile = await createTempFile(
+    "# Installation\n\nRun the installer.",
+  );
+  const movedFile = await createTempFile(
+    [
+      "# Intro",
+      "",
+      "Different text.",
+      "",
+      "# Setup",
+      "",
+      "Run the installer.",
+    ].join("\n"),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "3:1-3:18", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() => main(["resolve", movedFile, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L7");
+    assertStringIncludes(output, "exact fragment hash match");
+    assertStringIncludes(output, "    Run the installer");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - uses fh to recover a moved multi-line exact passage", async () => {
+  const originalFile = await createTempFile(
+    ["# Source", "", "First line", "Second line", "Third line"].join("\n"),
+  );
+  const movedFile = await createTempFile(
+    [
+      "# Intro",
+      "",
+      "Different text.",
+      "",
+      "# Destination",
+      "",
+      "First line",
+      "Second line",
+      "Third line",
+    ].join("\n"),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "3:1-5:11", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() => main(["resolve", movedFile, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L7-L9");
+    assertStringIncludes(output, "exact fragment hash match");
+    assertStringIncludes(output, "    First line");
+    assertStringIncludes(output, "    Third line");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - uses context to disambiguate duplicate exact hash matches", async () => {
+  const originalFile = await createTempFile(
+    ["before", "Target sentence.", "after"].join("\n"),
+  );
+  const duplicateFile = await createTempFile(
+    [
+      "other",
+      "Target sentence.",
+      "noise",
+      "",
+      "before",
+      "Target sentence.",
+      "after",
+    ].join(
+      "\n",
+    ),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "2:1-2:17", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() =>
+      main(["resolve", duplicateFile, ref])
+    );
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L6");
+    assertStringIncludes(output, "exact fragment hash match");
+    assertStringIncludes(output, "context suffix match");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(duplicateFile);
+  }
+});
+
+Deno.test("md resolve - uses ctx to recover a changed passage with a different length", async () => {
+  const originalFile = await createTempFile(
+    ["before", "Alpha", "after"].join("\n"),
+  );
+  const movedFile = await createTempFile(
+    ["intro", "before", "Charlie", "after"].join("\n"),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "2:1-2:6", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() => main(["resolve", movedFile, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "context prefix match");
+    assertStringIncludes(output, "context suffix match");
+    assertStringIncludes(output, "    Charlie");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - uses ctx to recover a changed passage between stable neighbors", async () => {
+  const originalFile = await createTempFile(
+    ["before", "Alpha", "after"].join("\n"),
+  );
+  const movedFile = await createTempFile(
+    ["intro", "before", "Bravo", "after"].join("\n"),
+  );
+  try {
+    const ref = await captureOutput(() =>
+      main(["ref", originalFile, "2:1-2:6", "--format", "debug"])
+    );
+
+    const output = await captureOutput(() => main(["resolve", movedFile, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "context suffix match");
+    assertStringIncludes(output, "    Bravo");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - uses p to recover a changed passage in the same structural path", async () => {
+  const originalFile = await createTempFile(
+    ["# Intro", "one", "", "# Target", "Alpha"].join("\n"),
+  );
+  const movedFile = await createTempFile(
+    ["Preface", "more", "", "# Intro", "one", "", "# Target", "Bravo"].join(
+      "\n",
+    ),
+  );
+  try {
+    const generatedRef = await captureOutput(() =>
+      main(["ref", originalFile, "5:1-5:6", "--format", "debug"])
+    );
+    const path = generatedRef.match(/;p=([^;]+);/)?.[1];
+    if (path === undefined) {
+      throw new Error(`Expected generated MRFI to include p: ${generatedRef}`);
+    }
+    const ref = `~{v0;p=${path}}`;
+
+    const output = await captureOutput(() => main(["resolve", movedFile, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L8");
+    assertStringIncludes(output, "structural path match");
+    assertStringIncludes(output, "    Bravo");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - lets a unique MRFI anchor beat stale exact hash evidence", async () => {
+  const oldFile = await createTempFile("Duplicate text.");
+  const currentFile = await createTempFile(
+    [
+      "# Old",
+      "",
+      "Duplicate text.",
+      "",
+      "# Target",
+      "<!-- ^target -->",
+      "",
+      "Different text.",
+    ].join("\n"),
+  );
+  try {
+    const hashRef = await captureOutput(() =>
+      main(["ref", oldFile, "1:1-1:16", "--format", "debug"])
+    );
+    const hash = hashRef.match(/;fh=([^;]+)/)?.[1];
+    if (hash === undefined) {
+      throw new Error(`Expected generated MRFI to include fh: ${hashRef}`);
+    }
+    const ref = `~{v0;a=target;fh=${hash}}`;
+
+    const output = await captureOutput(() =>
+      main(["resolve", currentFile, ref])
+    );
+
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "MRFI anchor signal");
+    assertStringIncludes(output, "L5-L8");
+    assertStringIncludes(output, "    Different text.");
+  } finally {
+    await Deno.remove(oldFile);
+    await Deno.remove(currentFile);
+  }
+});
+
+Deno.test("md resolve - treats a valid range as stale when it conflicts with a unique MRFI anchor", async () => {
+  const file = await createTempFile(
+    [
+      "# Old",
+      "",
+      "Duplicate text.",
+      "",
+      "# Target",
+      "<!-- ^target -->",
+      "",
+      "Different text.",
+    ].join("\n"),
+  );
+  try {
+    const ref = "~{v0;a=target;r=3:1-3:16}";
+
+    const output = await captureOutput(() => main(["resolve", file, ref]));
+
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "MRFI anchor signal");
+    assertStringIncludes(output, "L5-L8");
+    assertEquals(output.includes("    Duplicate text."), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - uses fh to recover min-profile multi-line passages", async () => {
+  const originalFile = await createTempFile(
+    ["# Source", "", "First line", "Second line", "Third line"].join("\n"),
+  );
+  const movedFile = await createTempFile(
+    [
+      "# Intro",
+      "",
+      "Other",
+      "Other",
+      "Other",
+      "",
+      "First line",
+      "Second line",
+      "Third line",
+    ].join("\n"),
+  );
+  try {
+    const generatedRef = await captureOutput(() =>
+      main([
+        "ref",
+        originalFile,
+        "3:1-5:11",
+        "--format",
+        "debug",
+        "--profile",
+        "min",
+      ])
+    );
+    const hash = generatedRef.match(/;fh=([^;]+)/)?.[1];
+    if (hash === undefined) {
+      throw new Error(`Expected generated MRFI to include fh: ${generatedRef}`);
+    }
+    const ref = `~{v0;r=3:1-5:11;fh=${hash}}`;
+
+    const output = await captureOutput(() => main(["resolve", movedFile, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L7-L9");
+    assertStringIncludes(output, "exact fragment hash match");
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(movedFile);
+  }
+});
+
+Deno.test("md resolve - uses comparison-view structural path offsets", async () => {
+  const originalFile = await createTempFile(
+    ["# Section", "", "Foo   bar", "end"].join("\n"),
+  );
+  const editedFile = await createTempFile(
+    ["# Section", "", "Foo bar", "end"].join("\n"),
+  );
+  try {
+    const generatedRef = await captureOutput(() =>
+      main(["ref", originalFile, "3:1-3:10", "--format", "debug"])
+    );
+    const path = generatedRef.match(/;p=([^;]+);/)?.[1];
+    if (path === undefined) {
+      throw new Error(`Expected generated MRFI to include p: ${generatedRef}`);
+    }
+    const ref = `~{v0;p=${path}}`;
+
+    const output = await captureOutput(() =>
+      main(["resolve", editedFile, ref])
+    );
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "structural path match");
+    assertStringIncludes(output, "    Foo bar");
+    assertEquals(output.includes("L3-L4"), false);
+    assertEquals(output.includes("    e"), false);
+    assertEquals(output.includes("end"), false);
+  } finally {
+    await Deno.remove(originalFile);
+    await Deno.remove(editedFile);
+  }
+});
+
+Deno.test("md resolve - preserves a compact range selection inside a matching section", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const ref = await captureOutput(() => main(["ref", file, "3:1-3:18"]));
+
+    const output = await captureOutput(() => main(["resolve", file, ref]));
+
+    assertStringIncludes(output, `${ref} confident`);
+    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "    Run the installer");
+    assertEquals(output.includes("    # Installation"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - does not clamp range-only MRFI beyond EOF to the last line", async () => {
+  const file = await createTempFile("# Short\n\nOnly content.");
+  try {
+    const output = await captureOutput(() =>
+      main(["resolve", file, "~{v0;r=999:1-999:5}"])
+    );
+
+    assertStringIncludes(output, "~{v0;r=999:1-999:5} not_found 0.00");
+    assertStringIncludes(output, "range is outside the document");
+    assertEquals(output.includes("Only content"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - rejects empty or reversed debug MRFI ranges", async () => {
+  const file = await createTempFile("# Short\n\nOnly content.");
+  try {
+    const emptyOutput = await captureOutput(() =>
+      main(["resolve", file, "~{v0;r=1:1-1:1}"])
+    );
+    const reversedOutput = await captureOutput(() =>
+      main(["resolve", file, "~{v0;r=1:5-1:2}"])
+    );
+
+    assertStringIncludes(emptyOutput, "~{v0;r=1:1-1:1} invalid 0.00");
+    assertStringIncludes(reversedOutput, "~{v0;r=1:5-1:2} invalid 0.00");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - rejects malformed debug MRFI syntax", async () => {
+  const file = await createTempFile("# Short\n\nOnly content.");
+  try {
+    const malformedPercent = await captureOutput(() =>
+      main(["resolve", file, "~{v0;q=%ZZ;r=1:1-1:8}"])
+    );
+    const duplicateField = await captureOutput(() =>
+      main(["resolve", file, "~{v0;r=1:1-1:8;r=3:1-3:14}"])
+    );
+    const requiredExtension = await captureOutput(() =>
+      main(["resolve", file, "~{v0;r=1:1-1:8;!profile=custom-mdx}"])
+    );
+
+    assertStringIncludes(malformedPercent, "invalid 0.00");
+    assertStringIncludes(malformedPercent, "malformed percent-encoding");
+    assertStringIncludes(duplicateField, "invalid 0.00");
+    assertStringIncludes(duplicateField, "duplicate MRFI field");
+    assertStringIncludes(requiredExtension, "invalid 0.00");
+    assertStringIncludes(requiredExtension, "unsupported mandatory MRFI field");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve --json - returns invalid results per input for malformed compact MRFI", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    const output = await captureOutput(() =>
+      main(["resolve", file, "^missing", "~abc", "--json"])
+    );
+    const results = JSON.parse(output);
+
+    assertEquals(results.length, 2);
+    assertEquals(results[0].ref, "^missing");
+    assertEquals(results[0].status, "not_found");
+    assertEquals(results[1].ref, "~abc");
+    assertEquals(results[1].status, "invalid");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - keeps :: inside debug MRFI values instead of treating it as CLI witness", async () => {
+  const file = await createTempFile(
+    ["# Installation", "<!-- ^foo::bar -->", "", "Run the installer."].join(
+      "\n",
+    ),
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["resolve", file, "~{v0;a=foo::bar;r=1:1-4:19}"])
+    );
+
+    assertStringIncludes(output, "~{v0;a=foo::bar;r=1:1-4:19} confident");
+    assertStringIncludes(output, "^foo::bar");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md resolve - keeps :: inside anchor references rather than treating it as CLI witness", async () => {
+  const file = await createTempFile(
+    ["# Installation", "<!-- ^foo::bar -->", "", "Run the installer."].join(
+      "\n",
+    ),
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["resolve", file, "^foo::bar"])
+    );
+
+    assertStringIncludes(output, "^foo::bar exact");
   } finally {
     await Deno.remove(file);
   }
@@ -260,6 +1082,261 @@ Deno.test("md read --json - outputs structured JSON", async () => {
   } finally {
     await Deno.remove(file);
   }
+});
+
+// ============================================================================
+// CLI ref command tests
+// ============================================================================
+
+Deno.test("md ref - generates an MRFI reference from a line-column range", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const output = await captureOutput(() => main(["ref", file, "3:1-3:18"]));
+
+    assertEquals(/^~[\uAC00-\uB3FF]+$/.test(output), true);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md ref --format debug - generates a debug MRFI reference from a line-column range", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["ref", file, "3:1-3:18", "--format", "debug"])
+    );
+
+    assertEquals(output.startsWith("~{v0;r=3:1-3:18;"), true);
+    assertStringIncludes(output, "a=install_sdk");
+    assertStringIncludes(output, "p=h1[1]/chars:");
+    assertStringIncludes(output, "fh=sha256:");
+    assertStringIncludes(output, "hh=smh64:");
+    assertStringIncludes(output, "ctx=pre:");
+    assertStringIncludes(output, "suf:");
+    assertEquals(output.includes(";o="), false);
+    assertEquals(output.includes(";ph="), false);
+    assertEquals(output.includes(";doc="), false);
+    assertEquals(output.includes("q=Run"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md ref --profile min - generates the minimum useful locator fields", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["ref", file, "3:1-3:18", "--format", "debug", "--profile", "min"])
+    );
+
+    assertStringIncludes(output, "r=3:1-3:18");
+    assertStringIncludes(output, "a=install_sdk");
+    assertStringIncludes(output, "fh=sha256:");
+    assertStringIncludes(output, "hh=smh64:");
+    assertEquals(output.includes(";p="), false);
+    assertEquals(output.includes(";ctx="), false);
+    assertEquals(output.includes(";ph="), false);
+    assertEquals(output.includes(";doc="), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md ref --profile full - generates all supported locator fields", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nRun the installer.\n<!-- ^install_sdk -->",
+  );
+  try {
+    const output = await captureOutput(() =>
+      main(["ref", file, "3:1-3:18", "--format", "debug", "--profile", "full"])
+    );
+
+    assertStringIncludes(output, "o=");
+    assertStringIncludes(output, "p=h1[1]/chars:");
+    assertStringIncludes(output, "fh=sha256:");
+    assertStringIncludes(output, "ph=smh64:");
+    assertStringIncludes(output, "ctx=pre:");
+    assertStringIncludes(output, "suf:");
+    assertStringIncludes(output, "doc=sha256:");
+    assertEquals(output.includes("q=Run"), false);
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md ref --quote - includes selected text as q", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  try {
+    const output = await captureOutput(() =>
+      main(["ref", file, "3:1-3:18", "--format", "debug", "--quote"])
+    );
+
+    assertStringIncludes(output, "q=Run%20the%20installer");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md ref --quote-max - truncates q with beginning, middle, and end", async () => {
+  const file = await createTempFile(
+    "# Installation\n\nabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  );
+  try {
+    const output = await captureOutput(() =>
+      main([
+        "ref",
+        file,
+        "3:1-3:63",
+        "--format",
+        "debug",
+        "--quote",
+        "--quote-max",
+        "24",
+      ])
+    );
+
+    assertStringIncludes(output, "q=abcdef...234567...UVWXYZ");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md ref --format debug - normalizes a debug MRFI reference", async () => {
+  const output = await captureOutput(() =>
+    main([
+      "ref",
+      "~{v0;q=Run%20the%20installer;doc=sha256:DocHash1;r=3:1-3:18;ctx=suf:SufHash,pre:PreHash;ph=smh64:1111111111111111;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;o=24-41}",
+      "--format",
+      "debug",
+    ])
+  );
+
+  assertEquals(
+    output,
+    "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=sha256:DocHash1;q=Run%20the%20installer}",
+  );
+});
+
+Deno.test("md ref --format base62 - converts a debug MRFI reference", async () => {
+  const output = await captureOutput(() =>
+    main([
+      "ref",
+      "~{v0;r=3:1-3:18;hh=smh64:0123456789abcdef}",
+      "--format",
+      "base62",
+    ])
+  );
+
+  assertEquals(/^~[0-9A-Za-z]+$/.test(output), true);
+});
+
+Deno.test("md ref --format debug - converts a Hangul MRFI reference", async () => {
+  const hangul = await captureOutput(() =>
+    main([
+      "ref",
+      "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=sha256:DocHash1;q=Run%20the%20installer}",
+      "--format",
+      "hangul",
+    ])
+  );
+
+  const debug = await captureOutput(() =>
+    main(["ref", hangul, "--format", "debug"])
+  );
+
+  assertEquals(
+    debug,
+    "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=sha256:DocHash1;q=Run%20the%20installer}",
+  );
+});
+
+Deno.test("md ref --format debug - preserves unknown fields under their own name", async () => {
+  const output = await captureOutput(() =>
+    main([
+      "ref",
+      "~{v0;r=3:1-3:18;_kind=script;_file=foo.md}",
+      "--format",
+      "debug",
+    ])
+  );
+
+  assertEquals(output, "~{v0;r=3:1-3:18;_kind=script;_file=foo.md}");
+});
+
+Deno.test("md ref --format base62 - preserves named fields through compact conversion", async () => {
+  const base62 = await captureOutput(() =>
+    main([
+      "ref",
+      "~{v0;r=3:1-3:18;_kind=script;_file=foo.md}",
+      "--format",
+      "base62",
+    ])
+  );
+
+  const debug = await captureOutput(() =>
+    main(["ref", base62, "--format", "debug"])
+  );
+
+  // Compact form is a canonical CBOR map, sorted by key; extra field order
+  // is normalized alphabetically like known fields are normalized to their
+  // fixed positions.
+  assertEquals(debug, "~{v0;r=3:1-3:18;_file=foo.md;_kind=script}");
+});
+
+Deno.test("md ref --format base62 - preserves a preserved field value with characters requiring percent-encoding", async () => {
+  const base62 = await captureOutput(() =>
+    main([
+      "ref",
+      "~{v0;r=3:1-3:18;_kind=script%3Bfoo}",
+      "--format",
+      "base62",
+    ])
+  );
+
+  const debug = await captureOutput(() =>
+    main(["ref", base62, "--format", "debug"])
+  );
+
+  assertEquals(debug, "~{v0;r=3:1-3:18;_kind=script%3Bfoo}");
+});
+
+Deno.test("md ref - rejects a range outside the document", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  let exitCode: number | undefined;
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let errorOutput = "";
+
+  Deno.exit = ExplicitCast.from<unknown>((code?: number) => {
+    exitCode = code;
+    throw new Error("Deno.exit");
+  }).dangerousCast<typeof Deno.exit>();
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    await main(["ref", file, "9:1-9:10"]);
+  } catch (error) {
+    assertEquals(
+      ExplicitCast.from<unknown>(error).dangerousCast<Error>().message,
+      "Deno.exit",
+    );
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    await Deno.remove(file);
+  }
+
+  assertEquals(exitCode, 1);
+  assertStringIncludes(errorOutput, "invalid_id");
+  assertStringIncludes(errorOutput, "Range is outside the document");
 });
 
 // ============================================================================

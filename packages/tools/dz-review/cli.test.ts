@@ -2233,7 +2233,7 @@ Deno.test("dz-review ref check - validates line refs, ids, and snapshots", async
     doc,
     [
       "# Doc",
-      "<!-- ref%궩거깇걸: source.md:4~K2mmpo^sas-ines {&&rFZEOtB",
+      "<!-- ref%궩거깇걸: source.md:4~{v0;r=4:1-4:60}^sas-ines {&&rFZEOtB",
       "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
       "rFZEOtB&&} -->",
     ].join("\n"),
@@ -2245,6 +2245,35 @@ Deno.test("dz-review ref check - validates line refs, ids, and snapshots", async
     );
 
     assertEquals(output.trim(), "ref check ok");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review ref check - rejects legacy bare tilde ids as invalid MRFI refs", async () => {
+  const dir = await Deno.makeTempDir();
+  const doc = join(dir, "doc.md");
+  const source = join(dir, "source.md");
+  await Deno.writeTextFile(
+    source,
+    [
+      "# Source",
+      "<!-- ^sas-ines -->",
+      "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "",
+    ].join("\n"),
+  );
+  await Deno.writeTextFile(
+    doc,
+    "<!-- ref: source.md:3~K2mmpo^sas-ines -->\n",
+  );
+
+  try {
+    const result = await runDzReview(dir, ["ref", "check", "doc.md"], "");
+
+    assertEquals(result.success, false);
+    assertStringIncludes(result.stdout, "invalid MRFI reference ~K2mmpo");
+    assertStringIncludes(result.stderr, "ref check failed");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

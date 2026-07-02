@@ -11,11 +11,13 @@ export interface ReferenceSnapshot {
 
 export interface ReferenceTarget {
   lineRange?: ReferenceLineRange;
+  mrfi?: string;
   path: string;
   raw: string;
   reviewId?: string;
   snapshot?: ReferenceSnapshot;
   stableId?: string;
+  witness?: string;
 }
 
 export interface ReviewReference {
@@ -74,9 +76,8 @@ const REF_ID_RE = /^\s*(?:ref-id:\s*)?\^([A-Za-z0-9_-]+)\s*$/;
 const SNAPSHOT_OPEN_RE = /^\{&&([A-Za-z0-9_-]+)/;
 const TARGET_ID_RE = /([~^])([A-Za-z0-9_-]+)/g;
 const TARGET_SPEC_RE =
-  /^(.+):((?:L?\d+)(?:-(?:L?\d+|\d+))?)([~^][A-Za-z0-9_-]+(?:[~^][A-Za-z0-9_-]+)*)?$/;
-const LOOSE_TARGET_SPEC_RE =
-  /^(.+):([^~^]+)([~^][A-Za-z0-9_-]+(?:[~^][A-Za-z0-9_-]+)*)?$/;
+  /^(.+?):((?:L?\d+)(?:-(?:L?\d+|\d+))?)(?=$|[~^\s{])(.*)?$/;
+const LOOSE_TARGET_SPEC_RE = /^(.+?):([^~^]+)(.*)?$/;
 
 export function collectReviewReferences(text: string): ReviewReference[] {
   const lineStarts = getLineStarts(text);
@@ -183,7 +184,9 @@ export function formatReferenceLineRange(range: ReferenceLineRange): string {
 export function formatReferenceTarget(
   target: ReferenceTarget,
 ): FormattedReferenceTarget {
-  const suffix = `${target.reviewId ? `~${target.reviewId}` : ""}${
+  const suffix = `${target.mrfi ?? ""}${
+    target.witness ? `::${target.witness}` : ""
+  }${target.reviewId ? `~${target.reviewId}` : ""}${
     target.stableId ? `^${target.stableId}` : ""
   }`;
   const location = target.lineRange
@@ -289,9 +292,21 @@ function splitReferenceTargets(statement: string): string[] {
   const targets: string[] = [];
   let start = 0;
   let depth = 0;
+  let mrfiDebugDepth = 0;
 
   for (let index = 0; index < statement.length; index += 1) {
     if (isEscapedAt(statement, index)) {
+      continue;
+    }
+
+    if (statement.startsWith("~{", index)) {
+      mrfiDebugDepth += 1;
+      index += 1;
+      continue;
+    }
+
+    if (statement[index] === "}" && mrfiDebugDepth > 0) {
+      mrfiDebugDepth -= 1;
       continue;
     }
 
@@ -309,7 +324,7 @@ function splitReferenceTargets(statement: string): string[] {
       continue;
     }
 
-    if (statement[index] === ";" && depth === 0) {
+    if (statement[index] === ";" && depth === 0 && mrfiDebugDepth === 0) {
       targets.push(statement.slice(start, index).trim());
       start = index + 1;
     }
@@ -337,6 +352,7 @@ function parseReferenceTarget(raw: string): ReferenceTarget {
   const ids = parseTargetIds(match[3] ?? "");
   return {
     lineRange,
+    ...(ids.mrfi ? { mrfi: ids.mrfi } : {}),
     path: match[1].trim(),
     raw,
     ...(ids.reviewId ? { reviewId: ids.reviewId } : {}),
@@ -353,6 +369,7 @@ function parseInvalidReferenceTarget(
   const looseMatch = spec.match(LOOSE_TARGET_SPEC_RE);
   const ids = parseTargetIds(looseMatch?.[3] ?? "");
   return {
+    ...(ids.mrfi ? { mrfi: ids.mrfi } : {}),
     path: (looseMatch?.[1] ?? spec).trim(),
     raw,
     ...(ids.reviewId ? { reviewId: ids.reviewId } : {}),
@@ -362,24 +379,44 @@ function parseInvalidReferenceTarget(
 }
 
 function parseTargetIds(value: string): {
+  mrfi?: string;
   reviewId?: string;
   stableId?: string;
 } {
+  const mrfi = parseMrfiTarget(value);
   let reviewId: string | undefined;
   let stableId: string | undefined;
 
   for (const match of value.matchAll(TARGET_ID_RE)) {
-    if (match[1] === "~") {
+    if (match[1] === "~" && !mrfi) {
       reviewId = match[2];
-    } else {
+    } else if (match[1] === "^") {
       stableId = match[2];
     }
   }
 
   return {
+    ...(mrfi?.mrfi ? { mrfi: mrfi.mrfi } : {}),
     ...(reviewId ? { reviewId } : {}),
     ...(stableId ? { stableId } : {}),
   };
+}
+
+function parseMrfiTarget(
+  value: string,
+): { mrfi: string } | undefined {
+  const start = value.indexOf("~");
+  if (start === -1) return undefined;
+
+  if (value.startsWith("~{", start)) {
+    const end = value.indexOf("}", start + 2);
+    if (end === -1) return undefined;
+    return { mrfi: value.slice(start, end + 1) };
+  }
+
+  const bare = value.slice(start).match(/^~[^\s^~{:]+/u);
+  if (!bare) return undefined;
+  return { mrfi: bare[0] };
 }
 
 function parseLabelledSnapshot(raw: string): SnapshotParseResult {

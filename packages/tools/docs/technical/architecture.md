@@ -88,10 +88,39 @@ No interface uses an `I` prefix. This is a project-wide convention.
 
 - `DenoFileSystem` — implements `FileSystem` using Deno's native APIs.
 - `InMemoryFileSystem` — implements `FileSystem` against an in-memory map; used in tests.
-- `Blake3HashService` — implements `HashService` using the BLAKE3 algorithm.
+- `Blake3HashService` — implements `HashService` using SHA-256. The class name is historical.
 - `YamlParserService` — implements `YamlService` using a YAML library.
 - `adapters/cli/commands.ts` — wires Cliffy commands to use-case calls; receives a dependency bundle through a `createCommands()` factory.
 - `adapters/cli/formatter.ts` — formats domain output types for human or JSON consumption.
+
+### Fragment reference resolver
+
+`md resolve` is the first implementation of the shared Markdown Fragment Reference contract documented in [`../../../../docs/functional/markdown-fragment-references.md`](../../../../docs/functional/markdown-fragment-references.md).
+
+The resolver, generator, and format-transform logic live in `markdown-surgeon/domain/use-cases/` (`resolve-reference.ts`, `generate-reference.ts`, `transform-reference.ts`, `refresh-reference.ts`, plus the shared `mrfi-text.ts`/`mrfi-codec.ts`/`mrfi-cbor.ts` support modules), exported from `mod.ts` so other packages — starting with `dz-review` — can depend on them as a library instead of shelling out to the CLI. `markdown-surgeon/adapters/cli/commands.ts` only parses CLI args, instantiates these use cases, and formats their output; its text and JSON result formatting lives in `markdown-surgeon/adapters/cli/formatter.ts`.
+
+The supported first profile is intentionally small:
+
+- `^<anchor>` resolves unique HTML comment anchors such as `<!-- ^install_sdk -->`.
+- duplicate anchors produce an `ambiguous` result instead of choosing the first match.
+- `outline --mrfi` generates Hangul compact MRFI references for each listed section while preserving the legacy exact section ID in output.
+- `outline --mrfi --format debug` and `outline --mrfi --format base62` generate alternate MRFI representations for the same locator profile.
+- `outline --mrfi --profile min|default|full` chooses which locator fields are emitted; `default` is the generation default.
+- `outline --mrfi --quote` opts into embedded `q=...` quote evidence; generated references omit `q=` by default.
+- `outline --mrfi --quote-max <chars>` caps embedded quote evidence, using a default of 80 Unicode scalar values and keeping the beginning, middle, and end when truncating.
+- `ref <file> <startLine:startColumn-endLine:endColumn>` generates a Hangul compact MRFI reference for a precise source selection.
+- `ref <file> <range> --profile min|default|full` uses the same field profiles as `outline --mrfi`.
+- `ref <ref> --format debug|base62|hangul` converts supported MRFI references between representations.
+- default generated MRFI references include physical range (`r`), structural path (`p`), nearby anchor (`a`), exact fragment hash (`fh`), fuzzy heading hash (`hh`), and context hashes (`ctx`); the `full` profile also includes offset range (`o`), fuzzy passage hash (`ph`), and document hash (`doc`).
+- `~{v0;...}` debug MRFI references, bare base62 compact references, and bare Hangul compact references can resolve by anchor (`a=...`), physical range (`r=startLine:startColumn-endLine:endColumn`), exact fragment hash (`fh=sha256:<prefix>`), context hashes (`ctx=...`), fuzzy heading hash (`hh=smh64:<hash>`), or structural path (`p=...`).
+- `q=...` is supported as embedded text evidence, but generated MRFI references omit it by default.
+- `~{v0;...}::<witness>` attaches runtime witness text to MRFI resolution in the `md resolve` CLI. `::witness` is a CLI argument convention, not part of MRFI inline syntax. `q=...` and runtime witness text have the same evidence semantics, but runtime witness takes precedence because it may be fresher. Neither value is emitted in JSON.
+- text output prints resolved passages as four-space-indented source text, not fenced Markdown.
+- unrecognized non-mandatory debug fields (private extension fields, per spec §38) are preserved verbatim instead of dropped; the CBOR compact codec accepts text-string map keys for these fields, so a field keeps its own name (e.g. `_kind`) through `base62`/`hangul` round-trips at a small size cost, with an opaque string value. `md` never interprets these fields — a consumer like `dz-review` can attach its own evidence under its own field name and read it back after resolution.
+
+`RefreshReferenceUseCase` re-points a reference at its current location: it resolves the reference and, when the match is `exact` or `confident`, regenerates a canonical reference for the up-to-date range; otherwise it surfaces the resolve status/diagnostics instead of a reference, so callers can tell "refreshed" from "couldn't".
+
+The compact codec covers all generated profiles: version, anchor, physical range, structural path, exact fragment hash, fuzzy heading hash, context hashes, quote, document hash, offset range, and fuzzy passage hash. It serializes that object with deterministic CBOR in an `MRFI` envelope, then emits either base62 or Hangul base2048. Compact-envelope checksums and `smh64-v0` feature hashes use SHA-256 through the local WebCrypto digest available to Deno.
 
 ### CLI entry point (`cli.ts`)
 

@@ -8,8 +8,8 @@
  *   2. SHA-256 digest via crypto.subtle
  *   3. Return first 8 hex characters
  *
- * NOTE: Despite the file name (kept for historical reasons), this uses
- * SHA-256, not BLAKE3 -- matching the original implementation exactly.
+ * NOTE: The file and class names are historical; this adapter intentionally
+ * uses SHA-256 to match the original implementation exactly.
  *
  * Dependencies: Web Crypto API (available in Deno and modern browsers).
  */

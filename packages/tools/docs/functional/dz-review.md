@@ -5,7 +5,7 @@ themes:
   - markdown
   - cli
   - agents
-verified_at: 2026-06-18
+verified_at: 2026-07-01
 source_ref: "packages/tools/dz-review/*.ts; imported dz-md-review-syntax docs and skill snapshot on 2026-06-18"
 language: en-US
 ---
@@ -13,6 +13,8 @@ language: en-US
 # DZ Review
 
 `dz-review` is a Markdown review toolkit for inline conversations and local edit annotations. It keeps review state inside ordinary Markdown files so the same document can move through Git, VS Code, Obsidian, and plain text editors without a separate review database.
+
+`dz-review` is a review-workflow superset of the Markdown reference behavior owned by `md`. Passage and review references should follow the shared functional contract in [`../../../../docs/functional/markdown-fragment-references.md`](../../../../docs/functional/markdown-fragment-references.md): `^<anchor>` resolves a stable Markdown anchor, `~<mrfi>` resolves an opaque MRFI locator, and CLI inputs may use `~<mrfi>::<witness>` to pass witness text to the resolver. The `::witness` suffix is a CLI convention, not part of the MRFI inline syntax. Because `:` is a valid anchor character, `::` inside `^<anchor>` is treated as part of the anchor ID. When `dz-review` generates MRFI passage references, it should use the same `min`, `default`, and `full` field profiles as `md`; the shared default profile is the recommended normal authoring mode.
 
 ## Syntax
 
@@ -70,10 +72,10 @@ Line references are canonical without `L`: use `:82` for one line and `:80-82` f
 
 Reference targets may combine independent hints:
 
-| Marker       | Meaning                                      |
-| ------------ | -------------------------------------------- |
-| `~GdwjSq`    | Generated dz-review item id, without `rvw_`. |
-| `^stable-id` | Stable passage id defined in the target doc. |
+| Marker       | Meaning                                                    |
+| ------------ | ---------------------------------------------------------- |
+| `~GdwjSq`    | Opaque MRFI locator for the target passage or review item. |
+| `^stable-id` | Stable passage id defined in the target doc.               |
 
 Define a stable passage id in the target document with:
 
@@ -90,6 +92,8 @@ References can appear inside conversation messages:
 -->
 ```
 
+When a reference needs persisted previous or expected target text, use an explicit labelled snapshot next to the target. Witness text is resolver evidence. It must not be persisted into JSON output or silently override contradictory locator evidence. The persisted inline MRFI remains `~<mrfi>` or `~{<mrfi>}`; `::witness` is only the CLI transport form for commands that accept a reference argument.
+
 References may embed an explicit snapshot with a labelled delimiter. Labels are generated per reference occurrence, and nested snapshots are allowed when labels differ:
 
 ```markdown
@@ -100,7 +104,7 @@ References may embed an explicit snapshot with a labelled delimiter. Labels are 
 -->
 ```
 
-`dz-review ref check` validates files, line ranges, `~` ids, `^` ids, snapshot freshness, and duplicate nested snapshot labels. Snapshot comparison ignores only delimiter label changes. `dz-review ref list` lists each reference and the live referenced passage, using the pager for long text output. `dz-review ref show` prints a source-replaceable version of the document: refs without snapshots are rewritten with labelled `{&&...&&}` snapshots, while existing snapshots are preserved. `dz-review ref snapshots` prints only snapshot blocks with a short provenance header, and repeated `--ref <selector>` filters keep selected refs by source location, target location, or snapshot label. Generated snapshots include up to 10 source lines by default; use `--snapshot-lines <count>` to change the limit, or `--snapshot-lines 0` for unlimited snapshots.
+`dz-review ref check` validates files, line ranges, `^` ids, snapshot freshness, and duplicate nested snapshot labels. It parses and preserves `~<mrfi>` targets, but full MRFI resolution/validation is delegated to the shared resolver work and is not yet a `ref check` guarantee. Snapshot comparison ignores only delimiter label changes. `dz-review ref list` lists each reference and the live referenced passage, using the pager for long text output. `dz-review ref show` prints a source-replaceable version of the document: refs without snapshots are rewritten with labelled `{&&...&&}` snapshots, while existing snapshots are preserved. `dz-review ref snapshots` prints only snapshot blocks with a short provenance header, and repeated `--ref <selector>` filters keep selected refs by source location, target location, or snapshot label. Generated snapshots include up to 10 source lines by default; use `--snapshot-lines <count>` to change the limit, or `--snapshot-lines 0` for unlimited snapshots.
 
 ## Conversation Status
 

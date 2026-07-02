@@ -20,6 +20,16 @@ export type {
   Section,
 } from "./domain/entities/document.ts";
 export { MdError } from "./domain/entities/document.ts";
+export type {
+  ComparisonSpan,
+  DebugMrfi,
+  HashSignal,
+  MrfiFormat,
+  MrfiProfile,
+  ResolveCandidate,
+  ResolveResult,
+  SourceRange,
+} from "./domain/entities/mrfi.ts";
 
 // ============================================================================
 // Domain ports (interfaces)
@@ -66,6 +76,28 @@ export type {
   GetFrontmatterInput,
   SetFrontmatterInput,
 } from "./domain/use-cases/manage-frontmatter.ts";
+export { ResolveReferenceUseCase } from "./domain/use-cases/resolve-reference.ts";
+export type { ResolveReferenceInput } from "./domain/use-cases/resolve-reference.ts";
+export {
+  GenerateReferenceUseCase,
+} from "./domain/use-cases/generate-reference.ts";
+export type {
+  GenerateReferenceInput,
+  GenerateReferenceTarget,
+} from "./domain/use-cases/generate-reference.ts";
+export {
+  TransformReferenceUseCase,
+} from "./domain/use-cases/transform-reference.ts";
+export type {
+  TransformReferenceInput,
+} from "./domain/use-cases/transform-reference.ts";
+export { RefreshReferenceUseCase } from "./domain/use-cases/refresh-reference.ts";
+export type {
+  RefreshedReference,
+  RefreshReferenceInput,
+  RefreshReferenceOutput,
+  UnresolvedReference,
+} from "./domain/use-cases/refresh-reference.ts";
 
 // ============================================================================
 // Adapters

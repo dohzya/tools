@@ -297,6 +297,7 @@ Deno.test("dz-review ref core - collects refs with timestamp, ids, and labelled 
     references[0].targets.map((target) => ({
       path: target.path,
       lineRange: target.lineRange,
+      mrfi: target.mrfi,
       reviewId: target.reviewId,
       stableId: target.stableId,
       snapshot: target.snapshot
@@ -307,7 +308,8 @@ Deno.test("dz-review ref core - collects refs with timestamp, ids, and labelled 
       {
         path: "02_trame_commentee.md",
         lineRange: { start: 82, end: 82 },
-        reviewId: "GdwjSq",
+        mrfi: "~GdwjSq",
+        reviewId: undefined,
         stableId: undefined,
         snapshot: {
           label: "rFZEOtB",
@@ -318,6 +320,7 @@ Deno.test("dz-review ref core - collects refs with timestamp, ids, and labelled 
       {
         path: "../source2.md",
         lineRange: { start: 80, end: 82 },
+        mrfi: undefined,
         reviewId: undefined,
         stableId: "stable-id",
         snapshot: undefined,
@@ -330,6 +333,38 @@ Deno.test("dz-review ref core - collects refs with timestamp, ids, and labelled 
   });
 });
 
+Deno.test("dz-review ref core - collects MRFI targets while keeping witness out of persisted refs", () => {
+  const text = [
+    "<!-- ref: source.md:12~{v0;r=12:1-12:18;fh=sha256:FragHash}::previous passage; source.md:13~갊뉘궤 -->",
+  ].join("\n");
+
+  const references = collectReviewReferences(text);
+
+  assertEquals(references.length, 1);
+  assertEquals(references[0].targets[0].path, "source.md");
+  assertEquals(references[0].targets[0].lineRange, { start: 12, end: 12 });
+  assertEquals(
+    references[0].targets[0].mrfi,
+    "~{v0;r=12:1-12:18;fh=sha256:FragHash}",
+  );
+  assertEquals(references[0].targets[0].witness, undefined);
+  assertEquals(references[0].targets[0].reviewId, undefined);
+  assertEquals(references[0].targets[1].path, "source.md");
+  assertEquals(references[0].targets[1].lineRange, { start: 13, end: 13 });
+  assertEquals(references[0].targets[1].mrfi, "~갊뉘궤");
+});
+
+Deno.test("dz-review ref core - parses paths containing colon digits before the line hint", () => {
+  const text = "<!-- ref: notes/log:2026.md:12~abc -->";
+
+  const references = collectReviewReferences(text);
+
+  assertEquals(references.length, 1);
+  assertEquals(references[0].targets[0].path, "notes/log:2026.md");
+  assertEquals(references[0].targets[0].lineRange, { start: 12, end: 12 });
+  assertEquals(references[0].targets[0].mrfi, "~abc");
+});
+
 Deno.test("dz-review ref core - collects inline refs inside conversations", () => {
   const text =
     "<!-- @me%궩거깇걸 Pourquoi ? @agent%궩거깇걸 ref: 02_trame_commentee.md:82~GdwjSq @ Je vois. -->";
@@ -340,7 +375,8 @@ Deno.test("dz-review ref core - collects inline refs inside conversations", () =
   assertEquals(references[0].targets.length, 1);
   assertEquals(references[0].targets[0].path, "02_trame_commentee.md");
   assertEquals(references[0].targets[0].lineRange, { start: 82, end: 82 });
-  assertEquals(references[0].targets[0].reviewId, "GdwjSq");
+  assertEquals(references[0].targets[0].mrfi, "~GdwjSq");
+  assertEquals(references[0].targets[0].reviewId, undefined);
 });
 
 Deno.test("dz-review ref core - detects duplicate nested snapshot labels", () => {

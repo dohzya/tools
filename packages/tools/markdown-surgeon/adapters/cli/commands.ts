@@ -9,6 +9,11 @@ import { Command } from "@cliffy/command";
 import { expandGlob } from "@std/fs";
 import { MdError } from "../../domain/entities/document.ts";
 import type { Document, Section } from "../../domain/entities/document.ts";
+import type {
+  MrfiFormat,
+  MrfiProfile,
+  SourceRange,
+} from "../../domain/entities/mrfi.ts";
 import type { HashService } from "../../domain/ports/hash-service.ts";
 import type { YamlService } from "../../domain/ports/yaml-service.ts";
 import { ParseDocumentUseCase } from "../../domain/use-cases/parse-document.ts";
@@ -18,15 +23,20 @@ import { AppendSectionUseCase } from "../../domain/use-cases/append-section.ts";
 import { RemoveSectionUseCase } from "../../domain/use-cases/remove-section.ts";
 import { SearchUseCase } from "../../domain/use-cases/search.ts";
 import { ManageFrontmatterUseCase } from "../../domain/use-cases/manage-frontmatter.ts";
+import { ResolveReferenceUseCase } from "../../domain/use-cases/resolve-reference.ts";
+import { GenerateReferenceUseCase } from "../../domain/use-cases/generate-reference.ts";
+import { TransformReferenceUseCase } from "../../domain/use-cases/transform-reference.ts";
 import {
   formatMutation,
   formatOutline,
   formatRead,
+  formatResolveResults,
   formatSearchMatches,
   formatSearchSummary,
   jsonMutation,
   jsonOutline,
   jsonRead,
+  jsonResolveResults,
   jsonSearchMatches,
   jsonSearchSummary,
 } from "./formatter.ts";
@@ -129,6 +139,118 @@ function isHeadingSelector(selector: string): boolean {
   return selector.startsWith("#");
 }
 
+interface ParsedResolveInput {
+  readonly kind: "anchor" | "mrfi";
+  readonly ref: string;
+  readonly witness?: string;
+}
+
+function parseResolveInput(input: string, file: string): ParsedResolveInput {
+  if (input.startsWith("^")) {
+    if (input.length === 1) {
+      throw new MdError("invalid_id", `Invalid anchor reference: ${input}`);
+    }
+    return { kind: "anchor", ref: input };
+  }
+
+  if (input.startsWith("~")) {
+    const { ref, witness } = splitMrfiCliWitness(input);
+    if (witness !== undefined && witness.length === 0) {
+      throw new MdError(
+        "invalid_id",
+        `Empty witness text is not allowed: ${input}`,
+        file,
+        input,
+      );
+    }
+    if (ref.length === 1) {
+      throw new MdError("invalid_id", `Invalid MRFI reference: ${input}`);
+    }
+    return witness === undefined
+      ? { kind: "mrfi", ref }
+      : { kind: "mrfi", ref, witness };
+  }
+
+  throw new MdError("invalid_id", `Invalid reference: ${input}`, file, input);
+}
+
+function splitMrfiCliWitness(input: string): { ref: string; witness?: string } {
+  if (input.startsWith("~{")) {
+    const end = input.indexOf("}", 2);
+    if (end !== -1 && input.startsWith("::", end + 1)) {
+      return {
+        ref: input.slice(0, end + 1),
+        witness: input.slice(end + 3),
+      };
+    }
+    return { ref: input };
+  }
+
+  const witnessSeparator = input.indexOf("::");
+  return witnessSeparator === -1 ? { ref: input } : {
+    ref: input.slice(0, witnessSeparator),
+    witness: input.slice(witnessSeparator + 2),
+  };
+}
+
+function parseSourceRange(value: string, file: string): SourceRange {
+  const match = value.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
+  if (!match) {
+    throw new MdError(
+      "invalid_id",
+      `Invalid source range: ${value}`,
+      file,
+      value,
+    );
+  }
+
+  const range = {
+    startLine: Number(match[1]),
+    startColumn: Number(match[2]),
+    endLine: Number(match[3]),
+    endColumn: Number(match[4]),
+  };
+
+  if (
+    range.startLine < 1 || range.startColumn < 1 || range.endLine < 1 ||
+    range.endColumn < 1 ||
+    range.endLine < range.startLine ||
+    (range.endLine === range.startLine && range.endColumn < range.startColumn)
+  ) {
+    throw new MdError(
+      "invalid_id",
+      `Invalid source range: ${value}`,
+      file,
+      value,
+    );
+  }
+
+  return range;
+}
+
+function parseMrfiFormat(value: string, file: string): MrfiFormat {
+  if (value === "debug" || value === "base62" || value === "hangul") {
+    return value;
+  }
+  throw new MdError(
+    "parse_error",
+    `Invalid MRFI format: ${value}. Expected debug, base62, or hangul`,
+    file,
+    value,
+  );
+}
+
+function parseMrfiProfile(value: string, file: string): MrfiProfile {
+  if (value === "min" || value === "default" || value === "full") {
+    return value;
+  }
+  throw new MdError(
+    "parse_error",
+    `Invalid MRFI profile: ${value}. Expected min, default, or full`,
+    file,
+    value,
+  );
+}
 function parseHeadingSelector(
   selector: string,
   file: string,
@@ -338,6 +460,9 @@ export function createCommands(deps: CommandDeps) {
   const removeSection = new RemoveSectionUseCase();
   const searchUseCase = new SearchUseCase();
   const manageFrontmatter = new ManageFrontmatterUseCase(yamlService);
+  const resolveReference = new ResolveReferenceUseCase();
+  const generateReference = new GenerateReferenceUseCase();
+  const transformReference = new TransformReferenceUseCase();
 
   // ========================================================================
   // Command implementations
@@ -349,6 +474,11 @@ export function createCommands(deps: CommandDeps) {
     last: boolean,
     count: boolean,
     json: boolean,
+    mrfi: boolean,
+    format: MrfiFormat,
+    profile: MrfiProfile,
+    quote: boolean,
+    quoteMax: number,
   ): Promise<string> {
     const content = await readFile(file);
     const doc = await parseDocument.execute({ content });
@@ -383,6 +513,18 @@ export function createCommands(deps: CommandDeps) {
       if (json) {
         return JSON.stringify({
           id: lastSection.id,
+          ...(mrfi
+            ? {
+              mrfi: await generateReference.execute({
+                doc,
+                target: { kind: "section", section: lastSection },
+                format,
+                profile,
+                quote,
+                quoteMax,
+              }),
+            }
+            : {}),
           level: lastSection.level,
           title: lastSection.title,
           line: lastSection.line,
@@ -390,7 +532,44 @@ export function createCommands(deps: CommandDeps) {
       }
       return `${
         "#".repeat(lastSection.level)
-      } ${lastSection.title} ^${lastSection.id} L${lastSection.line}`;
+      } ${lastSection.title} ^${lastSection.id}${
+        mrfi
+          ? ` ${await generateReference.execute({
+            doc,
+            target: { kind: "section", section: lastSection },
+            format,
+            profile,
+            quote,
+            quoteMax,
+          })}`
+          : ""
+      } L${lastSection.line}`;
+    }
+
+    if (mrfi) {
+      const sectionsWithMrfi = await Promise.all(
+        sections.map(async (section) => ({
+          id: section.id,
+          mrfi: await generateReference.execute({
+            doc,
+            target: { kind: "section", section },
+            format,
+            profile,
+            quote,
+            quoteMax,
+          }),
+          level: section.level,
+          title: section.title,
+          line: section.line,
+        })),
+      );
+      return json ? JSON.stringify(sectionsWithMrfi) : sectionsWithMrfi
+        .map((section) =>
+          `${
+            "#".repeat(section.level)
+          } ${section.title} ^${section.id} ${section.mrfi} L${section.line}`
+        )
+        .join("\n");
     }
 
     return json
@@ -533,6 +712,50 @@ export function createCommands(deps: CommandDeps) {
     }
 
     return json ? jsonSearchSummary(summaries) : formatSearchSummary(summaries);
+  }
+
+  async function cmdResolve(
+    file: string,
+    inputs: string[],
+    json: boolean,
+  ): Promise<string> {
+    const content = await readFile(file);
+    const doc = await parseDocument.execute({ content });
+
+    const results = await Promise.all(inputs.map(async (input) => {
+      const parsed = parseResolveInput(input, file);
+      return await resolveReference.execute({
+        doc,
+        ref: parsed.ref,
+        witness: parsed.witness,
+      });
+    }));
+
+    return json ? jsonResolveResults(results) : formatResolveResults(results);
+  }
+
+  async function cmdRef(
+    fileOrRef: string,
+    range: string | undefined,
+    format: MrfiFormat,
+    profile: MrfiProfile,
+    quote: boolean,
+    quoteMax: number,
+  ): Promise<string> {
+    if (range === undefined) {
+      return await transformReference.execute({ ref: fileOrRef, format });
+    }
+
+    const content = await readFile(fileOrRef);
+    const doc = await parseDocument.execute({ content });
+    return await generateReference.execute({
+      doc,
+      target: { kind: "range", range: parseSourceRange(range, fileOrRef) },
+      format,
+      profile,
+      quote,
+      quoteMax,
+    });
   }
 
   async function cmdMeta(
@@ -890,6 +1113,21 @@ export function createCommands(deps: CommandDeps) {
     )
     .option("--last", "Show only the last subsection")
     .option("--count", "Show count only")
+    .option("--mrfi", "Include MRFI references for sections")
+    .option(
+      "--format <format:string>",
+      "MRFI output format: hangul, debug, or base62",
+      { default: "hangul" },
+    )
+    .option(
+      "--profile <profile:string>",
+      "MRFI field profile: min, default, or full",
+      { default: "default" },
+    )
+    .option("--quote", "Include q= quote evidence in generated MRFI references")
+    .option("--quote-max <chars:number>", "Maximum q= quote length", {
+      default: 80,
+    })
     .option("--json", "Output as JSON")
     .action(async (options, file) => {
       try {
@@ -899,6 +1137,44 @@ export function createCommands(deps: CommandDeps) {
           options.last ?? false,
           options.count ?? false,
           options.json ?? false,
+          options.mrfi ?? false,
+          parseMrfiFormat(options.format ?? "hangul", file),
+          parseMrfiProfile(options.profile ?? "default", file),
+          options.quote ?? false,
+          options.quoteMax ?? 80,
+        );
+        if (output) console.log(output);
+      } catch (e) {
+        handleError(e);
+      }
+    });
+
+  const refCmdObj = new Command()
+    .description("Generate or transform Markdown fragment references")
+    .arguments("<fileOrRef:string> [range:string]")
+    .option(
+      "--format <format:string>",
+      "Output format: hangul, debug, or base62",
+      { default: "hangul" },
+    )
+    .option(
+      "--profile <profile:string>",
+      "MRFI field profile when generating: min, default, or full",
+      { default: "default" },
+    )
+    .option("--quote", "Include q= quote evidence when generating from a range")
+    .option("--quote-max <chars:number>", "Maximum q= quote length", {
+      default: 80,
+    })
+    .action(async (options, fileOrRef, range) => {
+      try {
+        const output = await cmdRef(
+          fileOrRef,
+          range,
+          parseMrfiFormat(options.format ?? "hangul", fileOrRef),
+          parseMrfiProfile(options.profile ?? "default", fileOrRef),
+          options.quote ?? false,
+          options.quoteMax ?? 80,
         );
         if (output) console.log(output);
       } catch (e) {
@@ -1026,6 +1302,19 @@ export function createCommands(deps: CommandDeps) {
       }
     });
 
+  const resolveCmdObj = new Command()
+    .description("Resolve Markdown fragment references")
+    .arguments("<file:string> <refs...:string>")
+    .option("--json", "Output as JSON")
+    .action(async (options, file, ...refs) => {
+      try {
+        const output = await cmdResolve(file, refs, options.json ?? false);
+        if (output) console.log(output);
+      } catch (e) {
+        handleError(e);
+      }
+    });
+
   const concatCmdObj = new Command()
     .description("Concatenate multiple Markdown files")
     .arguments("<files...:string>")
@@ -1129,6 +1418,8 @@ export function createCommands(deps: CommandDeps) {
     emptyCmd: emptyCmdObj,
     removeCmd: removeCmdObj,
     searchCmd: searchCmdObj,
+    refCmd: refCmdObj,
+    resolveCmd: resolveCmdObj,
     concatCmd: concatCmdObj,
     metaCmd: metaCmdObj,
     createCmd: createCmdObj,

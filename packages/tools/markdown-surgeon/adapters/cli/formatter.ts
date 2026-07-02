@@ -12,6 +12,12 @@ import type {
   SearchSummary,
   Section,
 } from "../../domain/entities/document.ts";
+import type { ResolveResult } from "../../domain/entities/mrfi.ts";
+
+export type {
+  ResolveCandidate,
+  ResolveResult,
+} from "../../domain/entities/mrfi.ts";
 
 // ============================================================================
 // Text formatters
@@ -68,6 +74,42 @@ export function formatSearchSummary(summaries: SearchSummary[]): string {
     .join("\n");
 }
 
+export function formatResolveResults(
+  results: readonly ResolveResult[],
+): string {
+  return results.map(formatResolveResult).join("\n\n");
+}
+
+function formatResolveResult(result: ResolveResult): string {
+  const headerParts = [
+    result.ref,
+    result.status,
+    result.confidence.toFixed(2),
+  ];
+  if (result.range) headerParts.push(result.range);
+  if (result.anchor) headerParts.push(`^${result.anchor}`);
+
+  const lines = [headerParts.join(" ")];
+  if (result.diagnostics.length > 0) {
+    lines.push(`reasons: ${result.diagnostics.join(", ")}`);
+  }
+  if (result.candidates && result.candidates.length > 0) {
+    lines.push("candidates:");
+    for (const candidate of result.candidates) {
+      lines.push(
+        `- ${candidate.range} score ${candidate.score}: ${
+          candidate.reasons.join(", ")
+        }`,
+      );
+    }
+  }
+  if (result.passage !== undefined) {
+    lines.push("");
+    lines.push(...result.passage.split("\n").map((line) => `    ${line}`));
+  }
+  return lines.join("\n");
+}
+
 // ============================================================================
 // JSON formatters
 // ============================================================================
@@ -108,4 +150,8 @@ export function jsonSearchMatches(matches: SearchMatch[]): string {
 
 export function jsonSearchSummary(summaries: SearchSummary[]): string {
   return JSON.stringify(summaries);
+}
+
+export function jsonResolveResults(results: readonly ResolveResult[]): string {
+  return JSON.stringify(results);
 }
