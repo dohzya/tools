@@ -26,9 +26,12 @@ export type {
   HashSignal,
   MrfiFormat,
   MrfiProfile,
+  RefreshedReference,
+  RefreshReferenceOutput,
   ResolveCandidate,
   ResolveResult,
   SourceRange,
+  UnresolvedReference,
 } from "./domain/entities/mrfi.ts";
 
 // ============================================================================
@@ -92,12 +95,13 @@ export type {
   TransformReferenceInput,
 } from "./domain/use-cases/transform-reference.ts";
 export { RefreshReferenceUseCase } from "./domain/use-cases/refresh-reference.ts";
+export type { RefreshReferenceInput } from "./domain/use-cases/refresh-reference.ts";
+export {
+  RankReferenceCandidatesUseCase,
+} from "./domain/use-cases/rank-reference-candidates.ts";
 export type {
-  RefreshedReference,
-  RefreshReferenceInput,
-  RefreshReferenceOutput,
-  UnresolvedReference,
-} from "./domain/use-cases/refresh-reference.ts";
+  RankReferenceCandidatesInput,
+} from "./domain/use-cases/rank-reference-candidates.ts";
 
 // ============================================================================
 // Adapters

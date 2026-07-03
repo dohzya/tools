@@ -40,6 +40,10 @@ export function getDzReviewSessionFile(): string {
   return path.join(getDzReviewStateDir(), "agent-session.json");
 }
 
+export function getDzReviewReferenceMapFile(): string {
+  return path.join(getDzReviewStateDir(), "reference-map.json");
+}
+
 export function getDzReviewIgnoreFile(): string {
   return normalizeConfigPathCandidate(
     activeConfig.ignoreFile,

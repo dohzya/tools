@@ -87,3 +87,18 @@ export interface ResolveResult {
   readonly diagnostics: readonly string[];
   readonly candidates?: readonly ResolveCandidate[];
 }
+
+/** A freshly regenerated reference for a resolved range */
+export interface RefreshedReference {
+  readonly kind: "refreshed";
+  readonly ref: string;
+}
+
+/** A reference that could not be confidently placed; the resolve outcome is surfaced instead */
+export interface UnresolvedReference {
+  readonly kind: "unresolved";
+  readonly result: ResolveResult;
+}
+
+/** Output of refreshing a reference: either regenerated, or an unresolved outcome */
+export type RefreshReferenceOutput = RefreshedReference | UnresolvedReference;

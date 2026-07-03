@@ -1370,6 +1370,42 @@ Deno.test("dz-review agent show --json - reports one item by stable id", async (
   }
 });
 
+Deno.test("dz-review list --json - id survives an edit to an untimestamped annotation", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(file, "{++one++}\n");
+
+  try {
+    // Note: `agent start` would auto-stamp this annotation (timestamp.ts's
+    // transformReviewTimestamps adds a timestamp to every untimestamped
+    // `{++/--/==/>>/~~` marker, not just conversation `@agent`/`@me`/`@`
+    // ones), which would give it a timestamp-keyed anchor that's already
+    // stable under the old scheme too. `list`/`diff` never stamp anything,
+    // so this is the vehicle that actually stays untimestamped and exposes
+    // the old content-hash id scheme's instability.
+    const firstOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["list", "--json", "file.md"]))
+    );
+    const first = JSON.parse(firstOutput);
+    assertEquals(first.items.length, 1);
+    const id = first.items[0].id;
+
+    // Edit the annotation's own raw text (not just insert lines elsewhere).
+    // Under the old id scheme, an untimestamped annotation's id was keyed on
+    // its full raw text, so this edit alone used to mint a different id.
+    await Deno.writeTextFile(file, "{++one edited++}\n");
+
+    const secondOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["list", "--json", "file.md"]))
+    );
+    const second = JSON.parse(secondOutput);
+    assertEquals(second.items.length, 1);
+    assertEquals(second.items[0].id, id);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent respond - appends an agent reply by stable id", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");

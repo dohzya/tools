@@ -81,10 +81,8 @@ import {
   type TimestampFormatStats,
   transformReviewTimestamps,
 } from "./timestamp.ts";
-import {
-  assignStableReviewItemIds,
-  STABLE_REVIEW_ID_PREFIX,
-} from "./stable-review-id.ts";
+import { STABLE_REVIEW_ID_PREFIX } from "./stable-review-id.ts";
+import { assignPersistentReviewItemIds } from "./reference-map.ts";
 
 interface CliOptions {
   context: DisplayContext;
@@ -522,7 +520,7 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
       ? filterImplicitIgnoredFiles(files, ignoreRules, options.files)
       : filterIgnoredFiles(files, ignoreRules);
     if (options.json) {
-      writeReviewItemsJson(
+      await writeReviewItemsJson(
         reviewFiles,
         addedLinesByFile,
         options.conversationOnly,
@@ -610,8 +608,8 @@ function createRefCheckCommand() {
     .description("Validate dz-review refs")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: RefCheckCliffyOptions, ...files: string[]) => {
-      runRefCheck(files, options);
+    .action(async (options: RefCheckCliffyOptions, ...files: string[]) => {
+      await runRefCheck(files, options);
     });
 }
 
@@ -917,8 +915,8 @@ function createAgentStartCommand() {
     .option("-f, --force", "Overwrite an existing agent session snapshot.")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentStart(
+    .action(async (options: AgentCliffyOptions, ...files: string[]) => {
+      await runAgentStart(
         files,
         Boolean(options.json),
         Boolean(options.force),
@@ -932,8 +930,8 @@ function createAgentAddFileCommand() {
     .description("Add files to the active agent review session")
     .option("--json", "Print structured JSON.")
     .arguments("<files...:string>")
-    .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentAddFile(files, Boolean(options.json));
+    .action(async (options: AgentCliffyOptions, ...files: string[]) => {
+      await runAgentAddFile(files, Boolean(options.json));
     });
 }
 
@@ -942,8 +940,8 @@ function createAgentStatusCommand() {
     .description("Print status for the active agent review session")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentStatus(files, Boolean(options.json));
+    .action(async (options: AgentCliffyOptions, ...files: string[]) => {
+      await runAgentStatus(files, Boolean(options.json));
     });
 }
 
@@ -1001,8 +999,8 @@ function createMeStatusCommand() {
     )
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: MeStatusCliffyOptions, ...files: string[]) => {
-      runMeStatusCommand(files, options);
+    .action(async (options: MeStatusCliffyOptions, ...files: string[]) => {
+      await runMeStatusCommand(files, options);
     });
 }
 
@@ -1011,8 +1009,8 @@ function createAgentDoneCommand() {
     .description("Compare against the agent snapshot and print a handoff")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentDone(files, Boolean(options.json));
+    .action(async (options: AgentCliffyOptions, ...files: string[]) => {
+      await runAgentDone(files, Boolean(options.json));
     });
 }
 
@@ -1022,8 +1020,8 @@ function createAgentListCommand() {
     .option("--json", "Print structured JSON.")
     .option("--limit <count:string>", "Limit the number of items.")
     .arguments("[files...:string]")
-    .action((options: AgentListCliffyOptions, ...files: string[]) => {
-      runAgentList(files, options);
+    .action(async (options: AgentListCliffyOptions, ...files: string[]) => {
+      await runAgentList(files, options);
     });
 }
 
@@ -1034,8 +1032,12 @@ function createAgentShowCommand() {
     .option("-c, --context <beforeAfter:string>", "Display context lines.")
     .arguments("<id:string> [files...:string]")
     .action(
-      (options: AgentShowCliffyOptions, id: string, ...files: string[]) => {
-        runAgentShow(id, files, options);
+      async (
+        options: AgentShowCliffyOptions,
+        id: string,
+        ...files: string[]
+      ) => {
+        await runAgentShow(id, files, options);
       },
     );
 }
@@ -1047,8 +1049,12 @@ function createAgentRespondCommand() {
     .option("--json", "Print structured JSON.")
     .arguments("<id:string> [files...:string]")
     .action(
-      (options: AgentMessageCliffyOptions, id: string, ...files: string[]) => {
-        runAgentRespond(id, files, options);
+      async (
+        options: AgentMessageCliffyOptions,
+        id: string,
+        ...files: string[]
+      ) => {
+        await runAgentRespond(id, files, options);
       },
     );
 }
@@ -1067,8 +1073,12 @@ function createAgentApplyCommand() {
     .option("--json", "Print structured JSON.")
     .arguments("<id:string> [files...:string]")
     .action(
-      (options: AgentApplyCliffyOptions, id: string, ...files: string[]) => {
-        runAgentApply(id, files, options);
+      async (
+        options: AgentApplyCliffyOptions,
+        id: string,
+        ...files: string[]
+      ) => {
+        await runAgentApply(id, files, options);
       },
     );
 }
@@ -1080,8 +1090,8 @@ function createAgentCleanCommand() {
     .option("--dry-run", "Preview cleanup without editing files.")
     .option("--json", "Print structured JSON.")
     .arguments("[ids...:string]")
-    .action((options: AgentCleanCliffyOptions, ...ids: string[]) => {
-      runAgentClean(ids, options);
+    .action(async (options: AgentCleanCliffyOptions, ...ids: string[]) => {
+      await runAgentClean(ids, options);
     });
 }
 
@@ -1100,8 +1110,8 @@ function createAgentDiffCommand() {
     .description("Print a semantic diff for the active agent session")
     .option("--json", "Print structured JSON.")
     .arguments("[files...:string]")
-    .action((options: AgentCliffyOptions, ...files: string[]) => {
-      runAgentDiff(files, Boolean(options.json));
+    .action(async (options: AgentCliffyOptions, ...files: string[]) => {
+      await runAgentDiff(files, Boolean(options.json));
     });
 }
 
@@ -2046,7 +2056,7 @@ async function listReviewItems(
   pager: boolean | undefined,
 ): Promise<void> {
   await emitPagerAwareText(
-    formatReviewItemsList(
+    await formatReviewItemsList(
       files,
       addedLinesByFile,
       conversationOnly,
@@ -2057,14 +2067,14 @@ async function listReviewItems(
   );
 }
 
-function formatReviewItemsList(
+async function formatReviewItemsList(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
-): string {
-  const items = collectLocatedReviewItems(
+): Promise<string> {
+  const items = await collectLocatedReviewItems(
     files,
     addedLinesByFile,
     conversationOnly,
@@ -2209,7 +2219,7 @@ async function writeReviewItems(
   pager: boolean | undefined,
 ): Promise<void> {
   await emitPagerAwareText(
-    formatReviewItemsWithContext(
+    await formatReviewItemsWithContext(
       files,
       addedLinesByFile,
       conversationOnly,
@@ -2221,15 +2231,15 @@ async function writeReviewItems(
   );
 }
 
-function formatReviewItemsWithContext(
+async function formatReviewItemsWithContext(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   context: DisplayContext,
   since: ReviewTimestamp | undefined,
-): string {
-  const items = collectLocatedReviewItems(
+): Promise<string> {
+  const items = await collectLocatedReviewItems(
     files,
     addedLinesByFile,
     conversationOnly,
@@ -2261,37 +2271,30 @@ function formatReviewItemsWithContext(
   return lines.join("");
 }
 
-function writeReviewItemsJson(
+async function writeReviewItemsJson(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
-): void {
-  process.stdout.write(
-    `${
-      JSON.stringify(
-        listReviewItemsJson(
-          files,
-          addedLinesByFile,
-          conversationOnly,
-          conversationFilter,
-          since,
-        ),
-        null,
-        2,
-      )
-    }\n`,
+): Promise<void> {
+  const listing = await listReviewItemsJson(
+    files,
+    addedLinesByFile,
+    conversationOnly,
+    conversationFilter,
+    since,
   );
+  process.stdout.write(`${JSON.stringify(listing, null, 2)}\n`);
 }
 
-function runAgentStart(
+async function runAgentStart(
   files: string[],
   json: boolean,
   force: boolean,
   dryRun: boolean,
-): void {
-  const snapshot = startAgentSession(files, force, { dryRun });
+): Promise<void> {
+  const snapshot = await startAgentSession(files, force, { dryRun });
   process.stdout.write(
     json
       ? `${JSON.stringify({ ...snapshot, dryRun }, null, 2)}\n`
@@ -2299,8 +2302,11 @@ function runAgentStart(
   );
 }
 
-function runAgentAddFile(files: string[], json: boolean): void {
-  const snapshot = addAgentSessionFiles(files);
+async function runAgentAddFile(
+  files: string[],
+  json: boolean,
+): Promise<void> {
+  const snapshot = await addAgentSessionFiles(files);
   process.stdout.write(
     json
       ? `${JSON.stringify(snapshot, null, 2)}\n`
@@ -2308,8 +2314,8 @@ function runAgentAddFile(files: string[], json: boolean): void {
   );
 }
 
-function runAgentDone(files: string[], json: boolean): void {
-  const handoff = finishAgentSession(files);
+async function runAgentDone(files: string[], json: boolean): Promise<void> {
+  const handoff = await finishAgentSession(files);
 
   process.stdout.write(
     json
@@ -2325,8 +2331,8 @@ function runAgentDone(files: string[], json: boolean): void {
   }
 }
 
-function runAgentStatus(files: string[], json: boolean): void {
-  const status = getAgentSessionStatus(files);
+async function runAgentStatus(files: string[], json: boolean): Promise<void> {
+  const status = await getAgentSessionStatus(files);
   process.stdout.write(
     json ? `${JSON.stringify(status, null, 2)}\n` : formatAgentStatus(status),
   );
@@ -2338,27 +2344,27 @@ function runSessionActive(template: string | undefined): void {
   }
 }
 
-function runMeStatus(files: string[], json: boolean): void {
-  const status = getAgentSessionStatus(files);
+async function runMeStatus(files: string[], json: boolean): Promise<void> {
+  const status = await getAgentSessionStatus(files);
   process.stdout.write(
     json ? `${JSON.stringify(status, null, 2)}\n` : formatHumanStatus(status),
   );
 }
 
-function runMeStatusCommand(
+async function runMeStatusCommand(
   files: string[],
   options: MeStatusCliffyOptions,
-): void {
+): Promise<void> {
   if (
     options.json ||
     (files.length === 0 && !hasStatusOptions(options) &&
       hasAgentSessionSnapshot())
   ) {
-    runMeStatus(files, Boolean(options.json));
+    await runMeStatus(files, Boolean(options.json));
     return;
   }
 
-  runLegacyCommand(buildStatusArgv(options, files));
+  await runLegacyCommand(buildStatusArgv(options, files));
 }
 
 function hasStatusOptions(options: MeStatusCliffyOptions): boolean {
@@ -2389,14 +2395,14 @@ function hasStatusOptions(options: MeStatusCliffyOptions): boolean {
   );
 }
 
-function runAgentList(
+async function runAgentList(
   files: string[],
   options: AgentListCliffyOptions,
-): void {
+): Promise<void> {
   const limit = options.limit
     ? parsePositiveInteger(options.limit, "--limit")
     : undefined;
-  const output = listAgentReviewItems(files, limit);
+  const output = await listAgentReviewItems(files, limit);
 
   process.stdout.write(
     options.json
@@ -2405,12 +2411,12 @@ function runAgentList(
   );
 }
 
-function runAgentShow(
+async function runAgentShow(
   id: string,
   files: string[],
   options: AgentShowCliffyOptions,
-): void {
-  const located = showAgentReviewItem(id, files);
+): Promise<void> {
+  const located = await showAgentReviewItem(id, files);
   const item = toAgentReviewItem(
     normalizePath(located.file),
     located.id,
@@ -2436,22 +2442,22 @@ function runAgentShow(
   );
 }
 
-function runAgentRespond(
+async function runAgentRespond(
   id: string,
   files: string[],
   options: AgentMessageCliffyOptions,
-): void {
+): Promise<void> {
   const message = getRequiredAgentMessage(options);
-  const result = respondToAgentReviewItem(id, files, message);
+  const result = await respondToAgentReviewItem(id, files, message);
   writeAgentActionResult(result, Boolean(options.json));
 }
 
-function runAgentApply(
+async function runAgentApply(
   id: string,
   files: string[],
   options: AgentApplyCliffyOptions,
-): void {
-  const result = applyAgentReviewItem(
+): Promise<void> {
+  const result = await applyAgentReviewItem(
     id,
     files,
     options.replace,
@@ -2460,10 +2466,10 @@ function runAgentApply(
   writeAgentActionResult(result, Boolean(options.json));
 }
 
-function runAgentClean(
+async function runAgentClean(
   ids: string[],
   options: AgentCleanCliffyOptions,
-): void {
+): Promise<void> {
   if (!options.validated) {
     throw new DzReviewCliError(
       "invalid_args",
@@ -2471,7 +2477,7 @@ function runAgentClean(
     );
   }
 
-  const result = cleanAgentReviewItems(ids, Boolean(options.dryRun));
+  const result = await cleanAgentReviewItems(ids, Boolean(options.dryRun));
 
   if (options.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -2502,8 +2508,8 @@ function runAgentRollback(files: string[], json: boolean): void {
   );
 }
 
-function runAgentDiff(files: string[], json: boolean): void {
-  const status = getAgentActionDiff(files);
+async function runAgentDiff(files: string[], json: boolean): Promise<void> {
+  const status = await getAgentActionDiff(files);
   process.stdout.write(
     json
       ? `${JSON.stringify(status, null, 2)}\n`
@@ -2511,12 +2517,12 @@ function runAgentDiff(files: string[], json: boolean): void {
   );
 }
 
-function runRefCheck(
+async function runRefCheck(
   files: string[],
   options: RefCheckCliffyOptions,
-): void {
+): Promise<void> {
   const located = collectLocatedReferences(resolveRefFiles(files));
-  const issues = collectRefIssues(located);
+  const issues = await collectRefIssues(located);
 
   if (options.json) {
     process.stdout.write(
@@ -2616,7 +2622,9 @@ function collectLocatedReferences(files: string[]): LocatedReference[] {
   return located;
 }
 
-function collectRefIssues(located: LocatedReference[]): RefIssue[] {
+async function collectRefIssues(
+  located: LocatedReference[],
+): Promise<RefIssue[]> {
   const issues: RefIssue[] = [];
 
   for (const item of located) {
@@ -2666,7 +2674,7 @@ function collectRefIssues(located: LocatedReference[]): RefIssue[] {
       const targetText = fs.readFileSync(targetFile, "utf8");
       if (
         target.reviewId &&
-        !targetReviewIdExists(targetFile, targetText, target.reviewId)
+        !(await targetReviewIdExists(targetFile, targetText, target.reviewId))
       ) {
         issues.push({
           kind: "missing-review-id",
@@ -2980,13 +2988,14 @@ function decodeMrfiVarUint(
   return undefined;
 }
 
-function targetReviewIdExists(
+async function targetReviewIdExists(
   file: string,
   text: string,
   reviewId: string,
-): boolean {
-  const itemsWithIds = assignStableReviewItemIds(
+): Promise<boolean> {
+  const itemsWithIds = await assignPersistentReviewItemIds(
     normalizePath(file),
+    text,
     collectReviewItems(text, false, "all"),
   );
   const allIds = itemsWithIds.map((item) => item.id);

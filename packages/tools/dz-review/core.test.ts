@@ -417,8 +417,8 @@ Deno.test("dz-review agent core - lists items without an agent session", async (
   );
 
   try {
-    await withCwd(dir, () => {
-      const listing = listReviewItemsJson(
+    await withCwd(dir, async () => {
+      const listing = await listReviewItemsJson(
         ["file.md"],
         undefined,
         false,
@@ -444,8 +444,11 @@ Deno.test("dz-review agent core - ignores internal .dz-review files by default",
   await Deno.writeTextFile(file, "<!-- @agent internal -->\n");
 
   try {
-    await withCwd(dir, () => {
-      const snapshot = startAgentSession([".dz-review/internal.md"], false);
+    await withCwd(dir, async () => {
+      const snapshot = await startAgentSession(
+        [".dz-review/internal.md"],
+        false,
+      );
 
       assertEquals(snapshot.files, []);
       assertEquals(snapshot.items, []);
@@ -462,8 +465,8 @@ Deno.test("dz-review agent core - explicit start files bypass project ignore", a
   await Deno.writeTextFile(file, "<!-- @agent explicit -->\n");
 
   try {
-    await withCwd(dir, () => {
-      const snapshot = startAgentSession(["ignored.md"], false, {
+    await withCwd(dir, async () => {
+      const snapshot = await startAgentSession(["ignored.md"], false, {
         dryRun: true,
       });
 
@@ -483,8 +486,8 @@ Deno.test("dz-review agent core - dry-run start does not write or normalize", as
   await Deno.writeTextFile(file, original);
 
   try {
-    await withCwd(dir, () => {
-      const snapshot = startAgentSession(["file.md"], false, {
+    await withCwd(dir, async () => {
+      const snapshot = await startAgentSession(["file.md"], false, {
         dryRun: true,
       });
       let sessionExists = true;
@@ -517,9 +520,9 @@ Deno.test("dz-review agent core - add-file extends an active session", async () 
   await Deno.writeTextFile(second, "<!-- @agent%1WzvP91W second -->\n");
 
   try {
-    await withCwd(dir, () => {
-      startAgentSession(["first.md"], false);
-      const snapshot = addAgentSessionFiles(["second.md"]);
+    await withCwd(dir, async () => {
+      await startAgentSession(["first.md"], false);
+      const snapshot = await addAgentSessionFiles(["second.md"]);
 
       assertEquals(snapshot.files.map((file) => file.path), [
         "first.md",
@@ -550,10 +553,10 @@ Deno.test("dz-review agent core - appends agent replies by stable id", async () 
   );
 
   try {
-    await withCwd(dir, () => {
-      const snapshot = startAgentSession(["file.md"], false);
+    await withCwd(dir, async () => {
+      const snapshot = await startAgentSession(["file.md"], false);
       const id = snapshot.items[0].id;
-      const result = respondToAgentReviewItem(id, [], "Done.");
+      const result = await respondToAgentReviewItem(id, [], "Done.");
 
       assertEquals(result.action, "responded");
     });
@@ -573,10 +576,10 @@ Deno.test("dz-review agent core - rollback restores pre-start content", async ()
   await Deno.writeTextFile(file, original);
 
   try {
-    await withCwd(dir, () => {
-      const snapshot = startAgentSession(["file.md"], false);
+    await withCwd(dir, async () => {
+      const snapshot = await startAgentSession(["file.md"], false);
       const id = snapshot.items[0].id;
-      respondToAgentReviewItem(id, [], "Done.");
+      await respondToAgentReviewItem(id, [], "Done.");
       const result = rollbackAgentSession([]);
 
       assertEquals(result.rolledBackFiles, ["file.md"]);

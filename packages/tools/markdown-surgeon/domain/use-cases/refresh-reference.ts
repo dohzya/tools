@@ -19,11 +19,17 @@ import type { Document } from "../entities/document.ts";
 import type {
   MrfiFormat,
   MrfiProfile,
-  ResolveResult,
+  RefreshReferenceOutput,
 } from "../entities/mrfi.ts";
 import { ResolveReferenceUseCase } from "./resolve-reference.ts";
 import { GenerateReferenceUseCase } from "./generate-reference.ts";
 import { getLineEndColumn } from "./mrfi-text.ts";
+
+export type {
+  RefreshedReference,
+  RefreshReferenceOutput,
+  UnresolvedReference,
+} from "../entities/mrfi.ts";
 
 /** Input for the RefreshReference use case */
 export interface RefreshReferenceInput {
@@ -36,21 +42,6 @@ export interface RefreshReferenceInput {
   /** Field verbosity profile for the regenerated reference (pinned, not defaulted) */
   readonly profile: MrfiProfile;
 }
-
-/** A freshly regenerated reference for the resolved range */
-export interface RefreshedReference {
-  readonly kind: "refreshed";
-  readonly ref: string;
-}
-
-/** The reference could not be confidently placed; the resolve outcome is surfaced instead */
-export interface UnresolvedReference {
-  readonly kind: "unresolved";
-  readonly result: ResolveResult;
-}
-
-/** Output of the RefreshReference use case */
-export type RefreshReferenceOutput = RefreshedReference | UnresolvedReference;
 
 /** Re-points a reference at its current location, or reports why it couldn't */
 export class RefreshReferenceUseCase {

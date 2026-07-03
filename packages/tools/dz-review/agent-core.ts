@@ -18,8 +18,8 @@ import {
   summarizeConversation,
   summarizeReviewAnnotation,
 } from "./review-core.ts";
+import { assignPersistentReviewItemIds } from "./reference-map.ts";
 import {
-  assignStableReviewItemIds,
   getShortStableReviewItemId,
   STABLE_REVIEW_ID_PREFIX,
   stableReviewItemFingerprint,
@@ -189,11 +189,11 @@ const AgentSessionSnapshotSchema = z.object({
   items: z.array(AgentReviewItemSchema),
 });
 
-export function startAgentSession(
+export async function startAgentSession(
   files: string[],
   force: boolean,
   options: StartAgentSessionOptions = {},
-): AgentSessionSnapshot {
+): Promise<AgentSessionSnapshot> {
   const sessionFile = getDzReviewSessionFile();
   if (!options.dryRun && !force && fs.existsSync(sessionFile)) {
     throw new Error(
@@ -205,7 +205,7 @@ export function startAgentSession(
   }
 
   const resolvedFiles = resolveAgentFiles(files);
-  const originalState = collectAgentReviewState(resolvedFiles, false);
+  const originalState = await collectAgentReviewState(resolvedFiles, false);
   const timestampFormats = new Map(
     originalState.files.map((file) => [file.path, file.timestampFormat]),
   );
@@ -235,7 +235,7 @@ export function startAgentSession(
     }
   }
 
-  const state = collectAgentReviewState(
+  const state = await collectAgentReviewState(
     originalState.files.map((file) => file.path),
     false,
   );
@@ -249,14 +249,16 @@ export function startAgentSession(
   return snapshot;
 }
 
-export function addAgentSessionFiles(files: string[]): AgentSessionSnapshot {
+export async function addAgentSessionFiles(
+  files: string[],
+): Promise<AgentSessionSnapshot> {
   if (files.length === 0) {
     throw new Error("session add-file requires at least one file.");
   }
 
   const snapshot = readAgentSnapshot();
   const resolvedFiles = resolveAgentFiles(files);
-  const originalState = collectAgentReviewState(resolvedFiles, false);
+  const originalState = await collectAgentReviewState(resolvedFiles, false);
   const timestampFormats = new Map(
     originalState.files.map((file) => [file.path, file.timestampFormat]),
   );
@@ -278,7 +280,7 @@ export function addAgentSessionFiles(files: string[]): AgentSessionSnapshot {
     }
   }
 
-  const addedState = collectAgentReviewState(
+  const addedState = await collectAgentReviewState(
     originalState.files.map((file) => file.path),
     false,
   );
@@ -324,12 +326,14 @@ function buildAgentSessionSnapshot(
   };
 }
 
-export function finishAgentSession(files: string[]): AgentHandoff {
+export async function finishAgentSession(
+  files: string[],
+): Promise<AgentHandoff> {
   const snapshot = readAgentSnapshot();
   const targetFiles = files.length > 0
     ? resolveAgentFiles(files)
     : snapshot.files.map((file) => file.path);
-  const beforeRestore = collectAgentReviewState(targetFiles, true);
+  const beforeRestore = await collectAgentReviewState(targetFiles, true);
   const modifiedFiles = countModifiedAgentFiles(snapshot, beforeRestore);
   const conversationsAnswered = countAnsweredAgentConversations(
     snapshot,
@@ -337,8 +341,8 @@ export function finishAgentSession(files: string[]): AgentHandoff {
   );
 
   restoreAgentTimestampFormats(snapshot, targetFiles);
-  const afterRestore = collectAgentReviewState(targetFiles, true);
-  const guardrailFailures = collectAgentGuardrailFailures(
+  const afterRestore = await collectAgentReviewState(targetFiles, true);
+  const guardrailFailures = await collectAgentGuardrailFailures(
     snapshot,
     afterRestore,
   );
@@ -363,24 +367,26 @@ export function finishAgentSession(files: string[]): AgentHandoff {
   };
 }
 
-export function getAgentSessionStatus(files: string[]): AgentSessionStatus {
+export async function getAgentSessionStatus(
+  files: string[],
+): Promise<AgentSessionStatus> {
   const snapshot = readAgentSnapshot();
   const targetFiles = files.length > 0
     ? resolveAgentFiles(files)
     : snapshot.files.map((file) => file.path);
-  const state = collectAgentReviewState(targetFiles, true);
-  return agentStatusFromState(snapshot, state);
+  const state = await collectAgentReviewState(targetFiles, true);
+  return await agentStatusFromState(snapshot, state);
 }
 
-export function listAgentReviewItems(
+export async function listAgentReviewItems(
   files: string[],
   limit: number | undefined,
-): ReviewItemListing {
+): Promise<ReviewItemListing> {
   const snapshot = readAgentSnapshot();
   const targetFiles = files.length > 0
     ? resolveAgentFiles(files)
     : snapshot.files.map((file) => file.path);
-  const state = collectAgentReviewState(targetFiles, true);
+  const state = await collectAgentReviewState(targetFiles, true);
   return {
     version: 1,
     items: state.items
@@ -389,21 +395,21 @@ export function listAgentReviewItems(
   };
 }
 
-export function showAgentReviewItem(
+export async function showAgentReviewItem(
   id: string,
   files: string[],
-): LocatedReviewItem {
+): Promise<LocatedReviewItem> {
   const snapshot = readAgentSnapshot();
-  return resolveAgentLocatedReviewItem(snapshot, files, id);
+  return await resolveAgentLocatedReviewItem(snapshot, files, id);
 }
 
-export function respondToAgentReviewItem(
+export async function respondToAgentReviewItem(
   id: string,
   files: string[],
   message: string,
-): AgentActionResult {
+): Promise<AgentActionResult> {
   const snapshot = readAgentSnapshot();
-  const located = resolveAgentLocatedReviewItem(snapshot, files, id);
+  const located = await resolveAgentLocatedReviewItem(snapshot, files, id);
   if (!isAgentConversationItem(located.item)) {
     throw new Error("agent respond requires a conversation item id.");
   }
@@ -424,14 +430,14 @@ export function respondToAgentReviewItem(
   };
 }
 
-export function applyAgentReviewItem(
+export async function applyAgentReviewItem(
   id: string,
   files: string[],
   replace: string | undefined,
   message: string | undefined,
-): AgentActionResult {
+): Promise<AgentActionResult> {
   const snapshot = readAgentSnapshot();
-  const located = resolveAgentLocatedReviewItem(snapshot, files, id);
+  const located = await resolveAgentLocatedReviewItem(snapshot, files, id);
   if (!isReviewAnnotationItem(located.item)) {
     throw new Error("agent apply requires a review annotation item id.");
   }
@@ -450,19 +456,29 @@ export function applyAgentReviewItem(
   };
 }
 
-export function cleanAgentReviewItems(
+export async function cleanAgentReviewItems(
   ids: string[],
   dryRun: boolean,
-): AgentCleanResult {
+): Promise<AgentCleanResult> {
   const snapshot = readAgentSnapshot();
   const targetFiles = snapshot.files.map((file) => file.path);
-  const allItems = collectAgentLocatedReviewItems(targetFiles);
-  const targets = ids.length > 0
-    ? ids.map((id) => resolveAgentLocatedReviewItem(snapshot, [], id))
-    : allItems.filter((item) =>
-      isAgentConversationItem(item.item) &&
-      getConversationStatus(item.item) === "resolved"
+  const allItems = await collectAgentLocatedReviewItems(targetFiles);
+  const targets: LocatedReviewItem[] = [];
+  if (ids.length > 0) {
+    // Sequential, not Promise.all: resolveAgentLocatedReviewItem ->
+    // assignPersistentReviewItemIds does a read-modify-write of
+    // reference-map.json, which is not safe to run concurrently.
+    for (const id of ids) {
+      targets.push(await resolveAgentLocatedReviewItem(snapshot, [], id));
+    }
+  } else {
+    targets.push(
+      ...allItems.filter((item) =>
+        isAgentConversationItem(item.item) &&
+        getConversationStatus(item.item) === "resolved"
+      ),
     );
+  }
 
   for (const target of targets) {
     if (
@@ -527,29 +543,32 @@ export function rollbackAgentSession(files: string[]): AgentRollbackResult {
   return { version: 1, rolledBackFiles, sessionClosed: shouldCloseSession };
 }
 
-export function getAgentActionDiff(files: string[]): AgentSessionStatus {
+export async function getAgentActionDiff(
+  files: string[],
+): Promise<AgentSessionStatus> {
   const snapshot = readAgentSnapshot();
   const targetFiles = files.length > 0
     ? resolveAgentFiles(files)
     : snapshot.files.map((file) => file.path);
-  const state = collectAgentReviewState(targetFiles, true);
-  return agentStatusFromState(snapshot, state);
+  const state = await collectAgentReviewState(targetFiles, true);
+  return await agentStatusFromState(snapshot, state);
 }
 
-export function listReviewItemsJson(
+export async function listReviewItemsJson(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
-): ReviewItemListing {
-  const items = collectLocatedReviewItems(
+): Promise<ReviewItemListing> {
+  const located = await collectLocatedReviewItems(
     files,
     addedLinesByFile,
     conversationOnly,
     conversationFilter,
     since,
-  ).map((item) =>
+  );
+  const items = located.map((item) =>
     toAgentReviewItem(normalizePath(item.file), item.id, item.item)
   );
 
@@ -569,10 +588,10 @@ export function readAgentSnapshot(): AgentSessionSnapshot {
   );
 }
 
-export function collectAgentReviewState(
+export async function collectAgentReviewState(
   files: string[],
   includeEmptyFiles: boolean,
-): AgentReviewState {
+): Promise<AgentReviewState> {
   const state: AgentReviewState = {
     files: [],
     items: [],
@@ -594,10 +613,11 @@ export function collectAgentReviewState(
     }
 
     const text = fs.readFileSync(file, "utf8");
-    const items = assignStableReviewItemIds(
+    const items = (await assignPersistentReviewItemIds(
       normalizedFile,
+      text,
       collectReviewItems(text, false, "all"),
-    ).map(({ id, item }) => toAgentReviewItem(normalizedFile, id, item));
+    )).map(({ id, item }) => toAgentReviewItem(normalizedFile, id, item));
     if (items.length === 0 && !includeEmptyFiles) {
       continue;
     }
@@ -617,13 +637,13 @@ export function collectAgentReviewState(
   return state;
 }
 
-export function collectLocatedReviewItems(
+export async function collectLocatedReviewItems(
   files: string[],
   addedLinesByFile: Map<string, Set<number>> | undefined,
   conversationOnly: boolean,
   conversationFilter: ConversationFilter,
   since: ReviewTimestamp | undefined,
-): LocatedReviewItem[] {
+): Promise<LocatedReviewItem[]> {
   const locatedItems: LocatedReviewItem[] = [];
 
   for (const file of files) {
@@ -633,8 +653,9 @@ export function collectLocatedReviewItems(
     }
 
     const text = fs.readFileSync(file, "utf8");
-    const itemsWithIds = assignStableReviewItemIds(
+    const itemsWithIds = await assignPersistentReviewItemIds(
       normalizePath(file),
+      text,
       collectReviewItems(text, conversationOnly, "all"),
     );
     for (const { id, item } of itemsWithIds) {
@@ -750,10 +771,10 @@ function writeAgentSnapshot(snapshot: AgentSessionSnapshot): void {
   );
 }
 
-function agentStatusFromState(
+async function agentStatusFromState(
   snapshot: AgentSessionSnapshot,
   state: AgentReviewState,
-): AgentSessionStatus {
+): Promise<AgentSessionStatus> {
   return {
     version: 1,
     filesAnnotated: state.files.filter((file) => file.itemIds.length > 0)
@@ -767,24 +788,32 @@ function agentStatusFromState(
       item.kind === "conversation" &&
       (item.state === "open" || item.state === "wip")
     ),
-    guardrailFailures: collectAgentGuardrailFailures(snapshot, state),
+    guardrailFailures: await collectAgentGuardrailFailures(snapshot, state),
     items: state.items,
   };
 }
 
-function collectAgentLocatedReviewItems(files: string[]): LocatedReviewItem[] {
-  return collectLocatedReviewItems(files, undefined, false, "all", undefined);
+async function collectAgentLocatedReviewItems(
+  files: string[],
+): Promise<LocatedReviewItem[]> {
+  return await collectLocatedReviewItems(
+    files,
+    undefined,
+    false,
+    "all",
+    undefined,
+  );
 }
 
-function resolveAgentLocatedReviewItem(
+async function resolveAgentLocatedReviewItem(
   snapshot: AgentSessionSnapshot,
   files: string[],
   id: string,
-): LocatedReviewItem {
+): Promise<LocatedReviewItem> {
   const targetFiles = files.length > 0
     ? resolveAgentFiles(files)
     : snapshot.files.map((file) => file.path);
-  const items = collectAgentLocatedReviewItems(targetFiles);
+  const items = await collectAgentLocatedReviewItems(targetFiles);
   const allIds = items.map((item) => item.id);
   const normalizedId = id.toLowerCase();
   const matches = items.filter((item) => {
@@ -925,10 +954,10 @@ function countAnsweredAgentConversations(
   }).length;
 }
 
-function collectAgentGuardrailFailures(
+async function collectAgentGuardrailFailures(
   snapshot: AgentSessionSnapshot,
   state: AgentReviewState,
-): AgentGuardrailFailure[] {
+): Promise<AgentGuardrailFailure[]> {
   const failures: AgentGuardrailFailure[] = [];
   const startedItems = new Map(snapshot.items.map((item) => [item.id, item]));
   const currentItems = new Map(state.items.map((item) => [item.id, item]));
@@ -952,8 +981,9 @@ function collectAgentGuardrailFailures(
     }
 
     for (
-      const { id, item } of assignStableReviewItemIds(
+      const { id, item } of await assignPersistentReviewItemIds(
         file.path,
+        text,
         collectReviewItems(text, false, "all"),
       )
     ) {
