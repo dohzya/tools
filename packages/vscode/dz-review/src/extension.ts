@@ -8,17 +8,16 @@ import {
   type ReviewTimestamp,
   type TimestampFormat,
 } from "./timestamp";
-import {
-  assignStableReviewItemIds,
-  getShortStableReviewItemId,
-  resolveStableReviewItemId,
-} from "../../../tools/dz-review/stable-review-id";
+import { getShortStableReviewItemId } from "../../../tools/dz-review/stable-review-id";
+import { assignPersistentReviewItemIds } from "../../../tools/dz-review/reference-map";
+import { configureDzReviewRuntime } from "../../../tools/dz-review/runtime-config";
 import {
   collectReviewReferences,
   formatReferenceTarget,
   type ReferenceTarget,
   type ReviewReference,
 } from "../../../tools/dz-review/ref-core";
+import { createVscodeDzReviewEnvironment } from "./dz-review-environment";
 
 declare const TextDecoder: {
   new (): { decode(input: Uint8Array): string };
@@ -211,28 +210,28 @@ class ReviewPanelProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private filter: ReviewPanelFilter = "unresolved";
 
-  resolveWebviewView(view: vscode.WebviewView): void {
+  async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this.view = view;
     view.webview.options = { enableScripts: true };
     view.webview.onDidReceiveMessage((message: ReviewPanelWebviewMessage) => {
       return handleReviewPanelMessage(message);
     });
-    this.refresh();
+    await this.refresh();
   }
 
-  setFilter(filter: ReviewPanelFilter): void {
+  async setFilter(filter: ReviewPanelFilter): Promise<void> {
     this.filter = filter;
-    this.refresh();
+    await this.refresh();
   }
 
-  refresh(): void {
+  async refresh(): Promise<void> {
     if (!this.view) {
       return;
     }
 
     const editor = vscode.window.activeTextEditor;
     const items = editor?.document.languageId === "markdown"
-      ? collectReviewPanelItems(editor.document, this.filter)
+      ? await collectReviewPanelItems(editor.document, this.filter)
       : [];
     this.view.description = this.filter === "all" ? undefined : this.filter;
     this.view.webview.html = getReviewPanelHtml(items, this.filter);
@@ -240,6 +239,11 @@ class ReviewPanelProvider implements vscode.WebviewViewProvider {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Must run before anything reaches reference-map.ts, which mints/looks up
+  // persistent review item ids and needs a non-Deno environment port
+  // (there is no `Deno` global in the extension host).
+  configureDzReviewRuntime({ environment: createVscodeDzReviewEnvironment() });
+
   openConversationDecorationType = vscode.window.createTextEditorDecorationType(
     {
       backgroundColor: "rgba(30, 102, 245, 0.07)",
@@ -468,14 +472,14 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       updateConversationDecorations(editor);
-      reviewPanelProvider?.refresh();
+      void reviewPanelProvider?.refresh();
     }),
     vscode.workspace.onDidChangeTextDocument((event) => {
       const editor = vscode.window.activeTextEditor;
       if (event.document === editor?.document) {
         void fillReviewLineAfterNativeNewline(event, editor);
         updateConversationDecorations(editor);
-        reviewPanelProvider?.refresh();
+        void reviewPanelProvider?.refresh();
       }
     }),
   );
@@ -547,11 +551,11 @@ function updateReviewModeStatus(mode: ReviewMode): void {
   reviewModeStatusBarItem.show();
 }
 
-function collectReviewPanelItems(
+async function collectReviewPanelItems(
   document: vscode.TextDocument,
   filter: ReviewPanelFilter = "all",
-): ReviewPanelItem[] {
-  const items = assignReviewPanelItemIds(
+): Promise<ReviewPanelItem[]> {
+  const items = await assignReviewPanelItemIds(
     document,
     collectReviewPanelItemCandidates(document, filter),
   );
@@ -624,39 +628,42 @@ function collectReviewPanelItemCandidates(
   return candidates;
 }
 
-function assignReviewPanelItemIds(
+async function assignReviewPanelItemIds(
   document: vscode.TextDocument,
   candidates: readonly ReviewPanelItemCandidate[],
-): ReviewPanelItem[] {
-  const ids = assignStableReviewItemIds(
-    getReviewPanelDocumentPath(document),
-    candidates.map(({ item, raw }) => ({ kind: item.kind, raw })),
+): Promise<ReviewPanelItem[]> {
+  const file = getReviewPanelDocumentPath(document);
+  const content = document.getText();
+  // Line-based, per assignPersistentReviewItemIds's PersistentReviewItemInput
+  // shape -- mirrors review-core.ts's offsetToLine convention (endLine from
+  // `Math.max(start, end - 1)` avoids an off-by-one when `end` lands exactly
+  // on a newline).
+  const persistentItems = candidates.map(({ item, raw }) => ({
+    kind: item.kind,
+    raw,
+    lineStart: document.positionAt(item.start).line + 1,
+    lineEnd: document.positionAt(Math.max(item.start, item.end - 1)).line + 1,
+  }));
+
+  const assigned = await assignPersistentReviewItemIds(
+    file,
+    content,
+    persistentItems,
   );
-  const allIds = ids.map(({ id }) => id);
+  const allIds = assigned.map(({ id }) => id);
   return candidates.map(({ item }, index) => ({
     ...item,
-    id: ids[index].id,
-    displayId: getShortStableReviewItemId(ids[index].id, allIds),
+    id: assigned[index].id,
+    displayId: getShortStableReviewItemId(assigned[index].id, allIds),
   }));
 }
 
-function resolveReviewPanelItem(
+async function resolveReviewPanelItem(
   document: vscode.TextDocument,
   item: ReviewPanelItem,
-): ReviewPanelItem | undefined {
-  const resolved = resolveStableReviewItemId(
-    item.id,
-    getReviewPanelDocumentPath(document),
-    collectReviewPanelItemCandidates(document, "all").map((candidate) => ({
-      kind: candidate.item.kind,
-      raw: candidate.raw,
-      candidate,
-    })),
-  );
-
-  return resolved
-    ? { ...resolved.candidate.item, id: item.id, displayId: item.displayId }
-    : undefined;
+): Promise<ReviewPanelItem | undefined> {
+  const candidates = await collectReviewPanelItems(document, "all");
+  return candidates.find((candidate) => candidate.id === item.id);
 }
 
 function getReviewPanelDocumentPath(document: vscode.TextDocument): string {
@@ -714,7 +721,7 @@ async function showResolvedReviewItems(): Promise<void> {
 }
 
 async function setReviewPanelFilter(filter: ReviewPanelFilter): Promise<void> {
-  reviewPanelProvider?.setFilter(filter);
+  await reviewPanelProvider?.setFilter(filter);
   await vscode.commands.executeCommand(
     "setContext",
     REVIEW_PANEL_FILTER_CONTEXT,
@@ -755,34 +762,35 @@ async function handleReviewPanelMessage(
       await setReviewPanelFilter(message.filter);
       return;
     case "reveal":
-      revealReviewPanelItem(message.item);
+      await revealReviewPanelItem(message.item);
       return;
     case "ok":
       await markReviewPanelConversationOk(message.item);
-      reviewPanelProvider?.refresh();
+      await reviewPanelProvider?.refresh();
       return;
     case "reply":
       await replyToReviewPanelConversation(message.item, message.body);
-      reviewPanelProvider?.refresh();
+      await reviewPanelProvider?.refresh();
       return;
     case "delete":
       await deleteReviewPanelConversation(message.item);
-      reviewPanelProvider?.refresh();
+      await reviewPanelProvider?.refresh();
       return;
     case "resolveAnnotation":
       await resolveReviewPanelAnnotation(message.item, message.resolution);
-      reviewPanelProvider?.refresh();
+      await reviewPanelProvider?.refresh();
       return;
   }
 }
 
-function revealReviewPanelItem(item: ReviewPanelItem): void {
+async function revealReviewPanelItem(item: ReviewPanelItem): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     return;
   }
 
-  const resolvedItem = resolveReviewPanelItem(editor.document, item) ?? item;
+  const resolvedItem = await resolveReviewPanelItem(editor.document, item) ??
+    item;
   const position = editor.document.positionAt(resolvedItem.start);
   editor.selection = new vscode.Selection(position, position);
   editor.revealRange(
@@ -797,7 +805,7 @@ async function replyToReviewPanelConversation(
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const conversation = editor
-    ? findReviewPanelConversation(editor.document, item)
+    ? await findReviewPanelConversation(editor.document, item)
     : undefined;
   if (!editor || !conversation) {
     void vscode.window.showInformationMessage(
@@ -820,7 +828,7 @@ async function markReviewPanelConversationOk(
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const conversation = editor
-    ? findReviewPanelConversation(editor.document, item)
+    ? await findReviewPanelConversation(editor.document, item)
     : undefined;
   if (!editor || !conversation) {
     void vscode.window.showInformationMessage(
@@ -863,7 +871,7 @@ async function deleteReviewPanelConversation(
 ): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   const conversation = editor
-    ? findReviewPanelConversation(editor.document, item)
+    ? await findReviewPanelConversation(editor.document, item)
     : undefined;
   if (!editor || !conversation) {
     void vscode.window.showInformationMessage(
@@ -893,7 +901,7 @@ async function resolveReviewPanelAnnotation(
     return;
   }
 
-  const resolvedItem = resolveReviewPanelItem(editor.document, item);
+  const resolvedItem = await resolveReviewPanelItem(editor.document, item);
   if (!resolvedItem || resolvedItem.kind === "conversation") {
     void vscode.window.showInformationMessage(
       "No review annotation for this panel item.",
@@ -929,11 +937,11 @@ async function resolveReviewPanelAnnotation(
   });
 }
 
-function findReviewPanelConversation(
+async function findReviewPanelConversation(
   document: vscode.TextDocument,
   item: ReviewPanelItem,
-): Conversation | undefined {
-  const resolvedItem = resolveReviewPanelItem(document, item);
+): Promise<Conversation | undefined> {
+  const resolvedItem = await resolveReviewPanelItem(document, item);
   if (!resolvedItem || resolvedItem.kind !== "conversation") {
     return undefined;
   }
@@ -3444,9 +3452,11 @@ export const __test = {
   addTimestampToCurrentReviewElement,
   applyCriticMarkupAnnotation,
   approveAgentMessage,
+  assignPersistentReviewItemIds,
   cancelCriticMarkupAnnotation,
   collectConversations,
   collectReviewPanelItems,
+  configureDzReviewRuntime,
   convertTimestampsInActiveEditor,
   createCompactCriticMarkupReviewNote,
   createCompactReviewNote,
@@ -3462,12 +3472,14 @@ export const __test = {
   getConversationOkRanges,
   getConversationRoleRanges,
   getConversationStatus,
+  getReviewPanelDocumentPath,
   moveToConversation,
   moveToReviewBlock,
   provideReferenceDefinition,
   provideReviewHover,
   provideTimestampHover,
   removeHumanOk,
+  resolveReviewPanelItem,
   revealReviewPanelItem,
   showAllReviewItems,
   showHandledReviewItems,

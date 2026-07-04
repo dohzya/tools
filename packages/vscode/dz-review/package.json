@@ -65,6 +65,7 @@
     "install:local": "npm run vsix && code --uninstall-extension local.dz-md-review-syntax || true && code --install-extension dz-review-vscode-0.0.1.vsix --force"
   },
   "devDependencies": {
+    "@types/node": "^26.1.0",
     "@types/vscode": "^1.80.0",
     "typescript": "^5.4.0"
   },

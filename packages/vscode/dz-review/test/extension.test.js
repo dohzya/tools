@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
+const childProcess = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
@@ -24,6 +26,22 @@ function positionAt(text, offset) {
   }
 
   return { line: lines.length - 1, character: lines.at(-1).length };
+}
+
+// assignPersistentReviewItemIds (wired in via activate()) persists
+// .dz-review/reference-map.json through runtime-config.ts's
+// getDzReviewStateDir(). That function only returns an absolute,
+// environment-anchored path when it can resolve a git root for the
+// injected `getCwd()` -- otherwise it falls back to the bare relative
+// string ".dz-review", which Node resolves against the real process cwd
+// (this repo's own checkout), not the injected environment. A real git
+// repo of its own, one per harness, is the only way to make
+// getDzReviewStateDir() resolve to an isolated path instead of silently
+// writing into this actual project's .dz-review/ on every test run.
+function createIsolatedDzReviewStateDir() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dz-review-vscode-test-"));
+  childProcess.spawnSync("git", ["init", "--quiet"], { cwd: dir });
+  return dir;
 }
 
 function createHarness() {
@@ -263,6 +281,13 @@ function createHarness() {
     module,
     exports: module.exports,
     TextDecoder,
+    // reference-map.ts's Blake3HashService (via ParseDocumentUseCase) uses
+    // these as globals, not through `require` -- a fresh vm context has
+    // neither by default, unlike the real extension host (Node 22+
+    // provides both on globalThis).
+    TextEncoder,
+    crypto,
+    process,
   });
 
   function createEditor(text, start, end = start) {
@@ -355,6 +380,22 @@ function createHarness() {
       },
     };
   }
+
+  const isolatedStateDir = createIsolatedDzReviewStateDir();
+  const realActivate = module.exports.__test.activate;
+  module.exports.__test.activate = (...args) => {
+    const result = realActivate(...args);
+    // Override activate()'s real (VSCode-backed) environment with one
+    // anchored to this harness's own throwaway git repo, so
+    // reference-map.json never touches the real project checkout.
+    module.exports.__test.configureDzReviewRuntime({
+      environment: {
+        getEnv: () => undefined,
+        getCwd: () => isolatedStateDir,
+      },
+    });
+    return result;
+  };
 
   return {
     api: module.exports.__test,
@@ -463,7 +504,7 @@ test("review panel webview lists review items from the active Markdown editor", 
   const view = harness.createWebviewView();
 
   assert.equal(harness.webviewViewProviders[0].id, "dzMdReview.reviewItems");
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
 
   assert.match(view.webview.html, /Open conversation/);
   assert.match(view.webview.html, /#1 · [0-9A-Za-z]{6} · LINE 2/);
@@ -493,7 +534,7 @@ test("review panel webview lists review items from the active Markdown editor", 
     /vscode\.postMessage\(\{ type: "reveal", item \}\)/,
   );
 
-  const [conversation] = harness.api.collectReviewPanelItems(
+  const [conversation] = await harness.api.collectReviewPanelItems(
     editor.document,
   );
   assert.match(conversation.id, /^rvw_[0-9A-Za-z]{1,11}$/);
@@ -514,7 +555,7 @@ test("review panel webview lists items with hangul timestamps", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
 
   assert.match(view.webview.html, /Open conversation/);
   assert.match(
@@ -546,36 +587,36 @@ test("review panel webview supports review status filters", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
 
-  const labelsFor = (filter) =>
+  const labelsFor = async (filter) =>
     Array.from(
-      harness.api.collectReviewPanelItems(editor.document, filter),
+      await harness.api.collectReviewPanelItems(editor.document, filter),
       (item) => item.label,
     );
 
-  assert.deepEqual(labelsFor("all"), [
+  assert.deepEqual(await labelsFor("all"), [
     "Open conversation",
     "Handled conversation",
     "Resolved conversation",
     "WIP conversation",
     "Addition",
   ]);
-  assert.deepEqual(labelsFor("unresolved"), [
+  assert.deepEqual(await labelsFor("unresolved"), [
     "Open conversation",
     "Handled conversation",
     "WIP conversation",
     "Addition",
   ]);
-  assert.deepEqual(labelsFor("pending"), [
+  assert.deepEqual(await labelsFor("pending"), [
     "Open conversation",
     "WIP conversation",
     "Addition",
   ]);
-  assert.deepEqual(labelsFor("open"), ["Open conversation"]);
-  assert.deepEqual(labelsFor("wip"), ["WIP conversation"]);
-  assert.deepEqual(labelsFor("handled"), ["Handled conversation"]);
-  assert.deepEqual(labelsFor("resolved"), ["Resolved conversation"]);
+  assert.deepEqual(await labelsFor("open"), ["Open conversation"]);
+  assert.deepEqual(await labelsFor("wip"), ["WIP conversation"]);
+  assert.deepEqual(await labelsFor("handled"), ["Handled conversation"]);
+  assert.deepEqual(await labelsFor("resolved"), ["Resolved conversation"]);
 
   assert.equal(view.description, "unresolved");
   assert.match(view.webview.html, /Open conversation/);
@@ -656,7 +697,7 @@ test("review panel filter command prompts for a status filter", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
 
   await harness.api.filterReviewItems();
 
@@ -692,8 +733,8 @@ test("review panel webview can reply to a conversation", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = harness.api.collectReviewPanelItems(editor.document);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
 
   await view.postMessageFromWebview({
     type: "reply",
@@ -728,8 +769,8 @@ test("review panel webview resolves stale conversation offsets by stable id", as
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = harness.api.collectReviewPanelItems(editor.document);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
   editor.document.text = ["Preamble", editor.document.text].join("\n");
 
   await view.postMessageFromWebview({
@@ -751,6 +792,66 @@ test("review panel webview resolves stale conversation offsets by stable id", as
   );
 });
 
+test("review panel webview keeps the same id when an annotation's own text is edited", async () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    [
+      "# Draft",
+      "<!--",
+      "@agent open issue",
+      "-->",
+    ].join("\n"),
+    { line: 0, character: 0 },
+  );
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const [before] = await harness.api.collectReviewPanelItems(editor.document);
+
+  // Same line range, different text -- the old scheme (a pure hash of
+  // file + kind + the annotation's own text) would have minted a
+  // different id here. The persistent mapping's fast path only cares
+  // about the line range, so it survives this edit.
+  editor.document.text = [
+    "# Draft",
+    "<!--",
+    "@agent open issue, rephrased",
+    "-->",
+  ].join("\n");
+
+  const [after] = await harness.api.collectReviewPanelItems(editor.document);
+
+  assert.equal(after.id, before.id);
+});
+
+test("assignPersistentReviewItemIds and the review panel agree on the same file's id", async () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    "{++one line addition++}",
+    { line: 0, character: 0 },
+  );
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const [panelItem] = await harness.api.collectReviewPanelItems(editor.document);
+
+  // Simulate what the CLI would do for the exact same real file: if the
+  // panel's file-path normalization (getReviewPanelDocumentPath) ever
+  // diverged from what a direct assignPersistentReviewItemIds caller would
+  // use, this would mint a *new* id instead of recognizing panelItem's.
+  const file = harness.api.getReviewPanelDocumentPath(editor.document);
+  const [cliAssigned] = await harness.api.assignPersistentReviewItemIds(
+    file,
+    editor.document.text,
+    [{
+      kind: "addition",
+      raw: "{++one line addition++}",
+      lineStart: 1,
+      lineEnd: 1,
+    }],
+  );
+
+  assert.equal(cliAssigned.id, panelItem.id);
+});
+
 test("review panel webview can mark a conversation ok", async () => {
   const harness = createHarness();
   const editor = harness.createEditor(
@@ -765,8 +866,8 @@ test("review panel webview can mark a conversation ok", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = harness.api.collectReviewPanelItems(editor.document);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
 
   await view.postMessageFromWebview({
     type: "ok",
@@ -800,8 +901,8 @@ test("review panel webview can delete a conversation", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = harness.api.collectReviewPanelItems(editor.document);
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
 
   await view.postMessageFromWebview({
     type: "delete",
@@ -821,8 +922,8 @@ test("review panel webview can resolve annotations", async () => {
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
-  harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [addition, deletion] = harness.api.collectReviewPanelItems(
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+  const [addition, deletion] = await harness.api.collectReviewPanelItems(
     editor.document,
   );
 
@@ -833,7 +934,7 @@ test("review panel webview can resolve annotations", async () => {
   });
   assert.equal(editor.document.text, "Before new text after {--old text--}");
 
-  const [remainingDeletion] = harness.api.collectReviewPanelItems(
+  const [remainingDeletion] = await harness.api.collectReviewPanelItems(
     editor.document,
   );
   await view.postMessageFromWebview({
@@ -855,7 +956,14 @@ test("review panel reveal command moves the active editor to the selected item",
     { line: 0, character: 0 },
   );
 
-  const [conversation] = harness.api.collectReviewPanelItems(editor.document);
+  // assignPersistentReviewItemIds (wired in via activate()'s
+  // configureDzReviewRuntime call) needs the injected environment; without
+  // activate() this falls back to the Deno-based default, which doesn't
+  // exist in this Node vm sandbox.
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const [conversation] = await harness.api.collectReviewPanelItems(
+    editor.document,
+  );
 
   await harness.api.revealReviewPanelItem(conversation);
 
