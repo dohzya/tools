@@ -25,15 +25,17 @@
  *    (ranking candidates through RankReferenceCandidatesUseCase first --
  *    a no-op today, a closest-match-first seam later) and adopt the first
  *    `exact`/`confident` resolution whose range overlaps the item's
- *    current lines. The adopted entry is refreshed in place.
+ *    current lines. The adopted entry's `{range, mrfi}` is regenerated for
+ *    the resolved range and stored in place.
  * 3. New: mint a fresh id (reusing stable-review-id.ts's hash+encode
  *    pipeline as the id's seed value only -- once minted, this id is
  *    opaque and never recomputed for comparison again) and record a new
  *    mapping entry.
  *
- * Not yet wired into any call site (agent-core.ts, cli.ts,
- * stable-review-id.ts, ref-core.ts are untouched) -- this module is
- * additive and stands on its own until a later change swaps callers over.
+ * Wired into agent-core.ts/cli.ts's four id-assignment call sites
+ * (collectAgentReviewState, collectLocatedReviewItems,
+ * collectAgentGuardrailFailures, targetReviewIdExists); stable-review-id.ts
+ * and ref-core.ts remain in place and untouched.
  */
 
 import { z } from "@zod/zod/mini";
@@ -232,16 +234,22 @@ export async function assignPersistentReviewItemIds<
       consumedIds.add(id);
       results[index] = { id, item };
 
-      const refreshed = await locator.refreshReference(
+      // Regenerate directly from the range we already resolved above,
+      // instead of calling refreshReference (which would resolve again
+      // internally) -- avoids a redundant second resolution pass.
+      const refreshedMrfi = await locator.generateReference(
         doc,
-        mrfi,
-        format,
-        profile,
+        fullLineSourceRange(
+          doc,
+          resolvedRange.startLine,
+          resolvedRange.endLine,
+        ),
+        { format, profile, quote: false, quoteMax: 80 },
       );
       entries[id] = {
         file: normalizedFile,
         range: resolvedRange,
-        mrfi: refreshed.kind === "refreshed" ? refreshed.ref : mrfi,
+        mrfi: refreshedMrfi,
       };
       break;
     }

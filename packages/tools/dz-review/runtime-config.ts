@@ -6,9 +6,26 @@ export const DZ_REVIEW_IGNORE_FILE_ENV = "DZ_REVIEW_IGNORE_FILE";
 export const DEFAULT_DZ_REVIEW_STATE_DIR = ".dz-review";
 export const DEFAULT_DZ_REVIEW_IGNORE_FILE = ".dz-review-ignore";
 
+/**
+ * Port over the raw `Deno.env.get`/`Deno.cwd()` primitives this module
+ * needs. Lets a non-Deno host (e.g. the VSCode extension, which has no
+ * `Deno` global) supply its own implementation via `configureDzReviewRuntime`
+ * instead of this file touching `Deno.*` directly.
+ */
+export interface DzReviewEnvironment {
+  getEnv(key: string): string | undefined;
+  getCwd(): string;
+}
+
+const defaultEnvironment: DzReviewEnvironment = {
+  getEnv: (key) => Deno.env.get(key),
+  getCwd: () => Deno.cwd(),
+};
+
 interface DzReviewRuntimeConfig {
   ignoreFile?: string;
   stateDir?: string;
+  environment?: DzReviewEnvironment;
 }
 
 let activeConfig: DzReviewRuntimeConfig = {};
@@ -19,17 +36,22 @@ export function configureDzReviewRuntime(
   activeConfig = { ...config };
 }
 
+function getEnvironment(): DzReviewEnvironment {
+  return activeConfig.environment ?? defaultEnvironment;
+}
+
 export function getDzReviewStateDir(): string {
+  const environment = getEnvironment();
   const configured = normalizeConfiguredPathCandidate(
     activeConfig.stateDir,
-    Deno.env.get(DZ_REVIEW_STATE_DIR_ENV),
+    environment.getEnv(DZ_REVIEW_STATE_DIR_ENV),
   );
   if (configured) {
     return configured;
   }
 
   const gitRoot = findGitRoot();
-  if (gitRoot && path.resolve(gitRoot) !== path.resolve(Deno.cwd())) {
+  if (gitRoot && path.resolve(gitRoot) !== path.resolve(environment.getCwd())) {
     return path.join(gitRoot, DEFAULT_DZ_REVIEW_STATE_DIR);
   }
 
@@ -47,7 +69,7 @@ export function getDzReviewReferenceMapFile(): string {
 export function getDzReviewIgnoreFile(): string {
   return normalizeConfigPathCandidate(
     activeConfig.ignoreFile,
-    Deno.env.get(DZ_REVIEW_IGNORE_FILE_ENV),
+    getEnvironment().getEnv(DZ_REVIEW_IGNORE_FILE_ENV),
     DEFAULT_DZ_REVIEW_IGNORE_FILE,
   );
 }
@@ -70,7 +92,7 @@ function findGitRoot(): string | undefined {
     "rev-parse",
     "--show-toplevel",
   ], {
-    cwd: Deno.cwd(),
+    cwd: getEnvironment().getCwd(),
     encoding: "utf8",
   });
 
@@ -103,7 +125,9 @@ function normalizeConfigPathCandidate(
 }
 
 function toDirectoryIgnorePattern(dir: string): string {
-  const relative = path.isAbsolute(dir) ? path.relative(Deno.cwd(), dir) : dir;
+  const relative = path.isAbsolute(dir)
+    ? path.relative(getEnvironment().getCwd(), dir)
+    : dir;
   const normalized = relative.replace(/\\/g, "/").replace(/\/+$/, "");
   return normalized.length > 0 ? `${normalized}/` : "./";
 }

@@ -253,6 +253,8 @@ The worklog domain has no import from markdown-surgeon. `MarkdownService` is a w
 
 The worklog CLI also re-uses `Blake3HashService` and `YamlParserService` from markdown-surgeon's adapter layer to instantiate `MarkdownSurgeonAdapter`. This is done in `cli.ts` (the DI root), which is the appropriate place for cross-package wiring.
 
+`dz-review` is the first consumer of the MRFI fragment-reference use-cases described above, following the same shape as worklog's integration: a small port owned by the consumer package (`dz-review/domain/ports/reference-locator.ts`, `ReferenceLocatorService`) implemented by an adapter that calls markdown-surgeon's use-cases directly (`dz-review/adapters/markdown/mrfi-adapter.ts`, `MrfiAdapter`, wrapping `GenerateReferenceUseCase`/`ResolveReferenceUseCase`/`RefreshReferenceUseCase`). Unlike `MarkdownSurgeonAdapter`, `MrfiAdapter` needs no constructor dependencies, because MRFI's own hashing runs through `crypto.subtle` rather than an injected `HashService`. See [`dz-review-architecture.md`](./dz-review-architecture.md) for the port's shape and its one current caller, the persistent review-item-id mechanism.
+
 ---
 
 ## Key conventions

@@ -5,7 +5,7 @@ themes:
   - markdown
   - cli
   - agents
-verified_at: 2026-07-01
+verified_at: 2026-07-03
 source_ref: "packages/tools/dz-review/*.ts; imported dz-md-review-syntax docs and skill snapshot on 2026-06-18"
 language: en-US
 ---
@@ -177,6 +177,12 @@ The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--re
 The CLI reads the configured ignore file from the current directory. Matching paths are skipped in all modes, and negated patterns such as `!docs/` can re-include paths that are otherwise ignored by Git. The active agent state directory and the default `.dz-review/` directory are ignored by default even when no ignore file exists. Explicit file arguments for `dz-review session start` and `dz-review session add-file` bypass project ignore rules, but still respect the builtin state-directory protections.
 
 The DZ Review VS Code extension recognizes passage refs in Markdown. Hovering a ref shows the referenced passage, including refs to HTML conversation comments, and go-to-definition opens the target file at the referenced line. The `dzMdReview.refSnapshotLines` setting limits hover previews with the same default of 10 lines; `0` means unlimited.
+
+## Review Item Ids
+
+Every review item (annotation or conversation) gets a stable `rvw_...` id, used with commands like `dz-review agent respond <id>`, `dz-review agent show <id>`, and `dz-review agent apply <id>`. As of 2026-07, an id you have referenced elsewhere keeps working even if the annotation's own text changes in place — for example, fixing a typo in a comment, or editing an untimestamped annotation before it has ever been timestamped, no longer mints a new id for the same item.
+
+This durability is best-effort, not absolute: it relies on locating the annotation's stored passage reference in the current document, so it can be lost if the change is large enough that the passage can no longer be confidently relocated (see [`dz-review-architecture.md`](../technical/dz-review-architecture.md#persistent-review-item-ids) for the exact matching rules and their limits). The underlying passage reference uses the shared Markdown Fragment Reference locator described in [`../../../../docs/functional/markdown-fragment-references.md`](../../../../docs/functional/markdown-fragment-references.md); this document does not duplicate that syntax.
 
 ## Agent Workflow
 
