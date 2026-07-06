@@ -23,7 +23,7 @@ import type {
 } from "../entities/mrfi.ts";
 import { ResolveReferenceUseCase } from "./resolve-reference.ts";
 import { GenerateReferenceUseCase } from "./generate-reference.ts";
-import { getLineEndColumn } from "./mrfi-text.ts";
+import { parseMrfiRange } from "./mrfi-codec.ts";
 
 export type {
   RefreshedReference,
@@ -63,9 +63,13 @@ export class RefreshReferenceUseCase {
       (result.status === "exact" || result.status === "confident") &&
       result.range !== undefined
     ) {
+      const range = parseMrfiRange(result.range);
+      if (!range) {
+        throw new Error(`Unexpected resolved range format: ${result.range}`);
+      }
       const refreshed = await this.generateReference.execute({
         doc,
-        target: { kind: "range", range: parseResolvedRange(doc, result.range) },
+        target: { kind: "range", range },
         format,
         profile,
         quote: false,
@@ -76,25 +80,4 @@ export class RefreshReferenceUseCase {
 
     return { kind: "unresolved", result };
   }
-}
-
-/**
- * ResolveResult.range only ever carries line numbers (see formatLineRange
- * in mrfi-text.ts) — resolution never exposes sub-line column precision.
- * Refresh therefore regenerates at full-line granularity, the same
- * precision already exposed by resolve output.
- */
-function parseResolvedRange(doc: Document, range: string) {
-  const match = range.match(/^L(\d+)(?:-L(\d+))?$/);
-  if (!match) {
-    throw new Error(`Unexpected resolved range format: ${range}`);
-  }
-  const startLine = Number(match[1]);
-  const endLine = match[2] ? Number(match[2]) : startLine;
-  return {
-    startLine,
-    startColumn: 1,
-    endLine,
-    endColumn: getLineEndColumn(doc, endLine),
-  };
 }

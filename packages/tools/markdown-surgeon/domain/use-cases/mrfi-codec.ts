@@ -106,18 +106,10 @@ export function serializeDebugMrfi(parsed: DebugMrfi): string {
     fields.push(`${serializeHashSignal("fh", parsed.exactHash)}`);
   }
   if (parsed.headingHash) {
-    const hash = parsed.headingHash.hash.toString(16).padStart(16, "0");
-    const threshold = parsed.headingHash.maxDistance === undefined
-      ? ""
-      : `/${parsed.headingHash.maxDistance}`;
-    fields.push(`hh=smh64:${hash}${threshold}`);
+    fields.push(serializeSmh64Field("hh", parsed.headingHash));
   }
   if (parsed.passageHash) {
-    const hash = parsed.passageHash.hash.toString(16).padStart(16, "0");
-    const threshold = parsed.passageHash.maxDistance === undefined
-      ? ""
-      : `/${parsed.passageHash.maxDistance}`;
-    fields.push(`ph=smh64:${hash}${threshold}`);
+    fields.push(serializeSmh64Field("ph", parsed.passageHash));
   }
   if (parsed.context) {
     const contextFields = [
@@ -129,7 +121,7 @@ export function serializeDebugMrfi(parsed: DebugMrfi): string {
     }
   }
   if (parsed.documentHash) {
-    fields.push(`${serializeHashSignal("doc", parsed.documentHash)}`);
+    fields.push(serializeSmh64Field("doc", parsed.documentHash));
   }
   if (parsed.quote) {
     fields.push(`q=${encodeDebugValue(parsed.quote)}`);
@@ -142,6 +134,72 @@ export function serializeDebugMrfi(parsed: DebugMrfi): string {
 
 export function serializeHashSignal(key: string, signal: HashSignal): string {
   return `${key}=${signal.algorithm}:${signal.prefix}`;
+}
+
+/** Serializes a fuzzy (smh64) field — `hh`, `ph`, or `doc` — in debug form */
+export function serializeSmh64Field(
+  key: string,
+  fuzzyHash: { readonly hash: bigint; readonly maxDistance?: number },
+): string {
+  const hash = fuzzyHash.hash.toString(16).padStart(16, "0");
+  const threshold = fuzzyHash.maxDistance === undefined
+    ? ""
+    : `/${fuzzyHash.maxDistance}`;
+  return `${key}=smh64:${hash}${threshold}`;
+}
+
+/**
+ * Per-field default hash tag: compact encodings omit the tag entirely when
+ * a signal uses its field's default, per docs/specs/mrfi.md "Tags are only
+ * spelled out in the debug encoding ... `v0` defines a default tag per hash
+ * field". `fh`'s default is xxh64 (small/fast, no adversarial-collision
+ * need); `doc`, like `hh`/`ph`, only ever uses smh64, so its compact form
+ * omits the tag unconditionally (see decodeCompactHeadingHash).
+ */
+const FH_DEFAULT_ALGORITHM = "xxh64";
+
+/**
+ * Small registered codes for known non-default tags, so a hash carrying an
+ * explicit but non-default algorithm still costs one CBOR byte instead of
+ * spelling the algorithm name out in the compact envelope. An algorithm not
+ * in this map falls back to a literal `[algorithm, prefix]` encoding.
+ */
+const HASH_ALGORITHM_CODES: Readonly<Record<string, number>> = {
+  sha256: 1,
+  xxh64: 2,
+};
+const HASH_ALGORITHM_NAMES: Readonly<Record<number, string>> = Object
+  .fromEntries(
+    Object.entries(HASH_ALGORITHM_CODES).map(([name, code]) => [code, name]),
+  );
+
+function encodeCompactHashSignal(
+  signal: HashSignal,
+  defaultAlgorithm: string,
+): CborValue {
+  if (signal.algorithm === defaultAlgorithm) return signal.prefix;
+  const code = HASH_ALGORITHM_CODES[signal.algorithm];
+  return code === undefined
+    ? [signal.algorithm, signal.prefix]
+    : [code, signal.prefix];
+}
+
+function decodeCompactHashSignalWithDefault(
+  value: CborValue | undefined,
+  defaultAlgorithm: string,
+): HashSignal | undefined {
+  if (typeof value === "string") {
+    return { algorithm: defaultAlgorithm, prefix: value };
+  }
+  if (!Array.isArray(value) || value.length !== 2) return undefined;
+  const [tag, prefix] = value;
+  if (typeof prefix !== "string") return undefined;
+  if (typeof tag === "number") {
+    const algorithm = HASH_ALGORITHM_NAMES[tag];
+    return algorithm ? { algorithm, prefix } : undefined;
+  }
+  if (typeof tag === "string") return { algorithm: tag, prefix };
+  return undefined;
 }
 
 export function encodeCompactMrfi(parsed: DebugMrfi): Uint8Array {
@@ -165,15 +223,13 @@ export function encodeCompactMrfi(parsed: DebugMrfi): Uint8Array {
     entries.push([3, parsed.structuralPath]);
   }
   if (parsed.exactHash) {
-    entries.push([4, [parsed.exactHash.algorithm, parsed.exactHash.prefix]]);
+    entries.push([
+      4,
+      encodeCompactHashSignal(parsed.exactHash, FH_DEFAULT_ALGORITHM),
+    ]);
   }
   if (parsed.headingHash) {
-    const hash = parsed.headingHash.hash.toString(16).padStart(16, "0");
-    const value: CborValue[] = ["smh64", hash];
-    if (parsed.headingHash.maxDistance !== undefined) {
-      value.push(parsed.headingHash.maxDistance);
-    }
-    entries.push([5, value]);
+    entries.push([5, encodeCompactSmh64(parsed.headingHash)]);
   }
   if (parsed.context) {
     entries.push([
@@ -188,21 +244,13 @@ export function encodeCompactMrfi(parsed: DebugMrfi): Uint8Array {
     entries.push([7, parsed.quote]);
   }
   if (parsed.documentHash) {
-    entries.push([
-      8,
-      [parsed.documentHash.algorithm, parsed.documentHash.prefix],
-    ]);
+    entries.push([8, encodeCompactSmh64(parsed.documentHash)]);
   }
   if (parsed.offsetRange) {
     entries.push([9, [parsed.offsetRange.start, parsed.offsetRange.end]]);
   }
   if (parsed.passageHash) {
-    const hash = parsed.passageHash.hash.toString(16).padStart(16, "0");
-    const value: CborValue[] = ["smh64", hash];
-    if (parsed.passageHash.maxDistance !== undefined) {
-      value.push(parsed.passageHash.maxDistance);
-    }
-    entries.push([10, value]);
+    entries.push([10, encodeCompactSmh64(parsed.passageHash)]);
   }
   for (const [key, value] of parsed.extra ?? []) {
     entries.push([key, value]);
@@ -221,11 +269,14 @@ export function decodeCompactMrfi(payload: Uint8Array): DebugMrfi | undefined {
   const anchor = getCborMapValue(value, 1);
   const range = decodeCompactRange(getCborMapValue(value, 2));
   const structuralPath = getCborMapValue(value, 3);
-  const exactHash = decodeCompactHashSignal(getCborMapValue(value, 4));
+  const exactHash = decodeCompactHashSignalWithDefault(
+    getCborMapValue(value, 4),
+    FH_DEFAULT_ALGORITHM,
+  );
   const headingHash = decodeCompactHeadingHash(getCborMapValue(value, 5));
   const context = decodeCompactContext(getCborMapValue(value, 6));
   const quote = getCborMapValue(value, 7);
-  const documentHash = decodeCompactHashSignal(getCborMapValue(value, 8));
+  const documentHash = decodeCompactHeadingHash(getCborMapValue(value, 8));
   const offsetRange = decodeCompactOffsetRange(getCborMapValue(value, 9));
   const passageHash = decodeCompactHeadingHash(getCborMapValue(value, 10));
   const extra = decodeExtraFields(value);
@@ -245,25 +296,22 @@ export function decodeCompactMrfi(payload: Uint8Array): DebugMrfi | undefined {
   };
 }
 
+/**
+ * Decodes string-keyed compact fields as extension fields: any key this
+ * codec does not itself use is an extension field by construction, since
+ * known fields always use a numeric key in compact form. Per
+ * docs/specs/mrfi.md's Extension Fields ("nothing is silently dropped"),
+ * a non-string value — which another implementation may have written,
+ * since this spec does not constrain what an unknown field carries — is
+ * coerced to a literal string instead of failing the whole reference.
+ */
 export function decodeExtraFields(map: CborMap): Map<string, string> {
   const extra = new Map<string, string>();
   for (const [key, value] of map.entries) {
     if (typeof key !== "string") continue;
-    if (typeof value !== "string") {
-      throw new MdError("invalid_id", `Unsupported compact MRFI field: ${key}`);
-    }
-    extra.set(key, value);
+    extra.set(key, typeof value === "string" ? value : JSON.stringify(value));
   }
   return extra;
-}
-
-export function decodeCompactHashSignal(
-  value: CborValue | undefined,
-): HashSignal | undefined {
-  if (!Array.isArray(value) || value.length !== 2) return undefined;
-  const [algorithm, prefix] = value;
-  if (algorithm !== "sha256" || typeof prefix !== "string") return undefined;
-  return { algorithm, prefix };
 }
 
 export function decodeCompactContext(
@@ -310,17 +358,32 @@ export function decodeCompactRange(
   return range;
 }
 
+/** Encodes a fuzzy (smh64) field — `hh`, `ph`, or `doc` — as `[hash]` or `[hash, maxDistance]` */
+export function encodeCompactSmh64(
+  fuzzyHash: { readonly hash: bigint; readonly maxDistance?: number },
+): CborValue[] {
+  const hash = fuzzyHash.hash.toString(16).padStart(16, "0");
+  const value: CborValue[] = [hash];
+  if (fuzzyHash.maxDistance !== undefined) {
+    value.push(fuzzyHash.maxDistance);
+  }
+  return value;
+}
+
+/**
+ * Decodes a compact `hh`/`ph`/`doc` value: `[hash]` or `[hash, maxDistance]`.
+ * The algorithm tag is not encoded because smh64 is the only supported (and
+ * therefore default) tag for these fields, per docs/specs/mrfi.md's
+ * per-field default-tag omission.
+ */
 export function decodeCompactHeadingHash(
   value: CborValue | undefined,
 ): DebugMrfi["headingHash"] | undefined {
-  if (!Array.isArray(value) || value.length < 2 || value.length > 3) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 2) {
     return undefined;
   }
-  const [algorithm, hash, maxDistance] = value;
-  if (
-    algorithm !== "smh64" || typeof hash !== "string" ||
-    !/^[0-9a-f]{16}$/i.test(hash)
-  ) {
+  const [hash, maxDistance] = value;
+  if (typeof hash !== "string" || !/^[0-9a-f]{16}$/i.test(hash)) {
     return undefined;
   }
   if (maxDistance !== undefined && typeof maxDistance !== "number") {
@@ -404,7 +467,7 @@ export function parseDebugMrfi(ref: string): DebugMrfi | undefined {
 
   let anchor: string | undefined;
   let context: DebugMrfi["context"];
-  let documentHash: HashSignal | undefined;
+  let documentHash: DebugMrfi["documentHash"];
   let exactHash: HashSignal | undefined;
   const extra = new Map<string, string>();
   let headingHash: DebugMrfi["headingHash"];
@@ -440,9 +503,9 @@ export function parseDebugMrfi(ref: string): DebugMrfi | undefined {
         throw new MdError("invalid_id", `Malformed MRFI context: ${value}`);
       }
     } else if (key === "doc") {
-      documentHash = parseHashSignal(value);
+      documentHash = parseSmh64Field(value);
       if (!documentHash) {
-        throw new MdError("invalid_id", `Malformed MRFI hash: ${field}`);
+        throw new MdError("invalid_id", `Malformed MRFI smh64: ${field}`);
       }
     } else if (key === "fh") {
       exactHash = parseHashSignal(value);
@@ -501,7 +564,7 @@ export function parseHashSignal(value: string): HashSignal | undefined {
   if (separator === -1) return undefined;
   const algorithm = value.slice(0, separator);
   const prefix = value.slice(separator + 1);
-  if (algorithm !== "sha256" || prefix.length === 0) return undefined;
+  if (algorithm.length === 0 || prefix.length === 0) return undefined;
   return { algorithm, prefix };
 }
 

@@ -16,7 +16,11 @@ export interface DebugMrfi {
     readonly prefix?: string;
     readonly suffix?: string;
   };
-  readonly documentHash?: HashSignal;
+  /** Fuzzy (smh64) hash of the whole document — wrong-file detection, not passage recovery */
+  readonly documentHash?: {
+    readonly hash: bigint;
+    readonly maxDistance?: number;
+  };
   readonly exactHash?: HashSignal;
   readonly extra?: ReadonlyMap<string, string>;
   readonly headingHash?: {
@@ -51,9 +55,15 @@ export interface ComparisonSpan {
   readonly value: string;
 }
 
-/** A hash-based locator signal (currently always SHA-256 prefix based) */
+/**
+ * A hash-based locator signal: a hash prefix plus the algorithm tag it was
+ * computed with. Any tag string must round-trip verbatim, per
+ * docs/specs/mrfi.md's "unknown tag falls back to literal encoding" —
+ * "sha256" and "xxh64" are the only ones the resolver knows how to
+ * recompute, but the type itself does not enumerate them.
+ */
 export interface HashSignal {
-  readonly algorithm: "sha256";
+  readonly algorithm: string;
   readonly prefix: string;
 }
 
@@ -65,6 +75,7 @@ export type MrfiProfile = "min" | "default" | "full";
 
 /** A single alternate candidate surfaced when resolution is ambiguous */
 export interface ResolveCandidate {
+  /** Same `startLine:startCol-endLine:endCol` precision as ResolveResult.range */
   readonly range: string;
   readonly score: number;
   readonly reasons: readonly string[];
@@ -81,6 +92,11 @@ export interface ResolveResult {
     | "not_found"
     | "invalid";
   readonly confidence: number;
+  /**
+   * Resolved range at full `startLine:startCol-endLine:endCol` precision
+   * (the same format as the `r=` field), per docs/specs/mrfi.md's Output
+   * Model ("at the same `line:col` precision as `r`").
+   */
   readonly range?: string;
   readonly anchor?: string;
   readonly passage?: string;

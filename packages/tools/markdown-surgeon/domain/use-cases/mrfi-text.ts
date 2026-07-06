@@ -335,6 +335,30 @@ export function formatLineRange(startLine: number, endLine: number): string {
   return startLine === endLine ? `L${startLine}` : `L${startLine}-L${endLine}`;
 }
 
+/**
+ * Formats a resolved range at full `line:col` precision, per
+ * docs/specs/mrfi.md's Output Model ("range: ... at the same `line:col`
+ * precision as `r`"), matching the `r=` field's own
+ * `startLine:startColumn-endLine:endColumn` format.
+ */
+export function formatSourceRange(range: SourceRange): string {
+  return `${range.startLine}:${range.startColumn}-${range.endLine}:${range.endColumn}`;
+}
+
+/** A SourceRange spanning whole lines, for callers that only have line numbers */
+export function fullLineRange(
+  doc: Document,
+  startLine: number,
+  endLine: number,
+): SourceRange {
+  return {
+    startLine,
+    startColumn: 1,
+    endLine,
+    endColumn: getLineEndColumn(doc, endLine),
+  };
+}
+
 export function includesNormalized(haystack: string, needle: string): boolean {
   return normalizeForCompare(haystack).includes(normalizeForCompare(needle));
 }
@@ -395,6 +419,130 @@ export async function sha256Digest(text: string): Promise<Uint8Array> {
   const copy = new Uint8Array(bytes.length);
   copy.set(bytes);
   return new Uint8Array(await crypto.subtle.digest("SHA-256", copy.buffer));
+}
+
+// xxHash64 (seed 0), a non-cryptographic fingerprint used as the default `fh`
+// algorithm: much smaller/faster than sha256, which is unnecessary for
+// proving "this text is unchanged" (no adversarial collision concern).
+// Pure-TS port of the reference algorithm (github.com/Cyan4973/xxHash);
+// mrfi-text.test.ts pins it against cespare/xxhash's canonical test vectors.
+const XXH_PRIME64_1 = 11400714785074694791n;
+const XXH_PRIME64_2 = 14029467366897019727n;
+const XXH_PRIME64_3 = 1609587929392839161n;
+const XXH_PRIME64_4 = 9650029242287828579n;
+const XXH_PRIME64_5 = 2870177450012600261n;
+
+function xxhRotl64(value: bigint, bits: bigint): bigint {
+  const x = value & UINT64_MASK;
+  return ((x << bits) | (x >> (64n - bits))) & UINT64_MASK;
+}
+
+function xxhRound(acc: bigint, input: bigint): bigint {
+  acc = (acc + input * XXH_PRIME64_2) & UINT64_MASK;
+  acc = xxhRotl64(acc, 31n);
+  return (acc * XXH_PRIME64_1) & UINT64_MASK;
+}
+
+function xxhMergeRound(acc: bigint, value: bigint): bigint {
+  const merged = xxhRound(0n, value);
+  acc = (acc ^ merged) & UINT64_MASK;
+  return (acc * XXH_PRIME64_1 + XXH_PRIME64_4) & UINT64_MASK;
+}
+
+/** xxHash64 (seed 0) of the given text's UTF-8 bytes */
+export function xxh64(text: string): bigint {
+  const bytes = new TextEncoder().encode(text);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const length = bytes.length;
+  let offset = 0;
+  let h64: bigint;
+
+  if (length >= 32) {
+    let v1 = (XXH_PRIME64_1 + XXH_PRIME64_2) & UINT64_MASK;
+    let v2 = XXH_PRIME64_2;
+    let v3 = 0n;
+    let v4 = (-XXH_PRIME64_1) & UINT64_MASK;
+
+    const limit = length - 32;
+    while (offset <= limit) {
+      v1 = xxhRound(v1, view.getBigUint64(offset, true));
+      v2 = xxhRound(v2, view.getBigUint64(offset + 8, true));
+      v3 = xxhRound(v3, view.getBigUint64(offset + 16, true));
+      v4 = xxhRound(v4, view.getBigUint64(offset + 24, true));
+      offset += 32;
+    }
+
+    h64 = (xxhRotl64(v1, 1n) + xxhRotl64(v2, 7n) + xxhRotl64(v3, 12n) +
+      xxhRotl64(v4, 18n)) & UINT64_MASK;
+    h64 = xxhMergeRound(h64, v1);
+    h64 = xxhMergeRound(h64, v2);
+    h64 = xxhMergeRound(h64, v3);
+    h64 = xxhMergeRound(h64, v4);
+  } else {
+    h64 = XXH_PRIME64_5;
+  }
+
+  h64 = (h64 + BigInt(length)) & UINT64_MASK;
+
+  while (offset + 8 <= length) {
+    const k1 = xxhRound(0n, view.getBigUint64(offset, true));
+    h64 = (h64 ^ k1) & UINT64_MASK;
+    h64 = (xxhRotl64(h64, 27n) * XXH_PRIME64_1 + XXH_PRIME64_4) & UINT64_MASK;
+    offset += 8;
+  }
+
+  if (offset + 4 <= length) {
+    h64 = (h64 ^ (BigInt(view.getUint32(offset, true)) * XXH_PRIME64_1)) &
+      UINT64_MASK;
+    h64 = (xxhRotl64(h64, 23n) * XXH_PRIME64_2 + XXH_PRIME64_3) & UINT64_MASK;
+    offset += 4;
+  }
+
+  while (offset < length) {
+    h64 = (h64 ^ (BigInt(bytes[offset]) * XXH_PRIME64_5)) & UINT64_MASK;
+    h64 = (xxhRotl64(h64, 11n) * XXH_PRIME64_1) & UINT64_MASK;
+    offset += 1;
+  }
+
+  h64 = (h64 ^ (h64 >> 33n)) & UINT64_MASK;
+  h64 = (h64 * XXH_PRIME64_2) & UINT64_MASK;
+  h64 = (h64 ^ (h64 >> 29n)) & UINT64_MASK;
+  h64 = (h64 * XXH_PRIME64_3) & UINT64_MASK;
+  h64 = (h64 ^ (h64 >> 32n)) & UINT64_MASK;
+
+  return h64;
+}
+
+/** xxHash64 (seed 0) as a fixed-width 16-char lowercase hex string */
+export function xxh64Hex(text: string): string {
+  return xxh64(text).toString(16).padStart(16, "0");
+}
+
+/** Default `fh`-style hash signal: xxh64, base62-encoded and prefix-truncated */
+export function xxh64PrefixSignal(text: string, length = 8): HashSignal {
+  const hash = xxh64(normalizeForCompare(text));
+  const bytes = new Uint8Array(8);
+  new DataView(bytes.buffer).setBigUint64(0, hash, false);
+  return {
+    algorithm: "xxh64",
+    prefix: encodeBase62Payload(bytes).slice(0, length),
+  };
+}
+
+/**
+ * Computes a HashSignal for the given algorithm tag, or `undefined` when the
+ * tag is not one the resolver knows how to recompute (an unknown tag per
+ * docs/specs/mrfi.md still round-trips through the reference itself; it just
+ * cannot be used to verify a candidate passage here).
+ */
+export async function hashSignalFor(
+  algorithm: string,
+  text: string,
+  length = 8,
+): Promise<HashSignal | undefined> {
+  if (algorithm === "sha256") return await sha256PrefixSignal(text, length);
+  if (algorithm === "xxh64") return xxh64PrefixSignal(text, length);
+  return undefined;
 }
 
 export function tokenizeForSmh64(text: string): string[] {

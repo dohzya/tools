@@ -307,7 +307,7 @@ Deno.test("md resolve - resolves a stable anchor to its containing section", asy
       main(["resolve", file, "^install_sdk"])
     );
 
-    assertStringIncludes(output, "^install_sdk exact 1.00 L1-L4");
+    assertStringIncludes(output, "^install_sdk exact 1.00 1:1-4:22");
     assertStringIncludes(output, "    # Installation");
     assertStringIncludes(output, "    Run the installer.");
   } finally {
@@ -402,7 +402,7 @@ Deno.test("md resolve - uses hh to recover a moved section when range is stale",
     );
 
     assertStringIncludes(output, `${mrfi} confident`);
-    assertStringIncludes(output, "L5-L7");
+    assertStringIncludes(output, "5:1-7:19");
     assertStringIncludes(output, "fuzzy heading match");
     assertStringIncludes(output, "    # Installation rapide");
   } finally {
@@ -422,7 +422,7 @@ Deno.test("md resolve - keeps the last content line from outline section MRFI ra
 
     const output = await captureOutput(() => main(["resolve", file, mrfi]));
 
-    assertStringIncludes(output, "L1-L3");
+    assertStringIncludes(output, "1:1-3:19");
     assertStringIncludes(output, "    # Installation");
     assertStringIncludes(output, "    Run the installer.");
   } finally {
@@ -459,7 +459,7 @@ Deno.test("md resolve - accepts compact Hangul MRFI references", async () => {
     );
 
     assertStringIncludes(output, `${mrfi} confident`);
-    assertStringIncludes(output, "L5-L7");
+    assertStringIncludes(output, "5:1-7:19");
     assertStringIncludes(output, "fuzzy heading match");
   } finally {
     await Deno.remove(originalFile);
@@ -483,8 +483,8 @@ Deno.test("md resolve - does not let a stale range beat exact and context eviden
       main(["resolve", editedFile, ref])
     );
 
-    assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L5");
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "5:1-5:17");
     assertStringIncludes(output, "exact fragment hash match");
     assertStringIncludes(output, "    Target sentence.");
   } finally {
@@ -509,8 +509,8 @@ Deno.test("md resolve - recovers exact hash matches when normalization changes s
       main(["resolve", editedFile, ref])
     );
 
-    assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "3:1-3:8");
     assertStringIncludes(output, "exact fragment hash match");
     assertStringIncludes(output, "    Foo bar");
     assertEquals(output.includes("oo bar\nen"), false);
@@ -542,8 +542,8 @@ Deno.test("md resolve - uses fh to recover a moved exact passage", async () => {
 
     const output = await captureOutput(() => main(["resolve", movedFile, ref]));
 
-    assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L7");
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "7:1-7:18");
     assertStringIncludes(output, "exact fragment hash match");
     assertStringIncludes(output, "    Run the installer");
   } finally {
@@ -576,8 +576,8 @@ Deno.test("md resolve - uses fh to recover a moved multi-line exact passage", as
 
     const output = await captureOutput(() => main(["resolve", movedFile, ref]));
 
-    assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L7-L9");
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "7:1-9:11");
     assertStringIncludes(output, "exact fragment hash match");
     assertStringIncludes(output, "    First line");
     assertStringIncludes(output, "    Third line");
@@ -613,8 +613,8 @@ Deno.test("md resolve - uses context to disambiguate duplicate exact hash matche
       main(["resolve", duplicateFile, ref])
     );
 
-    assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L6");
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "6:1-6:17");
     assertStringIncludes(output, "exact fragment hash match");
     assertStringIncludes(output, "context suffix match");
   } finally {
@@ -638,7 +638,7 @@ Deno.test("md resolve - uses ctx to recover a changed passage with a different l
     const output = await captureOutput(() => main(["resolve", movedFile, ref]));
 
     assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "3:1-3:8");
     assertStringIncludes(output, "context prefix match");
     assertStringIncludes(output, "context suffix match");
     assertStringIncludes(output, "    Charlie");
@@ -663,7 +663,7 @@ Deno.test("md resolve - uses ctx to recover a changed passage between stable nei
     const output = await captureOutput(() => main(["resolve", movedFile, ref]));
 
     assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "3:1-3:6");
     assertStringIncludes(output, "context suffix match");
     assertStringIncludes(output, "    Bravo");
   } finally {
@@ -694,7 +694,7 @@ Deno.test("md resolve - uses p to recover a changed passage in the same structur
     const output = await captureOutput(() => main(["resolve", movedFile, ref]));
 
     assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L8");
+    assertStringIncludes(output, "8:1-8:6");
     assertStringIncludes(output, "structural path match");
     assertStringIncludes(output, "    Bravo");
   } finally {
@@ -733,7 +733,7 @@ Deno.test("md resolve - lets a unique MRFI anchor beat stale exact hash evidence
 
     assertStringIncludes(output, `${ref} exact`);
     assertStringIncludes(output, "MRFI anchor signal");
-    assertStringIncludes(output, "L5-L8");
+    assertStringIncludes(output, "5:1-8:16");
     assertStringIncludes(output, "    Different text.");
   } finally {
     await Deno.remove(oldFile);
@@ -761,7 +761,7 @@ Deno.test("md resolve - treats a valid range as stale when it conflicts with a u
 
     assertStringIncludes(output, `${ref} exact`);
     assertStringIncludes(output, "MRFI anchor signal");
-    assertStringIncludes(output, "L5-L8");
+    assertStringIncludes(output, "5:1-8:16");
     assertEquals(output.includes("    Duplicate text."), false);
   } finally {
     await Deno.remove(file);
@@ -805,8 +805,8 @@ Deno.test("md resolve - uses fh to recover min-profile multi-line passages", asy
 
     const output = await captureOutput(() => main(["resolve", movedFile, ref]));
 
-    assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L7-L9");
+    assertStringIncludes(output, `${ref} exact`);
+    assertStringIncludes(output, "7:1-9:11");
     assertStringIncludes(output, "exact fragment hash match");
   } finally {
     await Deno.remove(originalFile);
@@ -836,7 +836,7 @@ Deno.test("md resolve - uses comparison-view structural path offsets", async () 
     );
 
     assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "3:1-3:8");
     assertStringIncludes(output, "structural path match");
     assertStringIncludes(output, "    Foo bar");
     assertEquals(output.includes("L3-L4"), false);
@@ -858,7 +858,7 @@ Deno.test("md resolve - preserves a compact range selection inside a matching se
     const output = await captureOutput(() => main(["resolve", file, ref]));
 
     assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "L3");
+    assertStringIncludes(output, "3:1-3:18");
     assertStringIncludes(output, "    Run the installer");
     assertEquals(output.includes("    # Installation"), false);
   } finally {
@@ -1113,13 +1113,13 @@ Deno.test("md ref --format debug - generates a debug MRFI reference from a line-
     assertEquals(output.startsWith("~{v0;r=3:1-3:18;"), true);
     assertStringIncludes(output, "a=install_sdk");
     assertStringIncludes(output, "p=h1[1]/chars:");
-    assertStringIncludes(output, "fh=sha256:");
+    assertStringIncludes(output, "fh=xxh64:");
     assertStringIncludes(output, "hh=smh64:");
     assertStringIncludes(output, "ctx=pre:");
     assertStringIncludes(output, "suf:");
+    assertStringIncludes(output, "doc=smh64:");
     assertEquals(output.includes(";o="), false);
     assertEquals(output.includes(";ph="), false);
-    assertEquals(output.includes(";doc="), false);
     assertEquals(output.includes("q=Run"), false);
   } finally {
     await Deno.remove(file);
@@ -1137,7 +1137,7 @@ Deno.test("md ref --profile min - generates the minimum useful locator fields", 
 
     assertStringIncludes(output, "r=3:1-3:18");
     assertStringIncludes(output, "a=install_sdk");
-    assertStringIncludes(output, "fh=sha256:");
+    assertStringIncludes(output, "fh=xxh64:");
     assertStringIncludes(output, "hh=smh64:");
     assertEquals(output.includes(";p="), false);
     assertEquals(output.includes(";ctx="), false);
@@ -1159,11 +1159,11 @@ Deno.test("md ref --profile full - generates all supported locator fields", asyn
 
     assertStringIncludes(output, "o=");
     assertStringIncludes(output, "p=h1[1]/chars:");
-    assertStringIncludes(output, "fh=sha256:");
+    assertStringIncludes(output, "fh=xxh64:");
     assertStringIncludes(output, "ph=smh64:");
     assertStringIncludes(output, "ctx=pre:");
     assertStringIncludes(output, "suf:");
-    assertStringIncludes(output, "doc=sha256:");
+    assertStringIncludes(output, "doc=smh64:");
     assertEquals(output.includes("q=Run"), false);
   } finally {
     await Deno.remove(file);
@@ -1211,7 +1211,7 @@ Deno.test("md ref --format debug - normalizes a debug MRFI reference", async () 
   const output = await captureOutput(() =>
     main([
       "ref",
-      "~{v0;q=Run%20the%20installer;doc=sha256:DocHash1;r=3:1-3:18;ctx=suf:SufHash,pre:PreHash;ph=smh64:1111111111111111;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;o=24-41}",
+      "~{v0;q=Run%20the%20installer;doc=smh64:2222222222222222;r=3:1-3:18;ctx=suf:SufHash,pre:PreHash;ph=smh64:1111111111111111;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;o=24-41}",
       "--format",
       "debug",
     ])
@@ -1219,7 +1219,7 @@ Deno.test("md ref --format debug - normalizes a debug MRFI reference", async () 
 
   assertEquals(
     output,
-    "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=sha256:DocHash1;q=Run%20the%20installer}",
+    "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=smh64:2222222222222222;q=Run%20the%20installer}",
   );
 });
 
@@ -1240,7 +1240,7 @@ Deno.test("md ref --format debug - converts a Hangul MRFI reference", async () =
   const hangul = await captureOutput(() =>
     main([
       "ref",
-      "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=sha256:DocHash1;q=Run%20the%20installer}",
+      "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=smh64:2222222222222222;q=Run%20the%20installer}",
       "--format",
       "hangul",
     ])
@@ -1252,7 +1252,7 @@ Deno.test("md ref --format debug - converts a Hangul MRFI reference", async () =
 
   assertEquals(
     debug,
-    "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=sha256:DocHash1;q=Run%20the%20installer}",
+    "~{v0;r=3:1-3:18;o=24-41;p=h1[1]/chars:0-17;fh=sha256:FragHash;hh=smh64:0123456789abcdef;ph=smh64:1111111111111111;ctx=pre:PreHash,suf:SufHash;doc=smh64:2222222222222222;q=Run%20the%20installer}",
   );
 });
 

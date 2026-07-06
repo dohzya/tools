@@ -37,6 +37,7 @@ import {
   isRangeShapeValid,
   sha256PrefixSignal,
   smh64Value,
+  xxh64PrefixSignal,
 } from "./mrfi-text.ts";
 
 /** Target to generate a MRFI reference for: an explicit range, or a whole section */
@@ -131,6 +132,7 @@ function applyMrfiProfile(parsed: DebugMrfi, profile: MrfiProfile): DebugMrfi {
     ...base,
     ...(parsed.structuralPath ? { structuralPath: parsed.structuralPath } : {}),
     ...(parsed.context ? { context: parsed.context } : {}),
+    ...(parsed.documentHash ? { documentHash: parsed.documentHash } : {}),
   };
 }
 
@@ -175,7 +177,7 @@ async function buildMrfiForRange(
     range,
     offsetRange,
     structuralPath: getStructuralPath(doc, section, offsetRange),
-    exactHash: await sha256PrefixSignal(selectedText),
+    exactHash: xxh64PrefixSignal(selectedText),
     headingHash: {
       hash: await smh64Value(scopeText),
     },
@@ -183,7 +185,9 @@ async function buildMrfiForRange(
       hash: await smh64Value(selectedText),
     },
     context: await getContextHashes(doc, offsetRange),
-    documentHash: await sha256PrefixSignal(doc.lines.join("\n")),
+    documentHash: {
+      hash: await smh64Value(doc.lines.join("\n")),
+    },
     ...(anchor ? { anchor } : {}),
     ...(quote ? { quote } : {}),
   };

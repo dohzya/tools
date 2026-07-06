@@ -298,15 +298,20 @@ function finalizeResults<T extends PersistentReviewItemInput>(
   });
 }
 
+/**
+ * ResolveResult.range carries full `startLine:startCol-endLine:endCol`
+ * precision (docs/specs/mrfi.md's Output Model); this consumer only needs
+ * the line boundaries, so the columns are parsed and discarded.
+ */
 function parseResolvedLineRange(
   range: string,
 ): { startLine: number; endLine: number } {
-  const match = range.match(/^L(\d+)(?:-L(\d+))?$/);
+  const match = range.match(/^(\d+):\d+-(\d+):\d+$/);
   if (!match) {
     throw new Error(`Unexpected resolved range format: ${range}`);
   }
   const startLine = Number(match[1]);
-  const endLine = match[2] !== undefined ? Number(match[2]) : startLine;
+  const endLine = Number(match[2]);
   return { startLine, endLine };
 }
 

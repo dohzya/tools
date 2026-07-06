@@ -24,7 +24,8 @@ import {
   buildComparisonMap,
   findAnchorLines,
   findSectionContainingLine,
-  formatLineRange,
+  formatSourceRange,
+  fullLineRange,
   getOffsetRange,
   getRangeText,
   getSectionOrLinePassage,
@@ -32,6 +33,7 @@ import {
   getStructuralNodeSourceForSection,
   getTrimmedSectionEndLine,
   hammingDistance64,
+  hashSignalFor,
   includesNormalized,
   isRangeInsideDocument,
   rangeContainsLine,
@@ -64,6 +66,61 @@ export class ResolveReferenceUseCase {
 
 const DEFAULT_SMH64_MAX_DISTANCE = 8;
 
+/**
+ * Minimum confidence for a "confident" status, per docs/specs/mrfi.md
+ * "Confidence": thresholds are implementation-defined but must be
+ * documented, stable, and monotone (a higher value always means stronger
+ * evidence agreement). CONFIDENCE.EXACT (1.0) is the only value above this
+ * tier; every AMBIGUOUS_ and STALE_ tier below stays under it.
+ */
+export const CONFIDENT_THRESHOLD = 0.75;
+
+/**
+ * Ambiguity margin for fuzzy heading matches: two candidates within this
+ * smh64 Hamming-distance gap of each other are reported as ambiguous rather
+ * than letting the closer one win, per docs/specs/mrfi.md "ambiguous"
+ * ("cannot be separated by the required margin").
+ */
+const FUZZY_HEADING_AMBIGUITY_MARGIN = 3;
+
+/** Named, documented confidence values assigned by each resolution branch. */
+export const CONFIDENCE: Record<string, number> = {
+  /** `exact` status is always 1.0 per spec. */
+  EXACT: 1,
+  /** Duplicate anchor occurrences: ambiguous by definition. */
+  AMBIGUOUS_DUPLICATE_ANCHOR: 0.6,
+  /** Range matched, augmented by strong evidence (witness/quote) agreement. */
+  RANGE_CONFIDENT_WITH_STRONG_EVIDENCE: 0.86,
+  /** Range matched with no contradicting evidence. */
+  RANGE_CONFIDENT: CONFIDENT_THRESHOLD,
+  /** Positional evidence converges but content evidence contradicts it. */
+  RANGE_STALE: 0.55,
+  /** Multiple candidates tie on exact fragment hash. */
+  AMBIGUOUS_EXACT_HASH: 0.7,
+  /** A single exact-hash candidate contradicted by witness/quote evidence. */
+  STALE_EXACT_HASH_EVIDENCE_MISMATCH: 0.6,
+  /** Multiple candidates tie on context evidence. */
+  AMBIGUOUS_CONTEXT: 0.65,
+  /** Context match with both prefix and suffix agreeing. */
+  CONFIDENT_CONTEXT_FULL: 0.88,
+  /** Context match with only one side agreeing. */
+  CONFIDENT_CONTEXT_PARTIAL: 0.78,
+  /** Structural path match with no contradicting evidence. */
+  CONFIDENT_STRUCTURAL: 0.78,
+  /** Structural path match contradicted by witness/quote evidence. */
+  STALE_STRUCTURAL_EVIDENCE_MISMATCH: 0.6,
+  /** No fuzzy heading candidate within the max-distance threshold. */
+  STALE_NO_FUZZY_MATCH: 0.45,
+  /** Two fuzzy heading candidates too close to separate reliably. */
+  AMBIGUOUS_FUZZY_HEADING: 0.65,
+  /** Minimum confidence for an unopposed fuzzy heading match. */
+  CONFIDENT_FUZZY_HEADING_MIN: CONFIDENT_THRESHOLD,
+  /** Fuzzy heading match contradicted by witness/quote evidence. */
+  STALE_FUZZY_HEADING_EVIDENCE_MISMATCH: 0.6,
+  /** Floor applied when witness/quote evidence agrees with a fuzzy heading match. */
+  CONFIDENT_FUZZY_HEADING_WITH_EVIDENCE_MIN: 0.86,
+};
+
 function resolveAnchorReference(
   doc: Document,
   ref: string,
@@ -84,11 +141,11 @@ function resolveAnchorReference(
     return {
       ref,
       status: "ambiguous",
-      confidence: 0.6,
+      confidence: CONFIDENCE.AMBIGUOUS_DUPLICATE_ANCHOR,
       anchor,
       diagnostics: ["duplicate anchor"],
       candidates: anchorLines.map((line) => ({
-        range: formatLineRange(line, line),
+        range: formatSourceRange(fullLineRange(doc, line, line)),
         score: 60,
         reasons: ["anchor occurrence"],
       })),
@@ -101,8 +158,10 @@ function resolveAnchorReference(
   return {
     ref,
     status: "exact",
-    confidence: 1,
-    range: formatLineRange(passage.startLine, passage.endLine),
+    confidence: CONFIDENCE.EXACT,
+    range: formatSourceRange(
+      fullLineRange(doc, passage.startLine, passage.endLine),
+    ),
     anchor,
     passage: passage.text,
     diagnostics: ["unique anchor matched"],
@@ -191,7 +250,8 @@ async function resolveMrfiReference(
       diagnostics.push(`range smh64 distance ${headingDistance}`);
     }
     const exactHashMatched = parsed.exactHash
-      ? (await sha256PrefixSignal(passage)).prefix === parsed.exactHash.prefix
+      ? (await hashSignalFor(parsed.exactHash.algorithm, passage))
+        ?.prefix === parsed.exactHash.prefix
       : false;
     if (exactHashMatched) {
       diagnostics.push("range exact fragment hash matched");
@@ -295,17 +355,19 @@ async function resolveMrfiReference(
       ? "stale"
       : "confident";
     const confidence = evidence !== undefined
-      ? (evidenceMatched ? 0.86 : 0.55)
+      ? (evidenceMatched
+        ? CONFIDENCE.RANGE_CONFIDENT_WITH_STRONG_EVIDENCE
+        : CONFIDENCE.RANGE_STALE)
       : (exactHashContradictsRange || contextContradictsRange ||
           headingHashContradictsRange)
-      ? 0.55
-      : 0.75;
+      ? CONFIDENCE.RANGE_STALE
+      : CONFIDENCE.RANGE_CONFIDENT;
 
     return {
       ref,
       status,
       confidence,
-      range: formatLineRange(startLine, endLine),
+      range: formatSourceRange(currentRange),
       passage,
       diagnostics,
     };
@@ -425,6 +487,9 @@ async function resolveExactHashReference(
 ): Promise<ResolveResult | undefined> {
   if (!parsed.exactHash) return undefined;
 
+  const algorithm = parsed.exactHash.algorithm;
+  if (algorithm !== "sha256" && algorithm !== "xxh64") return undefined;
+
   const expected = parsed.exactHash.prefix;
   const candidateLength = getExpectedFragmentLength(parsed);
   if (candidateLength !== undefined && candidateLength <= 0) {
@@ -447,7 +512,7 @@ async function resolveExactHashReference(
     ) {
       const endOffset = startOffset + sourceLength;
       const candidate = source.slice(startOffset, endOffset).join("");
-      if ((await sha256PrefixSignal(candidate)).prefix !== expected) {
+      if ((await hashSignalFor(algorithm, candidate))?.prefix !== expected) {
         continue;
       }
 
@@ -516,13 +581,10 @@ async function resolveExactHashReference(
     return {
       ref,
       status: "ambiguous",
-      confidence: 0.7,
+      confidence: CONFIDENCE.AMBIGUOUS_EXACT_HASH,
       diagnostics: ["exact fragment hash match is ambiguous"],
       candidates: sameScoreCandidates.slice(0, 5).map((candidate) => ({
-        range: formatLineRange(
-          candidate.range.startLine,
-          candidate.range.endLine,
-        ),
+        range: formatSourceRange(candidate.range),
         score: candidate.score,
         reasons: ["exact fragment hash match", ...candidate.contextDiagnostics],
       })),
@@ -545,9 +607,11 @@ async function resolveExactHashReference(
 
   return {
     ref,
-    status: evidence !== undefined && !evidenceMatched ? "stale" : "confident",
-    confidence: evidence !== undefined && !evidenceMatched ? 0.6 : 0.95,
-    range: formatLineRange(best.range.startLine, best.range.endLine),
+    status: evidence !== undefined && !evidenceMatched ? "stale" : "exact",
+    confidence: evidence !== undefined && !evidenceMatched
+      ? CONFIDENCE.STALE_EXACT_HASH_EVIDENCE_MISMATCH
+      : CONFIDENCE.EXACT,
+    range: formatSourceRange(best.range),
     passage: best.passage,
     diagnostics,
   };
@@ -652,13 +716,10 @@ async function resolveContextReference(
     return {
       ref,
       status: "ambiguous",
-      confidence: 0.65,
+      confidence: CONFIDENCE.AMBIGUOUS_CONTEXT,
       diagnostics: ["context match is ambiguous"],
       candidates: sameScoreCandidates.slice(0, 5).map((candidate) => ({
-        range: formatLineRange(
-          candidate.range.startLine,
-          candidate.range.endLine,
-        ),
+        range: formatSourceRange(candidate.range),
         score: candidate.score,
         reasons: candidate.diagnostics,
       })),
@@ -680,14 +741,14 @@ async function resolveContextReference(
     ? "stale"
     : "confident";
   const confidence = best.matchedSignals === contextSignals.length
-    ? 0.88
-    : 0.78;
+    ? CONFIDENCE.CONFIDENT_CONTEXT_FULL
+    : CONFIDENCE.CONFIDENT_CONTEXT_PARTIAL;
 
   return {
     ref,
     status,
     confidence,
-    range: formatLineRange(best.range.startLine, best.range.endLine),
+    range: formatSourceRange(best.range),
     passage: best.passage,
     diagnostics,
   };
@@ -812,8 +873,10 @@ function resolveStructuralPathReference(
   return {
     ref,
     status: evidence !== undefined && !evidenceMatched ? "stale" : "confident",
-    confidence: evidence !== undefined && !evidenceMatched ? 0.6 : 0.78,
-    range: formatLineRange(range.startLine, range.endLine),
+    confidence: evidence !== undefined && !evidenceMatched
+      ? CONFIDENCE.STALE_STRUCTURAL_EVIDENCE_MISMATCH
+      : CONFIDENCE.CONFIDENT_STRUCTURAL,
+    range: formatSourceRange(range),
     passage,
     diagnostics,
   };
@@ -916,23 +979,26 @@ async function resolveFuzzyHeadingReference(
     return {
       ref,
       status: "stale",
-      confidence: 0.45,
+      confidence: CONFIDENCE.STALE_NO_FUZZY_MATCH,
       diagnostics: ["no fuzzy heading match"],
     };
   }
 
   const second = candidates[1];
-  if (second && second.distance - best.distance < 3) {
+  if (
+    second && second.distance - best.distance < FUZZY_HEADING_AMBIGUITY_MARGIN
+  ) {
     return {
       ref,
       status: "ambiguous",
-      confidence: 0.65,
+      confidence: CONFIDENCE.AMBIGUOUS_FUZZY_HEADING,
       diagnostics: ["fuzzy heading match is ambiguous"],
       candidates: candidates.slice(0, 5).map((candidate) => ({
-        range: formatLineRange(
+        range: formatSourceRange(fullLineRange(
+          doc,
           candidate.section.line,
           getTrimmedSectionEndLine(doc, candidate.section),
-        ),
+        )),
         score: candidate.score,
         reasons: [`smh64 distance ${candidate.distance}`],
       })),
@@ -955,19 +1021,27 @@ async function resolveFuzzyHeadingReference(
     diagnostics.push(`${evidence.label} did not match best candidate`);
   }
 
-  const baseConfidence = Math.max(0.75, 1 - best.distance / (maxDistance * 2));
+  const baseConfidence = Math.max(
+    CONFIDENCE.CONFIDENT_FUZZY_HEADING_MIN,
+    1 - best.distance / (maxDistance * 2),
+  );
   const status = evidence !== undefined && !evidenceMatched
     ? "stale"
     : "confident";
   const confidence = evidence !== undefined
-    ? (evidenceMatched ? Math.max(0.86, baseConfidence) : 0.6)
+    ? (evidenceMatched
+      ? Math.max(
+        CONFIDENCE.CONFIDENT_FUZZY_HEADING_WITH_EVIDENCE_MIN,
+        baseConfidence,
+      )
+      : CONFIDENCE.STALE_FUZZY_HEADING_EVIDENCE_MISMATCH)
     : baseConfidence;
 
   return {
     ref,
     status,
     confidence,
-    range: formatLineRange(best.section.line, endLine),
+    range: formatSourceRange(fullLineRange(doc, best.section.line, endLine)),
     passage,
     diagnostics,
   };

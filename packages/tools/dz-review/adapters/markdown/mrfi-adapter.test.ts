@@ -72,7 +72,7 @@ Deno.test("MrfiAdapter.resolveReference - resolves a generated reference back to
   // anchor-based (`^id`) resolution, whereas a `~mrfi` range reference that
   // still matches its physical range resolves as "confident".
   assertEquals(result.status, "confident");
-  assertEquals(result.range, "L7");
+  assertEquals(result.range, "7:1-7:35");
 });
 
 Deno.test("MrfiAdapter.refreshReference - re-points a reference whose content moved", async () => {
