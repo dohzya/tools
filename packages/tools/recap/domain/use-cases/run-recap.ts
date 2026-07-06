@@ -49,7 +49,12 @@ export type RunRecapDependencies = {
 
 /** Config file source loaded during discovery. */
 export type LoadedConfigSource = {
-  readonly kind: "explicit" | "global" | "local";
+  readonly kind:
+    | "explicit"
+    | "global"
+    | "global-personal"
+    | "local"
+    | "local-personal";
   readonly path: string;
   readonly config: RawConfig;
 };
@@ -57,7 +62,9 @@ export type LoadedConfigSource = {
 /** Result of loading config files before resolving refs and env overrides. */
 export type LoadedRecapConfig = {
   readonly rawGlobalConfig: RawConfig | null;
+  readonly rawGlobalPersonalConfig: RawConfig | null;
   readonly rawLocalConfig: RawConfig | null;
+  readonly rawLocalPersonalConfig: RawConfig | null;
   readonly sources: readonly LoadedConfigSource[];
 };
 
@@ -72,9 +79,25 @@ export type RunRecapResult = {
 };
 
 const CONFIG_FILENAMES = ["recap.yaml", "recap.yml"] as const;
+/**
+ * Personal, gitignored overrides layered on top of the local/project config
+ * or the global/home config (same filenames, different `.config/` root).
+ * Mirrors the `.env.local` / `CLAUDE.local.md` convention: committed config
+ * stays in `recap.yaml`, personal tweaks go in `recap.local.yaml`.
+ */
+const PERSONAL_CONFIG_FILENAMES = [
+  "recap.local.yaml",
+  "recap.local.yml",
+] as const;
 
 function configCandidates(root: string): string[] {
   return CONFIG_FILENAMES.map((filename) => `${root}/.config/${filename}`);
+}
+
+function personalConfigCandidates(root: string): string[] {
+  return PERSONAL_CONFIG_FILENAMES.map((filename) =>
+    `${root}/.config/${filename}`
+  );
 }
 
 async function loadFirstExistingConfig(
@@ -103,7 +126,9 @@ export async function loadRecapConfig(
   const sources: LoadedConfigSource[] = [];
 
   let rawGlobalConfig: RawConfig | null = null;
+  let rawGlobalPersonalConfig: RawConfig | null = null;
   let rawLocalConfig: RawConfig | null = null;
+  let rawLocalPersonalConfig: RawConfig | null = null;
 
   if (options.configPath) {
     const config = await deps.configResolver.loadConfig(options.configPath);
@@ -126,6 +151,18 @@ export async function loadRecapConfig(
         rawGlobalConfig = globalSource.config;
         sources.push(globalSource);
       }
+
+      // Personal overrides for the global config, at the same home-level
+      // `.config/` dir — mirrors the project-level local/local-personal split.
+      const globalPersonalSource = await loadFirstExistingConfig(
+        "global-personal",
+        personalConfigCandidates(home),
+        deps.configResolver,
+      );
+      if (globalPersonalSource !== null) {
+        rawGlobalPersonalConfig = globalPersonalSource.config;
+        sources.push(globalPersonalSource);
+      }
     }
 
     const localSource = await loadFirstExistingConfig(
@@ -137,11 +174,25 @@ export async function loadRecapConfig(
       rawLocalConfig = localSource.config;
       sources.push(localSource);
     }
+
+    // Personal overrides live alongside the local/project config (same cwd,
+    // not re-searched upward) and can exist even without a committed one.
+    const localPersonalSource = await loadFirstExistingConfig(
+      "local-personal",
+      personalConfigCandidates(cwd),
+      deps.configResolver,
+    );
+    if (localPersonalSource !== null) {
+      rawLocalPersonalConfig = localPersonalSource.config;
+      sources.push(localPersonalSource);
+    }
   }
 
   return {
     rawGlobalConfig,
+    rawGlobalPersonalConfig,
     rawLocalConfig,
+    rawLocalPersonalConfig,
     sources,
   };
 }
@@ -224,7 +275,9 @@ export async function runRecap(
 
   const config: RecapConfig = resolveConfig({
     rawGlobalConfig: loadedConfig.rawGlobalConfig,
+    rawGlobalPersonalConfig: loadedConfig.rawGlobalPersonalConfig,
     rawLocalConfig: loadedConfig.rawLocalConfig,
+    rawPersonalConfig: loadedConfig.rawLocalPersonalConfig,
     envOverrides: envOverridesFrom(deps.env),
   });
 

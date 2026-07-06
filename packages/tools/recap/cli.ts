@@ -235,7 +235,9 @@ async function loadResolvedConfig(
   );
   return resolveConfig({
     rawGlobalConfig: loadedConfig.rawGlobalConfig,
+    rawGlobalPersonalConfig: loadedConfig.rawGlobalPersonalConfig,
     rawLocalConfig: loadedConfig.rawLocalConfig,
+    rawPersonalConfig: loadedConfig.rawLocalPersonalConfig,
     envOverrides: envOverrides(),
   });
 }

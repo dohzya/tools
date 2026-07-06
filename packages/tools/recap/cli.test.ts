@@ -265,6 +265,93 @@ Deno.test("resolveConfig - global + local layering works", () => {
   assertEquals(extra?.max_lines, 3);
 });
 
+Deno.test("resolveConfig - personal config overrides local, global and hardcoded defaults", () => {
+  const config = resolveConfig({
+    rawGlobalConfig: {
+      sections: [{ ref: "*" }, {
+        id: "extra",
+        sh: "global hello",
+        max_lines: 3,
+      }],
+    },
+    rawLocalConfig: {
+      sections: [{ ref: "*" }, { id: "local-only", sh: "echo local" }],
+    },
+    rawPersonalConfig: {
+      sections: [{ ref: "*" }, { ref: "extra", max_lines: 99 }],
+    },
+  });
+  const extra = config.sections.find((s) => s.id === "extra");
+  assertEquals(extra?.max_lines, 99);
+  assertEquals(extra?.sh, "global hello");
+  assertEquals(
+    config.sections.some((s) => s.id === "local-only"),
+    true,
+  );
+});
+
+Deno.test("resolveConfig - personal config alone resolves against global + hardcoded", () => {
+  const config = resolveConfig({
+    rawGlobalConfig: {
+      sections: [{ ref: "*" }, { id: "extra", sh: "global hello" }],
+    },
+    rawPersonalConfig: {
+      sections: [{ ref: "*" }, { ref: "git-log", max_lines: 42 }],
+    },
+  });
+  const gitLog = config.sections.find((s) => s.id === "git-log");
+  assertEquals(gitLog?.max_lines, 42);
+  assertEquals(
+    config.sections.some((s) => s.id === "extra"),
+    true,
+  );
+});
+
+Deno.test("resolveConfig - global-personal config overrides global + hardcoded, but is itself overridden by local and local-personal", () => {
+  const config = resolveConfig({
+    rawGlobalConfig: {
+      sections: [{ ref: "*" }, {
+        id: "extra",
+        sh: "global hello",
+        max_lines: 1,
+      }],
+    },
+    rawGlobalPersonalConfig: {
+      sections: [{ ref: "*" }, { ref: "extra", max_lines: 2 }, {
+        id: "global-personal-only",
+        sh: "echo global-personal",
+      }],
+    },
+    rawLocalConfig: {
+      sections: [{ ref: "*" }, { ref: "extra", max_lines: 3 }],
+    },
+    rawPersonalConfig: {
+      sections: [{ ref: "*" }, { id: "local-personal-only", sh: "echo lp" }],
+    },
+  });
+  const extra = config.sections.find((s) => s.id === "extra");
+  // local config overrides the global-personal value
+  assertEquals(extra?.max_lines, 3);
+  assertEquals(
+    config.sections.some((s) => s.id === "global-personal-only"),
+    true,
+  );
+  assertEquals(
+    config.sections.some((s) => s.id === "local-personal-only"),
+    true,
+  );
+});
+
+Deno.test("resolveConfig - global-personal config alone resolves against hardcoded defaults", () => {
+  const config = resolveConfig({
+    rawGlobalPersonalConfig: {
+      sections: [{ ref: "*" }, { ref: "git-log", max_lines: 7 }],
+    },
+  });
+  const gitLog = config.sections.find((s) => s.id === "git-log");
+  assertEquals(gitLog?.max_lines, 7);
+});
+
 // ============================================================================
 // render-recap tests
 // ============================================================================
@@ -870,6 +957,280 @@ sections:
   }
 });
 
+Deno.test("recap CLI - personal config alone (no project config) resolves against global + hardcoded", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.local.yaml"),
+      `
+sections:
+  - id: personal-marker
+    value: "PERSONAL_FOUND"
+`,
+    );
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "personal-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "PERSONAL_FOUND");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - personal config overrides a section defined in the project config", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yaml"),
+      `
+sections:
+  - ref: "*"
+  - id: shared-marker
+    value: "LOCAL_VALUE"
+`,
+    );
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.local.yaml"),
+      `
+sections:
+  - ref: "*"
+  - ref: shared-marker
+    value: "PERSONAL_VALUE"
+`,
+    );
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "shared-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "PERSONAL_VALUE");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - discovers .config/recap.local.yml variant", async () => {
+  const tempDir = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.local.yml"),
+      `
+sections:
+  - id: personal-yml-marker
+    value: "PERSONAL_YML_FOUND"
+`,
+    );
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "personal-yml-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "PERSONAL_YML_FOUND");
+  } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - ~/.config/recap.local.yaml alone resolves against hardcoded defaults", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(homeDir, ".config", "recap.local.yaml"),
+      `
+sections:
+  - id: global-personal-marker
+    value: "GLOBAL_PERSONAL_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "global-personal-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "GLOBAL_PERSONAL_FOUND");
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - discovers ~/.config/recap.local.yml variant", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      join(homeDir, ".config", "recap.local.yml"),
+      `
+sections:
+  - id: global-personal-yml-marker
+    value: "GLOBAL_PERSONAL_YML_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "global-personal-yml-marker"
+    );
+    assertStringIncludes(
+      marker?.lines?.[0] ?? "",
+      "GLOBAL_PERSONAL_YML_FOUND",
+    );
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - full precedence chain: local-personal wins over local, global-personal and global", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+
+    await Deno.writeTextFile(
+      join(homeDir, ".config", "recap.yaml"),
+      `
+sections:
+  - ref: "*"
+  - id: shared-marker
+    value: "GLOBAL_VALUE"
+`,
+    );
+    await Deno.writeTextFile(
+      join(homeDir, ".config", "recap.local.yaml"),
+      `
+sections:
+  - ref: "*"
+  - ref: shared-marker
+    value: "GLOBAL_PERSONAL_VALUE"
+`,
+    );
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.yaml"),
+      `
+sections:
+  - ref: "*"
+  - ref: shared-marker
+    value: "LOCAL_VALUE"
+`,
+    );
+    await Deno.writeTextFile(
+      join(tempDir, ".config", "recap.local.yaml"),
+      `
+sections:
+  - ref: "*"
+  - ref: shared-marker
+    value: "LOCAL_PERSONAL_VALUE"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    let jsonOutput = "";
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+      jsonOutput += args.join(" ") + "\n";
+    };
+    try {
+      await main(["--json", "--no-color", "-C", tempDir]);
+    } finally {
+      console.log = originalLog;
+    }
+
+    const parsed = JSON.parse(jsonOutput.trim());
+    const marker = parsed.find((section: { id: string }) =>
+      section.id === "shared-marker"
+    );
+    assertStringIncludes(marker?.lines?.[0] ?? "", "LOCAL_PERSONAL_VALUE");
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
 Deno.test("recap CLI - config show emits flat resolved YAML", async () => {
   const tempDir = await Deno.makeTempDir();
   const homeDir = await Deno.makeTempDir();
@@ -966,6 +1327,74 @@ sections:
   }
 });
 
+Deno.test("recap CLI - config files lists local-personal, local, global-personal and global in precedence order", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    const personalPath = join(tempDir, ".config", "recap.local.yaml");
+    const localPath = join(tempDir, ".config", "recap.yaml");
+    const globalPersonalPath = join(homeDir, ".config", "recap.local.yaml");
+    const globalPath = join(homeDir, ".config", "recap.yaml");
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      personalPath,
+      `
+sections:
+  - id: personal-marker
+    value: "PERSONAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      localPath,
+      `
+sections:
+  - id: local-marker
+    value: "LOCAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      globalPersonalPath,
+      `
+sections:
+  - id: global-personal-marker
+    value: "GLOBAL_PERSONAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      globalPath,
+      `
+sections:
+  - id: global-marker
+    value: "GLOBAL_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "config", "files"]);
+    });
+
+    const personalIndex = output.indexOf(personalPath);
+    const localIndex = output.indexOf(localPath);
+    const globalPersonalIndex = output.indexOf(globalPersonalPath);
+    const globalIndex = output.indexOf(globalPath);
+    assertEquals(personalIndex >= 0, true);
+    assertEquals(localIndex > personalIndex, true);
+    assertEquals(globalPersonalIndex > localIndex, true);
+    assertEquals(globalIndex > globalPersonalIndex, true);
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
 Deno.test("recap CLI - config files -v shows configs from local to default", async () => {
   const tempDir = await Deno.makeTempDir();
   const homeDir = await Deno.makeTempDir();
@@ -1009,6 +1438,86 @@ sections:
     assertStringIncludes(output, "value: GLOBAL_FOUND");
     assertStringIncludes(output, "id: git-log");
     assertStringIncludes(output, "builtin: git-log");
+  } finally {
+    if (originalHome === undefined) {
+      Deno.env.delete("HOME");
+    } else {
+      Deno.env.set("HOME", originalHome);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+    await Deno.remove(homeDir, { recursive: true });
+  }
+});
+
+Deno.test("recap CLI - config files -v shows local-personal, local, global-personal, global and default in precedence order", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const homeDir = await Deno.makeTempDir();
+  const originalHome = Deno.env.get("HOME");
+  try {
+    const personalPath = join(tempDir, ".config", "recap.local.yaml");
+    const localPath = join(tempDir, ".config", "recap.yaml");
+    const globalPersonalPath = join(homeDir, ".config", "recap.local.yaml");
+    const globalPath = join(homeDir, ".config", "recap.yaml");
+    await Deno.mkdir(join(tempDir, ".config"), { recursive: true });
+    await Deno.mkdir(join(homeDir, ".config"), { recursive: true });
+    await Deno.writeTextFile(
+      personalPath,
+      `
+sections:
+  - id: personal-marker
+    value: "PERSONAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      localPath,
+      `
+sections:
+  - id: local-marker
+    value: "LOCAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      globalPersonalPath,
+      `
+sections:
+  - id: global-personal-marker
+    value: "GLOBAL_PERSONAL_FOUND"
+`,
+    );
+    await Deno.writeTextFile(
+      globalPath,
+      `
+sections:
+  - id: global-marker
+    value: "GLOBAL_FOUND"
+`,
+    );
+    Deno.env.set("HOME", homeDir);
+
+    const output = await captureOutput(async () => {
+      await main(["--no-color", "-C", tempDir, "config", "files", "-v"]);
+    });
+
+    const personalIndex = output.indexOf(`local-personal: ${personalPath}`);
+    const localIndex = output.indexOf(`local: ${localPath}`);
+    const globalPersonalIndex = output.indexOf(
+      `global-personal: ${globalPersonalPath}`,
+    );
+    const globalIndex = output.indexOf(`global: ${globalPath}`);
+    const defaultIndex = output.indexOf("default: built-in");
+    assertEquals(personalIndex >= 0, true);
+    assertEquals(localIndex > personalIndex, true);
+    assertEquals(globalPersonalIndex > localIndex, true);
+    assertEquals(globalIndex > globalPersonalIndex, true);
+    assertEquals(defaultIndex > globalIndex, true);
+    assertStringIncludes(output, "id: personal-marker");
+    assertStringIncludes(output, "value: PERSONAL_FOUND");
+    assertStringIncludes(output, "id: local-marker");
+    assertStringIncludes(output, "value: LOCAL_FOUND");
+    assertStringIncludes(output, "id: global-personal-marker");
+    assertStringIncludes(output, "value: GLOBAL_PERSONAL_FOUND");
+    assertStringIncludes(output, "id: global-marker");
+    assertStringIncludes(output, "value: GLOBAL_FOUND");
   } finally {
     if (originalHome === undefined) {
       Deno.env.delete("HOME");

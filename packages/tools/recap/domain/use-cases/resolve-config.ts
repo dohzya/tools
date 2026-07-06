@@ -54,6 +54,16 @@ export type ResolveConfigOptions = {
   readonly rawGlobalConfig?: RawConfig | null;
   /** Raw config already loaded (useful for testing) */
   readonly rawLocalConfig?: RawConfig | null;
+  /**
+   * Personal, gitignored overrides (e.g. `~/.config/recap.local.yaml`),
+   * resolved on top of the global config (and before the local/project config).
+   */
+  readonly rawGlobalPersonalConfig?: RawConfig | null;
+  /**
+   * Personal, gitignored overrides (e.g. `.config/recap.local.yaml`),
+   * resolved on top of the local/project config.
+   */
+  readonly rawPersonalConfig?: RawConfig | null;
   /** Env vars already resolved (for MAX_COMMITS, MAX_WORKTASKS overrides etc.) */
   readonly envOverrides?: Readonly<Record<string, string>>;
 };
@@ -301,14 +311,18 @@ function mergeEnvVars(
  * Resolve the full config from:
  * 1. Hardcoded defaults
  * 2. Global config (ref: resolves against hardcoded)
- * 3. Local config (ref: resolves against global+hardcoded)
+ * 3. Global-personal config (gitignored overrides, ref: resolves against global+hardcoded)
+ * 4. Local config (ref: resolves against global-personal+global+hardcoded)
+ * 5. Local-personal config (gitignored overrides, ref: resolves against local+global-personal+global+hardcoded)
  *
  * Returns a RecapConfig ready for collection.
  */
 export function resolveConfig(options: ResolveConfigOptions): RecapConfig {
   const {
     rawGlobalConfig,
+    rawGlobalPersonalConfig,
     rawLocalConfig,
+    rawPersonalConfig,
     envOverrides = {},
   } = options;
 
@@ -343,7 +357,28 @@ export function resolveConfig(options: ResolveConfigOptions): RecapConfig {
     rawGlobalConfig?.status_enrichers,
   );
 
-  // Layer 3: local config
+  // Layer 3: global-personal config (gitignored overrides, e.g. ~/.config/recap.local.yaml)
+  if (rawGlobalPersonalConfig?.sections) {
+    currentSectionAliases = mergeSectionAliases(
+      currentSectionAliases,
+      rawGlobalPersonalConfig.sections,
+    );
+    const parentMap = buildParentMap(currentSections);
+    const aliasMap = buildAliasMap(currentSectionAliases);
+    currentSections = expandEntries(
+      rawGlobalPersonalConfig.sections,
+      parentMap,
+      currentSections,
+      aliasMap,
+      warnings,
+    );
+  }
+  currentStatusEnrichers = mergeStatusEnrichers(
+    currentStatusEnrichers,
+    rawGlobalPersonalConfig?.status_enrichers,
+  );
+
+  // Layer 4: local config
   if (rawLocalConfig?.sections) {
     currentSectionAliases = mergeSectionAliases(
       currentSectionAliases,
@@ -362,6 +397,27 @@ export function resolveConfig(options: ResolveConfigOptions): RecapConfig {
   currentStatusEnrichers = mergeStatusEnrichers(
     currentStatusEnrichers,
     rawLocalConfig?.status_enrichers,
+  );
+
+  // Layer 5: local-personal config (gitignored overrides, e.g. .config/recap.local.yaml)
+  if (rawPersonalConfig?.sections) {
+    currentSectionAliases = mergeSectionAliases(
+      currentSectionAliases,
+      rawPersonalConfig.sections,
+    );
+    const parentMap = buildParentMap(currentSections);
+    const aliasMap = buildAliasMap(currentSectionAliases);
+    currentSections = expandEntries(
+      rawPersonalConfig.sections,
+      parentMap,
+      currentSections,
+      aliasMap,
+      warnings,
+    );
+  }
+  currentStatusEnrichers = mergeStatusEnrichers(
+    currentStatusEnrichers,
+    rawPersonalConfig?.status_enrichers,
   );
 
   // Apply env overrides

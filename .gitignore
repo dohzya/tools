@@ -6,3 +6,5 @@ mise.toml
 *.skill
 /docs/refs/*.md
 CLAUDE.local.md
+recap.local.yaml
+recap.local.yml

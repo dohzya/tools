@@ -11,19 +11,28 @@ recap --json show git-status  # Emit selected sections as JSON
 
 ## Config resolution
 
-`recap` merges three levels of configuration, each building on the previous:
+`recap` merges five levels of configuration, each building on the previous:
 
 ```
 Hardcoded defaults
   ↓ (ref: resolves against hardcoded)
-~/.config/recap.yaml          (global)
+~/.config/recap.yaml          (global, shared/committed)
   ↓ (ref: resolves against global)
-.config/recap.yaml            (local, searched from cwd)
+~/.config/recap.local.yaml    (global-personal, gitignored, home-level override)
+  ↓ (ref: resolves against global-personal + global)
+.config/recap.yaml            (local, searched from cwd; committed to the project)
+  ↓ (ref: resolves against local + global-personal + global)
+.config/recap.local.yaml      (local-personal, gitignored, project-level override)
 ```
 
-If no config files exist, the hardcoded defaults are used directly. If only a global config exists, it resolves against the hardcoded defaults. If both exist, the local config resolves against the (already-resolved) global config.
+If no config files exist, the hardcoded defaults are used directly. Each subsequent layer resolves `ref:` entries against the already-merged result of every earlier layer, so a later layer can override anything from an earlier one.
 
-A `-C <dir>` flag overrides where the local config is searched. `--config <path>` skips auto-discovery entirely and loads that file as local config.
+Both personal layers (`recap.local.yaml`, or the `.yml` variant) are gitignored, per-developer overrides — the same convention as `.env.local` or `CLAUDE.local.md` in this repo:
+
+- `~/.config/recap.local.yaml` (global-personal) sits next to `~/.config/recap.yaml` and overrides the shared global config. It is loaded even when no global config exists, in which case it resolves directly against the hardcoded defaults.
+- `.config/recap.local.yaml` (local-personal) is searched in the _same_ `.config/` directory where the local config was found (not re-searched upward independently), and is loaded even when no local config exists, in which case it resolves against the global-personal + global config + hardcoded defaults.
+
+A `-C <dir>` flag overrides where the local (and local-personal) config is searched; it does not affect the home-level global/global-personal lookup. `--config <path>` skips auto-discovery entirely and loads that file as local config (in that case, neither personal layer is loaded).
 
 ## Config file format
 
