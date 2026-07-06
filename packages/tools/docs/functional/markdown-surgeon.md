@@ -12,7 +12,7 @@ language: en-US
 
 `md` is the Markdown manipulation CLI and library surface for `dz-tools`.
 
-It edits Markdown by sections today and is the intended owner of the shared Markdown reference resolver described in [`../../../../docs/functional/markdown-fragment-references.md`](../../../../docs/functional/markdown-fragment-references.md).
+It edits Markdown by sections today and is the intended owner of the shared Markdown reference resolver described in [`../../../../docs/specs/mrfi.md`](../../../../docs/specs/mrfi.md).
 
 ## Existing Section Workflow
 
@@ -59,7 +59,7 @@ Debug, base62, and Hangul conversion are supported for the locator fields genera
 
 ## Reference Resolution
 
-`md` should provide the repository's baseline resolver for Markdown references:
+`md` provides the repository's baseline resolver for Markdown references:
 
 ```bash
 md resolve document.md ^install_sdk
@@ -77,7 +77,7 @@ Accepted resolver inputs are:
 
 Anchors do not accept witness text. Because `:` is a valid anchor character, `::` inside `^<anchor>` is treated as part of the anchor ID. The `::witness` suffix is a CLI argument convention for MRFI inputs to `md resolve`; it is not part of the MRFI inline syntax, which remains `~<mrfi>` or `~{<mrfi>}`.
 
-`md resolve` should accept multiple inputs in one command and return one result per input. JSON output should include the resolved passage text when available and must not echo witness text.
+`md resolve` accepts multiple inputs in one command and returns one result per input. JSON output includes the resolved passage text when available and must not echo witness text.
 
 Generated MRFI references include `hh=smh64:<hash>` fuzzy heading evidence, `fh=sha256:<prefix>` exact fragment evidence, `ctx=...` context evidence, and `p=...` structural path evidence. The resolver uses `hh` to recover a section when the original range has gone stale and the current document still contains a clearly similar heading scope; it can use `fh` to recover an unchanged passage that moved, `ctx` to recover a changed passage between stable neighbors, and `p` as a structural fallback.
 

@@ -2,15 +2,16 @@
 
 ## Directory Recap
 
-| Location            | Purpose                                                                                            | Audience                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `docs/functional/`  | User-facing behavior, domain concepts, business rules, workflows, and constraints                  | Product, business, support, new contributors |
-| `docs/technical/`   | Architecture, implementation details, APIs, configuration, data model, and engineering constraints | Engineers and operators                      |
-| `docs/operations/`  | Repeatable operational procedures, runbooks, deployment actions, and support actions               | Operators, support, on-call engineers        |
-| `docs/exploration/` | Durable discovery notes, spikes, option analysis, and investigation paths before a final decision  | Project team and maintainers                 |
-| `docs/postmortems/` | Dated incident or regression analyses                                                              | Project team and maintainers                 |
-| `docs/refs/`        | Raw or lightly annotated reference material that must remain close to its source form              | Readers who need primary evidence            |
-| `docs/review/`      | Durable reviews of documentation, branches, diffs, commits, or implementation choices              | Reviewers and maintainers                    |
+| Location            | Purpose                                                                                            | Audience                                         |
+| ------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `docs/functional/`  | User-facing behavior, domain concepts, business rules, workflows, and constraints                  | Product, business, support, new contributors     |
+| `docs/specs/`       | Behavioral or format contracts a component must satisfy, independent of any one consuming tool     | Engineers implementing or consuming the contract |
+| `docs/technical/`   | Architecture, implementation details, APIs, configuration, data model, and engineering constraints | Engineers and operators                          |
+| `docs/operations/`  | Repeatable operational procedures, runbooks, deployment actions, and support actions               | Operators, support, on-call engineers            |
+| `docs/exploration/` | Durable discovery notes, spikes, option analysis, and investigation paths before a final decision  | Project team and maintainers                     |
+| `docs/postmortems/` | Dated incident or regression analyses                                                              | Project team and maintainers                     |
+| `docs/refs/`        | Raw or lightly annotated reference material that must remain close to its source form              | Readers who need primary evidence                |
+| `docs/review/`      | Durable reviews of documentation, branches, diffs, commits, or implementation choices              | Reviewers and maintainers                        |
 
 ## AGENTS.md Recap
 
@@ -20,6 +21,7 @@ When `AGENTS.md` needs a docs recap, keep it short and directory-level:
 ## Documentation
 
 - `docs/functional/`: user-facing behavior, domain concepts, business rules, workflows, and constraints.
+- `docs/specs/`: behavioral or format contracts a component must satisfy, independent of any one consuming tool.
 - `docs/technical/`: architecture, implementation details, APIs, configuration, data model, and engineering constraints.
 - `docs/operations/`: repeatable operational procedures, runbooks, deployment actions, and support actions.
 - `docs/exploration/`: durable discovery notes, spikes, option analysis, and investigation paths before a final decision.
@@ -39,6 +41,14 @@ Use `docs/functional/` for what the system does and why it matters:
 - user workflows;
 - user-visible limits and failure modes;
 - acceptance scenarios and expected behavior.
+
+Use `docs/specs/` for a behavioral or format contract that a component must satisfy, kept independent of how any single tool exposes it:
+
+- reference/format definitions consumed by more than one tool;
+- resolution, comparison, or protocol contracts (inputs, statuses, guarantees);
+- content that would otherwise force a "which tool's functional doc owns this" choice.
+
+If the contract is owned and consumed by exactly one tool with no cross-tool reuse, keep it in that tool's functional doc instead of creating a spec.
 
 Use `docs/technical/` for how the system works or how to change it:
 

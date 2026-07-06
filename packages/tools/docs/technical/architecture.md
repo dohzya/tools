@@ -95,7 +95,7 @@ No interface uses an `I` prefix. This is a project-wide convention.
 
 ### Fragment reference resolver
 
-`md resolve` is the first implementation of the shared Markdown Fragment Reference contract documented in [`../../../../docs/functional/markdown-fragment-references.md`](../../../../docs/functional/markdown-fragment-references.md).
+`md resolve` is the first implementation of the shared Markdown Fragment Reference contract documented in [`../../../../docs/specs/mrfi.md`](../../../../docs/specs/mrfi.md).
 
 The resolver, generator, and format-transform logic live in `markdown-surgeon/domain/use-cases/` (`resolve-reference.ts`, `generate-reference.ts`, `transform-reference.ts`, `refresh-reference.ts`, plus the shared `mrfi-text.ts`/`mrfi-codec.ts`/`mrfi-cbor.ts` support modules), exported from `mod.ts` so other packages — starting with `dz-review` — can depend on them as a library instead of shelling out to the CLI. `markdown-surgeon/adapters/cli/commands.ts` only parses CLI args, instantiates these use cases, and formats their output; its text and JSON result formatting lives in `markdown-surgeon/adapters/cli/formatter.ts`.
 
