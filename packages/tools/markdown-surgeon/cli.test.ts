@@ -2169,3 +2169,214 @@ Deno.test("md meta --set - expands magic expressions", async () => {
     await Deno.remove(file);
   }
 });
+
+// ============================================================================
+// MRFI ref in destructive operations
+// ============================================================================
+
+Deno.test("md write with ^anchor -x sec replaces section body", async () => {
+  const file = await createTempFile(
+    [
+      "# Target",
+      "<!-- ^tgt -->",
+      "",
+      "Old content.",
+      "",
+      "# Other",
+      "",
+      "Keep this.",
+    ].join("\n"),
+  );
+  try {
+    await main(["write", file, "^tgt", "-x", "sec", "New content."]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "# Target");
+    assertStringIncludes(content, "New content.");
+    assertEquals(content.includes("Old content."), false);
+    assertStringIncludes(content, "Keep this.");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md remove with ^anchor -x sec removes heading + body", async () => {
+  const file = await createTempFile(
+    [
+      "# Keep",
+      "",
+      "Keep content.",
+      "",
+      "# Target",
+      "<!-- ^tgt -->",
+      "",
+      "Remove this.",
+      "",
+      "# Also Keep",
+    ].join("\n"),
+  );
+  try {
+    await main(["remove", file, "^tgt", "-x", "sec"]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "# Keep");
+    assertStringIncludes(content, "Keep content.");
+    assertEquals(content.includes("# Target"), false);
+    assertEquals(content.includes("Remove this."), false);
+    assertStringIncludes(content, "# Also Keep");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md remove with ^anchor -x body keeps heading", async () => {
+  const file = await createTempFile(
+    [
+      "# Target",
+      "<!-- ^tgt -->",
+      "",
+      "Remove this.",
+      "",
+      "# Other",
+    ].join("\n"),
+  );
+  try {
+    await main(["remove", file, "^tgt", "-x", "body"]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "# Target");
+    assertEquals(content.includes("Remove this."), false);
+    assertStringIncludes(content, "# Other");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md write with ^anchor plain ref (no extent) replaces resolved passage", async () => {
+  const file = await createTempFile(
+    [
+      "# Section",
+      "<!-- ^tgt -->",
+      "",
+      "Some content.",
+    ].join("\n"),
+  );
+  try {
+    await main(["write", file, "^tgt", "Replaced."]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "Replaced.");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md write with --extent on section ID errors", async () => {
+  const file = await createTempFile("# Test\n\nContent.");
+  try {
+    const outlineOutput = await captureOutput(() =>
+      main(["outline", file, "--json"])
+    );
+    const sections = JSON.parse(outlineOutput);
+    const sectionId = sections[0].id;
+
+    let exitCode: number | undefined;
+    const originalExit = Deno.exit;
+    const originalError = console.error;
+    let errorOutput = "";
+
+    Deno.exit = ExplicitCast.from<unknown>((code?: number) => {
+      exitCode = code;
+      throw new Error("Deno.exit");
+    }).dangerousCast<typeof Deno.exit>();
+    console.error = (msg: string) => {
+      errorOutput += msg;
+    };
+
+    try {
+      await main(["write", file, sectionId, "-x", "sec", "new"]);
+    } catch (error) {
+      assertEquals(
+        ExplicitCast.from<unknown>(error).dangerousCast<Error>().message,
+        "Deno.exit",
+      );
+    } finally {
+      Deno.exit = originalExit;
+      console.error = originalError;
+    }
+
+    assertEquals(exitCode, 1);
+    assertStringIncludes(errorOutput, "only valid with MRFI refs");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md empty with ^anchor -x lead empties lead only", async () => {
+  const file = await createTempFile(
+    [
+      "# Target",
+      "<!-- ^tgt -->",
+      "",
+      "Lead content.",
+      "",
+      "## Sub",
+      "",
+      "Sub content.",
+      "",
+      "# Other",
+    ].join("\n"),
+  );
+  try {
+    await main(["empty", file, "^tgt", "-x", "lead"]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "# Target");
+    assertEquals(content.includes("Lead content."), false);
+    assertStringIncludes(content, "## Sub");
+    assertStringIncludes(content, "Sub content.");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md append with ^anchor -x body appends after body", async () => {
+  const file = await createTempFile(
+    [
+      "# Target",
+      "<!-- ^tgt -->",
+      "",
+      "Existing.",
+      "",
+      "# Other",
+    ].join("\n"),
+  );
+  try {
+    await main(["append", file, "^tgt", "-x", "body", "Appended."]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "Existing.");
+    assertStringIncludes(content, "Appended.");
+    assertStringIncludes(content, "# Other");
+  } finally {
+    await Deno.remove(file);
+  }
+});
+
+Deno.test("md write with --force skips safety gate", async () => {
+  const file = await createTempFile(
+    [
+      "# Test",
+      "",
+      "Content.",
+    ].join("\n"),
+  );
+  try {
+    // bare range MRFI with no strong signal — gate would reject without --force
+    await main([
+      "write",
+      file,
+      "~{v0;r=1:1-1:7}",
+      "--force",
+      "Replaced.",
+    ]);
+    const content = await Deno.readTextFile(file);
+    assertStringIncludes(content, "Replaced.");
+  } finally {
+    await Deno.remove(file);
+  }
+});

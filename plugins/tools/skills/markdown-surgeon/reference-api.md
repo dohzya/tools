@@ -82,10 +82,10 @@ Content here...
 ### write
 
 ```bash
-md write <file> <id> [content] [--deep] [--json]
+md write <file> <selector> [content] [--deep] [-x sec|body|lead] [--strict] [--force] [--json]
 ```
 
-Replaces section content. Content can be argument, heredoc, or stdin.
+Replaces section content. Content can be argument, heredoc, or stdin. Selector can be a section ID, `^anchor`, or `~mrfi` reference.
 
 **Output (text):**
 
@@ -109,10 +109,10 @@ updated ^7b2e4a1c L5-L12 (+3, -5)
 ### append
 
 ```bash
-md append <file> [id] [content] [--deep] [--before] [--json]
+md append <file> [selector] [content] [--deep] [--before] [-x sec|body|lead] [--strict] [--force] [--json]
 ```
 
-Appends content to a section. If no ID, appends to file (start with `--before`, end otherwise).
+Appends content to a section. If no selector, appends to file (start with `--before`, end otherwise). Selector can be a section ID, `^anchor`, or `~mrfi` reference.
 
 **Output (text):**
 
@@ -136,20 +136,20 @@ created ^f1e2d3c4 L21-L23 (+3)  # if content starts with header
 ### empty
 
 ```bash
-md empty <file> <id> [--deep] [--json]
+md empty <file> <selector> [--deep] [-x sec|body|lead] [--strict] [--force] [--json]
 ```
 
-Clears section content, keeps header.
+Clears section content, keeps header. Selector can be a section ID, `^anchor`, or `~mrfi` reference.
 
 **Output:** Same format as write (`action: "emptied"`).
 
 ### remove
 
 ```bash
-md remove <file> <id> [--json]
+md remove <file> <selector> [-x sec|body|lead] [--strict] [--force] [--json]
 ```
 
-Removes section and all its subsections.
+Removes section and all its subsections. Selector can be a section ID, `^anchor`, or `~mrfi` reference.
 
 **Output:** Same format as write (`action: "removed"`).
 

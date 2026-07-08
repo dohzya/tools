@@ -126,6 +126,9 @@ export function serializeDebugMrfi(parsed: DebugMrfi): string {
   if (parsed.quote) {
     fields.push(`q=${encodeDebugValue(parsed.quote)}`);
   }
+  if (parsed.extentSelector) {
+    fields.push(`x=${parsed.extentSelector}`);
+  }
   for (const [key, value] of parsed.extra ?? []) {
     fields.push(`${key}=${encodeDebugValue(value)}`);
   }
@@ -252,6 +255,10 @@ export function encodeCompactMrfi(parsed: DebugMrfi): Uint8Array {
   if (parsed.passageHash) {
     entries.push([10, encodeCompactSmh64(parsed.passageHash)]);
   }
+  if (parsed.extentSelector) {
+    const xCodes: Record<string, number> = { sec: 0, body: 1, lead: 2 };
+    entries.push([11, xCodes[parsed.extentSelector]]);
+  }
   for (const [key, value] of parsed.extra ?? []) {
     entries.push([key, value]);
   }
@@ -279,6 +286,19 @@ export function decodeCompactMrfi(payload: Uint8Array): DebugMrfi | undefined {
   const documentHash = decodeCompactHeadingHash(getCborMapValue(value, 8));
   const offsetRange = decodeCompactOffsetRange(getCborMapValue(value, 9));
   const passageHash = decodeCompactHeadingHash(getCborMapValue(value, 10));
+  const xNames: Record<number, DebugMrfi["extentSelector"]> = {
+    0: "sec",
+    1: "body",
+    2: "lead",
+  };
+  const rawX = getCborMapValue(value, 11);
+  if (typeof rawX === "number" && !(rawX in xNames)) {
+    throw new MdError(
+      "invalid_id",
+      `invalid MRFI extent selector code: ${rawX}`,
+    );
+  }
+  const extentSelector = typeof rawX === "number" ? xNames[rawX] : undefined;
   const extra = decodeExtraFields(value);
 
   return {
@@ -286,6 +306,7 @@ export function decodeCompactMrfi(payload: Uint8Array): DebugMrfi | undefined {
     ...(context ? { context } : {}),
     ...(documentHash ? { documentHash } : {}),
     ...(exactHash ? { exactHash } : {}),
+    ...(extentSelector ? { extentSelector } : {}),
     ...(extra.size > 0 ? { extra } : {}),
     ...(range ? { range } : {}),
     ...(headingHash ? { headingHash } : {}),
@@ -469,6 +490,7 @@ export function parseDebugMrfi(ref: string): DebugMrfi | undefined {
   let context: DebugMrfi["context"];
   let documentHash: DebugMrfi["documentHash"];
   let exactHash: HashSignal | undefined;
+  let extentSelector: DebugMrfi["extentSelector"];
   const extra = new Map<string, string>();
   let headingHash: DebugMrfi["headingHash"];
   let offsetRange: DebugMrfi["offsetRange"];
@@ -539,6 +561,14 @@ export function parseDebugMrfi(ref: string): DebugMrfi | undefined {
       if (!range) {
         throw new MdError("invalid_id", `Malformed MRFI range: ${value}`);
       }
+    } else if (key === "x") {
+      if (value !== "sec" && value !== "body" && value !== "lead") {
+        throw new MdError(
+          "invalid_id",
+          `invalid MRFI extent selector: ${value}`,
+        );
+      }
+      extentSelector = value;
     } else {
       extra.set(key, value);
     }
@@ -549,6 +579,7 @@ export function parseDebugMrfi(ref: string): DebugMrfi | undefined {
     context,
     documentHash,
     exactHash,
+    extentSelector,
     ...(extra.size > 0 ? { extra } : {}),
     headingHash,
     offsetRange,
@@ -646,4 +677,25 @@ export function encodeDebugValue(value: string): string {
     }
     return char;
   }).join("");
+}
+
+const KNOWN_DEBUG_KEYS = new Set([
+  "r",
+  "o",
+  "p",
+  "a",
+  "fh",
+  "hh",
+  "ph",
+  "ctx",
+  "doc",
+  "q",
+  "x",
+]);
+
+export function getMustUnderstandViolations(parsed: DebugMrfi): string[] {
+  if (!parsed.extra) return [];
+  return [...parsed.extra.keys()].filter((k) =>
+    !k.startsWith("_") && !KNOWN_DEBUG_KEYS.has(k)
+  );
 }

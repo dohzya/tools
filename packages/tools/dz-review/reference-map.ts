@@ -22,8 +22,10 @@
  *    were inserted/removed above the item, its range does not move.
  * 2. Fallback: for mapping entries scoped to this file that didn't
  *    fast-match, resolve their stored `mrfi` against the current document
- *    (ranking candidates through RankReferenceCandidatesUseCase first --
- *    a no-op today, a closest-match-first seam later) and adopt the first
+ *    (ranking candidates through RankReferenceCandidatesUseCase first,
+ *    which here degrades to the candidates' stored order -- `item.raw` is
+ *    free witness text, not an MRFI reference, so it never parses as a
+ *    `rank(target, candidates)` target) and adopt the first
  *    `exact`/`confident` resolution whose range overlaps the item's
  *    current lines. The adopted entry's `{range, mrfi}` is regenerated for
  *    the resolved range and stored in place.
@@ -207,12 +209,18 @@ export async function assignPersistentReviewItemIds<
     const candidateIdByMrfi = new Map(
       candidateIds.map((id) => [entries[id].mrfi, id]),
     );
-    const rankedMrfis = rankReferenceCandidatesUseCase.execute({
+    // `item.raw` is free witness text, not an MRFI reference: it never
+    // parses as a target, so every candidate compares as `invalid` and the
+    // ranking degrades to the candidates' original (stable) order -- same
+    // behavior as the identity-stub this replaced. Ranking pays off once a
+    // caller has an actual target reference to compare against, per
+    // docs/specs/mrfi.md's `rank(target, candidates)`.
+    const ranked = await rankReferenceCandidatesUseCase.execute({
       target: item.raw,
       candidates: candidateIds.map((id) => entries[id].mrfi),
     });
 
-    for (const mrfi of rankedMrfis) {
+    for (const { ref: mrfi } of ranked) {
       const id = candidateIdByMrfi.get(mrfi);
       if (id === undefined || consumedIds.has(id)) {
         continue;

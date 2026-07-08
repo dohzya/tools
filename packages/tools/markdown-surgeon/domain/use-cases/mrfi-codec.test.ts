@@ -8,10 +8,12 @@
 
 import { assertEquals } from "@std/assert";
 import type { DebugMrfi } from "../entities/mrfi.ts";
+import { assertThrows } from "@std/assert";
 import {
   decodeCompactMrfi,
   decodeExtraFields,
   encodeCompactMrfi,
+  getMustUnderstandViolations,
   parseDebugMrfi,
   parseHashSignal,
   serializeDebugMrfi,
@@ -137,4 +139,105 @@ Deno.test("decodeExtraFields - coerces a nested-array unknown-key value to a lit
     entries: [["_tags", ["a", "b"]]],
   });
   assertEquals(extra.get("_tags"), '["a","b"]');
+});
+
+// --- extentSelector (x field) ---
+
+Deno.test("debug extentSelector round-trip - sec", () => {
+  const serialized = serializeDebugMrfi({ extentSelector: "sec" });
+  assertEquals(serialized, "~{v0;x=sec}");
+  assertEquals(parseDebugMrfi(serialized)?.extentSelector, "sec");
+});
+
+Deno.test("debug extentSelector round-trip - body", () => {
+  const serialized = serializeDebugMrfi({ extentSelector: "body" });
+  assertEquals(serialized, "~{v0;x=body}");
+  assertEquals(parseDebugMrfi(serialized)?.extentSelector, "body");
+});
+
+Deno.test("debug extentSelector round-trip - lead", () => {
+  const serialized = serializeDebugMrfi({ extentSelector: "lead" });
+  assertEquals(serialized, "~{v0;x=lead}");
+  assertEquals(parseDebugMrfi(serialized)?.extentSelector, "lead");
+});
+
+Deno.test("debug parse invalid x value throws", () => {
+  assertThrows(
+    () => parseDebugMrfi("~{v0;x=foo}"),
+    Error,
+    "invalid MRFI extent selector",
+  );
+});
+
+Deno.test("compact extentSelector round-trip - sec", () => {
+  assertEquals(roundTrip({ extentSelector: "sec" })?.extentSelector, "sec");
+});
+
+Deno.test("compact extentSelector round-trip - body", () => {
+  assertEquals(roundTrip({ extentSelector: "body" })?.extentSelector, "body");
+});
+
+Deno.test("compact extentSelector round-trip - lead", () => {
+  assertEquals(roundTrip({ extentSelector: "lead" })?.extentSelector, "lead");
+});
+
+Deno.test("compact decode throws on unknown extentSelector code", async () => {
+  const { encodeCbor } = await import("./mrfi-cbor.ts");
+  const payload = encodeCbor({
+    kind: "map",
+    entries: [[0, 0], [11, 99]],
+  });
+  assertThrows(
+    () => decodeCompactMrfi(payload),
+    Error,
+    "invalid MRFI extent selector",
+  );
+});
+
+Deno.test("compact extentSelector combined with range round-trip", () => {
+  const input: DebugMrfi = {
+    extentSelector: "lead",
+    range: { startLine: 1, startColumn: 1, endLine: 5, endColumn: 10 },
+  };
+  const decoded = roundTrip(input);
+  assertEquals(decoded?.extentSelector, "lead");
+  assertEquals(decoded?.range, {
+    startLine: 1,
+    startColumn: 1,
+    endLine: 5,
+    endColumn: 10,
+  });
+});
+
+// --- getMustUnderstandViolations ---
+
+Deno.test("getMustUnderstandViolations - no violations when extra is undefined", () => {
+  assertEquals(getMustUnderstandViolations({}), []);
+});
+
+Deno.test("getMustUnderstandViolations - no violations for extension keys", () => {
+  assertEquals(
+    getMustUnderstandViolations({
+      extra: new Map([["_kind", "review"]]),
+    }),
+    [],
+  );
+});
+
+Deno.test("getMustUnderstandViolations - violation for unknown non-extension key", () => {
+  assertEquals(
+    getMustUnderstandViolations({
+      extra: new Map([["foo", "bar"]]),
+    }),
+    ["foo"],
+  );
+});
+
+Deno.test("getMustUnderstandViolations - mixed extension and unknown keys", () => {
+  assertEquals(
+    getMustUnderstandViolations({
+      extra: new Map([["_kind", "r"], ["foo", "b"], ["bar", "c"]]),
+    }),
+    ["foo", "bar"],
+  );
 });

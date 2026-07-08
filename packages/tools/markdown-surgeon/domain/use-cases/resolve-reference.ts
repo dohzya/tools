@@ -13,15 +13,20 @@
  */
 
 import { MdError } from "../entities/document.ts";
-import type { Document } from "../entities/document.ts";
+import type { Document, Section } from "../entities/document.ts";
 import type {
   DebugMrfi,
   ResolveResult,
   SourceRange,
 } from "../entities/mrfi.ts";
-import { parseMrfiReference } from "./mrfi-codec.ts";
+import {
+  getMustUnderstandViolations,
+  parseMrfiRange,
+  parseMrfiReference,
+} from "./mrfi-codec.ts";
 import {
   buildComparisonMap,
+  DEFAULT_SMH64_MAX_DISTANCE,
   findAnchorLines,
   findSectionContainingLine,
   formatSourceRange,
@@ -51,20 +56,84 @@ export interface ResolveReferenceInput {
   readonly ref: string;
   /** Optional witness text (from `::witness` or the ref quote field) used to confirm a match */
   readonly witness?: string;
+  /** Override the extent selector (x field) — applied after core resolution */
+  readonly extentOverride?: "sec" | "body" | "lead";
+}
+
+/** Safety gate for destructive operations on MRFI-resolved targets */
+export function checkDestructiveGate(
+  result: ResolveResult,
+  opts?: { strict?: boolean; force?: boolean },
+): { allowed: boolean; reason: string } {
+  if (opts?.force) {
+    return { allowed: true, reason: "gate bypassed (force)" };
+  }
+  if (opts?.strict) {
+    if (result.status !== "exact") {
+      return {
+        allowed: false,
+        reason: `strict mode requires exact status, got ${result.status}`,
+      };
+    }
+  } else {
+    if (result.status !== "exact" && result.status !== "confident") {
+      return {
+        allowed: false,
+        reason: `status must be exact or confident, got ${result.status}`,
+      };
+    }
+  }
+  const s = result.strongSignals;
+  if (
+    !s ||
+    !(s.exactHash === true || s.uniqueAnchor === true ||
+      s.bothContext === true || s.witnessAgreement === true)
+  ) {
+    return {
+      allowed: false,
+      reason: "no strong locator signal present",
+    };
+  }
+  return { allowed: true, reason: "gate passed" };
 }
 
 /** Resolves a `^anchor` or `~mrfi` reference against a document */
 export class ResolveReferenceUseCase {
   /** Resolve the reference, dispatching to anchor or MRFI resolution based on its prefix */
   async execute(input: ResolveReferenceInput): Promise<ResolveResult> {
-    const { doc, ref, witness } = input;
-    return ref.startsWith("^")
-      ? resolveAnchorReference(doc, ref)
-      : await resolveMrfiReference(doc, ref, witness);
+    const { doc, ref, witness, extentOverride } = input;
+    if (ref.startsWith("^")) {
+      const result = resolveAnchorReference(doc, ref);
+      if (!extentOverride) return result;
+      return applyExtentOverrideToResult(doc, result, extentOverride);
+    }
+    return await resolveMrfiReference(doc, ref, witness, extentOverride);
   }
 }
 
-const DEFAULT_SMH64_MAX_DISTANCE = 8;
+type StrongSignals = NonNullable<ResolveResult["strongSignals"]>;
+
+function buildStrongSignals(flags: {
+  exactHash?: boolean;
+  uniqueAnchor?: boolean;
+  bothContext?: boolean;
+  witnessAgreement?: boolean;
+}): StrongSignals | undefined {
+  const result: {
+    exactHash?: true;
+    uniqueAnchor?: true;
+    bothContext?: true;
+    witnessAgreement?: true;
+  } = {};
+  if (flags.exactHash) result.exactHash = true;
+  if (flags.uniqueAnchor) result.uniqueAnchor = true;
+  if (flags.bothContext) result.bothContext = true;
+  if (flags.witnessAgreement) result.witnessAgreement = true;
+  return result.exactHash || result.uniqueAnchor || result.bothContext ||
+      result.witnessAgreement
+    ? result
+    : undefined;
+}
 
 /**
  * Minimum confidence for a "confident" status, per docs/specs/mrfi.md
@@ -91,6 +160,12 @@ export const CONFIDENCE: Record<string, number> = {
   AMBIGUOUS_DUPLICATE_ANCHOR: 0.6,
   /** Range matched, augmented by strong evidence (witness/quote) agreement. */
   RANGE_CONFIDENT_WITH_STRONG_EVIDENCE: 0.86,
+  /** Range matched, ph confirms and fh did NOT fail (extra evidence beyond baseline). */
+  RANGE_CONFIDENT_WITH_PH: 0.78,
+  /** Range matched, fh FAILED but ph confirms modified-in-place (better than stale, worse than fh-match). */
+  RANGE_PH_SUPPRESSES_FH: 0.72,
+  /** ph disambiguation resolved a tie among candidates (no strong signal). */
+  CONFIDENT_PH_DISAMBIGUATION: 0.78,
   /** Range matched with no contradicting evidence. */
   RANGE_CONFIDENT: CONFIDENT_THRESHOLD,
   /** Positional evidence converges but content evidence contradicts it. */
@@ -165,6 +240,7 @@ function resolveAnchorReference(
     anchor,
     passage: passage.text,
     diagnostics: ["unique anchor matched"],
+    strongSignals: { uniqueAnchor: true },
   };
 }
 
@@ -172,6 +248,7 @@ async function resolveMrfiReference(
   doc: Document,
   ref: string,
   witness?: string,
+  extentOverride?: "sec" | "body" | "lead",
 ): Promise<ResolveResult> {
   let parsed: DebugMrfi | undefined;
   try {
@@ -195,6 +272,33 @@ async function resolveMrfiReference(
     };
   }
 
+  const mustUnderstandViolations = getMustUnderstandViolations(parsed);
+  if (mustUnderstandViolations.length > 0) {
+    return {
+      ref,
+      status: "invalid",
+      confidence: 0,
+      diagnostics: [
+        `must-understand field violation: ${
+          mustUnderstandViolations.join(", ")
+        }`,
+      ],
+    };
+  }
+
+  const result = await resolveMrfiReferenceCore(doc, ref, parsed, witness);
+  const effectiveParsed: DebugMrfi = extentOverride
+    ? { ...parsed, extentSelector: extentOverride }
+    : parsed;
+  return applyExtentSelection(doc, result, effectiveParsed);
+}
+
+async function resolveMrfiReferenceCore(
+  doc: Document,
+  ref: string,
+  parsed: DebugMrfi,
+  witness?: string,
+): Promise<ResolveResult> {
   if (parsed.range) {
     if (!isRangeInsideDocument(doc, parsed.range)) {
       const fallback = await resolveMrfiWithoutPhysicalRange(
@@ -249,6 +353,21 @@ async function resolveMrfiReference(
     if (headingDistance !== undefined) {
       diagnostics.push(`range smh64 distance ${headingDistance}`);
     }
+    const passageHashDistance = parsed.passageHash
+      ? hammingDistance64(
+        await smh64Value(passage),
+        parsed.passageHash.hash,
+      )
+      : undefined;
+    if (passageHashDistance !== undefined) {
+      diagnostics.push(`range ph distance ${passageHashDistance}`);
+    }
+    const passageHashMaxDistance = parsed.passageHash?.maxDistance ??
+      DEFAULT_SMH64_MAX_DISTANCE;
+    const passageHashConfirmsRange = passageHashDistance !== undefined &&
+      passageHashDistance <= passageHashMaxDistance;
+    const passageHashContradictsRange = passageHashDistance !== undefined &&
+      passageHashDistance > passageHashMaxDistance;
     const exactHashMatched = parsed.exactHash
       ? (await hashSignalFor(parsed.exactHash.algorithm, passage))
         ?.prefix === parsed.exactHash.prefix
@@ -262,6 +381,12 @@ async function resolveMrfiReference(
       currentRange,
     );
     diagnostics.push(...contextDiagnostics);
+    const contextPrefixMatched = contextDiagnostics.includes(
+      "context prefix match",
+    );
+    const contextSuffixMatched = contextDiagnostics.includes(
+      "context suffix match",
+    );
     const evidence = getTextEvidence(parsed, witness);
     const evidenceMatched = evidence
       ? includesNormalized(passage, evidence.text)
@@ -280,13 +405,16 @@ async function resolveMrfiReference(
 
     const evidenceContradictsRange = evidence !== undefined &&
       !evidenceMatched;
-    const exactHashContradictsRange = parsed.exactHash !== undefined &&
+    const exactHashFailed = parsed.exactHash !== undefined &&
       !exactHashMatched;
+    const exactHashContradictsRange = exactHashFailed &&
+      !passageHashConfirmsRange;
     const contextContradictsRange = hasContextSignal(parsed.context) &&
       contextDiagnostics.length === 0;
     const headingHashContradictsRange = headingDistance !== undefined &&
       headingDistance >
-        (parsed.headingHash?.maxDistance ?? DEFAULT_SMH64_MAX_DISTANCE);
+        (parsed.headingHash?.maxDistance ?? DEFAULT_SMH64_MAX_DISTANCE) &&
+      !passageHashConfirmsRange;
     const anchorContradictionWithoutStrongRangeEvidence =
       anchorContradictsRange &&
       !exactHashMatched && contextDiagnostics.length === 0 &&
@@ -296,6 +424,7 @@ async function resolveMrfiReference(
       exactHashContradictsRange ||
       contextContradictsRange ||
       headingHashContradictsRange ||
+      passageHashContradictsRange ||
       anchorContradictionWithoutStrongRangeEvidence
     ) {
       if (anchorResult !== undefined && anchorContradictsRange) {
@@ -351,7 +480,7 @@ async function resolveMrfiReference(
     const status = evidence !== undefined
       ? (evidenceMatched ? "confident" : "stale")
       : (exactHashContradictsRange || contextContradictsRange ||
-          headingHashContradictsRange)
+          headingHashContradictsRange || passageHashContradictsRange)
       ? "stale"
       : "confident";
     const confidence = evidence !== undefined
@@ -359,9 +488,19 @@ async function resolveMrfiReference(
         ? CONFIDENCE.RANGE_CONFIDENT_WITH_STRONG_EVIDENCE
         : CONFIDENCE.RANGE_STALE)
       : (exactHashContradictsRange || contextContradictsRange ||
-          headingHashContradictsRange)
+          headingHashContradictsRange || passageHashContradictsRange)
       ? CONFIDENCE.RANGE_STALE
+      : passageHashConfirmsRange
+      ? (exactHashFailed
+        ? CONFIDENCE.RANGE_PH_SUPPRESSES_FH
+        : CONFIDENCE.RANGE_CONFIDENT_WITH_PH)
       : CONFIDENCE.RANGE_CONFIDENT;
+
+    const rangeSignals = buildStrongSignals({
+      exactHash: exactHashMatched,
+      bothContext: contextPrefixMatched && contextSuffixMatched,
+      witnessAgreement: evidenceMatched,
+    });
 
     return {
       ref,
@@ -370,6 +509,7 @@ async function resolveMrfiReference(
       range: formatSourceRange(currentRange),
       passage,
       diagnostics,
+      ...(rangeSignals ? { strongSignals: rangeSignals } : {}),
     };
   }
 
@@ -578,6 +718,8 @@ async function resolveExactHashReference(
     candidate.score === best.score
   );
   if (sameScoreCandidates.length > 1) {
+    // ph cannot disambiguate duplicate fh matches: identical content
+    // produces identical smh64 hashes, so ph distances will be equal.
     return {
       ref,
       status: "ambiguous",
@@ -605,6 +747,11 @@ async function resolveExactHashReference(
     diagnostics.push(`${evidence.label} did not match exact hash candidate`);
   }
 
+  const exactHashSignals = buildStrongSignals({
+    exactHash: true,
+    witnessAgreement: evidenceMatched,
+  });
+
   return {
     ref,
     status: evidence !== undefined && !evidenceMatched ? "stale" : "exact",
@@ -614,6 +761,7 @@ async function resolveExactHashReference(
     range: formatSourceRange(best.range),
     passage: best.passage,
     diagnostics,
+    ...(exactHashSignals ? { strongSignals: exactHashSignals } : {}),
   };
 }
 
@@ -645,8 +793,9 @@ async function resolveContextReference(
     readonly score: number;
   }> = [];
 
+  const maxVariableLength = Math.max(128, candidateLength * 4);
+
   if (parsed.context.prefix && parsed.context.suffix) {
-    const maxVariableLength = Math.max(128, candidateLength * 4);
     for (let startOffset = 0; startOffset < source.length; startOffset += 1) {
       if (
         !(await contextPrefixMatchesAt(source, parsed.context, startOffset))
@@ -675,6 +824,51 @@ async function resolveContextReference(
             lengthSimilarityBonus(candidateLength, endOffset - startOffset),
         });
       }
+    }
+  } else if (parsed.context.prefix) {
+    for (let startOffset = 0; startOffset < source.length; startOffset += 1) {
+      if (
+        !(await contextPrefixMatchesAt(source, parsed.context, startOffset))
+      ) {
+        continue;
+      }
+      const endOffset = Math.min(
+        source.length,
+        startOffset + candidateLength,
+      );
+      if (endOffset <= startOffset) continue;
+      const range = rangeFromOffsets(doc, startOffset, endOffset);
+      candidates.push({
+        diagnostics: ["context prefix match"],
+        matchedSignals: 1,
+        passage: getRangeText(doc, range),
+        range,
+        score: 10 +
+          lengthSimilarityBonus(candidateLength, endOffset - startOffset),
+      });
+    }
+  } else if (parsed.context.suffix) {
+    for (
+      let endOffset = 1;
+      endOffset <= source.length;
+      endOffset += 1
+    ) {
+      if (
+        !(await contextSuffixMatchesAt(source, parsed.context, endOffset))
+      ) {
+        continue;
+      }
+      const startOffset = Math.max(0, endOffset - candidateLength);
+      if (startOffset >= endOffset) continue;
+      const range = rangeFromOffsets(doc, startOffset, endOffset);
+      candidates.push({
+        diagnostics: ["context suffix match"],
+        matchedSignals: 1,
+        passage: getRangeText(doc, range),
+        range,
+        score: 10 +
+          lengthSimilarityBonus(candidateLength, endOffset - startOffset),
+      });
     }
   }
 
@@ -713,6 +907,25 @@ async function resolveContextReference(
     candidate.score === best.score
   );
   if (sameScoreCandidates.length > 1) {
+    const phWinner = await phDisambiguate(
+      sameScoreCandidates,
+      parsed,
+      (c) => c.passage,
+    );
+    if (phWinner) {
+      return {
+        ref,
+        status: "confident",
+        confidence: CONFIDENCE.CONFIDENT_PH_DISAMBIGUATION,
+        range: formatSourceRange(phWinner.candidate.range),
+        passage: phWinner.candidate.passage,
+        diagnostics: [
+          ...phWinner.candidate.diagnostics,
+          `ph distance ${phWinner.phDistance}`,
+        ],
+      };
+    }
+
     return {
       ref,
       status: "ambiguous",
@@ -744,6 +957,11 @@ async function resolveContextReference(
     ? CONFIDENCE.CONFIDENT_CONTEXT_FULL
     : CONFIDENCE.CONFIDENT_CONTEXT_PARTIAL;
 
+  const contextSignalFlags = buildStrongSignals({
+    bothContext: best.matchedSignals === 2,
+    witnessAgreement: evidenceMatched,
+  });
+
   return {
     ref,
     status,
@@ -751,6 +969,7 @@ async function resolveContextReference(
     range: formatSourceRange(best.range),
     passage: best.passage,
     diagnostics,
+    ...(contextSignalFlags ? { strongSignals: contextSignalFlags } : {}),
   };
 }
 
@@ -870,6 +1089,10 @@ function resolveStructuralPathReference(
     diagnostics.push(`${evidence.label} did not match structural candidate`);
   }
 
+  const structuralSignals = buildStrongSignals({
+    witnessAgreement: evidenceMatched,
+  });
+
   return {
     ref,
     status: evidence !== undefined && !evidenceMatched ? "stale" : "confident",
@@ -879,6 +1102,7 @@ function resolveStructuralPathReference(
     range: formatSourceRange(range),
     passage,
     diagnostics,
+    ...(structuralSignals ? { strongSignals: structuralSignals } : {}),
   };
 }
 
@@ -988,6 +1212,50 @@ async function resolveFuzzyHeadingReference(
   if (
     second && second.distance - best.distance < FUZZY_HEADING_AMBIGUITY_MARGIN
   ) {
+    // ph tie-breaking: when ambiguous fuzzy heading candidates exist and
+    // parsed.passageHash is present, compare each candidate's full passage
+    // against ph to separate them (consistent with generation semantics
+    // where ph = smh64(selectedText), typically the whole section).
+    if (parsed.passageHash) {
+      const tiedCandidates = candidates.filter((c) =>
+        c.distance - best.distance < FUZZY_HEADING_AMBIGUITY_MARGIN
+      );
+      const phWinner = await phDisambiguate(
+        tiedCandidates,
+        parsed,
+        (c) => {
+          const endLn = getTrimmedSectionEndLine(doc, c.section);
+          return doc.lines.slice(c.section.line - 1, endLn).join("\n");
+        },
+      );
+      if (phWinner) {
+        const endLine = getTrimmedSectionEndLine(
+          doc,
+          phWinner.candidate.section,
+        );
+        const passage = doc.lines.slice(
+          phWinner.candidate.section.line - 1,
+          endLine,
+        ).join("\n");
+        return {
+          ref,
+          status: "confident" as const,
+          confidence: CONFIDENCE.CONFIDENT_PH_DISAMBIGUATION,
+          range: formatSourceRange(fullLineRange(
+            doc,
+            phWinner.candidate.section.line,
+            endLine,
+          )),
+          passage,
+          diagnostics: [
+            "fuzzy heading match",
+            `smh64 distance ${phWinner.candidate.distance}`,
+            `ph distance ${phWinner.phDistance}`,
+          ],
+        };
+      }
+    }
+
     return {
       ref,
       status: "ambiguous",
@@ -1037,6 +1305,10 @@ async function resolveFuzzyHeadingReference(
       : CONFIDENCE.STALE_FUZZY_HEADING_EVIDENCE_MISMATCH)
     : baseConfidence;
 
+  const fuzzySignals = buildStrongSignals({
+    witnessAgreement: evidenceMatched,
+  });
+
   return {
     ref,
     status,
@@ -1044,6 +1316,7 @@ async function resolveFuzzyHeadingReference(
     range: formatSourceRange(fullLineRange(doc, best.section.line, endLine)),
     passage,
     diagnostics,
+    ...(fuzzySignals ? { strongSignals: fuzzySignals } : {}),
   };
 }
 
@@ -1060,6 +1333,160 @@ function getTextEvidence(
   return undefined;
 }
 
+/**
+ * Attempt ph-based disambiguation among tied candidates. Returns the
+ * winner and its ph distance, or undefined if ph cannot separate them.
+ * No strong signals are set on the winner — ph is scoring-only.
+ */
+async function phDisambiguate<T>(
+  candidates: readonly T[],
+  parsed: DebugMrfi,
+  getPassage: (candidate: T) => string,
+): Promise<{ candidate: T; phDistance: number } | undefined> {
+  if (!parsed.passageHash || candidates.length < 2) return undefined;
+  const phRef = parsed.passageHash;
+  const maxDist = phRef.maxDistance ?? DEFAULT_SMH64_MAX_DISTANCE;
+
+  const scored = await Promise.all(candidates.map(async (candidate) => {
+    const phDist = hammingDistance64(
+      await smh64Value(getPassage(candidate)),
+      phRef.hash,
+    );
+    return { candidate, phDistance: phDist };
+  }));
+  scored.sort((a, b) => a.phDistance - b.phDistance);
+
+  const best = scored[0];
+  const second = scored[1];
+  if (
+    best.phDistance <= maxDist &&
+    (second.phDistance > maxDist ||
+      second.phDistance - best.phDistance >= FUZZY_HEADING_AMBIGUITY_MARGIN)
+  ) {
+    return best;
+  }
+  return undefined;
+}
+
 function clampLine(line: number, doc: Document): number {
   return Math.max(1, Math.min(line, doc.lines.length));
+}
+
+function applyExtentOverrideToResult(
+  doc: Document,
+  result: ResolveResult,
+  extentSelector: "sec" | "body" | "lead",
+): ResolveResult {
+  return applyExtentSelection(doc, result, { extentSelector });
+}
+
+function applyExtentSelection(
+  doc: Document,
+  result: ResolveResult,
+  parsed: DebugMrfi,
+): ResolveResult {
+  if (!parsed.extentSelector) return result;
+  if (result.status === "invalid" || result.status === "not_found") {
+    return result;
+  }
+  if (!result.range) return result;
+
+  const identityRange = parseMrfiRange(result.range);
+  if (!identityRange) return result;
+
+  const section = findSectionContainingLine(doc, identityRange.startLine);
+  if (!section || section.line !== identityRange.startLine) {
+    return {
+      ...result,
+      status: "stale",
+      confidence: Math.min(result.confidence, CONFIDENCE.RANGE_STALE),
+      diagnostics: [
+        ...result.diagnostics,
+        "scope reference identity node is not a heading",
+      ],
+    };
+  }
+
+  const extent = computeExtentRange(doc, section, parsed.extentSelector);
+  return {
+    ...result,
+    range: formatSourceRange(extent.range),
+    passage: extent.passage,
+    diagnostics: [
+      ...result.diagnostics,
+      `extent selection: x=${parsed.extentSelector}`,
+    ],
+  };
+}
+
+function computeExtentRange(
+  doc: Document,
+  identitySection: Section,
+  selector: "sec" | "body" | "lead",
+): { range: SourceRange; passage: string } {
+  const L = identitySection.level;
+  const sectionIndex = doc.sections.indexOf(identitySection);
+
+  // Find terminator: first subsequent heading that ends the extent
+  let terminatorLine = doc.lines.length + 1;
+  for (let i = sectionIndex + 1; i < doc.sections.length; i++) {
+    const nextSection = doc.sections[i];
+    if (selector === "lead" || nextSection.level <= L) {
+      terminatorLine = nextSection.line;
+      break;
+    }
+  }
+
+  // Compute start line
+  const startLine = selector === "sec"
+    ? identitySection.line
+    : identitySection.line + 1;
+
+  // End line is the line before the terminator
+  let endLine = terminatorLine - 1;
+
+  // Trim trailing blank lines
+  while (endLine >= startLine && doc.lines[endLine - 1]?.trim() === "") {
+    endLine--;
+  }
+
+  // Handle empty extent
+  if (endLine < startLine) {
+    const emptyLine = identitySection.line + 1;
+    return {
+      range: {
+        startLine: emptyLine,
+        startColumn: 1,
+        endLine: emptyLine,
+        endColumn: 1,
+      },
+      passage: "",
+    };
+  }
+
+  // Trim leading blank lines for body/lead
+  let trimmedStart = startLine;
+  if (selector !== "sec") {
+    while (
+      trimmedStart <= endLine && doc.lines[trimmedStart - 1]?.trim() === ""
+    ) {
+      trimmedStart++;
+    }
+    if (trimmedStart > endLine) {
+      const emptyLine = identitySection.line + 1;
+      return {
+        range: {
+          startLine: emptyLine,
+          startColumn: 1,
+          endLine: emptyLine,
+          endColumn: 1,
+        },
+        passage: "",
+      };
+    }
+  }
+
+  const range = fullLineRange(doc, trimmedStart, endLine);
+  const passage = getRangeText(doc, range);
+  return { range, passage };
 }

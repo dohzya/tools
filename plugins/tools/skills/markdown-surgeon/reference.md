@@ -19,6 +19,32 @@
 | `append` | Before next header   | After subsections    |
 | `empty`  | Clear own content    | Remove subsections   |
 
+## MRFI ref support (write/remove/append/empty)
+
+Selectors starting with `~` (MRFI) or `^` (anchor) are resolved as MRFI references instead of section IDs. A safety gate requires status `exact` or `confident` plus at least one strong locator signal (exact hash, unique anchor, both context hashes, or witness agreement).
+
+### Extent (`-x`/`--extent`)
+
+Maps the resolved identity node to a section-oriented operation:
+
+| extent | write          | remove         | empty          | append          |
+| ------ | -------------- | -------------- | -------------- | --------------- |
+| `sec`  | write(deep)    | remove()       | empty(deep)    | append(deep)    |
+| `body` | write(deep)    | empty(deep)    | empty(deep)    | append(deep)    |
+| `lead` | write(shallow) | empty(shallow) | empty(shallow) | append(shallow) |
+
+Without `-x`, the resolved passage range is mutated directly (line-range operation, not section-bound).
+
+### Gate control
+
+| Flag       | Behavior                                       |
+| ---------- | ---------------------------------------------- |
+| (default)  | status ∈ {exact, confident} + ≥1 strong signal |
+| `--strict` | status must be `exact` (rejects `confident`)   |
+| `--force`  | skip safety gate entirely                      |
+
+`-x`, `--strict`, and `--force` error when used with non-MRFI selectors.
+
 ## Errors
 
 stderr: `error: <code>\n<message>`

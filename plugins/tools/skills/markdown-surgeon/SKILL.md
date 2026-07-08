@@ -45,6 +45,15 @@ md append doc.md "End of file"              # no ID = file level
 # remove: delete section + subsections
 md remove doc.md 7b2e4a1c
 
+# MRFI refs: use ~mrfi or ^anchor instead of section IDs
+md write doc.md "^myanchor" -x sec "New content"   # replace whole section
+md remove doc.md "^myanchor" -x sec                # remove heading + body
+md remove doc.md "^myanchor" -x body               # keep heading, clear body
+md empty doc.md "^myanchor" -x lead                # clear lead only
+md append doc.md "^myanchor" -x body "Appended"    # append after body
+md write doc.md '~{v0;r=1:1-1:8}' --force "New"   # plain ref, skip gate
+md write doc.md '~{v0;r=1:1-1:8}' --strict "New"  # exact status only
+
 # search
 md search doc.md "TODO"
 md search --summary doc.md "TODO"

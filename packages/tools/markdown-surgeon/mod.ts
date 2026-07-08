@@ -21,11 +21,16 @@ export type {
 } from "./domain/entities/document.ts";
 export { MdError } from "./domain/entities/document.ts";
 export type {
+  CompareResult,
   ComparisonSpan,
   DebugMrfi,
   HashSignal,
+  MrfiFieldComparison,
+  MrfiFieldOutcome,
   MrfiFormat,
   MrfiProfile,
+  MrfiVerdict,
+  RankedReferenceCandidate,
   RefreshedReference,
   RefreshReferenceOutput,
   ResolveCandidate,
@@ -102,6 +107,13 @@ export {
 export type {
   RankReferenceCandidatesInput,
 } from "./domain/use-cases/rank-reference-candidates.ts";
+export {
+  compareLocators,
+  CompareReferencesUseCase,
+} from "./domain/use-cases/compare-references.ts";
+export type {
+  CompareReferencesInput,
+} from "./domain/use-cases/compare-references.ts";
 
 // ============================================================================
 // Adapters

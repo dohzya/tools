@@ -734,7 +734,9 @@ test("review panel webview can reply to a conversation", async () => {
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
   await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
+  const [conversation] = await harness.api.collectReviewPanelItems(
+    editor.document,
+  );
 
   await view.postMessageFromWebview({
     type: "reply",
@@ -770,7 +772,9 @@ test("review panel webview resolves stale conversation offsets by stable id", as
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
   await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
+  const [conversation] = await harness.api.collectReviewPanelItems(
+    editor.document,
+  );
   editor.document.text = ["Preamble", editor.document.text].join("\n");
 
   await view.postMessageFromWebview({
@@ -831,7 +835,9 @@ test("assignPersistentReviewItemIds and the review panel agree on the same file'
   );
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
-  const [panelItem] = await harness.api.collectReviewPanelItems(editor.document);
+  const [panelItem] = await harness.api.collectReviewPanelItems(
+    editor.document,
+  );
 
   // Simulate what the CLI would do for the exact same real file: if the
   // panel's file-path normalization (getReviewPanelDocumentPath) ever
@@ -867,7 +873,9 @@ test("review panel webview can mark a conversation ok", async () => {
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
   await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
+  const [conversation] = await harness.api.collectReviewPanelItems(
+    editor.document,
+  );
 
   await view.postMessageFromWebview({
     type: "ok",
@@ -902,7 +910,9 @@ test("review panel webview can delete a conversation", async () => {
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const view = harness.createWebviewView();
   await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
-  const [conversation] = await harness.api.collectReviewPanelItems(editor.document);
+  const [conversation] = await harness.api.collectReviewPanelItems(
+    editor.document,
+  );
 
   await view.postMessageFromWebview({
     type: "delete",

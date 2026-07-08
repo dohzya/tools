@@ -59,13 +59,22 @@ export interface GenerateReferenceInput {
   readonly quote: boolean;
   /** Maximum length of the quote evidence field, when included */
   readonly quoteMax: number;
+  /** Extent selector — turns this into a scope reference */
+  readonly extentSelector?: "sec" | "body" | "lead";
 }
 
 /** Builds a fresh MRFI reference for a range or section of a document */
 export class GenerateReferenceUseCase {
   /** Generate the reference in the requested format/profile */
   async execute(input: GenerateReferenceInput): Promise<string> {
-    const { doc, target, format, profile, quote, quoteMax } = input;
+    const { doc, target, format, profile, quote, quoteMax, extentSelector } =
+      input;
+    if (extentSelector && target.kind === "range") {
+      throw new MdError(
+        "invalid_id",
+        "scope references require a section target, not a range",
+      );
+    }
     return target.kind === "range"
       ? await makeRangeMrfi(doc, target.range, format, profile, quote, quoteMax)
       : await makeSectionMrfi(
@@ -75,6 +84,7 @@ export class GenerateReferenceUseCase {
         profile,
         quote,
         quoteMax,
+        extentSelector,
       );
   }
 }
@@ -86,15 +96,56 @@ async function makeSectionMrfi(
   profile: MrfiProfile,
   includeQuote: boolean,
   quoteMax: number,
+  extentSelector?: "sec" | "body" | "lead",
 ): Promise<string> {
-  const endLine = getTrimmedSectionEndLine(doc, section);
-  const parsed = await buildMrfiForRange(doc, {
-    startLine: section.line,
-    startColumn: 1,
-    endLine,
-    endColumn: getLineEndColumn(doc, endLine),
-  }, includeQuote ? truncateQuote(section.title, quoteMax) : undefined);
-  return await formatMrfi(applyMrfiProfile(parsed, profile), format);
+  const evidenceRange = extentSelector
+    ? {
+      startLine: section.line,
+      startColumn: 1,
+      endLine: section.line,
+      endColumn: getLineEndColumn(doc, section.line),
+    }
+    : {
+      startLine: section.line,
+      startColumn: 1,
+      endLine: getTrimmedSectionEndLine(doc, section),
+      endColumn: getLineEndColumn(
+        doc,
+        getTrimmedSectionEndLine(doc, section),
+      ),
+    };
+  const parsed = await buildMrfiForRange(
+    doc,
+    evidenceRange,
+    includeQuote ? truncateQuote(section.title, quoteMax) : undefined,
+  );
+  let withExtent: DebugMrfi;
+  if (extentSelector) {
+    const parentSection = findParentSection(doc, section);
+    const parentHh = parentSection
+      ? { hash: await smh64Value(getSectionScopeText(doc, parentSection)) }
+      : undefined;
+    withExtent = {
+      ...parsed,
+      extentSelector,
+      ...(parentHh ? { headingHash: parentHh } : { headingHash: undefined }),
+    };
+  } else {
+    withExtent = parsed;
+  }
+  return await formatMrfi(applyMrfiProfile(withExtent, profile), format);
+}
+
+function findParentSection(
+  doc: Document,
+  section: Section,
+): Section | undefined {
+  let parent: Section | undefined;
+  for (const s of doc.sections) {
+    if (s.line >= section.line) break;
+    if (s.level < section.level) parent = s;
+  }
+  return parent;
 }
 
 async function makeRangeMrfi(
@@ -124,6 +175,7 @@ function applyMrfiProfile(parsed: DebugMrfi, profile: MrfiProfile): DebugMrfi {
     headingHash: parsed.headingHash,
     ...(parsed.anchor ? { anchor: parsed.anchor } : {}),
     ...(parsed.quote ? { quote: parsed.quote } : {}),
+    ...(parsed.extentSelector ? { extentSelector: parsed.extentSelector } : {}),
   };
 
   if (profile === "min") return base;

@@ -564,6 +564,14 @@ export async function featureHash64(text: string): Promise<bigint> {
   return hash;
 }
 
+/**
+ * Default acceptance distance for smh64 fuzzy hash fields (`hh`, `ph`,
+ * `doc`) when a locator does not carry its own `maxDistance`. Shared by
+ * resolve-reference.ts and compare-references.ts so both use the same
+ * default notion of "close enough".
+ */
+export const DEFAULT_SMH64_MAX_DISTANCE = 8;
+
 export function hammingDistance64(left: bigint, right: bigint): number {
   let value = (left ^ right) & UINT64_MASK;
   let distance = 0;

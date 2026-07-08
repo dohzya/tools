@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - **worklog:** Task descriptions are now stored as ordered parts. `wl create` accepts repeatable `--desc` / `--desc-src`, `wl update` can replace or append parts with `--append-desc` / `--append-desc-src`, and JSON outputs keep rendered `desc` plus structured `desc_parts`.
+- **markdown-surgeon:** Implemented the MRFI comparison contract from `docs/specs/mrfi.md`: `compareLocators`/`CompareReferencesUseCase` for `compare(A, B)` (per-field similarity/comparability/verdict, with `x` extent-selector participation and must-understand `invalid` handling), and `RankReferenceCandidatesUseCase` now performs real `rank(target, candidates)` ordering instead of returning candidates unchanged.
 
 ## [recap-v0.4.0] — 2026-06-29
 

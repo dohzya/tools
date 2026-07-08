@@ -22,6 +22,7 @@ export interface DebugMrfi {
     readonly maxDistance?: number;
   };
   readonly exactHash?: HashSignal;
+  readonly extentSelector?: "sec" | "body" | "lead";
   readonly extra?: ReadonlyMap<string, string>;
   readonly headingHash?: {
     readonly hash: bigint;
@@ -102,6 +103,62 @@ export interface ResolveResult {
   readonly passage?: string;
   readonly diagnostics: readonly string[];
   readonly candidates?: readonly ResolveCandidate[];
+  readonly strongSignals?: {
+    readonly exactHash?: true;
+    readonly uniqueAnchor?: true;
+    readonly bothContext?: true;
+    readonly witnessAgreement?: true;
+  };
+}
+
+/**
+ * Outcome of comparing two MRFI locators without resolving them, per
+ * docs/specs/mrfi.md's "Comparing References Without Resolving". `invalid`
+ * is not part of the spec's own verdict table (`same`/`likely`/`possible`/
+ * `unrelated`/`incomparable`); it mirrors ResolveResult's `invalid` status
+ * for the must-understand-violation precondition failure, which the spec
+ * requires "at resolution and comparison time" alike.
+ */
+export type MrfiVerdict =
+  | "same"
+  | "likely"
+  | "possible"
+  | "unrelated"
+  | "incomparable"
+  | "invalid";
+
+/** How one shared field compared between two locators */
+export type MrfiFieldOutcome = "match" | "conflict" | "absent";
+
+/** Per-field detail surfaced alongside a comparison's aggregate verdict */
+export interface MrfiFieldComparison {
+  readonly field: string;
+  readonly outcome: MrfiFieldOutcome;
+  /** Graded field similarity in `[0, 1]`; omitted for equality-only fields reported only as match/conflict */
+  readonly similarity?: number;
+}
+
+/** Result of `compare(A, B)`, per docs/specs/mrfi.md's "Comparison Output" */
+export interface CompareResult {
+  /** `0` to `1`, aggregated over shared fields */
+  readonly similarity: number;
+  /** `0` to `1`, coverage-weighted strong-evidence overlap */
+  readonly comparability: number;
+  readonly verdict: MrfiVerdict;
+  readonly fields: readonly MrfiFieldComparison[];
+  readonly diagnostics: readonly string[];
+}
+
+/**
+ * One candidate's comparison result within a `rank(target, candidates)`
+ * ordering. `rank` is 1-based competition ranking (ties share a rank, the
+ * next distinct rank skips accordingly), per the spec's "Ties are allowed
+ * and must be reported as ties."
+ */
+export interface RankedReferenceCandidate {
+  readonly ref: string;
+  readonly rank: number;
+  readonly comparison: CompareResult;
 }
 
 /** A freshly regenerated reference for a resolved range */

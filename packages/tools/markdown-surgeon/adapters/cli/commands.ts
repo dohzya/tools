@@ -23,7 +23,14 @@ import { AppendSectionUseCase } from "../../domain/use-cases/append-section.ts";
 import { RemoveSectionUseCase } from "../../domain/use-cases/remove-section.ts";
 import { SearchUseCase } from "../../domain/use-cases/search.ts";
 import { ManageFrontmatterUseCase } from "../../domain/use-cases/manage-frontmatter.ts";
-import { ResolveReferenceUseCase } from "../../domain/use-cases/resolve-reference.ts";
+import {
+  checkDestructiveGate,
+  ResolveReferenceUseCase,
+} from "../../domain/use-cases/resolve-reference.ts";
+import { MutateRangeUseCase } from "../../domain/use-cases/mutate-range.ts";
+import { parseMrfiRange } from "../../domain/use-cases/mrfi-codec.ts";
+import { findSectionContainingLine } from "../../domain/use-cases/mrfi-text.ts";
+import type { ResolveResult } from "../../domain/entities/mrfi.ts";
 import { GenerateReferenceUseCase } from "../../domain/use-cases/generate-reference.ts";
 import { TransformReferenceUseCase } from "../../domain/use-cases/transform-reference.ts";
 import {
@@ -461,8 +468,109 @@ export function createCommands(deps: CommandDeps) {
   const searchUseCase = new SearchUseCase();
   const manageFrontmatter = new ManageFrontmatterUseCase(yamlService);
   const resolveReference = new ResolveReferenceUseCase();
+  const mutateRange = new MutateRangeUseCase();
   const generateReference = new GenerateReferenceUseCase();
   const transformReference = new TransformReferenceUseCase();
+
+  // ========================================================================
+  // MRFI ref helpers for destructive ops
+  // ========================================================================
+
+  function isMrfiSelector(selector: string): boolean {
+    return selector.startsWith("~") || selector.startsWith("^");
+  }
+
+  type ExtentValue = "sec" | "body" | "lead";
+
+  function parseExtentValue(
+    value: string,
+    file: string,
+  ): ExtentValue {
+    if (value === "sec" || value === "body" || value === "lead") return value;
+    throw new MdError(
+      "parse_error",
+      `Invalid extent value: ${value}. Expected sec, body, or lead`,
+      file,
+      value,
+    );
+  }
+
+  interface MrfiMutationTarget {
+    readonly result: ResolveResult;
+    readonly section?: Section;
+    readonly effectiveExtent?: ExtentValue;
+  }
+
+  async function resolveMrfiForMutation(
+    doc: Document,
+    selector: string,
+    file: string,
+    opts: {
+      extent?: ExtentValue;
+      strict?: boolean;
+      force?: boolean;
+    },
+  ): Promise<MrfiMutationTarget> {
+    const parsed = parseResolveInput(selector, file);
+
+    // Resolve the ref (extent from embedded x is applied by the resolver)
+    const result = await resolveReference.execute({
+      doc,
+      ref: parsed.ref,
+      witness: parsed.witness,
+      extentOverride: opts.extent,
+    });
+
+    const gate = checkDestructiveGate(result, {
+      strict: opts.strict,
+      force: opts.force,
+    });
+    if (!gate.allowed) {
+      throw new MdError(
+        "parse_error",
+        `Safety gate rejected: ${gate.reason} (ref: ${parsed.ref}, status: ${result.status})`,
+        file,
+        parsed.ref,
+      );
+    }
+
+    // Determine effective extent: CLI flag > ref's embedded x > none
+    const effectiveExtent = opts.extent ?? extractEmbeddedExtent(result);
+
+    if (effectiveExtent && result.range) {
+      const resolvedRange = parseMrfiRange(result.range);
+      if (resolvedRange) {
+        // findSectionContainingLine at the start of the extent range
+        // returns the identity section (extent is always within it)
+        const section = findSectionContainingLine(
+          doc,
+          resolvedRange.startLine,
+        );
+        if (section) {
+          return { result, section, effectiveExtent };
+        }
+        throw new MdError(
+          "parse_error",
+          `Extent selection requires identity node to be a heading`,
+          file,
+          parsed.ref,
+        );
+      }
+    }
+
+    return { result, effectiveExtent };
+  }
+
+  function extractEmbeddedExtent(
+    result: ResolveResult,
+  ): ExtentValue | undefined {
+    for (const d of result.diagnostics) {
+      if (d === "extent selection: x=sec") return "sec";
+      if (d === "extent selection: x=body") return "body";
+      if (d === "extent selection: x=lead") return "lead";
+    }
+    return undefined;
+  }
 
   // ========================================================================
   // Command implementations
@@ -600,16 +708,52 @@ export function createCommands(deps: CommandDeps) {
     newContent: string,
     deep: boolean,
     json: boolean,
+    mrfiOpts?: { extent?: ExtentValue; strict?: boolean; force?: boolean },
   ): Promise<string> {
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
-    const section = resolveSectionSelector(doc, selector, file);
 
     // Expand magic expressions
     const fmContent = manageFrontmatter.getFrontmatterContent(doc);
     const meta = yamlService.parse(fmContent);
     const expandedContent = expandMagic(newContent, meta, yamlService);
 
+    if (isMrfiSelector(selector)) {
+      const target = await resolveMrfiForMutation(
+        doc,
+        selector,
+        file,
+        mrfiOpts ?? {},
+      );
+      if (target.section && target.effectiveExtent) {
+        const effectiveDeep = target.effectiveExtent !== "lead";
+        const { result, updatedLines } = writeSection.execute({
+          doc,
+          id: target.section.id,
+          content: expandedContent,
+          deep: effectiveDeep,
+        });
+        await writeFile(file, updatedLines.join("\n"));
+        return json ? jsonMutation(result) : formatMutation(result);
+      }
+      // Plain ref — mutate the resolved range directly
+      const range = target.result.range
+        ? parseMrfiRange(target.result.range)
+        : undefined;
+      if (!range) {
+        throw new MdError("parse_error", "Resolved ref has no range", file);
+      }
+      const { result, updatedLines } = mutateRange.execute({
+        doc,
+        range,
+        action: "write",
+        content: expandedContent,
+      });
+      await writeFile(file, updatedLines.join("\n"));
+      return json ? jsonMutation(result) : formatMutation(result);
+    }
+
+    const section = resolveSectionSelector(doc, selector, file);
     const { result, updatedLines } = writeSection.execute({
       doc,
       id: section.id,
@@ -629,17 +773,56 @@ export function createCommands(deps: CommandDeps) {
     deep: boolean,
     before: boolean,
     json: boolean,
+    mrfiOpts?: { extent?: ExtentValue; strict?: boolean; force?: boolean },
   ): Promise<string> {
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
-    const id = selector === null
-      ? null
-      : resolveSectionSelector(doc, selector, file).id;
 
     // Expand magic expressions
     const fmContent = manageFrontmatter.getFrontmatterContent(doc);
     const meta = yamlService.parse(fmContent);
     const expandedContent = expandMagic(newContent, meta, yamlService);
+
+    if (selector !== null && isMrfiSelector(selector)) {
+      const target = await resolveMrfiForMutation(
+        doc,
+        selector,
+        file,
+        mrfiOpts ?? {},
+      );
+      if (target.section && target.effectiveExtent) {
+        const effectiveDeep = target.effectiveExtent !== "lead";
+        const { result, updatedLines } = await appendSection.execute({
+          doc,
+          id: target.section.id,
+          content: expandedContent,
+          deep: effectiveDeep,
+          before,
+        });
+        await writeFile(file, updatedLines.join("\n"));
+        return json ? jsonMutation(result) : formatMutation(result);
+      }
+      // Plain ref
+      const range = target.result.range
+        ? parseMrfiRange(target.result.range)
+        : undefined;
+      if (!range) {
+        throw new MdError("parse_error", "Resolved ref has no range", file);
+      }
+      const { result, updatedLines } = mutateRange.execute({
+        doc,
+        range,
+        action: "append",
+        content: expandedContent,
+        before,
+      });
+      await writeFile(file, updatedLines.join("\n"));
+      return json ? jsonMutation(result) : formatMutation(result);
+    }
+
+    const id = selector === null
+      ? null
+      : resolveSectionSelector(doc, selector, file).id;
 
     const { result, updatedLines } = await appendSection.execute({
       doc,
@@ -659,9 +842,43 @@ export function createCommands(deps: CommandDeps) {
     selector: string,
     deep: boolean,
     json: boolean,
+    mrfiOpts?: { extent?: ExtentValue; strict?: boolean; force?: boolean },
   ): Promise<string> {
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
+
+    if (isMrfiSelector(selector)) {
+      const target = await resolveMrfiForMutation(
+        doc,
+        selector,
+        file,
+        mrfiOpts ?? {},
+      );
+      if (target.section && target.effectiveExtent) {
+        const effectiveDeep = target.effectiveExtent !== "lead";
+        const { result, updatedLines } = removeSection.empty({
+          doc,
+          id: target.section.id,
+          deep: effectiveDeep,
+        });
+        await writeFile(file, updatedLines.join("\n"));
+        return json ? jsonMutation(result) : formatMutation(result);
+      }
+      // Plain ref — empty = remove for non-section targets
+      const range = target.result.range
+        ? parseMrfiRange(target.result.range)
+        : undefined;
+      if (!range) {
+        throw new MdError("parse_error", "Resolved ref has no range", file);
+      }
+      const { result, updatedLines } = mutateRange.execute({
+        doc,
+        range,
+        action: "remove",
+      });
+      await writeFile(file, updatedLines.join("\n"));
+      return json ? jsonMutation(result) : formatMutation(result);
+    }
 
     const section = resolveSectionSelector(doc, selector, file);
 
@@ -680,9 +897,53 @@ export function createCommands(deps: CommandDeps) {
     file: string,
     selector: string,
     json: boolean,
+    mrfiOpts?: { extent?: ExtentValue; strict?: boolean; force?: boolean },
   ): Promise<string> {
     const fileContent = await readFile(file);
     const doc = await parseDocument.execute({ content: fileContent });
+
+    if (isMrfiSelector(selector)) {
+      const target = await resolveMrfiForMutation(
+        doc,
+        selector,
+        file,
+        mrfiOpts ?? {},
+      );
+      if (target.section && target.effectiveExtent) {
+        if (target.effectiveExtent === "sec") {
+          // sec removes heading + body + subsections
+          const { result, updatedLines } = removeSection.remove({
+            doc,
+            id: target.section.id,
+          });
+          await writeFile(file, updatedLines.join("\n"));
+          return json ? jsonMutation(result) : formatMutation(result);
+        }
+        // body/lead — keep heading, remove content
+        const effectiveDeep = target.effectiveExtent !== "lead";
+        const { result, updatedLines } = removeSection.empty({
+          doc,
+          id: target.section.id,
+          deep: effectiveDeep,
+        });
+        await writeFile(file, updatedLines.join("\n"));
+        return json ? jsonMutation(result) : formatMutation(result);
+      }
+      // Plain ref
+      const range = target.result.range
+        ? parseMrfiRange(target.result.range)
+        : undefined;
+      if (!range) {
+        throw new MdError("parse_error", "Resolved ref has no range", file);
+      }
+      const { result, updatedLines } = mutateRange.execute({
+        doc,
+        range,
+        action: "remove",
+      });
+      await writeFile(file, updatedLines.join("\n"));
+      return json ? jsonMutation(result) : formatMutation(result);
+    }
 
     const section = resolveSectionSelector(doc, selector, file);
 
@@ -1201,20 +1462,52 @@ export function createCommands(deps: CommandDeps) {
       }
     });
 
+  function buildMrfiOpts(
+    selector: string,
+    file: string,
+    options: { extent?: string; strict?: boolean; force?: boolean },
+  ): { extent?: ExtentValue; strict?: boolean; force?: boolean } | undefined {
+    if (!isMrfiSelector(selector)) {
+      if (options.extent || options.strict || options.force) {
+        throw new MdError(
+          "parse_error",
+          "--extent, --strict, and --force are only valid with MRFI refs (~mrfi or ^anchor)",
+          file,
+        );
+      }
+      return undefined;
+    }
+    return {
+      extent: options.extent
+        ? parseExtentValue(options.extent, file)
+        : undefined,
+      strict: options.strict,
+      force: options.force,
+    };
+  }
+
   const writeCmdObj = new Command()
     .description("Update section content")
     .arguments("<file:string> <selector:string> [content:string]")
     .option("--deep", "Replace including subsections")
+    .option(
+      "-x, --extent <extent:string>",
+      "Extent selector: sec, body, or lead (MRFI refs only)",
+    )
+    .option("--strict", "Only allow exact resolution (MRFI refs only)")
+    .option("--force", "Skip safety gate (MRFI refs only)")
     .option("--json", "Output as JSON")
     .action(async (options, file, id, content) => {
       try {
         const actualContent = content ?? await readStdin();
+        const mrfiOpts = buildMrfiOpts(id, file, options);
         const output = await cmdWrite(
           file,
           id,
           actualContent,
           options.deep ?? false,
           options.json ?? false,
+          mrfiOpts,
         );
         if (output) console.log(output);
       } catch (e) {
@@ -1227,16 +1520,26 @@ export function createCommands(deps: CommandDeps) {
     .arguments("<file:string> [idOrContent:string] [content:string]")
     .option("--deep", "Append after subsections")
     .option("--before", "Insert before section instead of after")
+    .option(
+      "-x, --extent <extent:string>",
+      "Extent selector: sec, body, or lead (MRFI refs only)",
+    )
+    .option("--strict", "Only allow exact resolution (MRFI refs only)")
+    .option("--force", "Skip safety gate (MRFI refs only)")
     .option("--json", "Output as JSON")
     .action(async (options, file, idOrContent, content) => {
       try {
         const hasSelector = idOrContent !== undefined &&
           (isValidId(idOrContent) ||
+            isMrfiSelector(idOrContent) ||
             (content !== undefined && isHeadingSelector(idOrContent)));
         const selector = hasSelector ? idOrContent : null;
         const actualContent = hasSelector
           ? (content ?? await readStdin())
           : (idOrContent ?? await readStdin());
+        const mrfiOpts = selector
+          ? buildMrfiOpts(selector, file, options)
+          : undefined;
         const output = await cmdAppend(
           file,
           selector,
@@ -1244,6 +1547,7 @@ export function createCommands(deps: CommandDeps) {
           options.deep ?? false,
           options.before ?? false,
           options.json ?? false,
+          mrfiOpts,
         );
         if (output) console.log(output);
       } catch (e) {
@@ -1255,14 +1559,22 @@ export function createCommands(deps: CommandDeps) {
     .description("Empty a section (keep header)")
     .arguments("<file:string> <selector:string>")
     .option("--deep", "Also empty subsections")
+    .option(
+      "-x, --extent <extent:string>",
+      "Extent selector: sec, body, or lead (MRFI refs only)",
+    )
+    .option("--strict", "Only allow exact resolution (MRFI refs only)")
+    .option("--force", "Skip safety gate (MRFI refs only)")
     .option("--json", "Output as JSON")
     .action(async (options, file, id) => {
       try {
+        const mrfiOpts = buildMrfiOpts(id, file, options);
         const output = await cmdEmpty(
           file,
           id,
           options.deep ?? false,
           options.json ?? false,
+          mrfiOpts,
         );
         if (output) console.log(output);
       } catch (e) {
@@ -1273,10 +1585,22 @@ export function createCommands(deps: CommandDeps) {
   const removeCmdObj = new Command()
     .description("Remove a section and its subsections")
     .arguments("<file:string> <selector:string>")
+    .option(
+      "-x, --extent <extent:string>",
+      "Extent selector: sec, body, or lead (MRFI refs only)",
+    )
+    .option("--strict", "Only allow exact resolution (MRFI refs only)")
+    .option("--force", "Skip safety gate (MRFI refs only)")
     .option("--json", "Output as JSON")
     .action(async (options, file, id) => {
       try {
-        const output = await cmdRemove(file, id, options.json ?? false);
+        const mrfiOpts = buildMrfiOpts(id, file, options);
+        const output = await cmdRemove(
+          file,
+          id,
+          options.json ?? false,
+          mrfiOpts,
+        );
         if (output) console.log(output);
       } catch (e) {
         handleError(e);
