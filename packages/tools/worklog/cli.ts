@@ -6201,6 +6201,7 @@ const claudeCmd = new Command()
       "  wl claude              # Launch Claude with current task (from WORKLOG_TASK_ID)\n" +
       "  wl claude <taskId>     # Launch Claude with specific task\n" +
       "  wl claude <taskId> -c  # Pass Claude args when taskId provided\n" +
+      "  wl claude --advisor opus  # Launch with advisor model\n" +
       "  wl claude agents       # Open Claude agents subcommand (no system prompt)\n\n" +
       "For complex args, use 'wl run':\n" +
       "  wl run <taskId> claude -c --model opus",
@@ -6209,6 +6210,7 @@ const claudeCmd = new Command()
   .stopEarly()
   .option("--json", "Output as JSON")
   .option("--scope <scope:string>", "Target specific scope")
+  .option("--advisor <model:string>", "Advisor model to pass to Claude")
   .action(async (options, taskId?: string, ...args: string[]) => {
     try {
       const { gitRoot } = await resolveScopeContext(
@@ -6228,6 +6230,10 @@ const claudeCmd = new Command()
       ) {
         actualTaskId = undefined;
         claudeArgs = [taskId, ...args];
+      }
+
+      if (options.advisor) {
+        claudeArgs = ["--advisor", options.advisor, ...claudeArgs];
       }
 
       // Pre-resolve across scopes before passing to cmdClaude

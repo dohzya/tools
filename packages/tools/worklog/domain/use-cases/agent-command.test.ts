@@ -293,6 +293,31 @@ Deno.test("AgentCommandUseCase (codex) - interactive command injects context as 
   assertEquals(call.cmd.length, 5);
 });
 
+// --- Advisor flag tests ---
+
+Deno.test("AgentCommandUseCase (claude) - advisor flag is forwarded to process runner", async () => {
+  const indexRepo = createMockIndexRepo({ [FULL_TASK_ID]: MOCK_INDEX_ENTRY });
+  const processRunner = createMockProcessRunner();
+  const showTaskFn = createMockShowTaskFn(FULL_TASK_ID);
+
+  const useCase = new AgentCommandUseCase(
+    { indexRepo, processRunner, showTaskFn },
+    claudeAgentConfig,
+  );
+
+  await useCase.execute({
+    taskId: FULL_TASK_ID,
+    agentArgs: ["--advisor", "opus"],
+  });
+
+  assertEquals(processRunner.calls.length, 1);
+  const [call] = processRunner.calls;
+  assertEquals(call.cmd[0], "claude");
+  assertEquals(call.cmd[1], "--append-system-prompt");
+  assertEquals(call.cmd[call.cmd.length - 2], "--advisor");
+  assertEquals(call.cmd[call.cmd.length - 1], "opus");
+});
+
 // --- Synthesis mode tests ---
 
 Deno.test("AgentCommandUseCase (claude) - synthesis mode uses buildSynthesisCmd", async () => {
