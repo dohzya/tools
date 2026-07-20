@@ -1,4 +1,9 @@
-import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import {
+  assertEquals,
+  assertNotEquals,
+  assertRejects,
+  assertStringIncludes,
+} from "@std/assert";
 import { join } from "node:path";
 import process from "node:process";
 import { main } from "./cli.ts";
@@ -1624,6 +1629,70 @@ Deno.test("dz-review session rollback - restores pre-start content and closes se
       await exists(join(dir, ".dz-review", "agent-session.json")),
       false,
     );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review review - shows persistent review item id in header", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "Before {++%2026-06-23T17:47:47+02:00|after++}\n",
+  );
+
+  try {
+    const result = await runDzReview(
+      dir,
+      ["review", "--no-color", "file.md"],
+      "s\n",
+    );
+
+    assertEquals(result.success, true);
+    assertEquals(
+      /addition [0-9A-Za-z]{4,} file\.md/.test(result.stdout),
+      true,
+      `expected persistent id in header, got: ${result.stdout}`,
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review review and list show the same persistent id for an item", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "Before {++%2026-06-23T17:47:47+02:00|after++}\n",
+  );
+
+  try {
+    const reviewResult = await runDzReview(
+      dir,
+      ["review", "--no-color", "file.md"],
+      "s\n",
+    );
+    const listResult = await runDzReview(
+      dir,
+      ["review", "--list", "--no-color", "file.md"],
+      "",
+    );
+
+    assertEquals(reviewResult.success, true);
+    assertEquals(listResult.success, true);
+
+    const reviewId = reviewResult.stdout.match(
+      /addition ([0-9A-Za-z]{4,}) file\.md/,
+    )?.[1];
+    const listId = listResult.stdout.match(
+      /addition ([0-9A-Za-z]{4,}) file\.md/,
+    )?.[1];
+
+    assertNotEquals(reviewId, undefined, "review should show an id");
+    assertNotEquals(listId, undefined, "list should show an id");
+    assertEquals(reviewId, listId, "review and list must show the same id");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

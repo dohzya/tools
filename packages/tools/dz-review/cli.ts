@@ -64,6 +64,7 @@ import {
   type ReviewAnnotation,
   type ReviewAnnotationKind,
   type ReviewItem,
+  reviewItemMatchesConversationFilter,
   reviewItemOverlapsLines,
   type ReviewMessage,
   summarizeConversation,
@@ -1856,27 +1857,32 @@ async function processFile(
 ): Promise<ProcessFileResult> {
   const initialText = fs.readFileSync(file, "utf8");
   const filterLines = addedLinesByFile?.get(normalizePath(file));
-  const initialItems = collectReviewItems(
+  const allItemsWithIds = await assignPersistentReviewItemIds(
+    normalizePath(file),
     initialText,
-    conversationOnly,
-    conversationFilter,
-  )
-    .filter((item) => reviewItemMatchesSince(item, since))
-    .filter((item) =>
+    collectReviewItems(initialText, conversationOnly, "all"),
+  );
+  const filteredItems = allItemsWithIds
+    .filter(({ item }) =>
+      reviewItemMatchesConversationFilter(item, conversationFilter)
+    )
+    .filter(({ item }) => reviewItemMatchesSince(item, since))
+    .filter(({ item }) =>
       !addedLinesByFile ||
       (filterLines && reviewItemOverlapsLines(item, filterLines))
     );
 
-  if (initialItems.length === 0) {
+  if (filteredItems.length === 0) {
     return "continue";
   }
 
+  const allIds = filteredItems.map(({ id }) => id);
   let text = initialText;
   let offsetDelta = 0;
   let changed = false;
 
-  for (let index = 0; index < initialItems.length; index += 1) {
-    const original = initialItems[index];
+  for (let index = 0; index < filteredItems.length; index += 1) {
+    const { id, item: original } = filteredItems[index];
     const item = {
       ...original,
       start: original.start + offsetDelta,
@@ -1884,7 +1890,15 @@ async function processFile(
       raw: text.slice(original.start + offsetDelta, original.end + offsetDelta),
     };
 
-    showReviewItem(file, index + 1, initialItems.length, item, text, context);
+    showReviewItem(
+      file,
+      index + 1,
+      filteredItems.length,
+      item,
+      text,
+      context,
+      formatStableReviewItemIdForDisplay(id, allIds),
+    );
     const action = item.kind === "conversation"
       ? await askConversationAction(prompt)
       : await askAnnotationAction(prompt);
@@ -1901,7 +1915,10 @@ async function processFile(
     }
 
     if (action === "next-pending") {
-      const nextPendingIndex = findNextPendingIndex(initialItems, index);
+      const nextPendingIndex = findNextPendingIndex(
+        filteredItems.map(({ item }) => item),
+        index,
+      );
       if (nextPendingIndex === undefined) {
         process.stdout.write("No next pending conversation.\n");
         break;
