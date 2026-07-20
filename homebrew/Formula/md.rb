@@ -1,26 +1,26 @@
 class Md < Formula
   desc "Markdown surgeon - powerful markdown file manipulation tool"
   homepage "https://github.com/dohzya/tools"
-  version "0.8.0"
+  version "0.9.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/md-v0.8.0/md-darwin-arm64"
-      sha256 "8d9411e35aaec6caaa2eaa88dc1bcbb95f9a42e56063a03d471a8c1f646f85a8"
+      url "https://github.com/dohzya/tools/releases/download/md-v0.9.0/md-darwin-arm64"
+      sha256 "4ac1f3b054aa2d119751178e2a22ff4f0a666209a1d33f620b9a9ca7ba28c3b2"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/md-v0.8.0/md-darwin-x86_64"
-      sha256 "4948425d7e7f70986b5340f6f6cd048c5cb9add806edb96f41b814d4054b1b95"
+      url "https://github.com/dohzya/tools/releases/download/md-v0.9.0/md-darwin-x86_64"
+      sha256 "349c362cd81e50aeb3cfaf1e202375f2eabdfe1b87b92d6e6b5c93758027363e"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/md-v0.8.0/md-linux-arm64"
-      sha256 "e0f6e8aa9140dffb8df5b14f19d2c5add8a552dde2c2bf8ca19bba2f0aebe6f4"
+      url "https://github.com/dohzya/tools/releases/download/md-v0.9.0/md-linux-arm64"
+      sha256 "c02d670eb0e5e28a0fb89674352a7c0bed55dbb5241c8e543d5d914bf5cb1c26"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/md-v0.8.0/md-linux-x86_64"
-      sha256 "bdddb31424e5c6ef2a67259e6351f3621815883d5ad13affc1bb4d253c387ec7"
+      url "https://github.com/dohzya/tools/releases/download/md-v0.9.0/md-linux-x86_64"
+      sha256 "abc3dc03ee2f2e32064d9b71a8405763b4ce9a7e9eea37cc13ef0edd76da4bfd"
     end
   end
 
