@@ -6,10 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.20.0 / md-v0.9.0 / recap-v0.5.0 / dz-review-v0.4.0] — 2026-07-20
+
 ### Added
 
 - **worklog:** Task descriptions are now stored as ordered parts. `wl create` accepts repeatable `--desc` / `--desc-src`, `wl update` can replace or append parts with `--append-desc` / `--append-desc-src`, and JSON outputs keep rendered `desc` plus structured `desc_parts`.
-- **markdown-surgeon:** Implemented the MRFI comparison contract from `docs/specs/mrfi.md`: `compareLocators`/`CompareReferencesUseCase` for `compare(A, B)` (per-field similarity/comparability/verdict, with `x` extent-selector participation and must-understand `invalid` handling), and `RankReferenceCandidatesUseCase` now performs real `rank(target, candidates)` ordering instead of returning candidates unchanged.
+- **worklog:** Non-hierarchical task links with reciprocal `dependency` and `related` semantics; link filters and blocked-task visibility in list and dashboard.
+- **worklog:** `wl claude` now accepts `--advisor <model>` and passes it through to the Claude CLI.
+- **worklog:** List-style output is paged through a pager when the terminal is interactive, with `--pager`/`--no-pager` CLI flags and env overrides.
+- **markdown-surgeon:** MRFI foundations: locator resolver, extent selectors, safety/comparability contract, `ph` signal, and comparison/ranking use-cases (`compareLocators`, `CompareReferencesUseCase`, `RankReferenceCandidatesUseCase`).
+- **recap:** `recap.local.yaml` gitignored overrides at both project (`.config/recap.local.yaml`) and home (`~/.config/recap.local.yaml`) levels, following the `.env.local` convention.
+- **dz-review:** Passage references (`ref`) with parsing, validation, listing, snapshot expansion, and snapshot-only output; VS Code hover, definition support, and configurable preview limits.
+- **dz-review:** Persistent reference-id mapping (`.dz-review/reference-map.json`) backed by MRFI, wired into agent-core and CLI.
+- **dz-review:** `processFile` now assigns persistent MRFI-backed ids instead of content-hash-based ones, so item ids survive annotation edits.
+- **dz-review:** Injectable `DzReviewEnvironment` for runtime config, enabling non-Deno hosts (e.g. VS Code extension).
+- **dz-review:** Session guardrails hardening: `agent clean` records dismissed IDs in snapshot; `session done --acknowledge <id>` dismisses guardrails for manually deleted conversations; whitespace-tolerant guardrail comparison; reject HTML comment markers in reply messages.
+- **dz-review:** List-style output paged through a pager, sharing the same pager handling as worklog.
+
+### Changed
+
+- **dz-review:** Bare reference target paths now resolve relative to the git root; `./`/`../` prefixed paths remain relative to the source file.
+
+### Fixed
+
+- **dz-review:** Explicit files passed on the command line are now kept by `status` and `list` even when matched by the review ignore file.
+- **dz-review:** `deleteReviewItemWithWhitespace` consumes adjacent newlines on clean.
 
 ## [recap-v0.4.0] — 2026-06-29
 
