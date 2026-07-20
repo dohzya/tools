@@ -42,10 +42,12 @@ import {
   type ReviewReference,
   validateReferenceSnapshots,
 } from "./ref-core.ts";
+import { resolveReferenceTargetFile as resolveTargetFilePath } from "./resolve-target-file.ts";
 import {
   configureDzReviewRuntime,
   DZ_REVIEW_IGNORE_FILE_ENV,
   DZ_REVIEW_STATE_DIR_ENV,
+  findGitRoot,
   getDzReviewDefaultIgnorePatterns,
   getDzReviewIgnoreFile,
   getDzReviewSessionFile,
@@ -2666,7 +2668,7 @@ async function collectRefIssues(
         continue;
       }
 
-      const targetFile = resolveReferenceTargetFile(item.file, target);
+      const targetFile = resolveReferenceTargetFilePath(item.file, target);
       if (!fs.existsSync(targetFile)) {
         issues.push({
           kind: "missing-file",
@@ -2787,7 +2789,7 @@ function collectResolvedReferenceTargets(
 
   for (const item of located) {
     for (const target of item.reference.targets) {
-      const targetFile = resolveReferenceTargetFile(item.file, target);
+      const targetFile = resolveReferenceTargetFilePath(item.file, target);
       const excerpt = fs.existsSync(targetFile) && target.lineRange
         ? extractReferenceExcerpt(fs.readFileSync(targetFile, "utf8"), target)
         : undefined;
@@ -2813,7 +2815,7 @@ function collectRefSnapshots(
 
   for (const item of located) {
     for (const [targetIndex, target] of item.reference.targets.entries()) {
-      const targetFile = resolveReferenceTargetFile(item.file, target);
+      const targetFile = resolveReferenceTargetFilePath(item.file, target);
       const excerpt = fs.existsSync(targetFile) && target.lineRange
         ? extractReferenceExcerpt(fs.readFileSync(targetFile, "utf8"), target)
         : "";
@@ -3036,13 +3038,19 @@ function extractReferenceExcerpt(
   );
 }
 
-function resolveReferenceTargetFile(
+let cachedGitRoot: string | undefined | null = null;
+function getCachedGitRoot(): string | undefined {
+  if (cachedGitRoot === null) {
+    cachedGitRoot = findGitRoot();
+  }
+  return cachedGitRoot;
+}
+
+function resolveReferenceTargetFilePath(
   sourceFile: string,
   target: ReferenceTarget,
 ): string {
-  return path.isAbsolute(target.path)
-    ? target.path
-    : path.resolve(path.dirname(sourceFile), target.path);
+  return resolveTargetFilePath(sourceFile, target.path, getCachedGitRoot());
 }
 
 function formatRefIssues(issues: RefIssue[]): string {
@@ -3132,7 +3140,7 @@ function formatReferenceWithSnapshots(
       return target.raw;
     }
 
-    const targetFile = resolveReferenceTargetFile(sourceFile, target);
+    const targetFile = resolveReferenceTargetFilePath(sourceFile, target);
     const formatted = formatReferenceTarget(target);
     const excerpt = fs.existsSync(targetFile) && target.lineRange
       ? extractReferenceExcerpt(fs.readFileSync(targetFile, "utf8"), target)

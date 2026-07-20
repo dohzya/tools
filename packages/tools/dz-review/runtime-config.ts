@@ -87,7 +87,7 @@ function normalizeConfiguredPathCandidate(
   return undefined;
 }
 
-function findGitRoot(): string | undefined {
+export function findGitRoot(): string | undefined {
   const result = childProcess.spawnSync("git", [
     "rev-parse",
     "--show-toplevel",
