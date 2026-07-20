@@ -55,6 +55,10 @@ DZ Review (\`dz-review\`): Markdown review syntax scanner and helper CLI.
 - Rerun \`session start --force [file...]\` only when intentionally replacing the active snapshot.
 - For passage references, use \`dz-review ref check [file...]\` to validate links, \`dz-review ref list [file...]\` to inspect referenced passages, \`dz-review ref show [file...]\` to print source-replaceable refs with snapshots, and \`dz-review ref snapshots [--ref <selector>] [file...]\` to print only selected snapshot blocks by label, source location, or target location.
 - Reply by editing the Markdown thread: append a new \`@agent\` message and preserve unresolved history until human validation.
+- Conversation statuses: \`handled\` means a \`@me\` message awaits agent action; \`open\` means the last message is from \`@agent\`, awaiting human validation; \`resolved\` means the human approved with \`ok\`. Always follow the \`suggested action\` column from \`agent status\`.
+- After \`agent clean --validated\`, the cleaned items are recorded in the session snapshot so \`session done\` won't flag them as missing.
+- If a conversation was deleted outside \`agent clean\` (e.g. manual edit), use \`session done --acknowledge <id>\` to dismiss the guardrail for that item.
+- Never include \`<!--\` or \`-->\` inside a reply message; these corrupt the enclosing HTML comment block. Use plain text references instead, e.g. \`(source: file:line)\`.
 - Help: \`dz-review --help\`.
 `.trim();
 

@@ -1251,6 +1251,35 @@ Deno.test("dz-review me status - keeps empty state concise", async () => {
   }
 });
 
+Deno.test("dz-review agent done - tolerates whitespace normalization in first message body", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  const NNBSP = "\u202F";
+  await Deno.writeTextFile(
+    file,
+    `<!-- @agent%2026-06-16T17:35:35+02:00 Question${NNBSP}? -->\n`,
+  );
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    // Simulate deno fmt normalizing U+202F to regular space
+    const text = await Deno.readTextFile(file);
+    await Deno.writeTextFile(
+      file,
+      text.replace(NNBSP, " "),
+    );
+
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "done", "file.md"]))
+    );
+    assertStringIncludes(output, "guardrail failures: 0");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent done - fails on guardrail violations", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -1442,6 +1471,41 @@ Deno.test("dz-review agent respond - appends an agent reply by stable id", async
   }
 });
 
+Deno.test("dz-review agent respond - rejects reply containing HTML comment markers", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+
+    await assertRejects(
+      () =>
+        withCwd(
+          dir,
+          () =>
+            main([
+              "agent",
+              "respond",
+              id,
+              "--message",
+              "See <!-- ref: file:1 --> for details.",
+            ]),
+        ),
+      Error,
+      "HTML comment",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent apply - replaces an annotation by stable id", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
@@ -1467,6 +1531,34 @@ Deno.test("dz-review agent apply - replaces an annotation by stable id", async (
 
     assertStringIncludes(output, "applied");
     assertEquals(updated, "Use new wording.\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent clean --validated - rejects file path argument", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "<!-- @agent%2026-06-16T17:35:35+02:00 Done? @me%2026-06-16T17:35:35+02:00 ok -->\n",
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const id = startOutput.match(/id: ([0-9A-Za-z]+)/)?.[1] ?? "";
+
+    await assertRejects(
+      () =>
+        withCwd(
+          dir,
+          () => main(["agent", "clean", id, "--validated", "file.md"]),
+        ),
+      Error,
+      "looks like a file path",
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -1523,7 +1615,115 @@ Deno.test("dz-review agent clean --validated - removes resolved conversations", 
     const updated = await Deno.readTextFile(file);
 
     assertStringIncludes(output, "cleaned 1 conversation");
-    assertEquals(updated, "Text\n\n");
+    assertEquals(updated, "Text\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent done - passes after agent clean removes a conversation", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->",
+      "<!-- @agent%2026-06-16T17:35:36+02:00 Done? @me%2026-06-16T17:36:35+02:00 ok -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const ids = [...startOutput.matchAll(/id: ([0-9A-Za-z]+)/g)].map((m) =>
+      m[1]
+    );
+    assertEquals(ids.length, 2);
+    const resolvedId = ids[1];
+
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "clean", resolvedId, "--validated"]))
+    );
+
+    const result = await runDzReview(dir, ["agent", "done", "file.md"], "");
+    assertEquals(result.success, true);
+    assertStringIncludes(result.stdout, "guardrail failures: 0");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent done --acknowledge - passes for manually deleted conversation", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Question? -->",
+      "<!-- @agent%2026-06-16T17:35:36+02:00 Resolved @me%2026-06-16T17:36:35+02:00 ok -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    const startOutput = await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+    const ids = [...startOutput.matchAll(/id: ([0-9A-Za-z]+)/g)].map((m) =>
+      m[1]
+    );
+    const resolvedId = ids[1];
+
+    // Delete conversation manually (not via agent clean)
+    const text = await Deno.readTextFile(file);
+    await Deno.writeTextFile(
+      file,
+      text.replace(
+        /<!-- @agent%2026-06-16T17:35:36\+02:00 Resolved[^\n]*\n/,
+        "",
+      ),
+    );
+
+    const result = await runDzReview(
+      dir,
+      ["agent", "done", "--acknowledge", resolvedId, "file.md"],
+      "",
+    );
+    assertEquals(result.success, true);
+    assertStringIncludes(result.stdout, "guardrail failures: 0");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review agent done - still fails when conversation deleted without agent clean", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    [
+      "Text",
+      "<!-- @agent%2026-06-16T17:35:35+02:00 Done? @me%2026-06-16T17:36:35+02:00 ok -->",
+      "",
+    ].join("\n"),
+  );
+
+  try {
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "start", "file.md"]))
+    );
+
+    // Delete conversation by hand, bypassing agent clean
+    await Deno.writeTextFile(file, "Text\n");
+
+    const result = await runDzReview(dir, ["agent", "done", "file.md"], "");
+    assertEquals(result.success, false);
+    assertStringIncludes(
+      result.stdout,
+      "started conversation missing",
+    );
   } finally {
     await Deno.remove(dir, { recursive: true });
   }

@@ -20,6 +20,7 @@ import {
   applyAgentReviewItem,
   cleanAgentReviewItems,
   collectLocatedReviewItems,
+  dismissSnapshotItems,
   finishAgentSession,
   formatStableReviewItemIdForDisplay,
   getAgentActionDiff,
@@ -231,6 +232,11 @@ interface AgentMessageCliffyOptions {
 
 interface AgentApplyCliffyOptions extends AgentMessageCliffyOptions {
   replace?: string;
+}
+
+interface AgentDoneCliffyOptions {
+  json?: boolean;
+  acknowledge?: string[];
 }
 
 interface AgentCleanCliffyOptions {
@@ -1011,10 +1017,17 @@ function createAgentDoneCommand() {
   return new Command()
     .description("Compare against the agent snapshot and print a handoff")
     .option("--json", "Print structured JSON.")
+    .option(
+      "--acknowledge <ids:string>",
+      "Dismiss guardrail for manually verified item IDs (comma-separated).",
+      { collect: true },
+    )
     .arguments("[files...:string]")
-    .action(async (options: AgentCliffyOptions, ...files: string[]) => {
-      await runAgentDone(files, Boolean(options.json));
-    });
+    .action(
+      async (options: AgentDoneCliffyOptions, ...files: string[]) => {
+        await runAgentDone(files, options);
+      },
+    );
 }
 
 function createAgentListCommand() {
@@ -2333,11 +2346,20 @@ async function runAgentAddFile(
   );
 }
 
-async function runAgentDone(files: string[], json: boolean): Promise<void> {
+async function runAgentDone(
+  files: string[],
+  options: AgentDoneCliffyOptions,
+): Promise<void> {
+  if (options.acknowledge && options.acknowledge.length > 0) {
+    const snapshot = readAgentSnapshot();
+    const ids = options.acknowledge.flatMap((raw) => raw.split(","));
+    dismissSnapshotItems(snapshot, ids);
+  }
+
   const handoff = await finishAgentSession(files);
 
   process.stdout.write(
-    json
+    options.json
       ? `${JSON.stringify(handoff, null, 2)}\n`
       : formatAgentHandoff(handoff),
   );

@@ -81,6 +81,7 @@ export interface AgentSessionSnapshot {
   cwd: string;
   files: AgentFileSnapshot[];
   items: AgentReviewItem[];
+  dismissedItemIds?: string[];
 }
 
 export interface AgentReviewState {
@@ -187,6 +188,7 @@ const AgentSessionSnapshotSchema = z.object({
   cwd: z.string(),
   files: z.array(AgentFileSnapshotSchema),
   items: z.array(AgentReviewItemSchema),
+  dismissedItemIds: z.optional(z.array(z.string())),
 });
 
 export async function startAgentSession(
@@ -408,6 +410,14 @@ export async function respondToAgentReviewItem(
   files: string[],
   message: string,
 ): Promise<AgentActionResult> {
+  if (/<!--|-->/.test(message)) {
+    throw new Error(
+      "reply contains HTML comment markers (<!-- or -->); " +
+        "these nest inside the conversation block and corrupt it after formatting. " +
+        "Use plain text references instead, e.g. (source: file:line).",
+    );
+  }
+
   const snapshot = readAgentSnapshot();
   const located = await resolveAgentLocatedReviewItem(snapshot, files, id);
   if (!isAgentConversationItem(located.item)) {
@@ -465,6 +475,15 @@ export async function cleanAgentReviewItems(
   const allItems = await collectAgentLocatedReviewItems(targetFiles);
   const targets: LocatedReviewItem[] = [];
   if (ids.length > 0) {
+    for (const id of ids) {
+      if (id.includes(".") || id.includes("/")) {
+        throw new Error(
+          `"${id}" looks like a file path, not a review item ID. ` +
+            "agent clean takes conversation IDs only; " +
+            "it operates on all session files automatically.",
+        );
+      }
+    }
     // Sequential, not Promise.all: resolveAgentLocatedReviewItem ->
     // assignPersistentReviewItemIds does a read-modify-write of
     // reference-map.json, which is not safe to run concurrently.
@@ -498,6 +517,10 @@ export async function cleanAgentReviewItems(
 
   if (!dryRun) {
     writeDeletedReviewItems(targets);
+    dismissSnapshotItems(
+      snapshot,
+      targets.map((target) => target.id),
+    );
   }
 
   return {
@@ -771,6 +794,39 @@ function writeAgentSnapshot(snapshot: AgentSessionSnapshot): void {
   );
 }
 
+export function dismissSnapshotItems(
+  snapshot: AgentSessionSnapshot,
+  ids: string[],
+): void {
+  const existing = new Set(snapshot.dismissedItemIds ?? []);
+  const allSnapshotIds = snapshot.items.map((item) => item.id);
+  for (const id of ids) {
+    existing.add(resolveSnapshotItemId(id, allSnapshotIds));
+  }
+  snapshot.dismissedItemIds = [...existing];
+  writeAgentSnapshot(snapshot);
+}
+
+function resolveSnapshotItemId(
+  input: string,
+  allIds: readonly string[],
+): string {
+  const normalized = input.toLowerCase();
+  const matches = allIds.filter((id) => {
+    const canonical = id.toLowerCase();
+    const display = formatStableReviewItemIdForDisplay(id, allIds)
+      .toLowerCase();
+    return canonical === normalized ||
+      display === normalized ||
+      canonical.startsWith(normalized) ||
+      display.startsWith(normalized);
+  });
+  if (matches.length === 1) {
+    return matches[0];
+  }
+  return input;
+}
+
 async function agentStatusFromState(
   snapshot: AgentSessionSnapshot,
   state: AgentReviewState,
@@ -847,6 +903,27 @@ function isAgentConversationItem(item: ReviewItem): boolean {
   return item.kind === "conversation";
 }
 
+// Collapse Unicode whitespace variants (U+202F thin non-breaking space from
+// deno fmt, etc.) to ASCII space for guardrail comparison.
+function normalizeGuardrailBody(body: string): string {
+  return body.replace(/\s+/g, " ").trim();
+}
+
+function deleteReviewItemWithWhitespace(
+  text: string,
+  item: Pick<ReviewItem, "start" | "end">,
+): string {
+  let { start, end } = item;
+  // Consume the preceding newline if the item starts on its own line
+  if (start > 0 && text[start - 1] === "\n") {
+    start -= 1;
+  } else if (end < text.length && text[end] === "\n") {
+    // Otherwise consume the trailing newline
+    end += 1;
+  }
+  return text.slice(0, start) + text.slice(end);
+}
+
 function replaceReviewItemRaw(
   text: string,
   item: Pick<ReviewItem, "start" | "end">,
@@ -919,7 +996,7 @@ function writeDeletedReviewItems(targets: LocatedReviewItem[]): void {
         right.item.start - left.item.start
       )
     ) {
-      text = replaceReviewItemRaw(text, target.item, "");
+      text = deleteReviewItemWithWhitespace(text, target.item);
     }
     fs.writeFileSync(file, text, "utf8");
   }
@@ -961,9 +1038,13 @@ async function collectAgentGuardrailFailures(
   const failures: AgentGuardrailFailure[] = [];
   const startedItems = new Map(snapshot.items.map((item) => [item.id, item]));
   const currentItems = new Map(state.items.map((item) => [item.id, item]));
+  const dismissed = new Set(snapshot.dismissedItemIds ?? []);
 
   for (const item of snapshot.items) {
-    if (item.kind === "conversation" && !currentItems.has(item.id)) {
+    if (
+      item.kind === "conversation" && !currentItems.has(item.id) &&
+      !dismissed.has(item.id)
+    ) {
       failures.push({
         id: item.id,
         file: item.file,
@@ -1035,7 +1116,8 @@ async function collectAgentGuardrailFailures(
       if (
         firstStarted && firstCurrent &&
         (firstStarted.author !== firstCurrent.marker ||
-          firstStarted.body !== firstCurrent.body)
+          normalizeGuardrailBody(firstStarted.body) !==
+            normalizeGuardrailBody(firstCurrent.body))
       ) {
         failures.push({
           id,
