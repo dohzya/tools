@@ -17,16 +17,18 @@ import {
   CONFIDENT_THRESHOLD,
   ResolveReferenceUseCase,
 } from "./resolve-reference.ts";
+import { GenerateReferenceUseCase } from "./generate-reference.ts";
 import type { ResolveResult } from "../entities/mrfi.ts";
 import { ParseDocumentUseCase } from "./parse-document.ts";
 import type { HashService } from "../ports/hash-service.ts";
-import { serializeSmh64Field } from "./mrfi-codec.ts";
+import { parseDebugMrfi, serializeSmh64Field } from "./mrfi-codec.ts";
 import {
   DEFAULT_SMH64_MAX_DISTANCE,
   hammingDistance64,
   sha256PrefixSignal,
   smh64Value,
 } from "./mrfi-text.ts";
+import { CommonmarkBlockTreeParser } from "../../adapters/services/commonmark-block-tree-parser.ts";
 
 class MockHashService implements HashService {
   async hash(
@@ -45,7 +47,12 @@ class MockHashService implements HashService {
 }
 
 const parseDocument = new ParseDocumentUseCase(new MockHashService());
-const resolveReference = new ResolveReferenceUseCase();
+const resolveReference = new ResolveReferenceUseCase(
+  new CommonmarkBlockTreeParser(),
+);
+const generateReference = new GenerateReferenceUseCase(
+  new CommonmarkBlockTreeParser(),
+);
 
 Deno.test("CONFIDENCE.EXACT is the maximum possible confidence, per spec", () => {
   assertEquals(CONFIDENCE.EXACT, 1);
@@ -813,4 +820,86 @@ Deno.test("ctx suffix-only: passage near SOF shorter than candidateLength", asyn
     result.passage !== undefined && result.passage.length > 0,
     "passage should be non-empty",
   );
+});
+
+Deno.test("resolveStructuralPathReference: resolves a multi-level heading + paragraph path", async () => {
+  const content = [
+    "# Root",
+    "",
+    "## Section",
+    "",
+    "First para.",
+    "",
+    "Second para.",
+  ].join("\n");
+  const doc = await parseDocument.execute({ content });
+  const line = content.split("\n").findIndex((l) => l === "Second para.") + 1;
+  const generatedRef = await generateReference.execute({
+    doc,
+    target: {
+      kind: "range",
+      range: {
+        startLine: line,
+        startColumn: 1,
+        endLine: line,
+        endColumn: "Second para.".length + 1,
+      },
+    },
+    format: "debug",
+    profile: "full",
+    quote: false,
+    quoteMax: 0,
+  });
+  const path = parseDebugMrfi(generatedRef)?.structuralPath;
+  assertEquals(path, "h1[1]/h2[1]/p[2]");
+
+  const result = await resolveReference.execute({
+    doc,
+    ref: `~{v0;p=${path}}`,
+  });
+  assertEquals(result.status, "confident");
+  assertEquals(result.passage, "Second para.");
+});
+
+Deno.test("resolveStructuralPathReference: resolves a container (ul/li) path", async () => {
+  const content = ["# Section", "", "- item one", "- item two"].join("\n");
+  const doc = await parseDocument.execute({ content });
+  const line = content.split("\n").findIndex((l) => l === "- item two") + 1;
+  const generatedRef = await generateReference.execute({
+    doc,
+    target: {
+      kind: "range",
+      range: {
+        startLine: line,
+        startColumn: 3,
+        endLine: line,
+        endColumn: "- item two".length + 1,
+      },
+    },
+    format: "debug",
+    profile: "full",
+    quote: false,
+    quoteMax: 0,
+  });
+  const path = parseDebugMrfi(generatedRef)?.structuralPath;
+  assertEquals(path, "h1[1]/ul[1]/li[2]/p[1]");
+
+  const result = await resolveReference.execute({
+    doc,
+    ref: `~{v0;p=${path}}`,
+  });
+  assertEquals(result.status, "confident");
+  assertEquals(result.passage, "item two");
+});
+
+Deno.test("resolveStructuralPathReference: tolerates a legacy trailing chars: segment by stripping it", async () => {
+  const content = ["# Section", "", "- item one", "- item two"].join("\n");
+  const doc = await parseDocument.execute({ content });
+
+  const result = await resolveReference.execute({
+    doc,
+    ref: `~{v0;p=h1[1]/ul[1]/li[2]/p[1]/chars:0-8}`,
+  });
+  assertEquals(result.status, "confident");
+  assertEquals(result.passage, "item two");
 });

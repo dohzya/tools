@@ -7,10 +7,9 @@
  *
  * Unlike worklog's MarkdownSurgeonAdapter (which needs HashService/
  * YamlService injected for document parsing + frontmatter handling), these
- * MRFI use cases take no constructor dependencies — MRFI's own hashing
+ * MRFI use cases only need a BlockTreeParser — MRFI's own hashing
  * (smh64 / SHA-256 fragment signals) runs directly through
- * `crypto.subtle`, not an injected HashService. This adapter therefore
- * needs no constructor arguments either.
+ * `crypto.subtle`, not an injected HashService.
  */
 
 import type {
@@ -26,11 +25,19 @@ import type {
 import { GenerateReferenceUseCase } from "../../../markdown-surgeon/domain/use-cases/generate-reference.ts";
 import { ResolveReferenceUseCase } from "../../../markdown-surgeon/domain/use-cases/resolve-reference.ts";
 import { RefreshReferenceUseCase } from "../../../markdown-surgeon/domain/use-cases/refresh-reference.ts";
+import { CommonmarkBlockTreeParser } from "../../../markdown-surgeon/adapters/services/commonmark-block-tree-parser.ts";
 
 export class MrfiAdapter implements ReferenceLocatorService {
-  private readonly generateReferenceUC = new GenerateReferenceUseCase();
-  private readonly resolveReferenceUC = new ResolveReferenceUseCase();
-  private readonly refreshReferenceUC = new RefreshReferenceUseCase();
+  private readonly blockTreeParser = new CommonmarkBlockTreeParser();
+  private readonly generateReferenceUC = new GenerateReferenceUseCase(
+    this.blockTreeParser,
+  );
+  private readonly resolveReferenceUC = new ResolveReferenceUseCase(
+    this.blockTreeParser,
+  );
+  private readonly refreshReferenceUC = new RefreshReferenceUseCase(
+    this.blockTreeParser,
+  );
 
   async generateReference(
     doc: Document,

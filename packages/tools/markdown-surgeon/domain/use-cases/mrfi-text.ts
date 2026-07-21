@@ -258,6 +258,24 @@ export function findSectionContainingLine(
   );
 }
 
+/**
+ * Section-tree parent of `section`: the nearest preceding heading of a
+ * lower level, regardless of the flat CommonMark block tree (per
+ * docs/specs/mrfi.md's section-tree model — an `h2` nests inside the
+ * nearest preceding `h1` even though the parser sees them as siblings).
+ */
+export function findParentSection(
+  doc: Document,
+  section: Section,
+): Section | undefined {
+  let parent: Section | undefined;
+  for (const candidate of doc.sections) {
+    if (candidate.line >= section.line) break;
+    if (candidate.level < section.level) parent = candidate;
+  }
+  return parent;
+}
+
 export function getRangeText(doc: Document, range: SourceRange): string {
   const lines = doc.lines.slice(range.startLine - 1, range.endLine);
   if (lines.length === 0) return "";

@@ -4,6 +4,7 @@ import { MdError } from "../entities/document.ts";
 import { ParseDocumentUseCase } from "./parse-document.ts";
 import { GenerateReferenceUseCase } from "./generate-reference.ts";
 import { parseDebugMrfi } from "./mrfi-codec.ts";
+import { CommonmarkBlockTreeParser } from "../../adapters/services/commonmark-block-tree-parser.ts";
 
 class MockHashService implements HashService {
   async hash(
@@ -22,7 +23,30 @@ class MockHashService implements HashService {
 }
 
 const parseDocument = new ParseDocumentUseCase(new MockHashService());
-const generateReference = new GenerateReferenceUseCase();
+const generateReference = new GenerateReferenceUseCase(
+  new CommonmarkBlockTreeParser(),
+);
+
+async function structuralPathFor(
+  content: string,
+  range: {
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+  },
+): Promise<string | undefined> {
+  const doc = await parseDocument.execute({ content });
+  const ref = await generateReference.execute({
+    doc,
+    target: { kind: "range", range },
+    format: "debug",
+    profile: "full",
+    quote: false,
+    quoteMax: 0,
+  });
+  return parseDebugMrfi(ref)?.structuralPath;
+}
 
 Deno.test("scope reference includes x field in debug output", async () => {
   const doc = await parseDocument.execute({
@@ -170,4 +194,150 @@ Deno.test("no extentSelector means no x field in output", async () => {
   });
   const parsed = parseDebugMrfi(ref);
   assertEquals(parsed?.extentSelector, undefined);
+});
+
+Deno.test("structural path: h2 nests under its preceding h1 with per-parent occurrence", async () => {
+  const content = [
+    "# Root",
+    "",
+    "## Alpha",
+    "",
+    "Alpha para.",
+    "",
+    "## Beta",
+    "",
+    "Beta para.",
+  ].join("\n");
+  const line = content.split("\n").findIndex((l) => l === "Beta para.") + 1;
+  const path = await structuralPathFor(content, {
+    startLine: line,
+    startColumn: 1,
+    endLine: line,
+    endColumn: "Beta para.".length + 1,
+  });
+  // Beta is the second h2 under Root (h1[1]), not the second h2 in the doc overall.
+  assertEquals(path?.startsWith("h1[1]/h2[2]/"), true);
+});
+
+Deno.test("structural path: h2 occurrence resets under each h1 parent", async () => {
+  const content = [
+    "# First",
+    "",
+    "## Shared",
+    "",
+    "First/Shared para.",
+    "",
+    "# Second",
+    "",
+    "## Shared",
+    "",
+    "Second/Shared para.",
+  ].join("\n");
+  const lines = content.split("\n");
+  const firstLine = lines.findIndex((l) => l === "First/Shared para.") + 1;
+  const secondLine = lines.findIndex((l) => l === "Second/Shared para.") + 1;
+
+  const firstPath = await structuralPathFor(content, {
+    startLine: firstLine,
+    startColumn: 1,
+    endLine: firstLine,
+    endColumn: "First/Shared para.".length + 1,
+  });
+  const secondPath = await structuralPathFor(content, {
+    startLine: secondLine,
+    startColumn: 1,
+    endLine: secondLine,
+    endColumn: "Second/Shared para.".length + 1,
+  });
+
+  // Both h2s are the *first* h2 under their own h1 parent: occurrence resets.
+  assertEquals(firstPath?.startsWith("h1[1]/h2[1]/"), true);
+  assertEquals(secondPath?.startsWith("h1[2]/h2[1]/"), true);
+});
+
+Deno.test("structural path: includes a paragraph container step within a section", async () => {
+  const content = [
+    "# Root",
+    "",
+    "## Section",
+    "",
+    "First para.",
+    "",
+    "Second para.",
+  ].join("\n");
+  const line = content.split("\n").findIndex((l) => l === "Second para.") + 1;
+  const path = await structuralPathFor(content, {
+    startLine: line,
+    startColumn: 1,
+    endLine: line,
+    endColumn: "Second para.".length + 1,
+  });
+  assertEquals(path, "h1[1]/h2[1]/p[2]");
+});
+
+Deno.test("structural path: includes list container steps (ul/li) nested inside a section", async () => {
+  const content = [
+    "# Section",
+    "",
+    "- item one",
+    "- item two",
+  ].join("\n");
+  const line = content.split("\n").findIndex((l) => l === "- item two") + 1;
+  const path = await structuralPathFor(content, {
+    startLine: line,
+    startColumn: 3,
+    endLine: line,
+    endColumn: "- item two".length + 1,
+  });
+  assertEquals(path, "h1[1]/ul[1]/li[2]/p[1]");
+});
+
+Deno.test("structural path: falls back to the heading chain when the range spans multiple top-level blocks in a section", async () => {
+  const content = [
+    "# Section",
+    "",
+    "First para.",
+    "",
+    "Second para.",
+  ].join("\n");
+  const path = await structuralPathFor(content, {
+    startLine: 3,
+    startColumn: 1,
+    endLine: 5,
+    endColumn: "Second para.".length + 1,
+  });
+  assertEquals(path, "h1[1]");
+});
+
+Deno.test("structural path: omitted when neither a section nor a block identifies the range", async () => {
+  const content = ["Preface one.", "", "Preface two."].join("\n");
+  const path = await structuralPathFor(content, {
+    startLine: 1,
+    startColumn: 1,
+    endLine: 3,
+    endColumn: "Preface two.".length + 1,
+  });
+  assertEquals(path, undefined);
+});
+
+Deno.test("structural path: whole-section range is just the heading chain, no block step", async () => {
+  const content = ["# Root", "", "## Section", "", "Only para."].join("\n");
+  const path = await structuralPathFor(content, {
+    startLine: 3,
+    startColumn: 1,
+    endLine: 5,
+    endColumn: "Only para.".length + 1,
+  });
+  assertEquals(path, "h1[1]/h2[1]");
+});
+
+Deno.test("structural path: block steps only (no heading prefix) before the first heading", async () => {
+  const content = ["Preface para.", "", "# Root", "", "Content."].join("\n");
+  const path = await structuralPathFor(content, {
+    startLine: 1,
+    startColumn: 1,
+    endLine: 1,
+    endColumn: "Preface para.".length + 1,
+  });
+  assertEquals(path, "p[1]");
 });

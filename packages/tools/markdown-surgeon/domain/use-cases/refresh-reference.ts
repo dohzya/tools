@@ -21,6 +21,7 @@ import type {
   MrfiProfile,
   RefreshReferenceOutput,
 } from "../entities/mrfi.ts";
+import type { BlockTreeParser } from "../ports/block-tree-parser.ts";
 import { ResolveReferenceUseCase } from "./resolve-reference.ts";
 import { GenerateReferenceUseCase } from "./generate-reference.ts";
 import { parseMrfiRange } from "./mrfi-codec.ts";
@@ -48,10 +49,10 @@ export class RefreshReferenceUseCase {
   private readonly resolveReference: ResolveReferenceUseCase;
   private readonly generateReference: GenerateReferenceUseCase;
 
-  /** Create a RefreshReferenceUseCase */
-  constructor() {
-    this.resolveReference = new ResolveReferenceUseCase();
-    this.generateReference = new GenerateReferenceUseCase();
+  /** Create a RefreshReferenceUseCase with the given block-tree parser */
+  constructor(blockTreeParser: BlockTreeParser) {
+    this.resolveReference = new ResolveReferenceUseCase(blockTreeParser);
+    this.generateReference = new GenerateReferenceUseCase(blockTreeParser);
   }
 
   /** Resolve the reference and, if confidently placed, regenerate it for the current range */

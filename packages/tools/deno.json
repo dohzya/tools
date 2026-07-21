@@ -25,6 +25,7 @@
     "@std/fs": "jsr:@std/fs@^1.0.0",
     "@std/yaml": "jsr:@std/yaml@^1.0.5",
     "@zod/zod": "jsr:@zod/zod@^4.3.6",
+    "commonmark": "npm:commonmark@^0.31.2",
     "@cliffy/command": "jsr:@cliffy/command@1.0.0-rc.8",
     "@cliffy/command/completions": "jsr:@cliffy/command@1.0.0-rc.8/completions",
     "@cliffy/prompt/select": "jsr:@cliffy/prompt@1.0.0-rc.8/select",

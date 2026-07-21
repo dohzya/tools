@@ -16,6 +16,7 @@ import type {
 } from "../../domain/entities/mrfi.ts";
 import type { HashService } from "../../domain/ports/hash-service.ts";
 import type { YamlService } from "../../domain/ports/yaml-service.ts";
+import type { BlockTreeParser } from "../../domain/ports/block-tree-parser.ts";
 import { ParseDocumentUseCase } from "../../domain/use-cases/parse-document.ts";
 import { ReadSectionUseCase } from "../../domain/use-cases/read-section.ts";
 import { WriteSectionUseCase } from "../../domain/use-cases/write-section.ts";
@@ -450,6 +451,7 @@ function parseMetaOption(value: string): [string, string] {
 export interface CommandDeps {
   hashService: HashService;
   yamlService: YamlService;
+  blockTreeParser: BlockTreeParser;
 }
 
 // ============================================================================
@@ -457,7 +459,7 @@ export interface CommandDeps {
 // ============================================================================
 
 export function createCommands(deps: CommandDeps) {
-  const { hashService, yamlService } = deps;
+  const { hashService, yamlService, blockTreeParser } = deps;
 
   // Instantiate use cases
   const parseDocument = new ParseDocumentUseCase(hashService);
@@ -467,9 +469,9 @@ export function createCommands(deps: CommandDeps) {
   const removeSection = new RemoveSectionUseCase();
   const searchUseCase = new SearchUseCase();
   const manageFrontmatter = new ManageFrontmatterUseCase(yamlService);
-  const resolveReference = new ResolveReferenceUseCase();
+  const resolveReference = new ResolveReferenceUseCase(blockTreeParser);
   const mutateRange = new MutateRangeUseCase();
-  const generateReference = new GenerateReferenceUseCase();
+  const generateReference = new GenerateReferenceUseCase(blockTreeParser);
   const transformReference = new TransformReferenceUseCase();
 
   // ========================================================================

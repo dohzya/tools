@@ -814,7 +814,7 @@ Deno.test("md resolve - uses fh to recover min-profile multi-line passages", asy
   }
 });
 
-Deno.test("md resolve - uses comparison-view structural path offsets", async () => {
+Deno.test("md resolve - p recovers a whole paragraph block after in-place whitespace edits", async () => {
   const originalFile = await createTempFile(
     ["# Section", "", "Foo   bar", "end"].join("\n"),
   );
@@ -823,7 +823,7 @@ Deno.test("md resolve - uses comparison-view structural path offsets", async () 
   );
   try {
     const generatedRef = await captureOutput(() =>
-      main(["ref", originalFile, "3:1-3:10", "--format", "debug"])
+      main(["ref", originalFile, "3:1-4:4", "--format", "debug"])
     );
     const path = generatedRef.match(/;p=([^;]+);/)?.[1];
     if (path === undefined) {
@@ -836,12 +836,10 @@ Deno.test("md resolve - uses comparison-view structural path offsets", async () 
     );
 
     assertStringIncludes(output, `${ref} confident`);
-    assertStringIncludes(output, "3:1-3:8");
+    assertStringIncludes(output, "3:1-4:4");
     assertStringIncludes(output, "structural path match");
     assertStringIncludes(output, "    Foo bar");
-    assertEquals(output.includes("L3-L4"), false);
-    assertEquals(output.includes("    e"), false);
-    assertEquals(output.includes("end"), false);
+    assertStringIncludes(output, "    end");
   } finally {
     await Deno.remove(originalFile);
     await Deno.remove(editedFile);
@@ -1112,7 +1110,7 @@ Deno.test("md ref --format debug - generates a debug MRFI reference from a line-
 
     assertEquals(output.startsWith("~{v0;r=3:1-3:18;"), true);
     assertStringIncludes(output, "a=install_sdk");
-    assertStringIncludes(output, "p=h1[1]/chars:");
+    assertStringIncludes(output, "p=h1[1]/p[1]");
     assertStringIncludes(output, "fh=xxh64:");
     assertStringIncludes(output, "hh=smh64:");
     assertStringIncludes(output, "ctx=pre:");
@@ -1158,7 +1156,7 @@ Deno.test("md ref --profile full - generates all supported locator fields", asyn
     );
 
     assertStringIncludes(output, "o=");
-    assertStringIncludes(output, "p=h1[1]/chars:");
+    assertStringIncludes(output, "p=h1[1]/p[1]");
     assertStringIncludes(output, "fh=xxh64:");
     assertStringIncludes(output, "ph=smh64:");
     assertStringIncludes(output, "ctx=pre:");

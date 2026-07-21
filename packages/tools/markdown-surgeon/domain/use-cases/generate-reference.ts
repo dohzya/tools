@@ -21,12 +21,11 @@ import type {
   MrfiProfile,
   SourceRange,
 } from "../entities/mrfi.ts";
+import type { BlockStep, BlockTreeParser } from "../ports/block-tree-parser.ts";
 import { formatMrfi } from "./mrfi-codec.ts";
 import {
-  buildComparisonMap,
-  comparisonIndexForSourceEnd,
-  comparisonIndexForSourceStart,
   findFirstSectionAnchor,
+  findParentSection,
   findSectionContainingLine,
   getLineEndColumn,
   getOffsetRange,
@@ -65,6 +64,9 @@ export interface GenerateReferenceInput {
 
 /** Builds a fresh MRFI reference for a range or section of a document */
 export class GenerateReferenceUseCase {
+  /** Create a GenerateReferenceUseCase with the given block-tree parser */
+  constructor(private readonly blockTreeParser: BlockTreeParser) {}
+
   /** Generate the reference in the requested format/profile */
   async execute(input: GenerateReferenceInput): Promise<string> {
     const { doc, target, format, profile, quote, quoteMax, extentSelector } =
@@ -76,7 +78,15 @@ export class GenerateReferenceUseCase {
       );
     }
     return target.kind === "range"
-      ? await makeRangeMrfi(doc, target.range, format, profile, quote, quoteMax)
+      ? await makeRangeMrfi(
+        doc,
+        target.range,
+        format,
+        profile,
+        quote,
+        quoteMax,
+        this.blockTreeParser,
+      )
       : await makeSectionMrfi(
         doc,
         target.section,
@@ -84,6 +94,7 @@ export class GenerateReferenceUseCase {
         profile,
         quote,
         quoteMax,
+        this.blockTreeParser,
         extentSelector,
       );
   }
@@ -96,6 +107,7 @@ async function makeSectionMrfi(
   profile: MrfiProfile,
   includeQuote: boolean,
   quoteMax: number,
+  blockTreeParser: BlockTreeParser,
   extentSelector?: "sec" | "body" | "lead",
 ): Promise<string> {
   const evidenceRange = extentSelector
@@ -117,6 +129,7 @@ async function makeSectionMrfi(
   const parsed = await buildMrfiForRange(
     doc,
     evidenceRange,
+    blockTreeParser,
     includeQuote ? truncateQuote(section.title, quoteMax) : undefined,
   );
   let withExtent: DebugMrfi;
@@ -136,18 +149,6 @@ async function makeSectionMrfi(
   return await formatMrfi(applyMrfiProfile(withExtent, profile), format);
 }
 
-function findParentSection(
-  doc: Document,
-  section: Section,
-): Section | undefined {
-  let parent: Section | undefined;
-  for (const s of doc.sections) {
-    if (s.line >= section.line) break;
-    if (s.level < section.level) parent = s;
-  }
-  return parent;
-}
-
 async function makeRangeMrfi(
   doc: Document,
   range: SourceRange,
@@ -155,12 +156,14 @@ async function makeRangeMrfi(
   profile: MrfiProfile,
   includeQuote: boolean,
   quoteMax: number,
+  blockTreeParser: BlockTreeParser,
 ): Promise<string> {
   validateSourceRangeInDocument(doc, range);
   const selectedText = getRangeText(doc, range);
   const parsed = await buildMrfiForRange(
     doc,
     range,
+    blockTreeParser,
     includeQuote ? truncateQuote(selectedText.trim(), quoteMax) : undefined,
   );
   return await formatMrfi(applyMrfiProfile(parsed, profile), format);
@@ -217,6 +220,7 @@ function truncateQuote(value: string, maxLength: number): string {
 async function buildMrfiForRange(
   doc: Document,
   range: SourceRange,
+  blockTreeParser: BlockTreeParser,
   quote?: string,
 ): Promise<DebugMrfi> {
   const selectedText = getRangeText(doc, range);
@@ -228,7 +232,12 @@ async function buildMrfiForRange(
   return {
     range,
     offsetRange,
-    structuralPath: getStructuralPath(doc, section, offsetRange),
+    structuralPath: getStructuralPath(
+      doc,
+      section,
+      offsetRange,
+      blockTreeParser,
+    ),
     exactHash: xxh64PrefixSignal(selectedText),
     headingHash: {
       hash: await smh64Value(scopeText),
@@ -276,34 +285,78 @@ function validateSourceRangeInDocument(
   }
 }
 
+/**
+ * `p` is a purely structural locator (docs/specs/mrfi.md: "ordered node
+ * steps with sibling indices") — sub-block precision belongs to `r`/`o`,
+ * not to `p`. Returns undefined when no single block or heading fully
+ * identifies the range (e.g. it spans multiple top-level blocks): a
+ * document-root-only path would carry no structural evidence.
+ */
 function getStructuralPath(
   doc: Document,
   section: Section | undefined,
   offsetRange: { start: number; end: number },
-): string {
+  blockTreeParser: BlockTreeParser,
+): string | undefined {
   const source = doc.lines.join("\n");
   const node = getStructuralNodeSourceForSection(doc, section, source);
-  const comparisonMap = buildComparisonMap(node.text);
   const relativeStart = offsetRange.start - node.startOffset;
   const relativeEnd = offsetRange.end - node.startOffset;
-  const comparisonStart = comparisonIndexForSourceStart(
-    comparisonMap,
+
+  const blockSteps = blockTreeParser.stepsForRange(
+    node.text,
     relativeStart,
-  );
-  const comparisonEnd = comparisonIndexForSourceEnd(
-    comparisonMap,
     relativeEnd,
   );
 
-  if (!section) {
-    return `doc/chars:${comparisonStart}-${comparisonEnd}`;
-  }
+  const segments = [
+    ...(section ? [formatHeadingAncestry(doc, section)] : []),
+    ...blockSteps.map(formatBlockStep),
+  ];
+  return segments.length > 0 ? segments.join("/") : undefined;
+}
 
-  const sectionOccurrence = doc.sections
+function formatBlockStep(step: BlockStep): string {
+  return `${step.kind}[${step.occurrence}]`;
+}
+
+/** Section-tree ancestry chain from the outermost ancestor down to `section` (inclusive) */
+function headingAncestryChain(
+  doc: Document,
+  section: Section,
+): readonly Section[] {
+  const chain: Section[] = [];
+  let current: Section | undefined = section;
+  while (current) {
+    chain.unshift(current);
+    current = findParentSection(doc, current);
+  }
+  return chain;
+}
+
+function formatHeadingAncestry(doc: Document, section: Section): string {
+  const chain = headingAncestryChain(doc, section);
+  return chain
+    .map((current, index) => {
+      const parent = index === 0 ? undefined : chain[index - 1];
+      const occurrence = headingOccurrenceUnderParent(doc, current, parent);
+      return `h${current.level}[${occurrence}]`;
+    })
+    .join("/");
+}
+
+/** One-based occurrence of `section` among same-level section-tree siblings sharing `parent` */
+function headingOccurrenceUnderParent(
+  doc: Document,
+  section: Section,
+  parent: Section | undefined,
+): number {
+  return doc.sections
     .filter((candidate) =>
-      candidate.level === section.level && candidate.line <= section.line
+      candidate.level === section.level &&
+      candidate.line <= section.line &&
+      findParentSection(doc, candidate) === parent
     ).length;
-  return `h${section.level}[${sectionOccurrence}]/chars:${comparisonStart}-${comparisonEnd}`;
 }
 
 async function getContextHashes(

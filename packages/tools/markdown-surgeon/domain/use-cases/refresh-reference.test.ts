@@ -13,6 +13,7 @@ import { ParseDocumentUseCase } from "./parse-document.ts";
 import { GenerateReferenceUseCase } from "./generate-reference.ts";
 import { RefreshReferenceUseCase } from "./refresh-reference.ts";
 import { parseDebugMrfi } from "./mrfi-codec.ts";
+import { CommonmarkBlockTreeParser } from "../../adapters/services/commonmark-block-tree-parser.ts";
 
 class MockHashService implements HashService {
   async hash(
@@ -31,8 +32,12 @@ class MockHashService implements HashService {
 }
 
 const parseDocument = new ParseDocumentUseCase(new MockHashService());
-const generateReference = new GenerateReferenceUseCase();
-const refreshReference = new RefreshReferenceUseCase();
+const generateReference = new GenerateReferenceUseCase(
+  new CommonmarkBlockTreeParser(),
+);
+const refreshReference = new RefreshReferenceUseCase(
+  new CommonmarkBlockTreeParser(),
+);
 
 /** Full-line source range for a single 1-indexed line of a parsed document */
 function lineRange(doc: Document, line: number) {

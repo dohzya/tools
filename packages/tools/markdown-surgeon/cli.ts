@@ -10,6 +10,7 @@ import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import { Blake3HashService } from "./adapters/services/blake3-hash.ts";
 import { YamlParserService } from "./adapters/services/yaml-parser.ts";
+import { CommonmarkBlockTreeParser } from "./adapters/services/commonmark-block-tree-parser.ts";
 import { createCommands } from "./adapters/cli/commands.ts";
 import { agentInstructions } from "../agent-instructions.ts";
 
@@ -25,12 +26,13 @@ const VERSION = "0.9.0";
 
 const hashService = new Blake3HashService();
 const yamlService = new YamlParserService();
+const blockTreeParser = new CommonmarkBlockTreeParser();
 
 // ============================================================================
 // Commands
 // ============================================================================
 
-const commands = createCommands({ hashService, yamlService });
+const commands = createCommands({ hashService, yamlService, blockTreeParser });
 const agentInstructionsCmd = new Command()
   .description("Print AGENTS.md instructions for md")
   .action(() => {

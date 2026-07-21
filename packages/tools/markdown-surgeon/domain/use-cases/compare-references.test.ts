@@ -122,3 +122,16 @@ Deno.test("compare - fields present only on one side contribute nothing", async 
   assertEquals(result.fields.find((f) => f.field === "q")?.outcome, "absent");
   assertEquals(result.verdict, "same");
 });
+
+Deno.test("compare - p field matches exactly for two refs into the same block at different positions", async () => {
+  // Different r (position) into the same paragraph — p is purely structural
+  // now (no chars: offset), so identical p strings must compare as an exact
+  // match rather than a partial/degraded similarity.
+  const result = await useCase.execute({
+    a: "~{v0;r=3:1-3:4;p=h1[1]%2Fp[1]}",
+    b: "~{v0;r=3:5-3:8;p=h1[1]%2Fp[1]}",
+  });
+  const pField = result.fields.find((field) => field.field === "p");
+  assertEquals(pField?.outcome, "match");
+  assertEquals(pField?.similarity, 1);
+});

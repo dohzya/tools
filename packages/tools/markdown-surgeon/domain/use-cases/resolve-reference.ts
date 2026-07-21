@@ -19,16 +19,21 @@ import type {
   ResolveResult,
   SourceRange,
 } from "../entities/mrfi.ts";
+import type {
+  BlockKind,
+  BlockStep,
+  BlockTreeParser,
+} from "../ports/block-tree-parser.ts";
 import {
   getMustUnderstandViolations,
   parseMrfiRange,
   parseMrfiReference,
 } from "./mrfi-codec.ts";
 import {
-  buildComparisonMap,
   DEFAULT_SMH64_MAX_DISTANCE,
   equalsNormalized,
   findAnchorLines,
+  findParentSection,
   findSectionContainingLine,
   formatSourceRange,
   fullLineRange,
@@ -47,7 +52,6 @@ import {
   rangeFromOffsets,
   sha256PrefixSignal,
   smh64Value,
-  sourceOffsetsFromComparisonRange,
 } from "./mrfi-text.ts";
 
 /** Input for the ResolveReference use case */
@@ -101,6 +105,9 @@ export function checkDestructiveGate(
 
 /** Resolves a `^anchor` or `~mrfi` reference against a document */
 export class ResolveReferenceUseCase {
+  /** Create a ResolveReferenceUseCase with the given block-tree parser */
+  constructor(private readonly blockTreeParser: BlockTreeParser) {}
+
   /** Resolve the reference, dispatching to anchor or MRFI resolution based on its prefix */
   async execute(input: ResolveReferenceInput): Promise<ResolveResult> {
     const { doc, ref, witness, extentOverride } = input;
@@ -109,7 +116,13 @@ export class ResolveReferenceUseCase {
       if (!extentOverride) return result;
       return applyExtentOverrideToResult(doc, result, extentOverride, witness);
     }
-    return await resolveMrfiReference(doc, ref, witness, extentOverride);
+    return await resolveMrfiReference(
+      doc,
+      ref,
+      this.blockTreeParser,
+      witness,
+      extentOverride,
+    );
   }
 }
 
@@ -249,6 +262,7 @@ function resolveAnchorReference(
 async function resolveMrfiReference(
   doc: Document,
   ref: string,
+  blockTreeParser: BlockTreeParser,
   witness?: string,
   extentOverride?: "sec" | "body" | "lead",
 ): Promise<ResolveResult> {
@@ -288,7 +302,13 @@ async function resolveMrfiReference(
     };
   }
 
-  const result = await resolveMrfiReferenceCore(doc, ref, parsed, witness);
+  const result = await resolveMrfiReferenceCore(
+    doc,
+    ref,
+    parsed,
+    blockTreeParser,
+    witness,
+  );
   const effectiveParsed: DebugMrfi = extentOverride
     ? { ...parsed, extentSelector: extentOverride }
     : parsed;
@@ -299,6 +319,7 @@ async function resolveMrfiReferenceCore(
   doc: Document,
   ref: string,
   parsed: DebugMrfi,
+  blockTreeParser: BlockTreeParser,
   witness?: string,
 ): Promise<ResolveResult> {
   if (parsed.range) {
@@ -307,6 +328,7 @@ async function resolveMrfiReferenceCore(
         doc,
         ref,
         parsed,
+        blockTreeParser,
         witness,
       );
       if (fallback) return fallback;
@@ -472,6 +494,7 @@ async function resolveMrfiReferenceCore(
         doc,
         ref,
         parsed,
+        blockTreeParser,
         witness,
       );
       if (structuralResult) {
@@ -519,6 +542,7 @@ async function resolveMrfiReferenceCore(
     doc,
     ref,
     parsed,
+    blockTreeParser,
     witness,
   );
   if (fallback) return fallback;
@@ -535,6 +559,7 @@ async function resolveMrfiWithoutPhysicalRange(
   doc: Document,
   ref: string,
   parsed: DebugMrfi,
+  blockTreeParser: BlockTreeParser,
   witness?: string,
 ): Promise<ResolveResult | undefined> {
   if (parsed.anchor) {
@@ -583,6 +608,7 @@ async function resolveMrfiWithoutPhysicalRange(
     doc,
     ref,
     parsed,
+    blockTreeParser,
     witness,
   );
   if (structuralResult) {
@@ -1072,11 +1098,16 @@ function resolveStructuralPathReference(
   doc: Document,
   ref: string,
   parsed: DebugMrfi,
+  blockTreeParser: BlockTreeParser,
   witness?: string,
 ): ResolveResult | undefined {
   if (!parsed.structuralPath) return undefined;
 
-  const range = rangeFromStructuralPath(doc, parsed.structuralPath);
+  const range = rangeFromStructuralPath(
+    doc,
+    parsed.structuralPath,
+    blockTreeParser,
+  );
   if (!range) return undefined;
 
   const passage = getRangeText(doc, range);
@@ -1112,57 +1143,120 @@ function getExpectedFragmentLength(parsed: DebugMrfi): number | undefined {
   if (parsed.offsetRange) {
     return parsed.offsetRange.end - parsed.offsetRange.start;
   }
-  const structuralLength = getStructuralPathLength(parsed.structuralPath);
-  if (structuralLength !== undefined) {
-    return structuralLength;
-  }
   if (parsed.range && parsed.range.startLine === parsed.range.endLine) {
     return parsed.range.endColumn - parsed.range.startColumn;
   }
   return undefined;
 }
 
-function getStructuralPathLength(
-  structuralPath: string | undefined,
-): number | undefined {
-  const match = structuralPath?.match(/\/chars:(\d+)-(\d+)$/);
-  if (!match) return undefined;
-  const start = Number(match[1]);
-  const end = Number(match[2]);
-  return end > start ? end - start : undefined;
+const HEADING_STEP_RE = /^h([1-6])\[(\d+)\]$/;
+const BLOCK_STEP_RE = /^(p|ul|ol|li|blockquote)\[(\d+)\]$/;
+const LEGACY_CHARS_STEP_RE = /^chars:(\d+)-(\d+)$/;
+
+interface ParsedStructuralPath {
+  readonly headingLevels: readonly number[];
+  readonly headingOccurrences: readonly number[];
+  readonly blockSteps: readonly BlockStep[];
+}
+
+function toBlockKind(value: string): BlockKind | undefined {
+  switch (value) {
+    case "p":
+    case "ul":
+    case "ol":
+    case "li":
+    case "blockquote":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * `p` is a purely structural path of heading/container/paragraph steps
+ * (docs/specs/mrfi.md's "ordered node steps with sibling indices" — no
+ * offset suffix). A trailing legacy `chars:START-END` segment (emitted by
+ * an earlier, pre-spec-alignment version of this tool) is tolerated and
+ * stripped rather than rejected, since it carried purely-positional
+ * information that belongs on `r`/`o`, not `p`.
+ */
+function parseStructuralPath(
+  structuralPath: string,
+): ParsedStructuralPath | undefined {
+  const segments = structuralPath.split("/");
+  if (segments.length > 0 && LEGACY_CHARS_STEP_RE.test(segments.at(-1) ?? "")) {
+    segments.pop();
+  }
+  if (segments.length === 0) return undefined;
+
+  let index = 0;
+  const headingLevels: number[] = [];
+  const headingOccurrences: number[] = [];
+  for (; index < segments.length; index += 1) {
+    const match = segments[index]?.match(HEADING_STEP_RE);
+    if (!match) break;
+    headingLevels.push(Number(match[1]));
+    headingOccurrences.push(Number(match[2]));
+  }
+
+  const blockSteps: BlockStep[] = [];
+  for (; index < segments.length; index += 1) {
+    const match = segments[index]?.match(BLOCK_STEP_RE);
+    const kind = match ? toBlockKind(match[1]) : undefined;
+    if (!match || !kind) return undefined;
+    blockSteps.push({ kind, occurrence: Number(match[2]) });
+  }
+
+  if (headingLevels.length === 0 && blockSteps.length === 0) return undefined;
+
+  return { headingLevels, headingOccurrences, blockSteps };
+}
+
+function resolveHeadingChain(
+  doc: Document,
+  levels: readonly number[],
+  occurrences: readonly number[],
+): { found: true; section: Section | undefined } | { found: false } {
+  let current: Section | undefined;
+  for (let i = 0; i < levels.length; i += 1) {
+    const candidates = doc.sections.filter((candidate) =>
+      candidate.level === levels[i] &&
+      findParentSection(doc, candidate) === current
+    );
+    const match = candidates[occurrences[i] - 1];
+    if (!match) return { found: false };
+    current = match;
+  }
+  return { found: true, section: current };
 }
 
 function rangeFromStructuralPath(
   doc: Document,
   structuralPath: string,
+  blockTreeParser: BlockTreeParser,
 ): SourceRange | undefined {
-  const match = structuralPath.match(
-    /^(?:(doc)|h([1-6])\[(\d+)\])\/chars:(\d+)-(\d+)$/,
-  );
-  if (!match) return undefined;
+  const parsedPath = parseStructuralPath(structuralPath);
+  if (!parsedPath) return undefined;
+  const { headingLevels, headingOccurrences, blockSteps } = parsedPath;
 
-  const relativeStart = Number(match[4]);
-  const relativeEnd = Number(match[5]);
-  if (relativeEnd <= relativeStart) return undefined;
+  const resolved = resolveHeadingChain(doc, headingLevels, headingOccurrences);
+  if (!resolved.found) return undefined;
 
   const source = doc.lines.join("\n");
-  const section = match[1] === "doc" ? undefined : doc.sections
-    .filter((candidate) => candidate.level === Number(match[2]))[
-      Number(match[3]) - 1
-    ];
-  if (match[1] !== "doc" && section === undefined) return undefined;
+  const node = getStructuralNodeSourceForSection(doc, resolved.section, source);
 
-  const node = getStructuralNodeSourceForSection(doc, section, source);
-  const comparisonMap = buildComparisonMap(node.text);
-  const sourceRange = sourceOffsetsFromComparisonRange(
-    comparisonMap,
-    relativeStart,
-    relativeEnd,
-  );
-  if (!sourceRange) return undefined;
-
-  const startOffset = node.startOffset + sourceRange.start;
-  const endOffset = node.startOffset + sourceRange.end;
+  let startOffset: number;
+  let endOffset: number;
+  if (blockSteps.length > 0) {
+    const blockRange = blockTreeParser.rangeForSteps(node.text, blockSteps);
+    if (!blockRange) return undefined;
+    startOffset = node.startOffset + blockRange.start;
+    endOffset = node.startOffset + blockRange.end;
+  } else {
+    if (!resolved.section) return undefined;
+    startOffset = node.startOffset;
+    endOffset = node.startOffset + Array.from(node.text).length;
+  }
   const sourceLength = Array.from(doc.lines.join("\n")).length;
   if (startOffset < 0 || endOffset > sourceLength) return undefined;
 
