@@ -4,7 +4,7 @@ themes:
   - markdown
   - references
   - mrfi
-verified_at: "2026-07-09"
+verified_at: "2026-07-21"
 language: en-US
 ---
 
@@ -51,6 +51,8 @@ Debug form example:
 
 Anchors use a distinct sigil, `^<anchor>`, and are not MRFI locators; see [Anchors](#anchors).
 
+Both sigils are chosen for a value that stands alone (a CLI argument, a stored reference, a tool's own metadata), not for embedding inside prose Markdown. `^<anchor>` visually collides with Obsidian block references and Markdown footnote markers (`[^1]`); `~{...}`/`~<compact>` can be swallowed by strikethrough or subscript syntax extensions if pasted into running text. Whether a host tool supports embedding a reference inside Markdown prose, and how it disambiguates the sigil there, is a host-tool concern outside this spec's scope.
+
 ## Encodings
 
 Three encodings carry the same object model and must round-trip losslessly through it:
@@ -58,6 +60,12 @@ Three encodings carry the same object model and must round-trip losslessly throu
 - **debug** — `~{v0;key=value;...}`, human-readable, for diagnostics and documentation.
 - **base62** — ASCII compact representation.
 - **hangul** — default compact representation, denser per visible character.
+
+The debug encoding is the object model's canonical textual form. Its grammar: the reference is wrapped in `~{...}`; fields are separated by `;`; the version field is the bare token `v0`; every other field is `key=value`, where the key runs up to the first `=` and the value is everything after it. Within a value, `;`, `}`, and `\` must be escaped as `\;`, `\}`, and `\\`; every other character is literal. Escaping matters chiefly for `q` and extension fields, whose values are arbitrary text. Any conforming implementation can round-trip through this form.
+
+The `base62` and `hangul` byte/character layouts — the base62 alphabet, the hangul syllable packing, and the registry of short codes for non-default hash tags and `x` values — are not yet fixed by this document. Until a companion registry is published and referenced here, `base62`/`hangul` are not an interoperable wire format between independent implementations: only debug-encoded references are guaranteed to round-trip across implementations.
+
+Round-tripping is a syntactic guarantee only. The semantics that tags carry — hash normalization rules, `ctx` window sizes, per-field default tags — also live in that registry: until it is published, two independent implementations parse and re-encode each other's debug references, but their hash values are only comparable within a single implementation.
 
 Encoding rules:
 
@@ -86,9 +94,11 @@ An MRFI locator is a set of evidence fields about one passage, captured at gener
 
 All hash values are self-describing: they carry an algorithm tag (e.g. `xxh64:`, `smh64:`) that determines both the algorithm and the text normalization applied before hashing. Comparing two hash values requires identical tags. Tags allow algorithms to evolve without a format version bump.
 
+All MRFI hash tags (`xxh64`, `smh64`, and any future registered tag) are non-cryptographic: they provide no integrity guarantee against an adversarial document and must not be relied upon as such. Their purpose is passage identification and similarity scoring, not tamper detection.
+
 Tags are only spelled out in the debug encoding. To keep compact references small, `v0` defines a default tag per hash field; compact encodings omit the tag when the field uses its default. A non-default known tag is encoded as a registered small code (about one symbol); an unknown tag falls back to literal encoding. In the nominal case, tags therefore cost nothing in `base62`/`hangul`.
 
-Source coordinates are one-based `line:column`, with an exclusive end column: `startLine:startColumn-endLine:endColumn`.
+Source coordinates are one-based `line:column`, with an exclusive end column: `startLine:startColumn-endLine:endColumn`. `column` counts Unicode scalar values (not UTF-16 code units, not bytes); `o` remains the UTF-8 byte offset for byte-oriented tooling. Line counting treats any of `\n`, `\r\n`, or a bare `\r` as one line terminator; `v0` normalizes line endings to `\n` before computing `r`, `o`, and any hash input, so a CRLF/LF conversion alone does not change a locator's evidence. Consequently, `o` and every resolved `range` address the **normalized** document, not the raw on-disk bytes: on a CRLF file, byte offsets shift by one per preceding line terminator. Hosts that apply edits to a raw file must map positions through the same normalization before writing. `r` is unaffected: line and column counts do not depend on the terminator's byte length.
 
 | Field | Name            | Value                                                                                                                     | Role                                                                                                                                                                                     |
 | ----- | --------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -106,6 +116,17 @@ Source coordinates are one-based `line:column`, with an exclusive end column: `s
 | `x`   | extent selector | One of `sec`, `body`, `lead` (registered small codes in compact encodings).                                               | Turns the reference into a [scope reference](#extent-selection): evidence designates an identity node, the resolved extent is computed structurally at resolution time. Must-understand. |
 
 Fuzzy hashes must support a graded distance (e.g. Hamming distance for simhash-family tags), not just equality; this is what enables scoring and [comparison](#comparing-references-without-resolving).
+
+The `ctx` window size is part of the tag's semantics, exactly like the algorithm and normalization: a tag fixes one window size, and comparing two `ctx` values requires identical tags (same rule as every other hash field). `v0`'s default `ctx` tag fixes its window size; a tag using a different window size must be a distinct registered tag, not a silent implementation choice.
+
+Two distinct structural models are in play:
+
+- **block tree** — the flat CommonMark AST: every block is a child of its literal container (document root, block quote, list item, ...), and a heading is just another block, a sibling of any paragraph next to it. [Extent selection](#extent-selection)'s "root-level" test ("direct child of the document root") is a block-tree property.
+- **section tree** — headings imply nesting by level, regardless of the block tree: an `h2` is conceptually inside the nearest preceding heading of lower level, and every block is conceptually inside the nearest preceding heading. `hh`'s "enclosing heading", the `sec`/`body`/`lead` selection rules, and the "parent heading" of a root-level identity heading all reason in this tree.
+
+`p` paths walk the **section tree**, extended with real container steps: heading steps (`h1[1]/h2[3]`) come from section nesting, and container blocks contribute steps when the passage is nested inside them (e.g. `h1[1]/h2[3]/ul[1]/li[2]/p[1]`). Sibling indices count nodes of the same type under the same parent step, one-based: `h2[3]` is the third `h2` in its section, `p[2]` the second paragraph. A pure block-tree path would reduce most passages to a single sibling index under the document root and carry almost no structural evidence; section nesting is what makes `p` survive line drift.
+
+A root-level heading (block-tree child of the document root) can still have a section-tree parent — the nearest preceding heading of lower level. The two models agree on containment inside real containers; they diverge in how headings relate to their surroundings.
 
 ### Extension Fields
 
@@ -142,7 +163,7 @@ Let `H` be the resolved identity heading and `L` its level (1–6) **in the curr
 
 Boundary precision:
 
-- The resolved `range` starts at the first character of the first included block and ends at the end of the last included block. Blank lines before the first block and after the last block are excluded from the range; blank lines between included blocks are included.
+- The resolved `range` starts at the first character of the first included block and ends at the end of the last included block, exclusive of that block's trailing line terminator. Blank lines before the first block and after the last block are excluded from the range; blank lines between included blocks are included.
 - `body` and `lead` may be empty: a heading immediately followed by a terminating heading or by the end of the document. An empty extent is a valid result, not a failure: `range` is the zero-length position at the start of the line following the `H` block (`start == end`), and `passage` is the empty string. This position is exactly where content belonging to the scope would be inserted.
 
 ### Interaction With Evidence And Statuses
@@ -160,13 +181,16 @@ Boundary precision:
 
 `v0` therefore closes its field vocabulary: at resolution and comparison time, any field key that is neither defined by this spec nor an extension field (leading `_`) makes the locator `invalid`. Encoding, decoding, and re-encoding still preserve unknown keys verbatim (see [Encodings](#encodings)): preservation is a transport property, acceptance is a resolution property. Every future core field is thereby must-understand by construction; a field that must be safely ignorable belongs in the extension namespace.
 
+The same closed-vocabulary rule applies to `v` itself: a resolver that does not implement the value of `v` (e.g. a `v0` resolver facing `v1`) must report `invalid` rather than guess at the unfamiliar vocabulary.
+
 ## Witness Evidence
 
 A resolver may accept optional _witness text_ alongside a locator: text supplied by the caller at resolution time, representing the caller's previous or expected understanding of the target passage.
 
 - Witness text and the embedded `q` field have the same evidence semantics. When both are present, the resolver uses the witness, because it may be fresher than the locator.
 - Witness text may improve candidate generation and scoring, but it must not override contradictory locator evidence by itself.
-- For destructive edits, witness text may only increase confidence when it agrees with at least one locator signal (`a`, `p`, `fh`, `hh`, `ph`, `ctx`, or a nearby `r`).
+- For destructive edits, witness text may only license the operation as a strong signal (see [Safety](#safety)) when it is equal — not merely contained in it — to the resolved passage text, under the same normalization as the locator's `fh` tag (or `v0`'s default `fh` tag when the locator omits `fh`). Witness text that merely agrees with a weak or approximate field (e.g. a nearby `r`, or `ph` alone), or that only partially overlaps the resolved passage, may still raise confidence toward `confident`, but does not by itself meet the strong-signal bar for a destructive edit. An empty witness carries no evidence and never qualifies as a strong signal, even against an empty extent: passing an empty string expresses no expectation, so the equality would be vacuous. A legitimate "I expect this section to be empty" CAS remains expressible through the other strong signals on the identity node.
+- For a scope reference, "the resolved passage text" above means either the identity node's text or the resolved extent's text: equality with the identity node is already no stronger than an `fh` match (which hashes that same heading text for a scope reference), and equality with the extent is the strongest possible guarantee on the content the destructive operation actually overwrites. Either equality independently qualifies as a strong signal.
 - Resolver outputs must not echo witness text (or other caller-supplied diagnostic input) back to the caller. The caller already has it; echoing it only inflates output size, which matters when the caller is an agent paying per token. Witness text may still appear where it is genuinely part of the resolved passage. Diagnostics may state that a witness agreed or disagreed without quoting it.
 
 How witness text is passed (argument syntax, API parameter) is a host-tool concern.
@@ -229,9 +253,9 @@ Candidate summaries and diagnostics are part of machine-consumed output; host to
 ### Safety
 
 - Read-only operations may act on any status.
-- Operations that edit or delete Markdown require `exact` or `confident` resolution, **and** at least one strong locator signal: exact hash match, unique anchor match, both context hashes matching, or witness agreement with locator evidence.
+- Operations that edit or delete Markdown require `exact` or `confident` resolution, **and** at least one strong locator signal: exact hash match, unique anchor match, both context hashes matching, or witness text equal (not merely overlapping) to the resolved passage text (compare-and-swap semantics: the caller's expected content matches what is actually there). See [Witness Evidence](#witness-evidence) for the exact equality rule, the empty-witness carve-out, and the scope-reference case. A witness that only partially overlaps the resolved passage, or that agrees with a single locator field such as `ph` or an approximate `r`, does not qualify: those are graded signals, not a strong signal (see below).
 - Tools must not silently edit the best candidate of an `ambiguous` result, and must not treat `stale` as a weaker `confident`.
-- For scope references, the strong-signal requirement applies to the identity node; the destructive operation then acts on the computed extent. The extent being larger than the identity node is by design and requires no additional evidence.
+- For scope references, the strong-signal requirement on locator fields (hash, anchor, context) applies to the identity node; the destructive operation then acts on the computed extent. The extent being larger than the identity node is by design and requires no additional evidence. Witness equality is the one strong signal that may instead — or additionally — target the extent directly; see [Witness Evidence](#witness-evidence).
 - `ph` agreement is graded evidence, never a strong locator signal: a fuzzy passage-body match must not, by itself, satisfy the strong-signal requirement for destructive operations. (It may still contribute to reaching `confident` status.)
 
 ## Comparing References Without Resolving
@@ -239,6 +263,8 @@ Candidate summaries and diagnostics are part of machine-consumed output; host to
 Two references can be compared field by field, without the document, to estimate whether they designate the same passage. The primary use case is ranking: given a target reference and many candidate references, order the candidates from most to least likely to match, so that expensive resolutions can be attempted in the best order.
 
 ### Pairwise Comparison
+
+`compare(A, B)` requires both `A` and `B` to be valid locators (decodable, and passing the [must-understand](#must-understand-fields) vocabulary check). An invalid locator on either side makes the comparison itself `invalid`; `compare` never produces a verdict from a locator it could not accept for resolution. `rank` propagates this the same way: an invalid candidate is reported as `invalid`, not silently dropped or scored as `incomparable`.
 
 `compare(A, B)` evaluates every field present in both references:
 
@@ -266,19 +292,30 @@ A similarity score alone is misleading: two `min` references sharing only `r` ca
 - **comparability** — how much strong evidence the two references actually share (coverage-weighted).
 - **verdict** — one of:
 
-| Verdict        | Meaning                                                                                                            |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `same`         | Exact-strong agreement: `fh` equal, or `a` equal with no conflicting content evidence. Duplication caveat applies. |
-| `likely`       | High similarity with good comparability and no strong conflict.                                                    |
-| `possible`     | Some agreement, but low comparability or mixed signals.                                                            |
-| `unrelated`    | Strong conflicts, e.g. distant `doc` plus mismatching content evidence.                                            |
-| `incomparable` | No shared comparable field of sufficient strength (e.g. only `r` without compatible `doc`).                        |
+| Verdict        | Meaning                                                                                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `same`         | Exact-strong agreement: `fh` equal, or `a` equal, in both cases with no conflicting content evidence elsewhere (e.g. `ctx` or `hh` disagreeing on both references). Duplication caveat applies. |
+| `likely`       | High similarity with good comparability and no strong conflict.                                                                                                                                 |
+| `possible`     | Some agreement, but low comparability or mixed signals.                                                                                                                                         |
+| `unrelated`    | Strong conflicts, e.g. distant `doc` plus mismatching content evidence.                                                                                                                         |
+| `incomparable` | No shared comparable field of sufficient strength (e.g. only `r` without compatible `doc`).                                                                                                     |
+| `invalid`      | `A` or `B` is not a valid locator; no comparison was attempted.                                                                                                                                 |
 
-`incomparable` is a distinct outcome from `unrelated`: "I cannot tell" is not "probably different".
+As with resolution ([Confidence](#confidence)), the thresholds that separate verdict classes are implementation-defined but must be documented and stable.
+
+`incomparable` is a distinct outcome from `unrelated`: "I cannot tell" is not "probably different". `invalid` is distinct from both: it says the input itself was rejected, before any evidence could be weighed.
 
 ### Ranking
 
 `rank(target, candidates)` compares the target against each candidate and orders them by `(verdict class, similarity)`, reporting per-candidate detail: which fields matched, conflicted, or were absent. Ties are allowed and must be reported as ties.
+
+The verdict class order, most to least likely to resolve successfully, is:
+
+```
+same > likely > possible > incomparable > unrelated
+```
+
+`incomparable` ranks above `unrelated`: ranking orders resolution _attempts_, and an `incomparable` candidate has no evidence against it, only insufficient evidence for it, so it may still resolve; an `unrelated` candidate has active evidence against it (e.g. a distant `doc`). This order is normative for `rank`; it is not a claim about verdict quality or confidence in isolation.
 
 ### Properties And Limits
 
@@ -315,7 +352,7 @@ Per-field decision basis:
 
 Notes on the current decisions:
 
-- `doc` was previously `full`-only based on resolver value alone. The comparison use case changes its calculus: it is the field that makes positional evidence comparable across references and cheaply rules out unrelated documents. Its promotion to `default` is proposed on that basis and must be confirmed by re-measuring default reference sizes against recovery/ranking benefit.
+- `doc` was previously `full`-only based on resolver value alone. The comparison use case changes its calculus: it is the field that makes positional evidence comparable across references and cheaply rules out unrelated documents. It is promoted to `default` on that basis; this choice will be revalidated by benchmark against recovery/ranking benefit, with possible demotion back to `full` if the size cost is not justified.
 - `ph` is the next promotion candidate. Its resolution role is now specified (scoring-only: see [Evidence Roles](#evidence-roles)) and comparison already consumes it; promotion to `default` awaits measurement of recovery and ranking benefit against the size cost. A possible later step — a bounded `ph` candidate generator — is a separate decision requiring its own spec change.
 - Reference sizes must be re-benchmarked after the `doc` change. Previous measurements on a representative debug reference: `min` 64 characters, `default` 116, `full` 172.
 
