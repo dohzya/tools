@@ -1,6 +1,6 @@
 ---
 name: markdown-surgeon
-description: Manipulate Markdown files surgically by section without loading entire content. Use when editing large .md files, updating specific sections, using Markdown as a lightweight database, or when asked to work with sections in a Markdown file. Commands include outline, read, write, append, empty, remove, search, concat, meta, create.
+description: Manipulate Markdown files surgically by section without loading entire content. Use when editing large .md files, updating specific sections, using Markdown as a lightweight database, working with MRFI (Markdown Robust Fragment Identifiers) or durable passage references, or when asked to work with sections in a Markdown file. Commands include outline, read, write, append, empty, remove, search, concat, meta, create, ref, resolve.
 user-invocable: false
 ---
 
@@ -101,4 +101,16 @@ md meta doc.md --set updated "{dt:short}"   # 2025-01-16 09:15
 md create log.md --title "Log {date}"
 ```
 
-See [reference.md](reference.md) for edge cases. For API/tool development, see [reference-api.md](reference-api.md).
+## MRFI References
+
+MRFI (Markdown Robust Fragment Identifiers) lets you reference a passage by durable evidence rather than a brittle section ID. References survive edits because multiple signals (hashes, structural path, context) are combined at resolution time.
+
+Use `md outline --mrfi` to see MRFI refs for sections, `md ref` to generate or transcode them, and `md resolve` to resolve them. MRFI refs (`~...` or `^anchor`) work as selectors in `read`, `write`, `append`, `empty`, and `remove`.
+
+See [references/mrfi.md](references/mrfi.md) for statuses, safety gate, extent selection, and generation profiles.
+
+## Further Reading
+
+- [reference.md](reference.md) — edge cases, `--deep` behavior, MRFI gate control
+- [reference-api.md](reference-api.md) — API/tool development
+- [references/mrfi.md](references/mrfi.md) — MRFI operational reference

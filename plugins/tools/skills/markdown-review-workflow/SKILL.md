@@ -1,6 +1,6 @@
 ---
 name: markdown-review-workflow
-description: Use this skill when reviewing, annotating, replying to, resolving, or cleaning Markdown files that use DZ Markdown Review Syntax, custom review annotations, HTML review comments, or {?? ??} discussion blocks.
+description: Use this skill when reviewing, annotating, replying to, resolving, or cleaning Markdown files that use DZ Markdown Review Syntax, custom review annotations, HTML review comments, {?? ??} discussion blocks, or MRFI-backed passage references and persistent review item IDs.
 ---
 
 # Markdown Review Workflow
@@ -76,6 +76,12 @@ When a thread is validated, remove the active discussion block. If the thread co
 ```
 
 If the thread only tracked normal review chatter, delete it without leaving a note.
+
+## MRFI References
+
+MRFI (Markdown Robust Fragment Identifiers) underpins two dz-review features: persistent review item IDs that survive document edits, and passage references (`ref:` comments) that link discussions to source passages via durable locators.
+
+See [references/mrfi.md](references/mrfi.md) for reference forms, passage reference syntax, resolution statuses, and generation profiles.
 
 ## Reporting
 
