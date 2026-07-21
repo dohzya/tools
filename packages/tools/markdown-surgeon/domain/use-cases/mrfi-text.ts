@@ -363,6 +363,16 @@ export function includesNormalized(haystack: string, needle: string): boolean {
   return normalizeForCompare(haystack).includes(normalizeForCompare(needle));
 }
 
+/**
+ * Compare-and-swap equality: the two texts must match exactly (under the
+ * same normalization as `fh`), not merely overlap. Per docs/specs/mrfi.md
+ * "Witness Evidence", this is the check destructive operations require —
+ * containment alone must not license an edit.
+ */
+export function equalsNormalized(a: string, b: string): boolean {
+  return normalizeForCompare(a) === normalizeForCompare(b);
+}
+
 export function normalizeForCompare(value: string): string {
   return value.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
 }

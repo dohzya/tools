@@ -27,6 +27,7 @@ import {
 import {
   buildComparisonMap,
   DEFAULT_SMH64_MAX_DISTANCE,
+  equalsNormalized,
   findAnchorLines,
   findSectionContainingLine,
   formatSourceRange,
@@ -41,6 +42,7 @@ import {
   hashSignalFor,
   includesNormalized,
   isRangeInsideDocument,
+  normalizeForCompare,
   rangeContainsLine,
   rangeFromOffsets,
   sha256PrefixSignal,
@@ -105,7 +107,7 @@ export class ResolveReferenceUseCase {
     if (ref.startsWith("^")) {
       const result = resolveAnchorReference(doc, ref);
       if (!extentOverride) return result;
-      return applyExtentOverrideToResult(doc, result, extentOverride);
+      return applyExtentOverrideToResult(doc, result, extentOverride, witness);
     }
     return await resolveMrfiReference(doc, ref, witness, extentOverride);
   }
@@ -290,7 +292,7 @@ async function resolveMrfiReference(
   const effectiveParsed: DebugMrfi = extentOverride
     ? { ...parsed, extentSelector: extentOverride }
     : parsed;
-  return applyExtentSelection(doc, result, effectiveParsed);
+  return applyExtentSelection(doc, result, effectiveParsed, witness);
 }
 
 async function resolveMrfiReferenceCore(
@@ -499,7 +501,7 @@ async function resolveMrfiReferenceCore(
     const rangeSignals = buildStrongSignals({
       exactHash: exactHashMatched,
       bothContext: contextPrefixMatched && contextSuffixMatched,
-      witnessAgreement: evidenceMatched,
+      witnessAgreement: isStrongWitnessMatch(passage, evidence),
     });
 
     return {
@@ -749,7 +751,7 @@ async function resolveExactHashReference(
 
   const exactHashSignals = buildStrongSignals({
     exactHash: true,
-    witnessAgreement: evidenceMatched,
+    witnessAgreement: isStrongWitnessMatch(best.passage, evidence),
   });
 
   return {
@@ -959,7 +961,7 @@ async function resolveContextReference(
 
   const contextSignalFlags = buildStrongSignals({
     bothContext: best.matchedSignals === 2,
-    witnessAgreement: evidenceMatched,
+    witnessAgreement: isStrongWitnessMatch(best.passage, evidence),
   });
 
   return {
@@ -1090,7 +1092,7 @@ function resolveStructuralPathReference(
   }
 
   const structuralSignals = buildStrongSignals({
-    witnessAgreement: evidenceMatched,
+    witnessAgreement: isStrongWitnessMatch(passage, evidence),
   });
 
   return {
@@ -1306,7 +1308,7 @@ async function resolveFuzzyHeadingReference(
     : baseConfidence;
 
   const fuzzySignals = buildStrongSignals({
-    witnessAgreement: evidenceMatched,
+    witnessAgreement: isStrongWitnessMatch(passage, evidence),
   });
 
   return {
@@ -1331,6 +1333,22 @@ function getTextEvidence(
     return { label: "quote", text: parsed.quote };
   }
   return undefined;
+}
+
+/**
+ * CAS check for the destructive strong-signal gate: the evidence text must
+ * equal (not merely overlap) the compared passage, under the same
+ * normalization as `fh`. An empty evidence text carries no expectation and
+ * never qualifies, even against an empty passage (docs/specs/mrfi.md
+ * "Witness Evidence" empty-witness carve-out).
+ */
+function isStrongWitnessMatch(
+  passage: string,
+  evidence: { text: string } | undefined,
+): boolean {
+  if (!evidence) return false;
+  if (normalizeForCompare(evidence.text) === "") return false;
+  return equalsNormalized(passage, evidence.text);
 }
 
 /**
@@ -1376,14 +1394,16 @@ function applyExtentOverrideToResult(
   doc: Document,
   result: ResolveResult,
   extentSelector: "sec" | "body" | "lead",
+  witness?: string,
 ): ResolveResult {
-  return applyExtentSelection(doc, result, { extentSelector });
+  return applyExtentSelection(doc, result, { extentSelector }, witness);
 }
 
 function applyExtentSelection(
   doc: Document,
   result: ResolveResult,
   parsed: DebugMrfi,
+  witness?: string,
 ): ResolveResult {
   if (!parsed.extentSelector) return result;
   if (result.status === "invalid" || result.status === "not_found") {
@@ -1408,14 +1428,33 @@ function applyExtentSelection(
   }
 
   const extent = computeExtentRange(doc, section, parsed.extentSelector);
+  const evidence = getTextEvidence(parsed, witness);
+  const extentWitnessMatch = isStrongWitnessMatch(extent.passage, evidence);
+  const strongSignals = extentWitnessMatch
+    ? { ...result.strongSignals, witnessAgreement: true as const }
+    : result.strongSignals;
+  // A strong witness match against the extent is itself sufficient grounds
+  // for confident status: don't let a stale/graded identity-node comparison
+  // (computed before the extent was known) hold the result back.
+  const promoteStatus = extentWitnessMatch &&
+    result.status !== "exact" && result.status !== "confident";
   return {
     ...result,
+    status: promoteStatus ? "confident" : result.status,
+    confidence: promoteStatus
+      ? Math.max(
+        result.confidence,
+        CONFIDENCE.RANGE_CONFIDENT_WITH_STRONG_EVIDENCE,
+      )
+      : result.confidence,
     range: formatSourceRange(extent.range),
     passage: extent.passage,
     diagnostics: [
       ...result.diagnostics,
       `extent selection: x=${parsed.extentSelector}`,
+      ...(extentWitnessMatch ? [`${evidence?.label} matched extent`] : []),
     ],
+    ...(strongSignals ? { strongSignals } : {}),
   };
 }
 

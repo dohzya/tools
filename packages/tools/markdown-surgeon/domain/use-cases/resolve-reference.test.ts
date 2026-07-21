@@ -367,6 +367,72 @@ Deno.test("bare range MRFI has no strong signal", async () => {
   assertEquals(hasStrong, false, "bare range should have no strong signal");
 });
 
+// --- witness CAS equality (not containment) for the destructive strong signal ---
+
+Deno.test("witness that is only a substring of the resolved passage does not satisfy the strong-signal gate", async () => {
+  const content = "# Hello\n\nSome content here.\n";
+  const doc = await parseDocument.execute({ content });
+  const result = await resolveReference.execute({
+    doc,
+    ref: "~{v0;r=3:1-3:19}",
+    witness: "content",
+  });
+  assertEquals(result.passage, "Some content here.");
+  assertEquals(
+    result.strongSignals?.witnessAgreement,
+    undefined,
+    "substring-only witness must not qualify as a strong CAS signal",
+  );
+  const gate = checkDestructiveGate(result);
+  assertEquals(
+    gate.allowed,
+    false,
+    "destructive gate must reject a witness that only overlaps the passage",
+  );
+});
+
+Deno.test("empty witness never qualifies as a strong signal, even against an empty extent", async () => {
+  const emptyBodyDoc = [
+    "# A", // line 1
+    "# B", // line 2
+    "", // line 3
+    "Content B.", // line 4
+  ].join("\n");
+  const doc = await parseDocument.execute({ content: emptyBodyDoc });
+  const result = await resolveReference.execute({
+    doc,
+    ref: "~{v0;r=1:1-1:4;x=body}",
+    witness: "",
+  });
+  assertEquals(result.passage, "");
+  assertEquals(
+    result.strongSignals?.witnessAgreement,
+    undefined,
+    "an empty witness carries no evidence and must never be a strong signal",
+  );
+});
+
+Deno.test("scope reference: witness equal to the extent text (not the identity node) qualifies as a strong signal", async () => {
+  const doc = await parseDocument.execute({ content: extentDoc });
+  const result = await resolveReference.execute({
+    doc,
+    ref: "~{v0;r=1:1-1:4;x=body}",
+    witness: "Content A.\n\n## A.1\n\nSub content.",
+  });
+  assertEquals(result.passage, "Content A.\n\n## A.1\n\nSub content.");
+  assertEquals(
+    result.strongSignals?.witnessAgreement,
+    true,
+    "witness equal to the resolved extent text must qualify as a strong signal",
+  );
+  const gate = checkDestructiveGate(result);
+  assertEquals(
+    gate.allowed,
+    true,
+    `extent-equality witness must actually license the destructive gate, got: ${gate.reason} (status: ${result.status})`,
+  );
+});
+
 // --- extentOverride ---
 
 Deno.test("extentOverride applies extent selection to MRFI ref", async () => {
