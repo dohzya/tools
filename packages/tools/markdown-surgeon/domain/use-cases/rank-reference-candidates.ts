@@ -38,16 +38,19 @@ export interface RankReferenceCandidatesInput {
 }
 
 /**
- * Verdict quality order, best (closest probable match) first. `invalid`
- * sorts alongside `incomparable` at the back: both carry no usable
- * evidence, so a bad candidate falls to the end without special-casing.
+ * Verdict class order, best (closest probable match) first, per
+ * docs/specs/mrfi.md's "Ranking". `incomparable` ranks above `unrelated`:
+ * this orders resolution *attempts*, and an `incomparable` candidate has no
+ * evidence against it (only insufficient evidence for it), so it may still
+ * resolve, whereas `unrelated` has active evidence against it (e.g. a
+ * distant `doc`). `invalid` sorts last: the input itself was rejected.
  */
 const VERDICT_ORDER: readonly MrfiVerdict[] = [
   "same",
   "likely",
   "possible",
-  "unrelated",
   "incomparable",
+  "unrelated",
   "invalid",
 ];
 

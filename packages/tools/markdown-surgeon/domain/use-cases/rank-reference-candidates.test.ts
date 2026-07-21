@@ -62,3 +62,17 @@ Deno.test("rank - an unparsable target makes every comparison invalid", async ()
 
   assertEquals(result[0].comparison.verdict, "invalid");
 });
+
+Deno.test("rank - orders an incomparable candidate ahead of an unrelated one", async () => {
+  const target = "~{v0;fh=xxh64:aabbccdd;r=1:1-1:5}";
+  const result = await useCase.execute({
+    target,
+    candidates: [
+      "~{v0;fh=xxh64:11223344;r=1:1-1:5}", // conflicting fh -> unrelated
+      "~{v0;r=10:1-10:5}", // no shared strong field -> incomparable
+    ],
+  });
+
+  assertEquals(result[0].comparison.verdict, "incomparable");
+  assertEquals(result[1].comparison.verdict, "unrelated");
+});
