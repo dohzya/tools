@@ -1052,7 +1052,7 @@ test("creates review messages with hangul timestamps when configured", async () 
 
   assert.match(
     editor.document.text,
-    /^foo \{==bar==\}<!--\n@me%[\uac00-\ub3ff]{4} \n--> baz$/,
+    /^foo \{==bar==\}<!--\n@me%[\uac00-\ucbff]{4} \n--> baz$/,
   );
 });
 

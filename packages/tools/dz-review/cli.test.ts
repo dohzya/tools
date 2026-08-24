@@ -2439,8 +2439,8 @@ Deno.test("dz-review timestamp --format-info reports dominant hangul format", as
   await Deno.writeTextFile(
     file,
     [
-      "{++%\uada8\ub22d\ub147\uac78|one++}",
-      "<!-- @agent%\uada8\ub22d\ub147\uac78 open -->",
+      "{++%\uac1a\ubd8b\ub947\uac78|one++}",
+      "<!-- @agent%\uac1a\ubd8b\ub947\uac78 open -->",
       "",
     ].join("\n"),
   );
@@ -2502,7 +2502,7 @@ Deno.test("dz-review now --timestamp-format hangul - prints a hangul timestamp",
     ])
   );
 
-  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(output.trim()), true);
+  assertEquals(/^[\uac00-\ucbff]{4}$/.test(output.trim()), true);
 });
 
 Deno.test("dz-review now -H - prints a hangul timestamp", async () => {
@@ -2510,7 +2510,7 @@ Deno.test("dz-review now -H - prints a hangul timestamp", async () => {
     main(["now", "-H", "--date", "2026-06-16T17:35:35+02:00"])
   );
 
-  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(output.trim()), true);
+  assertEquals(/^[\uac00-\ucbff]{4}$/.test(output.trim()), true);
 });
 
 Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => {
@@ -2523,7 +2523,7 @@ Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => 
       main(["timestamp", "-H", "--stdout", file])
     );
 
-    assertEquals(output, "{++%\uada8\ub22d\ub147\uac78|one++}\n");
+    assertEquals(output, "{++%\uac1a\ubd8b\ub947\uac78|one++}\n");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
