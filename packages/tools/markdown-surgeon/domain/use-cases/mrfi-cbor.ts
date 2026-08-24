@@ -21,7 +21,22 @@ export const BASE62_ALPHABET =
 
 export const HANGUL_BASE = 0xac00;
 
-export const HANGUL_LIMIT = 0xb3ff;
+/**
+ * 8192 syllables (13 bits) is the largest power of two that fits inside the
+ * Hangul syllables block (AC00–D7A3); 16384 would overflow it. 13 bits/char
+ * is ~15% denser than 11, in visible characters and in UTF-8 bytes alike.
+ */
+export const HANGUL_BITS = 13;
+
+export const HANGUL_LIMIT = HANGUL_BASE + (1 << HANGUL_BITS) - 1;
+
+/**
+ * The 11-bit layout emitted before `HANGUL_BITS` moved to 13. Its window is a
+ * subset of the current one, so a legacy payload is indistinguishable from a
+ * current one by inspection; only an envelope-level decode tells them apart
+ * (see `parseMrfiReference`).
+ */
+export const HANGUL_LEGACY_BITS = 11;
 
 export const MRFI_MAGIC = new TextEncoder().encode("MRFI");
 
@@ -70,7 +85,19 @@ export function decodeBase62Payload(payload: string): Uint8Array {
   return new Uint8Array(bytes);
 }
 
-export function encodeHangulPayload(bytes: Uint8Array): string {
+/**
+ * Bit packing only: the byte length is not recoverable from the syllable
+ * count alone (2 and 3 bytes both fit in 2 syllables), so `decodeHangulPayload`
+ * may return one trailing zero byte the encoder never saw. That is safe here
+ * because the compact envelope carries an explicit payload length and
+ * tolerates zero padding after the checksum — never reuse this codec for bytes
+ * that are not framed that way.
+ */
+export function encodeHangulPayload(
+  bytes: Uint8Array,
+  bits: number = HANGUL_BITS,
+): string {
+  const mask = (1 << bits) - 1;
   let result = "";
   let buffer = 0;
   let bitCount = 0;
@@ -78,23 +105,27 @@ export function encodeHangulPayload(bytes: Uint8Array): string {
   for (const byte of bytes) {
     buffer = (buffer << 8) | byte;
     bitCount += 8;
-    while (bitCount >= 11) {
-      bitCount -= 11;
-      const value = (buffer >> bitCount) & 0x7ff;
+    while (bitCount >= bits) {
+      bitCount -= bits;
+      const value = (buffer >> bitCount) & mask;
       result += String.fromCodePoint(HANGUL_BASE + value);
       buffer &= (1 << bitCount) - 1;
     }
   }
 
   if (bitCount > 0) {
-    const value = (buffer << (11 - bitCount)) & 0x7ff;
+    const value = (buffer << (bits - bitCount)) & mask;
     result += String.fromCodePoint(HANGUL_BASE + value);
   }
 
   return result;
 }
 
-export function decodeHangulPayload(payload: string): Uint8Array {
+export function decodeHangulPayload(
+  payload: string,
+  bits: number = HANGUL_BITS,
+): Uint8Array {
+  const limit = HANGUL_BASE + (1 << bits) - 1;
   const normalized = payload.normalize("NFC");
   const bytes: number[] = [];
   let buffer = 0;
@@ -104,12 +135,12 @@ export function decodeHangulPayload(payload: string): Uint8Array {
     const codePoint = char.codePointAt(0);
     if (
       codePoint === undefined || codePoint < HANGUL_BASE ||
-      codePoint > HANGUL_LIMIT
+      codePoint > limit
     ) {
       throw new MdError("invalid_id", "Invalid Hangul MRFI payload");
     }
-    buffer = (buffer << 11) | (codePoint - HANGUL_BASE);
-    bitCount += 11;
+    buffer = (buffer << bits) | (codePoint - HANGUL_BASE);
+    bitCount += bits;
     while (bitCount >= 8) {
       bitCount -= 8;
       bytes.push((buffer >> bitCount) & 0xff);

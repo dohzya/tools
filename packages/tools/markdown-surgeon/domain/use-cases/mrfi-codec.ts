@@ -30,6 +30,7 @@ import {
   encodeHangulPayload,
   encodeVarUint,
   HANGUL_BASE,
+  HANGUL_LEGACY_BITS,
   HANGUL_LIMIT,
   isCborMap,
   MRFI_MAGIC,
@@ -45,11 +46,29 @@ export async function parseMrfiReference(
   const payload = getCompactPayload(ref);
   if (!payload) return undefined;
 
-  const envelope = isHangulPayload(payload)
-    ? decodeHangulPayload(payload)
-    : decodeBase62Payload(payload);
-  const cbor = await decodeCompactEnvelope(envelope);
-  return decodeCompactMrfi(cbor);
+  if (!isHangulPayload(payload)) {
+    const cbor = await decodeCompactEnvelope(decodeBase62Payload(payload));
+    return decodeCompactMrfi(cbor);
+  }
+
+  // The 11-bit window is a subset of the 13-bit one, so a legacy payload looks
+  // like a current one. The envelope discriminates: reading it at the wrong
+  // width fails the MRFI magic, the version byte, or the 24-bit checksum.
+  // Current width first, so a corrupt current reference reports its own error
+  // rather than the fallback's.
+  try {
+    const cbor = await decodeCompactEnvelope(decodeHangulPayload(payload));
+    return decodeCompactMrfi(cbor);
+  } catch (error) {
+    try {
+      const cbor = await decodeCompactEnvelope(
+        decodeHangulPayload(payload, HANGUL_LEGACY_BITS),
+      );
+      return decodeCompactMrfi(cbor);
+    } catch {
+      throw error;
+    }
+  }
 }
 
 export function getCompactPayload(ref: string): string | undefined {

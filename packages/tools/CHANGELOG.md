@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+### Changed
+
+- **markdown-surgeon:** MRFI Hangul payloads now pack 13 bits per syllable over `U+AC00..U+CBFF` (8192 syllables) instead of 11 bits over 2048. Compact references are ~17% shorter in characters and UTF-8 bytes. References emitted at the old 11-bit width still decode: `parseMrfiReference` reads the current width first and falls back to the legacy one, discriminating on the envelope magic, version byte, and checksum. They are re-emitted at 13 bits.
+- **dz-review:** MRFI reference validation now delegates to markdown-surgeon's `parseMrfiReference` instead of mirroring the compact envelope, base62 decoder, and Hangul codec in `cli.ts`. Review timestamps keep their own independent base2048 encoding — a positional bigint format unrelated to the MRFI bit packing.
+
 ## [wl-v0.20.0 / md-v0.9.0 / recap-v0.5.0 / dz-review-v0.4.0] — 2026-07-20
 
 ### Added

@@ -116,7 +116,7 @@ Deno.test("md outline --mrfi - includes resolvable MRFI references", async () =>
     const output = await captureOutput(() => main(["outline", file, "--mrfi"]));
 
     assertStringIncludes(output, "# Installation ^");
-    assertEquals(/~[\uAC00-\uB3FF]+/.test(output), true);
+    assertEquals(/~[\uAC00-\uCBFF]+/.test(output), true);
   } finally {
     await Deno.remove(file);
   }
@@ -185,7 +185,7 @@ Deno.test("md outline --mrfi --json - includes MRFI references", async () => {
     const sections = JSON.parse(output);
 
     assertEquals(typeof sections[0].mrfi, "string");
-    assertEquals(/^~[\uAC00-\uB3FF]+$/.test(sections[0].mrfi), true);
+    assertEquals(/^~[\uAC00-\uCBFF]+$/.test(sections[0].mrfi), true);
   } finally {
     await Deno.remove(file);
   }
@@ -452,7 +452,7 @@ Deno.test("md resolve - accepts compact Hangul MRFI references", async () => {
     const sections = JSON.parse(outlineOutput);
     const mrfi = sections[0].mrfi;
 
-    assertEquals(/^~[\uAC00-\uB3FF]+$/.test(mrfi), true);
+    assertEquals(/^~[\uAC00-\uCBFF]+$/.test(mrfi), true);
 
     const output = await captureOutput(() =>
       main(["resolve", movedFile, mrfi])
@@ -1093,7 +1093,7 @@ Deno.test("md ref - generates an MRFI reference from a line-column range", async
   try {
     const output = await captureOutput(() => main(["ref", file, "3:1-3:18"]));
 
-    assertEquals(/^~[\uAC00-\uB3FF]+$/.test(output), true);
+    assertEquals(/^~[\uAC00-\uCBFF]+$/.test(output), true);
   } finally {
     await Deno.remove(file);
   }

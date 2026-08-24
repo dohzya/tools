@@ -8,14 +8,18 @@
 
 import { assertEquals } from "@std/assert";
 import type { DebugMrfi } from "../entities/mrfi.ts";
-import { assertThrows } from "@std/assert";
+import { assertRejects, assertThrows } from "@std/assert";
+import { encodeHangulPayload, HANGUL_LEGACY_BITS } from "./mrfi-cbor.ts";
 import {
   decodeCompactMrfi,
   decodeExtraFields,
+  encodeCompactEnvelope,
   encodeCompactMrfi,
+  formatMrfi,
   getMustUnderstandViolations,
   parseDebugMrfi,
   parseHashSignal,
+  parseMrfiReference,
   serializeDebugMrfi,
   serializeHashSignal,
 } from "./mrfi-codec.ts";
@@ -240,4 +244,57 @@ Deno.test("getMustUnderstandViolations - mixed extension and unknown keys", () =
     }),
     ["foo", "bar"],
   );
+});
+
+Deno.test("parseMrfiReference - reads a legacy 11-bit Hangul reference", async () => {
+  const source = parseDebugMrfi("~{v0;a=install_sdk;r=12:1-12:18}");
+  if (!source) throw new Error("fixture did not parse");
+
+  const legacy = `~${
+    encodeHangulPayload(
+      await encodeCompactEnvelope(encodeCompactMrfi(source)),
+      HANGUL_LEGACY_BITS,
+    )
+  }`;
+  const current = await formatMrfi(source, "hangul");
+
+  assertEquals(legacy === current, false);
+  assertEquals(
+    await parseMrfiReference(legacy),
+    await parseMrfiReference(current),
+  );
+});
+
+Deno.test("parseMrfiReference - re-emits a legacy reference at 13 bits", async () => {
+  const source = parseDebugMrfi("~{v0;a=install_sdk;r=12:1-12:18}");
+  if (!source) throw new Error("fixture did not parse");
+
+  const legacy = `~${
+    encodeHangulPayload(
+      await encodeCompactEnvelope(encodeCompactMrfi(source)),
+      HANGUL_LEGACY_BITS,
+    )
+  }`;
+  const reparsed = await parseMrfiReference(legacy);
+  if (!reparsed) throw new Error("legacy reference did not parse");
+
+  assertEquals(
+    await formatMrfi(reparsed, "hangul"),
+    await formatMrfi(source, "hangul"),
+  );
+});
+
+Deno.test("parseMrfiReference - a corrupt Hangul payload reports the current format", async () => {
+  const source = parseDebugMrfi("~{v0;a=install_sdk;r=12:1-12:18}");
+  if (!source) throw new Error("fixture did not parse");
+
+  const current = await formatMrfi(source, "hangul");
+  // Flip one syllable: neither the 13-bit read nor the 11-bit fallback can
+  // produce a valid envelope, and the caller must see the 13-bit failure.
+  const corrupt = current.slice(0, 3) +
+    String.fromCodePoint((current.codePointAt(3) ?? 0) ^ 1) +
+    current.slice(4);
+
+  const error = await assertRejects(() => parseMrfiReference(corrupt));
+  assertEquals(/legacy/i.test(String(error)), false);
 });
