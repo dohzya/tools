@@ -120,7 +120,7 @@ The supported first profile is intentionally small:
 
 `RefreshReferenceUseCase` re-points a reference at its current location: it resolves the reference and, when the match is `exact` or `confident`, regenerates a canonical reference for the up-to-date range; otherwise it surfaces the resolve status/diagnostics instead of a reference, so callers can tell "refreshed" from "couldn't".
 
-The compact codec covers all generated profiles: version, anchor, physical range, structural path, exact fragment hash, fuzzy heading hash, context hashes, quote, document hash, offset range, and fuzzy passage hash. It serializes that object with deterministic CBOR in an `MRFI` envelope, then emits either base62 or Hangul base2048. Compact-envelope checksums and `smh64-v0` feature hashes use SHA-256 through the local WebCrypto digest available to Deno.
+The compact codec covers all generated profiles: version, anchor, physical range, structural path, exact fragment hash, fuzzy heading hash, context hashes, quote, document hash, offset range, and fuzzy passage hash. It serializes that object with deterministic CBOR in an `MRFI` envelope, then emits either base62 or Hangul base8192 (13 bits per syllable, `U+AC00..U+CBFF`). Compact-envelope checksums and `smh64-v0` feature hashes use SHA-256 through the local WebCrypto digest available to Deno.
 
 ### CLI entry point (`cli.ts`)
 

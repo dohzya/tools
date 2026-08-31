@@ -3,12 +3,12 @@
 import { Command } from "@cliffy/command";
 import { CompletionsCommand } from "@cliffy/command/completions";
 import * as childProcess from "node:child_process";
-import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import process from "node:process";
 import * as readline from "node:readline";
 import { agentInstructions } from "../agent-instructions.ts";
+import { parseMrfiReference } from "../markdown-surgeon/domain/use-cases/mrfi-codec.ts";
 import { pageText, shouldUsePager } from "../pager.ts";
 
 import {
@@ -298,11 +298,6 @@ interface RefSnapshotItem {
 }
 
 const DEFAULT_REF_SNAPSHOT_LINES = 10;
-const MRFI_BASE62_ALPHABET =
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const MRFI_HANGUL_BASE = 0xac00;
-const MRFI_HANGUL_LIMIT = 0xb3ff;
-const MRFI_MAGIC = new TextEncoder().encode("MRFI");
 const REF_SNAPSHOT_TRUNCATED_RE =
   /^\[ref snapshot truncated: (\d+) lines? omitted\]$/;
 
@@ -367,7 +362,7 @@ const DEFAULT_CONTEXT: DisplayContext = { before: 2, after: 0 };
 const DOMINANT_TIMESTAMP_FORMAT_RATIO = 0.9;
 const STATUS_TEMPLATE_PLACEHOLDER = "%(status)";
 const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
-  .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
+  .raw`[A-Za-z0-9]{8}|[\uac00-\ucbff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
 const CLI_VERSION = "0.4.0";
 let activeColorMode: ColorMode | undefined;
 
@@ -2702,7 +2697,7 @@ async function collectRefIssues(
         continue;
       }
 
-      if (target.mrfi && !isValidMrfiReference(target.mrfi)) {
+      if (target.mrfi && !(await isValidMrfiReference(target.mrfi))) {
         issues.push({
           kind: "invalid-mrfi",
           message: `invalid MRFI reference ${target.mrfi}`,
@@ -2893,7 +2888,7 @@ function refSnapshotMatchesSelectors(
   );
 }
 
-function isValidMrfiReference(ref: string): boolean {
+async function isValidMrfiReference(ref: string): Promise<boolean> {
   if (ref.startsWith("~{")) {
     return isValidDebugMrfiReference(ref);
   }
@@ -2902,14 +2897,11 @@ function isValidMrfiReference(ref: string): boolean {
     return false;
   }
 
+  // Delegated rather than mirrored: the compact envelope (magic, varuint
+  // length, checksum, Hangul bit width and its legacy fallback) is defined by
+  // markdown-surgeon, and a second implementation here drifted from it.
   try {
-    const payload = ref.slice(1);
-    const first = payload.codePointAt(0);
-    const envelope = first !== undefined && first >= MRFI_HANGUL_BASE &&
-        first <= MRFI_HANGUL_LIMIT
-      ? decodeMrfiHangulPayload(payload)
-      : decodeMrfiBase62Payload(payload);
-    return isValidCompactMrfiEnvelope(envelope);
+    return await parseMrfiReference(ref) !== undefined;
   } catch {
     return false;
   }
@@ -2935,98 +2927,6 @@ function isValidDebugMrfiReference(ref: string): boolean {
     }
   }
   return true;
-}
-
-function decodeMrfiBase62Payload(payload: string): Uint8Array {
-  if (!/^[0-9A-Za-z]+$/.test(payload)) {
-    throw new Error("Invalid base62 MRFI payload");
-  }
-
-  let value = 0n;
-  for (const char of payload) {
-    const digit = MRFI_BASE62_ALPHABET.indexOf(char);
-    if (digit === -1) throw new Error("Invalid base62 MRFI payload");
-    value = value * 62n + BigInt(digit);
-  }
-
-  const bytes: number[] = [];
-  while (value > 0n) {
-    bytes.unshift(Number(value & 0xffn));
-    value >>= 8n;
-  }
-  return new Uint8Array(bytes);
-}
-
-function decodeMrfiHangulPayload(payload: string): Uint8Array {
-  const bytes: number[] = [];
-  let buffer = 0;
-  let bitCount = 0;
-
-  for (const char of payload.normalize("NFC")) {
-    const codePoint = char.codePointAt(0);
-    if (
-      codePoint === undefined || codePoint < MRFI_HANGUL_BASE ||
-      codePoint > MRFI_HANGUL_LIMIT
-    ) {
-      throw new Error("Invalid Hangul MRFI payload");
-    }
-    buffer = (buffer << 11) | (codePoint - MRFI_HANGUL_BASE);
-    bitCount += 11;
-    while (bitCount >= 8) {
-      bitCount -= 8;
-      bytes.push((buffer >> bitCount) & 0xff);
-      buffer &= (1 << bitCount) - 1;
-    }
-  }
-
-  if (bitCount > 0 && buffer !== 0) {
-    throw new Error("Invalid Hangul MRFI padding");
-  }
-  return new Uint8Array(bytes);
-}
-
-function isValidCompactMrfiEnvelope(envelope: Uint8Array): boolean {
-  if (envelope.length < MRFI_MAGIC.length + 1 + 3) return false;
-  for (let index = 0; index < MRFI_MAGIC.length; index += 1) {
-    if (envelope[index] !== MRFI_MAGIC[index]) return false;
-  }
-  if (envelope[MRFI_MAGIC.length] !== 0) return false;
-
-  const length = decodeMrfiVarUint(envelope, MRFI_MAGIC.length + 1);
-  if (!length) return false;
-  const payloadEnd = length.nextOffset + length.value;
-  const checkEnd = payloadEnd + 3;
-  if (checkEnd > envelope.length) return false;
-  for (const byte of envelope.slice(checkEnd)) {
-    if (byte !== 0) return false;
-  }
-
-  const expectedCheck = crypto.createHash("sha256")
-    .update(envelope.slice(0, payloadEnd))
-    .digest()
-    .subarray(0, 3);
-  const actualCheck = envelope.slice(payloadEnd, checkEnd);
-  for (let index = 0; index < expectedCheck.length; index += 1) {
-    if (expectedCheck[index] !== actualCheck[index]) return false;
-  }
-  return true;
-}
-
-function decodeMrfiVarUint(
-  bytes: Uint8Array,
-  offset: number,
-): { value: number; nextOffset: number } | undefined {
-  let value = 0;
-  let index = offset;
-  while (index < bytes.length) {
-    const byte = bytes[index];
-    value = value * 128 + (byte & 0x7f);
-    index += 1;
-    if ((byte & 0x80) === 0) {
-      return { value, nextOffset: index };
-    }
-  }
-  return undefined;
 }
 
 async function targetReviewIdExists(

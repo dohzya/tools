@@ -7,6 +7,15 @@ import {
 import { join } from "node:path";
 import process from "node:process";
 import { main } from "./cli.ts";
+import {
+  encodeHangulPayload,
+  HANGUL_LEGACY_BITS,
+} from "../markdown-surgeon/domain/use-cases/mrfi-cbor.ts";
+import {
+  encodeCompactEnvelope,
+  encodeCompactMrfi,
+  parseDebugMrfi,
+} from "../markdown-surgeon/domain/use-cases/mrfi-codec.ts";
 
 async function captureOutput(fn: () => Promise<unknown>): Promise<string> {
   const originalLog = console.log;
@@ -2430,8 +2439,8 @@ Deno.test("dz-review timestamp --format-info reports dominant hangul format", as
   await Deno.writeTextFile(
     file,
     [
-      "{++%\uada8\ub22d\ub147\uac78|one++}",
-      "<!-- @agent%\uada8\ub22d\ub147\uac78 open -->",
+      "{++%\uac1a\ubd8b\ub947\uac78|one++}",
+      "<!-- @agent%\uac1a\ubd8b\ub947\uac78 open -->",
       "",
     ].join("\n"),
   );
@@ -2493,7 +2502,7 @@ Deno.test("dz-review now --timestamp-format hangul - prints a hangul timestamp",
     ])
   );
 
-  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(output.trim()), true);
+  assertEquals(/^[\uac00-\ucbff]{4}$/.test(output.trim()), true);
 });
 
 Deno.test("dz-review now -H - prints a hangul timestamp", async () => {
@@ -2501,7 +2510,7 @@ Deno.test("dz-review now -H - prints a hangul timestamp", async () => {
     main(["now", "-H", "--date", "2026-06-16T17:35:35+02:00"])
   );
 
-  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(output.trim()), true);
+  assertEquals(/^[\uac00-\ucbff]{4}$/.test(output.trim()), true);
 });
 
 Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => {
@@ -2514,7 +2523,7 @@ Deno.test("dz-review timestamp -H - converts timestamps to hangul", async () => 
       main(["timestamp", "-H", "--stdout", file])
     );
 
-    assertEquals(output, "{++%\uada8\ub22d\ub147\uac78|one++}\n");
+    assertEquals(output, "{++%\uac1a\ubd8b\ub947\uac78|one++}\n");
   } finally {
     await Deno.remove(dir, { recursive: true });
   }
@@ -2935,3 +2944,35 @@ async function runDzReview(
     stderr: new TextDecoder().decode(result.stderr),
   };
 }
+
+Deno.test("dz-review ref check - accepts a legacy 11-bit Hangul MRFI ref", async () => {
+  const dir = await Deno.makeTempDir();
+  const doc = join(dir, "doc.md");
+  const source = join(dir, "source.md");
+  await Deno.writeTextFile(
+    source,
+    ["# Source", "<!-- ^sas-ines -->", "Un passage cible.", ""].join("\n"),
+  );
+
+  const parsed = parseDebugMrfi("~{v0;a=sas-ines;r=3:1-3:18}");
+  if (!parsed) throw new Error("fixture did not parse");
+  const legacy = `~${
+    encodeHangulPayload(
+      await encodeCompactEnvelope(encodeCompactMrfi(parsed)),
+      HANGUL_LEGACY_BITS,
+    )
+  }`;
+
+  await Deno.writeTextFile(
+    doc,
+    `<!-- ref: source.md:3${legacy}^sas-ines -->\n`,
+  );
+
+  try {
+    const result = await runDzReview(dir, ["ref", "check", "doc.md"], "");
+
+    assertEquals(result.stdout.includes("invalid MRFI reference"), false);
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});

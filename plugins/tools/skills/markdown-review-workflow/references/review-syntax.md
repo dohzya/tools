@@ -34,11 +34,11 @@ Conversation markers may carry timestamps:
 <!--
 @agent%2026-06-16T17:35:35+0200 Please validate this claim.
 @me%1WzvP91W Confirmed.
-@agent%궨눭녇걸 Follow-up noted.
+@agent%갚붋륇걸 Follow-up noted.
 -->
 ```
 
-The long form is ISO with an offset. Compact timestamps are shorter base62 values; `1WzvP91W` represents `2026-06-16T17:35:35+02:00`. Hangul timestamps are 4-character base2048 values in `U+AC00..U+B3FF`; `궨눭녇걸` also represents `2026-06-16T17:35:35+02:00`. Treat timestamps as part of the role marker metadata. Do not include them in the message body when summarizing or changing the thread.
+The long form is ISO with an offset. Compact timestamps are shorter base62 values; `1WzvP91W` represents `2026-06-16T17:35:35+02:00`. Hangul timestamps are 4-character base8192 values in `U+AC00..U+CBFF`; `갚붋륇걸` also represents `2026-06-16T17:35:35+02:00`. Treat timestamps as part of the role marker metadata. Do not include them in the message body when summarizing or changing the thread.
 
 Agents should use `dz-review session start [file...]` once before editing, `dz-review agent status [file...]` for progress checks during that session, and `dz-review session done [file...]` before handoff. Do not rerun `session start` just to refresh state; use `session start --force [file...]` only when intentionally replacing the active snapshot. The start command records each file's original or dominant timestamp format and normalizes timestamps to ISO for readability; the done command restores the recorded format when possible. For one-off work outside an agent session, the ordinary timestamp commands remain a manual fallback.
 

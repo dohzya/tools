@@ -1,13 +1,27 @@
+import {
+  decodeHangulDigits,
+  encodeHangulDigits,
+  HANGUL_BITS,
+  HANGUL_LEGACY_BITS,
+} from "../hangul.ts";
+
 const BASE62_ALPHABET =
   "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const DEFAULT_EPOCH_WIDTH = 6;
 const DEFAULT_TZ_WIDTH = 2;
-const HANGUL_TIMESTAMP_START = 0xac00;
-const HANGUL_TIMESTAMP_END = 0xb3ff;
-const HANGUL_TIMESTAMP_BASE = 2048;
+const HANGUL_TIMESTAMP_BASE = 1 << HANGUL_BITS;
 const HANGUL_EPOCH_WIDTH = 3;
 const HANGUL_TZ_WIDTH = 1;
-const HANGUL_TIMESTAMP_RE = /^[\uac00-\ub3ff]{4}$/u;
+const HANGUL_TIMESTAMP_RE = /^[\uac00-\ucbff]{4}$/u;
+
+/**
+ * A 4-syllable timestamp carries no envelope, so the base-2048 layout written
+ * before the move to 8192 cannot be recognised by inspection. It is told apart
+ * by plausibility instead: the two readings of one word differ by ~16x on the
+ * epoch, while this window spans ~4.3x, so at most one reading can land in it.
+ */
+const PLAUSIBLE_EPOCH_MIN = 946684800n; // 2000-01-01
+const PLAUSIBLE_EPOCH_MAX = 4102444800n; // 2100-01-01
 const ISO_TIMESTAMP_RE =
   /^%?\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})$/;
 
@@ -25,7 +39,7 @@ export interface TimestampFormatStats {
 }
 
 const DISPLAY_TIMESTAMP_VALUE_PATTERN = String
-  .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
+  .raw`[A-Za-z0-9]{8}|[\uac00-\ucbff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
 const DISPLAY_CONVERSATION_TIMESTAMP_RE = new RegExp(
   String
     .raw`(@agent|@me|@)%(${DISPLAY_TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)`,
@@ -144,14 +158,25 @@ export function encodeHangulTimestamp(
     );
   }
 
-  return encodeHangulUnsignedInteger(epochSeconds).padStart(
-    HANGUL_EPOCH_WIDTH,
-    String.fromCodePoint(HANGUL_TIMESTAMP_START),
-  ) +
-    encodeHangulUnsignedInteger(encodedOffsetValue).padStart(
-      HANGUL_TZ_WIDTH,
-      String.fromCodePoint(HANGUL_TIMESTAMP_START),
+  const encoded = encodeHangulDigits(epochSeconds, HANGUL_EPOCH_WIDTH) +
+    encodeHangulDigits(encodedOffsetValue, HANGUL_TZ_WIDTH);
+
+  // A narrow band of far-future epochs (years ~2448-4048) encodes to a word
+  // whose legacy reading is itself plausible and therefore wins at decode
+  // time. Reject exactly those by reading back, rather than guessing a date
+  // window: this check costs one decode and lapses on its own the day the
+  // legacy fallback is removed.
+  const readBack = decodeHangulTimestamp(encoded);
+  if (
+    readBack.unixSeconds !== epochSeconds ||
+    readBack.offsetMinutes !== offsetMinutes
+  ) {
+    throw new RangeError(
+      `unixSeconds not representable without legacy ambiguity: ${epochSeconds}.`,
     );
+  }
+
+  return encoded;
 }
 
 export function decodeHangulTimestamp(value: string): ReviewTimestamp {
@@ -159,17 +184,38 @@ export function decodeHangulTimestamp(value: string): ReviewTimestamp {
     throw new Error("Invalid hangul timestamp.");
   }
 
-  const epochPart = value.slice(0, HANGUL_EPOCH_WIDTH);
-  const offsetPart = value.slice(HANGUL_EPOCH_WIDTH);
-  const base = BigInt(HANGUL_TIMESTAMP_BASE);
-  const modulus = base ** BigInt(HANGUL_TZ_WIDTH);
-  const rawOffset = decodeHangulUnsignedInteger(offsetPart);
+  const current = readHangulTimestamp(value, HANGUL_BITS);
+  if (isPlausibleEpoch(current)) return current;
+
+  // Only reachable when every syllable also fits the narrower legacy window;
+  // readHangulTimestamp throws otherwise and the current reading stands.
+  try {
+    const legacy = readHangulTimestamp(value, HANGUL_LEGACY_BITS);
+    if (isPlausibleEpoch(legacy)) return legacy;
+  } catch {
+    // Not a legacy word either.
+  }
+
+  return current;
+}
+
+function isPlausibleEpoch(timestamp: ReviewTimestamp): boolean {
+  return timestamp.unixSeconds >= PLAUSIBLE_EPOCH_MIN &&
+    timestamp.unixSeconds <= PLAUSIBLE_EPOCH_MAX;
+}
+
+function readHangulTimestamp(value: string, bits: number): ReviewTimestamp {
+  const modulus = BigInt(1 << bits) ** BigInt(HANGUL_TZ_WIDTH);
+  const rawOffset = decodeHangulDigits(
+    value.slice(HANGUL_EPOCH_WIDTH),
+    bits,
+  );
   const signedOffset = rawOffset < modulus / 2n
     ? rawOffset
     : rawOffset - modulus;
 
   return {
-    unixSeconds: decodeHangulUnsignedInteger(epochPart),
+    unixSeconds: decodeHangulDigits(value.slice(0, HANGUL_EPOCH_WIDTH), bits),
     offsetMinutes: Number(signedOffset),
   };
 }
@@ -314,7 +360,7 @@ function incrementTimestampFormatStats(
     return;
   }
 
-  if (/^[\uac00-\ub3ff]{4}$/u.test(value)) {
+  if (/^[\uac00-\ucbff]{4}$/u.test(value)) {
     stats.hangul += 1;
     return;
   }
@@ -409,51 +455,6 @@ function decodeUnsignedInteger(value: string): bigint {
     }
 
     out = out * base + BigInt(digit);
-  }
-
-  return out;
-}
-
-function encodeHangulUnsignedInteger(value: bigint): string {
-  if (value < 0n) {
-    throw new RangeError("Cannot encode a negative integer as unsigned.");
-  }
-
-  if (value === 0n) {
-    return String.fromCodePoint(HANGUL_TIMESTAMP_START);
-  }
-
-  const base = BigInt(HANGUL_TIMESTAMP_BASE);
-  let remaining = value;
-  let out = "";
-
-  while (remaining > 0n) {
-    const digit = Number(remaining % base);
-    out = String.fromCodePoint(HANGUL_TIMESTAMP_START + digit) + out;
-    remaining /= base;
-  }
-
-  return out;
-}
-
-function decodeHangulUnsignedInteger(value: string): bigint {
-  if (value.length === 0) {
-    throw new Error("Cannot decode an empty integer.");
-  }
-
-  const base = BigInt(HANGUL_TIMESTAMP_BASE);
-  let out = 0n;
-
-  for (const char of value) {
-    const codePoint = char.codePointAt(0);
-    if (
-      codePoint === undefined || codePoint < HANGUL_TIMESTAMP_START ||
-      codePoint > HANGUL_TIMESTAMP_END
-    ) {
-      throw new Error(`Invalid hangul timestamp character: ${char}.`);
-    }
-
-    out = out * base + BigInt(codePoint - HANGUL_TIMESTAMP_START);
   }
 
   return out;

@@ -62,7 +62,7 @@ interface SnapshotStackEntry {
 
 const HTML_COMMENT_RE = /<!--[\s\S]*?-->/g;
 const TIMESTAMP_VALUE_PATTERN = String
-  .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
+  .raw`[A-Za-z0-9]{8}|[\uac00-\ucbff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
 const REF_BLOCK_PREFIX_RE = new RegExp(
   String.raw`^ref(?:%(${TIMESTAMP_VALUE_PATTERN}))?(?::|\s+)`,
 );

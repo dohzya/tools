@@ -15,7 +15,7 @@ export const STABLE_REVIEW_ID_PREFIX = "rvw_";
 const BASE62_ALPHABET =
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 const TIMESTAMP_VALUE_PATTERN = String
-  .raw`[A-Za-z0-9]{8}|[\uac00-\ub3ff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
+  .raw`[A-Za-z0-9]{8}|[\uac00-\ucbff]{4}|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})`;
 const REVIEW_MARKER_RE = new RegExp(
   String
     .raw`(^|[ \t\r\n])(@agent|@me|@)(?:%(${TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)|(?=[ \t]*:|[ \t\r\n]|$))`,

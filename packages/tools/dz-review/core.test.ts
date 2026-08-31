@@ -1,3 +1,5 @@
+import { encodeHangulDigits, HANGUL_LEGACY_BITS } from "../hangul.ts";
+import { assertThrows } from "@std/assert";
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { join } from "node:path";
 
@@ -146,7 +148,7 @@ Deno.test("dz-review core - encodes and decodes hangul timestamps", () => {
   const instant = new Date("2026-06-16T17:35:35+02:00");
   const timestamp = encodeHangulTimestamp(instant, 120);
 
-  assertEquals(/^[\uac00-\ub3ff]{4}$/.test(timestamp), true);
+  assertEquals(/^[\uac00-\ucbff]{4}$/.test(timestamp), true);
   assertEquals(decodeHangulTimestamp(timestamp), {
     offsetMinutes: 120,
     unixSeconds: 1781624135n,
@@ -617,3 +619,75 @@ async function exists(file: string): Promise<boolean> {
     return false;
   }
 }
+
+Deno.test("dz-review core - hangul timestamps use the 8192-syllable window", () => {
+  const instant = new Date("2026-06-16T17:35:35+02:00");
+  const current = encodeHangulTimestamp(instant, 120);
+  const legacy = encodeHangulDigits(1781624135n, 3, HANGUL_LEGACY_BITS) +
+    encodeHangulDigits(120n, 1, HANGUL_LEGACY_BITS);
+
+  assertEquals([...current].length, 4);
+  assertEquals(current === legacy, false);
+  assertEquals(decodeHangulTimestamp(current), {
+    offsetMinutes: 120,
+    unixSeconds: 1781624135n,
+  });
+});
+
+Deno.test("dz-review core - refuses only the epochs the fallback would misread", () => {
+  // Years ~2448-4048 encode to a word whose legacy reading is also plausible,
+  // so the fallback would win and hand back a different date.
+  assertThrows(() => encodeHangulTimestamp(15112045336n, 0), RangeError);
+
+  // Everything else round-trips, including dates the plausibility window
+  // excludes but the fallback cannot claim.
+  for (const epoch of [0n, 631152000n, 1781624135n, 4102444800n, 5680281600n]) {
+    assertEquals(
+      decodeHangulTimestamp(encodeHangulTimestamp(epoch, 0)).unixSeconds,
+      epoch,
+      `epoch ${epoch}`,
+    );
+  }
+});
+
+Deno.test("dz-review core - decodes a legacy base-2048 hangul timestamp", () => {
+  // Written by the pre-8192 encoder: 3 epoch digits + 1 tz digit, base 2048.
+  const legacy = encodeHangulDigits(1781624135n, 3, HANGUL_LEGACY_BITS) +
+    encodeHangulDigits(120n, 1, HANGUL_LEGACY_BITS);
+
+  assertEquals(decodeHangulTimestamp(legacy), {
+    offsetMinutes: 120,
+    unixSeconds: 1781624135n,
+  });
+});
+
+Deno.test("dz-review core - a legacy negative offset survives the fallback", () => {
+  const legacy = encodeHangulDigits(1781624135n, 3, HANGUL_LEGACY_BITS) +
+    encodeHangulDigits(2048n - 300n, 1, HANGUL_LEGACY_BITS);
+
+  assertEquals(decodeHangulTimestamp(legacy), {
+    offsetMinutes: -300,
+    unixSeconds: 1781624135n,
+  });
+});
+
+Deno.test("dz-review core - current and legacy hangul layouts never collide", () => {
+  // The two readings of one 4-syllable word differ by ~16x on the epoch, while
+  // a plausible date range spans far less, so exactly one reading can be right.
+  for (
+    const iso of [
+      "2000-01-01T00:00:00Z",
+      "2026-06-16T17:35:35Z",
+      "2099-12-31T23:59:59Z",
+    ]
+  ) {
+    const instant = new Date(iso);
+    const current = encodeHangulTimestamp(instant, 0);
+    const seconds = BigInt(Math.floor(instant.getTime() / 1000));
+    const legacy = encodeHangulDigits(seconds, 3, HANGUL_LEGACY_BITS) +
+      encodeHangulDigits(0n, 1, HANGUL_LEGACY_BITS);
+
+    assertEquals(decodeHangulTimestamp(current).unixSeconds, seconds, iso);
+    assertEquals(decodeHangulTimestamp(legacy).unixSeconds, seconds, iso);
+  }
+});

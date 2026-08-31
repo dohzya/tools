@@ -47,7 +47,7 @@ Active discussions can use either syntax:
 {?? @agent I chose this wording because it matches the glossary. @me Can we make this less categorical? @agent Done. I softened the claim and kept the glossary term. ??}
 ```
 
-Use `@agent` for agent messages and `@me` for human messages. Create and normalize messages without a colon after the role marker. A marker may carry a timestamp, such as `@agent%2026-06-16T17:35:35+0200`, `@agent%1WzvP91W`, or `@agent%궨눭녇걸`. Treat timestamps as marker metadata, not message text, and preserve them when editing older messages.
+Use `@agent` for agent messages and `@me` for human messages. Create and normalize messages without a colon after the role marker. A marker may carry a timestamp, such as `@agent%2026-06-16T17:35:35+0200`, `@agent%1WzvP91W`, or `@agent%갚붋륇걸`. Treat timestamps as marker metadata, not message text, and preserve them when editing older messages.
 
 ## Custom Review Annotations
 
