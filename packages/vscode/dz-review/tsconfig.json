@@ -2,10 +2,10 @@
   "compilerOptions": {
     "module": "esnext",
     "moduleResolution": "bundler",
-    "target": "ES2020",
+    "target": "ES2022",
     "outDir": "out",
     "lib": [
-      "ES2020"
+      "ES2022"
     ],
     "types": [
       "node"
@@ -13,7 +13,20 @@
     "sourceMap": true,
     "rootDir": "../../",
     "strict": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    // packages/tools resolves these through its Deno import map. tsc checks
+    // those sources from here, where node resolution never reaches this
+    // package's node_modules, so they are mapped by hand. commonmark points
+    // at its @types package because only declarations matter under --noEmit.
+    "paths": {
+      "@zod/zod/mini": [
+        "./node_modules/zod/mini"
+      ],
+      "commonmark": [
+        "./node_modules/@types/commonmark"
+      ]
+    },
+    "baseUrl": "."
   },
   "exclude": [
     "node_modules",
