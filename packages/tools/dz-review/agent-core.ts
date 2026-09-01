@@ -914,13 +914,27 @@ function deleteReviewItemWithWhitespace(
   item: Pick<ReviewItem, "start" | "end">,
 ): string {
   let { start, end } = item;
-  // Consume the preceding newline if the item starts on its own line
-  if (start > 0 && text[start - 1] === "\n") {
-    start -= 1;
-  } else if (end < text.length && text[end] === "\n") {
-    // Otherwise consume the trailing newline
-    end += 1;
+  const lineStart = text.lastIndexOf("\n", start - 1) + 1;
+  const isOwnLine = /^[ \t]*$/.test(text.slice(lineStart, start));
+
+  if (isOwnLine) {
+    // The item is the only content on its line: eat one adjacent newline
+    // so deleting it doesn't leave a blank line behind.
+    if (start > 0 && text[start - 1] === "\n") {
+      start -= 1;
+    } else if (end < text.length && text[end] === "\n") {
+      end += 1;
+    }
+  } else {
+    // The item trails other content on the same line (e.g. a list item's
+    // inline `<!-- ... -->`): only drop the separating spaces, never the
+    // line's own trailing newline — eating it would merge it into the
+    // next line/list item.
+    while (start > 0 && (text[start - 1] === " " || text[start - 1] === "\t")) {
+      start -= 1;
+    }
   }
+
   return text.slice(0, start) + text.slice(end);
 }
 

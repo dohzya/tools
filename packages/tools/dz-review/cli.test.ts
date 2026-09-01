@@ -1630,6 +1630,31 @@ Deno.test("dz-review agent clean --validated - removes resolved conversations", 
   }
 });
 
+Deno.test("dz-review agent clean --validated - preserves list item boundaries for inline trailing comments", async () => {
+  const dir = await Deno.makeTempDir();
+  const file = join(dir, "file.md");
+  await Deno.writeTextFile(
+    file,
+    "- **A**: first <!-- @agent%2026-06-16T17:35:35+02:00 Done? " +
+      "@me%2026-06-16T17:35:35+02:00 ok -->\n" +
+      "- **B**: second <!-- @agent%2026-06-16T17:35:36+02:00 Done? " +
+      "@me%2026-06-16T17:35:36+02:00 ok -->\n",
+  );
+
+  try {
+    await withCwd(dir, () => main(["agent", "start", "file.md"]));
+
+    await captureOutput(() =>
+      withCwd(dir, () => main(["agent", "clean", "--validated"]))
+    );
+    const updated = await Deno.readTextFile(file);
+
+    assertEquals(updated, "- **A**: first\n- **B**: second\n");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review agent done - passes after agent clean removes a conversation", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");
