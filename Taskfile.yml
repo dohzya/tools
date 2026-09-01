@@ -64,8 +64,8 @@ tasks:
       - .vscodeignore
       - LICENSE
       - assets/**
-      - ../../tools/dz-review/stable-review-id.ts
-      - ../../tools/dz-review/timestamp.ts
+      - ../../tools/dz-review/*.ts
+      - "!../../tools/dz-review/*.test.ts"
       - src/**/*.ts
       - syntaxes/**/*.json
     generates:

@@ -51,7 +51,7 @@ export function getDzReviewStateDir(): string {
   }
 
   const gitRoot = findGitRoot();
-  if (gitRoot && path.resolve(gitRoot) !== path.resolve(environment.getCwd())) {
+  if (gitRoot) {
     return path.join(gitRoot, DEFAULT_DZ_REVIEW_STATE_DIR);
   }
 

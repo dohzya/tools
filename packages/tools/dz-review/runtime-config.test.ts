@@ -1,5 +1,6 @@
 import { assertEquals } from "@std/assert";
 import * as path from "node:path";
+import * as childProcess from "node:child_process";
 
 import {
   configureDzReviewRuntime,
@@ -31,6 +32,35 @@ Deno.test("dz-review runtime-config - injected environment replaces Deno.env/Den
     assertEquals(
       getDzReviewReferenceMapFile(),
       path.join(DEFAULT_DZ_REVIEW_STATE_DIR, "reference-map.json"),
+    );
+  } finally {
+    configureDzReviewRuntime({});
+  }
+});
+
+Deno.test("dz-review runtime-config - cwd equal to git root still returns an absolute state dir", () => {
+  try {
+    // Simulates the VS Code extension host: its logical `getCwd()` (the
+    // workspace folder) matches the git root, but the host never calls
+    // `process.chdir()`, so `fs.*` calls resolve relative paths against
+    // an unrelated real process cwd. The state dir must therefore always
+    // be absolute once a git root is found, never a bare relative path.
+    const rootResult = childProcess.spawnSync("git", [
+      "rev-parse",
+      "--show-toplevel",
+    ], { cwd: Deno.cwd(), encoding: "utf8" });
+    const gitRoot = rootResult.stdout.trim();
+
+    configureDzReviewRuntime({
+      environment: {
+        getEnv: () => undefined,
+        getCwd: () => gitRoot,
+      },
+    });
+
+    assertEquals(
+      getDzReviewStateDir(),
+      path.join(gitRoot, DEFAULT_DZ_REVIEW_STATE_DIR),
     );
   } finally {
     configureDzReviewRuntime({});
