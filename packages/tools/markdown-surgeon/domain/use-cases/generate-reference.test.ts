@@ -341,3 +341,60 @@ Deno.test("structural path: block steps only (no heading prefix) before the firs
   });
   assertEquals(path, "p[1]");
 });
+
+Deno.test("execute: headingHash/documentHash don't rehash the section/document per item in the same section", async () => {
+  const itemLines = Array.from(
+    { length: 20 },
+    (_, index) => `- Item ${index} with some body text to hash.`,
+  );
+  const content = ["## Section", "", ...itemLines].join("\n");
+  const doc = await parseDocument.execute({ content });
+
+  let digestCalls = 0;
+  const originalDigest = crypto.subtle.digest.bind(crypto.subtle);
+  const spyDigest: typeof crypto.subtle.digest = (...args) => {
+    digestCalls += 1;
+    return originalDigest(...args);
+  };
+  crypto.subtle.digest = spyDigest;
+
+  try {
+    const lineOffset = 3; // "## Section", "", then item lines starting at line 3
+    const rangeForItem = (index: number) => ({
+      startLine: lineOffset + index,
+      startColumn: 1,
+      endLine: lineOffset + index,
+      endColumn: itemLines[index].length + 1,
+    });
+
+    await generateReference.execute({
+      doc,
+      target: { kind: "range", range: rangeForItem(0) },
+      format: "debug",
+      profile: "default",
+      quote: false,
+      quoteMax: 0,
+    });
+    const callsForFirstItem = digestCalls;
+    assertEquals(callsForFirstItem > 0, true);
+
+    digestCalls = 0;
+    await generateReference.execute({
+      doc,
+      target: { kind: "range", range: rangeForItem(1) },
+      format: "debug",
+      profile: "default",
+      quote: false,
+      quoteMax: 0,
+    });
+    const callsForSecondItem = digestCalls;
+
+    // Without caching, the second item would redo roughly the same
+    // section/document-sized hashing as the first (same order of
+    // magnitude). With caching, only its own small passage/context hashes
+    // remain.
+    assertEquals(callsForSecondItem < callsForFirstItem / 2, true);
+  } finally {
+    crypto.subtle.digest = originalDigest;
+  }
+});

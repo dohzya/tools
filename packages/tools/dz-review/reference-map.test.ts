@@ -128,6 +128,46 @@ Deno.test("assignPersistentReviewItemIds - unchanged file/items/lines on a secon
   }
 });
 
+Deno.test("assignPersistentReviewItemIds - many items on an unchanged file all fast-path with zero port calls", async () => {
+  const dir = await Deno.makeTempDir();
+  const itemCount = 40;
+  const content = Array.from(
+    { length: itemCount },
+    (_, index) => `Line ${index} unique marker.`,
+  ).join("\n");
+  const items = Array.from({ length: itemCount }, (_, index) => ({
+    kind: "comment",
+    raw: `note ${index}`,
+    lineStart: index + 1,
+    lineEnd: index + 1,
+  }));
+
+  try {
+    await withCwd(dir, async () => {
+      const first = await assignPersistentReviewItemIds(
+        "file.md",
+        content,
+        items,
+      );
+
+      // A locator that throws on any call: if any item's second run were to
+      // fall through to resolution/generation instead of the fast path,
+      // this test would fail loudly instead of silently passing.
+      const second = await assignPersistentReviewItemIds(
+        "file.md",
+        content,
+        items,
+        { locator: new ThrowingLocator() },
+      );
+
+      assertEquals(second.map((r) => r.id), first.map((r) => r.id));
+      assertEquals(new Set(second.map((r) => r.id)).size, itemCount);
+    });
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("assignPersistentReviewItemIds - raw text changed but same line range still gets the same id via the fast path", async () => {
   const dir = await Deno.makeTempDir();
   const content = [

@@ -1,7 +1,32 @@
 import { assertEquals } from "@std/assert";
+import { Parser } from "commonmark";
 import { CommonmarkBlockTreeParser } from "./commonmark-block-tree-parser.ts";
 
 const parser = new CommonmarkBlockTreeParser();
+
+Deno.test("stepsForRange: reuses the parsed tree across calls with the same source", () => {
+  const source = [
+    "- item one",
+    "- item two",
+    "- item three",
+  ].join("\n");
+
+  let parseCalls = 0;
+  const spyParser = new Parser();
+  const originalParse = spyParser.parse.bind(spyParser);
+  spyParser.parse = (input: string) => {
+    parseCalls += 1;
+    return originalParse(input);
+  };
+  const freshParser = new CommonmarkBlockTreeParser(spyParser);
+
+  for (const target of ["item one", "item two", "item three"]) {
+    const start = source.indexOf(target);
+    freshParser.stepsForRange(source, start, start + target.length);
+  }
+
+  assertEquals(parseCalls, 1);
+});
 
 Deno.test("stepsForRange: single top-level paragraph", () => {
   const source = "First para.\n\nSecond para.\n";

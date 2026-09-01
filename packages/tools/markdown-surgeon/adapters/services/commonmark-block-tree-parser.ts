@@ -27,16 +27,19 @@ interface CommonmarkNode {
 
 /** CommonMark-backed implementation of the BlockTreeParser port */
 export class CommonmarkBlockTreeParser implements BlockTreeParser {
-  private readonly parser = new Parser();
+  private cachedSource: string | undefined;
+  private cachedRoot: CommonmarkNode | undefined;
+  private cachedLineStartOffsets: readonly number[] | undefined;
+
+  constructor(private readonly parser: Parser = new Parser()) {}
 
   stepsForRange(
     source: string,
     start: number,
     end: number,
   ): readonly BlockStep[] {
-    const root: CommonmarkNode = this.parser.parse(source);
-    const lines = source.split("\n");
-    return walkDown(root, lines, start, end);
+    const { root, lineStartOffsets } = this.parseCached(source);
+    return walkDown(root, lineStartOffsets, start, end);
   }
 
   rangeForSteps(
@@ -45,16 +48,51 @@ export class CommonmarkBlockTreeParser implements BlockTreeParser {
   ): { start: number; end: number } | undefined {
     if (steps.length === 0) return undefined;
 
-    const root: CommonmarkNode = this.parser.parse(source);
-    const lines = source.split("\n");
+    const { root, lineStartOffsets } = this.parseCached(source);
     let current = root;
     for (const step of steps) {
       const found = findChild(current, step);
       if (!found) return undefined;
       current = found;
     }
-    return nodeRange(current, lines);
+    return nodeRange(current, lineStartOffsets);
   }
+
+  // stepsForRange/rangeForSteps are both called once per review item, and
+  // callers (see generate-reference.ts's getStructuralPath) invoke them
+  // repeatedly with the same section-scoped source across every item in
+  // that section. Reparsing on every call turned per-item id resolution
+  // quadratic in the number of items sharing a section. lineStartOffsets is
+  // a prefix-sum table so nodeRange (called for every child visited while
+  // walking down to a match) is O(1) instead of O(line number).
+  private parseCached(
+    source: string,
+  ): { root: CommonmarkNode; lineStartOffsets: readonly number[] } {
+    if (
+      this.cachedSource === source && this.cachedRoot &&
+      this.cachedLineStartOffsets
+    ) {
+      return {
+        root: this.cachedRoot,
+        lineStartOffsets: this.cachedLineStartOffsets,
+      };
+    }
+
+    const root = this.parser.parse(source);
+    const lineStartOffsets = buildLineStartOffsets(source.split("\n"));
+    this.cachedSource = source;
+    this.cachedRoot = root;
+    this.cachedLineStartOffsets = lineStartOffsets;
+    return { root, lineStartOffsets };
+  }
+}
+
+function buildLineStartOffsets(lines: readonly string[]): readonly number[] {
+  const offsets: number[] = [0];
+  for (const line of lines) {
+    offsets.push(offsets[offsets.length - 1] + Array.from(line).length + 1);
+  }
+  return offsets;
 }
 
 function* childrenOf(
@@ -99,7 +137,7 @@ function findChild(
 
 function walkDown(
   node: CommonmarkNode,
-  lines: readonly string[],
+  lineStartOffsets: readonly number[],
   start: number,
   end: number,
 ): readonly BlockStep[] {
@@ -110,9 +148,12 @@ function walkDown(
     const occurrence = (counts.get(kind) ?? 0) + 1;
     counts.set(kind, occurrence);
 
-    const range = nodeRange(child, lines);
+    const range = nodeRange(child, lineStartOffsets);
     if (range && range.start <= start && end <= range.end) {
-      return [{ kind, occurrence }, ...walkDown(child, lines, start, end)];
+      return [
+        { kind, occurrence },
+        ...walkDown(child, lineStartOffsets, start, end),
+      ];
     }
   }
   return [];
@@ -120,13 +161,13 @@ function walkDown(
 
 function nodeRange(
   node: CommonmarkNode,
-  lines: readonly string[],
+  lineStartOffsets: readonly number[],
 ): { start: number; end: number } | undefined {
   if (!node.sourcepos) return undefined;
   const [[startLine, startColumn], [endLine, endColumn]] = node.sourcepos;
   return {
-    start: offsetForPosition(lines, startLine, startColumn),
-    end: offsetForPosition(lines, endLine, endColumn) + 1,
+    start: offsetForPosition(lineStartOffsets, startLine, startColumn),
+    end: offsetForPosition(lineStartOffsets, endLine, endColumn) + 1,
   };
 }
 
@@ -137,13 +178,10 @@ function nodeRange(
  * Diverges only for astral characters, an accepted edge case.
  */
 function offsetForPosition(
-  lines: readonly string[],
+  lineStartOffsets: readonly number[],
   line: number,
   column: number,
 ): number {
-  let offset = 0;
-  for (let index = 0; index < line - 1; index += 1) {
-    offset += Array.from(lines[index] ?? "").length + 1;
-  }
-  return offset + column - 1;
+  const index = Math.min(line - 1, lineStartOffsets.length - 1);
+  return lineStartOffsets[index] + column - 1;
 }

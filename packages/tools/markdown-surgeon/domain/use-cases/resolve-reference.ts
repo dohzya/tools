@@ -37,6 +37,8 @@ import {
   findSectionContainingLine,
   formatSourceRange,
   fullLineRange,
+  getDocumentCodepoints,
+  getDocumentText,
   getOffsetRange,
   getRangeText,
   getSectionOrLinePassage,
@@ -671,7 +673,7 @@ async function resolveExactHashReference(
     readonly score: number;
   }> = [];
 
-  const source = Array.from(doc.lines.join("\n"));
+  const source = getDocumentCodepoints(doc);
   const collectCandidates = async (sourceLength: number): Promise<void> => {
     for (
       let startOffset = 0;
@@ -806,7 +808,7 @@ async function resolveContextReference(
     return undefined;
   }
 
-  const source = Array.from(doc.lines.join("\n"));
+  const source = getDocumentCodepoints(doc);
   const contextSignals = [
     parsed.context.prefix ? "prefix" : undefined,
     parsed.context.suffix ? "suffix" : undefined,
@@ -1074,7 +1076,7 @@ async function getContextDiagnosticsForRange(
 ): Promise<string[]> {
   if (!context) return [];
 
-  const source = Array.from(doc.lines.join("\n"));
+  const source = getDocumentCodepoints(doc);
   const offsetRange = getOffsetRange(doc, range);
   const diagnostics: string[] = [];
   if (context.prefix) {
@@ -1242,7 +1244,7 @@ function rangeFromStructuralPath(
   const resolved = resolveHeadingChain(doc, headingLevels, headingOccurrences);
   if (!resolved.found) return undefined;
 
-  const source = doc.lines.join("\n");
+  const source = getDocumentText(doc);
   const node = getStructuralNodeSourceForSection(doc, resolved.section, source);
 
   let startOffset: number;
@@ -1257,7 +1259,7 @@ function rangeFromStructuralPath(
     startOffset = node.startOffset;
     endOffset = node.startOffset + Array.from(node.text).length;
   }
-  const sourceLength = Array.from(doc.lines.join("\n")).length;
+  const sourceLength = getDocumentCodepoints(doc).length;
   if (startOffset < 0 || endOffset > sourceLength) return undefined;
 
   return rangeFromOffsets(doc, startOffset, endOffset);

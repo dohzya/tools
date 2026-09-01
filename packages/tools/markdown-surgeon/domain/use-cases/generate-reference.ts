@@ -27,6 +27,8 @@ import {
   findFirstSectionAnchor,
   findParentSection,
   findSectionContainingLine,
+  getDocumentCodepoints,
+  getDocumentText,
   getLineEndColumn,
   getOffsetRange,
   getRangeText,
@@ -217,6 +219,39 @@ function truncateQuote(value: string, maxLength: number): string {
   ].join("");
 }
 
+// headingHash/documentHash are the same handful of expensive smh64Value
+// inputs (one per section, one per document) recomputed once per review
+// item. smh64Value's own cache is bounded and keyed by text content, so
+// interleaving those few large, reused keys with hundreds of small,
+// distinct per-item passageHash keys thrashes them out of it well before a
+// large document's items are all minted. Cache these two by the stable
+// Section/Document object instead, so they never compete for eviction with
+// per-item hashes.
+const sectionHeadingHashCache = new WeakMap<Section, Promise<bigint>>();
+
+function getSectionHeadingHash(
+  doc: Document,
+  section: Section,
+): Promise<bigint> {
+  const cached = sectionHeadingHashCache.get(section);
+  if (cached) return cached;
+
+  const value = smh64Value(getSectionScopeText(doc, section));
+  sectionHeadingHashCache.set(section, value);
+  return value;
+}
+
+const documentHashCache = new WeakMap<Document, Promise<bigint>>();
+
+function getDocumentHash(doc: Document): Promise<bigint> {
+  const cached = documentHashCache.get(doc);
+  if (cached) return cached;
+
+  const value = smh64Value(getDocumentText(doc));
+  documentHashCache.set(doc, value);
+  return value;
+}
+
 async function buildMrfiForRange(
   doc: Document,
   range: SourceRange,
@@ -225,7 +260,6 @@ async function buildMrfiForRange(
 ): Promise<DebugMrfi> {
   const selectedText = getRangeText(doc, range);
   const section = findSectionContainingLine(doc, range.startLine);
-  const scopeText = section ? getSectionScopeText(doc, section) : selectedText;
   const offsetRange = getOffsetRange(doc, range);
   const anchor = section ? findFirstSectionAnchor(doc, section) : undefined;
 
@@ -240,14 +274,16 @@ async function buildMrfiForRange(
     ),
     exactHash: xxh64PrefixSignal(selectedText),
     headingHash: {
-      hash: await smh64Value(scopeText),
+      hash: section
+        ? await getSectionHeadingHash(doc, section)
+        : await smh64Value(selectedText),
     },
     passageHash: {
       hash: await smh64Value(selectedText),
     },
     context: await getContextHashes(doc, offsetRange),
     documentHash: {
-      hash: await smh64Value(doc.lines.join("\n")),
+      hash: await getDocumentHash(doc),
     },
     ...(anchor ? { anchor } : {}),
     ...(quote ? { quote } : {}),
@@ -298,7 +334,7 @@ function getStructuralPath(
   offsetRange: { start: number; end: number },
   blockTreeParser: BlockTreeParser,
 ): string | undefined {
-  const source = doc.lines.join("\n");
+  const source = getDocumentText(doc);
   const node = getStructuralNodeSourceForSection(doc, section, source);
   const relativeStart = offsetRange.start - node.startOffset;
   const relativeEnd = offsetRange.end - node.startOffset;
@@ -363,7 +399,7 @@ async function getContextHashes(
   doc: Document,
   offsetRange: { start: number; end: number },
 ): Promise<{ prefix?: string; suffix?: string }> {
-  const source = Array.from(doc.lines.join("\n"));
+  const source = getDocumentCodepoints(doc);
   const prefixText = source.slice(
     Math.max(0, offsetRange.start - 64),
     offsetRange.start,

@@ -170,13 +170,23 @@ export async function assignPersistentReviewItemIds<
 
   // Pass 1: fast path -- exact {lineStart, lineEnd} match against a
   // stored entry's range. See module doc comment for why this replaces a
-  // content-hash lookup.
+  // content-hash lookup. Indexed by range so a file with N items (the
+  // common case: nothing moved since the last run) costs O(N), not the
+  // O(N^2) a per-item Array.find over entryIdsForFile would cost.
+  const idsByRange = new Map<string, string[]>();
+  for (const id of entryIdsForFile) {
+    const key = `${entries[id].range.startLine}:${entries[id].range.endLine}`;
+    const bucket = idsByRange.get(key);
+    if (bucket) {
+      bucket.push(id);
+    } else {
+      idsByRange.set(key, [id]);
+    }
+  }
+
   for (const [index, item] of items.entries()) {
-    const matchId = entryIdsForFile.find((id) =>
-      !consumedIds.has(id) &&
-      entries[id].range.startLine === item.lineStart &&
-      entries[id].range.endLine === item.lineEnd
-    );
+    const key = `${item.lineStart}:${item.lineEnd}`;
+    const matchId = idsByRange.get(key)?.find((id) => !consumedIds.has(id));
     if (matchId !== undefined) {
       consumedIds.add(matchId);
       results[index] = { id: matchId, item };

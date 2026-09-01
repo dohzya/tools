@@ -44,6 +44,44 @@ export function isRangeInsideDocument(
     range.endColumn <= endLimit;
 }
 
+// Called once per review item landing in `section` (structural-path
+// resolution/generation), each call previously re-exploding the WHOLE
+// document into a codepoint array just to slice out one section. Reusing
+// the per-doc memoized codepoints turns that from O(items x document size)
+// into one build per document.
+const documentTextCache = new WeakMap<Document, string>();
+
+/** Exported for tests only: proves the memoization by return-value identity */
+export function getDocumentText(doc: Document): string {
+  const cached = documentTextCache.get(doc);
+  if (cached !== undefined) return cached;
+
+  const text = doc.lines.join("\n");
+  documentTextCache.set(doc, text);
+  return text;
+}
+
+const documentCodepointsCache = new WeakMap<Document, readonly string[]>();
+
+/** Exported for tests only: proves the memoization by return-value identity */
+export function getDocumentCodepoints(doc: Document): readonly string[] {
+  const cached = documentCodepointsCache.get(doc);
+  if (cached) return cached;
+
+  const codepoints = Array.from(getDocumentText(doc));
+  documentCodepointsCache.set(doc, codepoints);
+  return codepoints;
+}
+
+// Called once per review item landing in `section` (same shape as
+// getSectionScopeText above): the slice+join that builds `text` is
+// O(section size) even with the memoized codepoints array above, so N
+// items in one section still cost O(N x section size) without this cache.
+const sectionNodeSourceCache = new WeakMap<
+  Section,
+  { startOffset: number; text: string }
+>();
+
 export function getStructuralNodeSourceForSection(
   doc: Document,
   section: Section | undefined,
@@ -53,6 +91,18 @@ export function getStructuralNodeSourceForSection(
     return { startOffset: 0, text: source };
   }
 
+  const cached = sectionNodeSourceCache.get(section);
+  if (cached) return cached;
+
+  const node = computeStructuralNodeSourceForSection(doc, section);
+  sectionNodeSourceCache.set(section, node);
+  return node;
+}
+
+function computeStructuralNodeSourceForSection(
+  doc: Document,
+  section: Section,
+): { startOffset: number; text: string } {
   const startOffset = lineColumnToOffset(doc, section.line, 1);
   const endOffset = lineColumnToOffset(
     doc,
@@ -61,7 +111,7 @@ export function getStructuralNodeSourceForSection(
   );
   return {
     startOffset,
-    text: Array.from(source).slice(startOffset, endOffset).join(""),
+    text: getDocumentCodepoints(doc).slice(startOffset, endOffset).join(""),
   };
 }
 
@@ -205,12 +255,23 @@ export function getSectionOrLinePassage(
   };
 }
 
+// Called once per review item that lands in this section (headingHash in
+// generate-reference.ts, resolve-reference.ts's candidate scoring) with the
+// same section, so this must not redo the slice+join per call: a section
+// with N items would otherwise cost O(section size x N).
+const sectionScopeTextCache = new WeakMap<Section, string>();
+
 export function getSectionScopeText(doc: Document, section: Section): string {
-  return doc.lines.slice(
+  const cached = sectionScopeTextCache.get(section);
+  if (cached !== undefined) return cached;
+
+  const text = doc.lines.slice(
     section.line - 1,
     getTrimmedSectionEndLine(doc, section),
   )
     .join("\n");
+  sectionScopeTextCache.set(section, text);
+  return text;
 }
 
 export function isRangeShapeValid(range: SourceRange): boolean {
@@ -237,16 +298,32 @@ export function getOffsetRange(
   };
 }
 
+// Per-item MRFI generation calls this twice per item (range start + end),
+// each a fresh O(line number) rescan of every preceding line. Across all
+// items in a document that's O(items x lines) overall. A prefix-sum table,
+// built once per `doc` and reused, turns each call into an O(1) lookup.
+const lineStartOffsetsCache = new WeakMap<Document, readonly number[]>();
+
+function getLineStartOffsets(doc: Document): readonly number[] {
+  const cached = lineStartOffsetsCache.get(doc);
+  if (cached) return cached;
+
+  const offsets: number[] = [0];
+  for (const line of doc.lines) {
+    offsets.push(offsets[offsets.length - 1] + Array.from(line).length + 1);
+  }
+  lineStartOffsetsCache.set(doc, offsets);
+  return offsets;
+}
+
 export function lineColumnToOffset(
   doc: Document,
   line: number,
   column: number,
 ): number {
-  let offset = 0;
-  for (let index = 0; index < line - 1; index += 1) {
-    offset += Array.from(doc.lines[index] ?? "").length + 1;
-  }
-  return offset + column - 1;
+  const lineStartOffsets = getLineStartOffsets(doc);
+  const index = Math.min(line - 1, lineStartOffsets.length - 1);
+  return lineStartOffsets[index] + column - 1;
 }
 
 export function findSectionContainingLine(
@@ -309,7 +386,27 @@ export function sliceByScalarColumns(
   return Array.from(line).slice(startColumn - 1, endColumn - 1).join("");
 }
 
+// Tracking an open code fence correctly requires scanning from line 1, not
+// section.line, so this call already costs O(section.lineEnd) -- and (like
+// getSectionScopeText above) it's called once per review item landing in
+// the same section. Memoize per section so N items cost this scan once,
+// not N times.
+const sectionAnchorCache = new WeakMap<Section, string | undefined>();
+
 export function findFirstSectionAnchor(
+  doc: Document,
+  section: Section,
+): string | undefined {
+  if (sectionAnchorCache.has(section)) {
+    return sectionAnchorCache.get(section);
+  }
+
+  const anchor = computeFirstSectionAnchor(doc, section);
+  sectionAnchorCache.set(section, anchor);
+  return anchor;
+}
+
+function computeFirstSectionAnchor(
   doc: Document,
   section: Section,
 ): string | undefined {
@@ -395,7 +492,29 @@ export function normalizeForCompare(value: string): string {
   return value.normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-export async function smh64Value(text: string): Promise<bigint> {
+// Callers repeatedly hash the same section-scoped text once per review item
+// in that section (see generate-reference.ts's headingHash field), each
+// hash doing one crypto.subtle.digest call per token/bigram feature.
+// Memoizing by exact text turns that from O(items x text size) into one
+// computation per distinct text. Bounded (not a plain cache) since this
+// process may run long enough to see many distinct large texts.
+const SMH64_CACHE_LIMIT = 256;
+const smh64Cache = new Map<string, Promise<bigint>>();
+
+export function smh64Value(text: string): Promise<bigint> {
+  const cached = smh64Cache.get(text);
+  if (cached) return cached;
+
+  const value = computeSmh64Value(text);
+  smh64Cache.set(text, value);
+  if (smh64Cache.size > SMH64_CACHE_LIMIT) {
+    const oldestKey = smh64Cache.keys().next().value;
+    if (oldestKey !== undefined) smh64Cache.delete(oldestKey);
+  }
+  return value;
+}
+
+async function computeSmh64Value(text: string): Promise<bigint> {
   const tokens = tokenizeForSmh64(text);
   const accumulators = Array.from({ length: 64 }, () => 0);
   const features: Array<{ feature: string; weight: number }> = [];
