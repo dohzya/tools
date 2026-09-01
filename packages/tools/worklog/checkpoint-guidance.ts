@@ -25,6 +25,11 @@ As a cheap high-signal review pass, inspect \`wl traces --kind finding,learning\
 before finalizing Learnings. This does not guarantee every reusable lesson is
 covered, but it catches most pre-identified candidates with little noise.
 
+Reconcile superseded traces before routing them. A trace records what was true when it was written, not what is true now: a later trace may have narrowed it, contradicted it, or turned a plan into a rejected alternative. Read the traces in order and check each candidate against the final state of the work, not against the moment it was recorded. In particular:
+- A learning stated early and disproved later is not a learning; the correction is.
+- A "to do one day" that the task went on to rule out is a rejected alternative, and belongs in Changes with the reason it was ruled out.
+- A commit, branch, or status named mid-task is stale once the work moves on; state where it actually landed.
+
 Before running the command, review every candidate sentence. If it describes a thing done or final state, it belongs in Changes. If it describes a lesson learned, it belongs in Learnings. Then scan the traces for information that could be useful to other projects; when there is one, distill the reusable learning into Learnings.
 `.trim();
 
