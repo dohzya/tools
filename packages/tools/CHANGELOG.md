@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- **worklog:** The checkpoint/done synthesis contract now asks for superseded traces to be reconciled against the final state before routing them. A trace records what was true when written; without this the delegated synthesis faithfully reproduces conclusions the rest of the task later overturned.
+
+### Changed
+
 - **markdown-surgeon:** MRFI Hangul payloads now pack 13 bits per syllable over `U+AC00..U+CBFF` (8192 syllables) instead of 11 bits over 2048. Compact references are ~17% shorter in characters and UTF-8 bytes. References emitted at the old 11-bit width still decode: `parseMrfiReference` reads the current width first and falls back to the legacy one, discriminating on the envelope magic, version byte, and checksum. They are re-emitted at 13 bits.
 - **dz-review:** Hangul review timestamps move to base 8192 (`U+AC00..U+CBFF`), sharing the alphabet with MRFI through the new `packages/tools/hangul.ts`. They stay 4 characters; the change is code sharing, not size. Timestamps written in the old base-2048 layout still decode: the two readings of one 4-syllable word differ by ~16x on the epoch while a plausible date range spans ~4.3x, so at most one can be right. A narrow band of far-future epochs (years ~2448-4048) encodes to a word whose legacy reading is also plausible and would win at decode time; `encodeHangulTimestamp` rejects exactly those by reading back what it wrote, so the check lapses on its own once the fallback is removed.
 - **dz-review (VS Code):** `src/timestamp.ts` was a full copy of the CLI codec and would have silently kept the base-2048 layout; it now re-exports the shared implementation.

@@ -4,6 +4,7 @@ import {
   buildCheckpointPrompt,
   type CheckpointPromptMode,
 } from "./checkpoint-prompt.ts";
+import { CHECKPOINT_SYNTHESIS_CONTRACT } from "./checkpoint-guidance.ts";
 
 const baseShow: ShowOutput = {
   task: "abc",
@@ -266,4 +267,16 @@ Deno.test("default mode — still uses checkpoint command", () => {
 
   assertStringIncludes(prompt, `wl checkpoint ${taskId}`);
   assertEquals(prompt.includes("wl done"), false);
+});
+
+Deno.test("checkpoint contract — requires reconciling superseded traces", () => {
+  // A trace is a record of what was true when it was written, not of what is
+  // true at synthesis time. Without this rule, a synthesis faithfully
+  // reproduces conclusions the rest of the task later overturned.
+  assertStringIncludes(CHECKPOINT_SYNTHESIS_CONTRACT, "superseded");
+});
+
+Deno.test("checkpoint prompt — carries the superseded-trace rule to the agent", () => {
+  const prompt = buildCheckpointPrompt("abc", baseShow, "done");
+  assertStringIncludes(prompt, "superseded");
 });
