@@ -903,3 +903,28 @@ Deno.test("resolveStructuralPathReference: tolerates a legacy trailing chars: se
   assertEquals(result.status, "confident");
   assertEquals(result.passage, "item two");
 });
+
+Deno.test("resolveExactHashReference: fh fallback stays fast on a long line (no quadratic blowup)", async () => {
+  // A single ~5000-char line forces resolveExactHashReference's fallback to
+  // fan out over ~128 candidate lengths (candidateLength +-64), each scanning
+  // the whole line. With a deliberately-wrong fh (never matches), every
+  // fallback length is scanned to completion — this is the worst case that
+  // used to hang the VSCode extension host for several seconds per item.
+  const filler = "lorem ipsum dolor sit amet consectetur adipiscing elit ";
+  const line = filler.repeat(90).slice(0, 5000);
+  const content = `# Heading\n\n${line}\n`;
+  const doc = await parseDocument.execute({ content });
+
+  const candidateLength = 300;
+  const ref = `~{v0;r=3:1-3:${candidateLength + 1};fh=sha256:deadbeef}`;
+
+  const start = performance.now();
+  const result = await resolveReference.execute({ doc, ref });
+  const elapsedMs = performance.now() - start;
+
+  assertEquals(result.status, "stale");
+  assert(
+    elapsedMs < 1000,
+    `resolveExactHashReference fallback took ${elapsedMs}ms, expected < 1000ms`,
+  );
+});

@@ -649,6 +649,20 @@ function resolveMrfiAnchorSignal(
   };
 }
 
+// collectCandidates below brute-force scans every offset x candidate length
+// combination, hashing each window from scratch (xxh64/sha256 aren't
+// incrementally updatable for a sliding window, and Rabin-Karp's usual
+// "compare against the pattern's precomputed hash" trick doesn't apply here
+// since the searched-for text is unknown -- only its hash is). Without a
+// cap, a long line plus the +-64 candidate-length fallback fan-out is
+// O(fanout x document length x candidate length), which froze the VSCode
+// extension host for several seconds per unresolved review item. This is a
+// shared total budget (across the primary attempt and every fallback
+// length) on offset x length work, so worst-case wall time stays bounded
+// regardless of document size -- once exhausted, the search gives up and
+// falls back to the ph/context resolution paths already in place.
+const MAX_EXACT_HASH_SEARCH_UNITS = 1_500_000;
+
 async function resolveExactHashReference(
   doc: Document,
   ref: string,
@@ -674,12 +688,16 @@ async function resolveExactHashReference(
   }> = [];
 
   const source = getDocumentCodepoints(doc);
+  let searchUnitsRemaining = MAX_EXACT_HASH_SEARCH_UNITS;
   const collectCandidates = async (sourceLength: number): Promise<void> => {
     for (
       let startOffset = 0;
       startOffset <= source.length - sourceLength;
       startOffset += 1
     ) {
+      if (searchUnitsRemaining <= 0) return;
+      searchUnitsRemaining -= sourceLength;
+
       const endOffset = startOffset + sourceLength;
       const candidate = source.slice(startOffset, endOffset).join("");
       if ((await hashSignalFor(algorithm, candidate))?.prefix !== expected) {
@@ -736,6 +754,7 @@ async function resolveExactHashReference(
       sourceLength += 1
     ) {
       if (sourceLength === candidateLength) continue;
+      if (searchUnitsRemaining <= 0) break;
       await collectCandidates(sourceLength);
     }
   }
