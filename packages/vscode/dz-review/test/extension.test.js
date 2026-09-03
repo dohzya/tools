@@ -429,6 +429,7 @@ function createHarness() {
     statusBarCalls,
     statusBarItems,
     webviewViewProviders,
+    window: mockVscode.window,
   };
 }
 
@@ -717,6 +718,37 @@ test("review panel filter command prompts for a status filter", async () => {
   assert.match(view.webview.html, /Handled conversation/);
   assert.doesNotMatch(view.webview.html, /Open conversation/);
   assert.doesNotMatch(view.webview.html, /Resolved conversation/);
+});
+
+test("review panel filter still applies when the funnel icon steals editor focus", async () => {
+  // Clicking the toolbar funnel icon (or the QuickPick it opens) focuses the
+  // webview/quick-input, not a text editor -- vscode.window.activeTextEditor
+  // goes undefined for that moment, same as it does for any other
+  // non-editor UI grabbing focus (e.g. the Output panel). The panel must
+  // keep showing the markdown file's items using its own filter, not clear
+  // itself just because no editor happens to have focus right now.
+  const harness = createHarness();
+  harness.createEditor(
+    [
+      "# Draft",
+      "<!-- @agent open issue -->",
+      "<!-- @me handled issue -->",
+      "<!-- @me ok -->",
+    ].join("\n"),
+    { line: 0, character: 0 },
+  );
+  harness.setQuickPickLabel("Handled");
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const view = harness.createWebviewView();
+  await harness.webviewViewProviders[0].provider.resolveWebviewView(view);
+
+  harness.window.activeTextEditor = undefined;
+  await harness.api.filterReviewItems();
+
+  assert.equal(view.description, "handled");
+  assert.match(view.webview.html, /Handled conversation/);
+  assert.doesNotMatch(view.webview.html, /Open conversation/);
 });
 
 test("review panel webview can reply to a conversation", async () => {

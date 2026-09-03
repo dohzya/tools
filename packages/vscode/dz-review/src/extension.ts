@@ -209,6 +209,15 @@ const REVIEW_PANEL_FILTERS: ReadonlyArray<
 class ReviewPanelProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private filter: ReviewPanelFilter = "unresolved";
+  // Clicking the toolbar filter icon (or the QuickPick it opens) hands
+  // focus to the webview/quick-input, not a text editor, so
+  // vscode.window.activeTextEditor goes undefined for that moment -- same
+  // as focusing any other non-editor UI. Remembering the last markdown
+  // document lets refresh() keep showing its items instead of clearing the
+  // panel just because no editor happens to have focus right now; switching
+  // to a genuinely different (non-markdown) file still clears it, since
+  // that case has a defined, non-markdown activeTextEditor.
+  private lastMarkdownDocument: vscode.TextDocument | undefined;
 
   async resolveWebviewView(view: vscode.WebviewView): Promise<void> {
     this.view = view;
@@ -230,8 +239,16 @@ class ReviewPanelProvider implements vscode.WebviewViewProvider {
     }
 
     const editor = vscode.window.activeTextEditor;
-    const items = editor?.document.languageId === "markdown"
-      ? await collectReviewPanelItems(editor.document, this.filter)
+    if (editor?.document.languageId === "markdown") {
+      this.lastMarkdownDocument = editor.document;
+    }
+    const document = editor
+      ? (editor.document.languageId === "markdown"
+        ? editor.document
+        : undefined)
+      : this.lastMarkdownDocument;
+    const items = document
+      ? await collectReviewPanelItems(document, this.filter)
       : [];
     this.view.description = this.filter === "all" ? undefined : this.filter;
     this.view.webview.html = getReviewPanelHtml(items, this.filter);
