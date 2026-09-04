@@ -6,16 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.20.1 / md-v0.10.0 / dz-review-v0.4.1] — 2026-09-04
+
 ### Changed
 
 - **worklog:** The checkpoint/done synthesis contract now asks for superseded traces to be reconciled against the final state before routing them. A trace records what was true when written; without this the delegated synthesis faithfully reproduces conclusions the rest of the task later overturned.
-
-### Changed
-
 - **markdown-surgeon:** MRFI Hangul payloads now pack 13 bits per syllable over `U+AC00..U+CBFF` (8192 syllables) instead of 11 bits over 2048. Compact references are ~17% shorter in characters and UTF-8 bytes. References emitted at the old 11-bit width still decode: `parseMrfiReference` reads the current width first and falls back to the legacy one, discriminating on the envelope magic, version byte, and checksum. They are re-emitted at 13 bits.
 - **dz-review:** Hangul review timestamps move to base 8192 (`U+AC00..U+CBFF`), sharing the alphabet with MRFI through the new `packages/tools/hangul.ts`. They stay 4 characters; the change is code sharing, not size. Timestamps written in the old base-2048 layout still decode: the two readings of one 4-syllable word differ by ~16x on the epoch while a plausible date range spans ~4.3x, so at most one can be right. A narrow band of far-future epochs (years ~2448-4048) encodes to a word whose legacy reading is also plausible and would win at decode time; `encodeHangulTimestamp` rejects exactly those by reading back what it wrote, so the check lapses on its own once the fallback is removed.
 - **dz-review (VS Code):** `src/timestamp.ts` was a full copy of the CLI codec and would have silently kept the base-2048 layout; it now re-exports the shared implementation.
 - **dz-review:** MRFI reference validation now delegates to markdown-surgeon's `parseMrfiReference` instead of mirroring the compact envelope, base62 decoder, and Hangul codec in `cli.ts`. Review timestamps keep their own independent base2048 encoding — a positional bigint format unrelated to the MRFI bit packing.
+
+### Fixed
+
+- **markdown-surgeon:** the `p` locator now walks the section tree (headings imply nesting by level; h2 nests under the nearest preceding h1) instead of the flat CommonMark block tree, and gains real container steps (`h1[1]/h2[3]/ul[1]/li[2]/p[1]`) below the heading ancestry. `p` is now a purely structural locator resolving to the whole identified block; the old `chars:START-END` offset suffix is dropped (legacy suffixes are tolerated during the transition).
+- **markdown-surgeon:** witness/quote text now qualifies as a strong locator signal for destructive operations only when it equals the resolved passage, not merely overlaps it; an empty witness never qualifies.
+- **markdown-surgeon:** reference-candidate ranking now orders `incomparable` above `unrelated`, matching the spec's verdict order — an incomparable candidate has no evidence against it, only insufficient evidence for it.
+- **markdown-surgeon:** `resolveExactHashReference`'s fallback fragment search now stops after a bounded amount of work instead of scanning every offset for every nearby candidate length. On a document with an unresolved `fh=` reference and a long line, the unbounded search could freeze the VS Code extension host for several seconds per item.
+- **dz-review:** `agent clean` deleting a review comment that trails real content on the same line (e.g. an inline-commented list item) no longer merges it with the next line — only a comment alone on its own line still consumes the trailing newline.
+- **dz-review:** the review state directory now always resolves to an absolute path instead of falling back to a bare relative `.dz-review`, fixing `ENOENT` writes from the VS Code extension host (whose working directory differs from Node's real process cwd). Also fixed `vscode:dz-review:vsix`'s source file list in `Taskfile.yml`, which was missing files the extension bundles.
+- **dz-review:** review-item id minting is now linear instead of quadratic in several MRFI reference-pipeline hotspots (block-tree parsing, section-scoped hashing/text, line/offset conversion), fixing multi-minute hangs on Markdown files with many review-comment threads concentrated in one section.
+- **dz-review (VS Code):** the review panel's filter now applies immediately. `refresh()` previously cleared the panel whenever a non-editor UI (the funnel-icon toolbar button, the filter QuickPick, or the Output/log panel) had focus instead of the markdown editor; it now remembers the last active markdown document and falls back to it when no editor has focus.
 
 ## [wl-v0.20.0 / md-v0.9.0 / recap-v0.5.0 / dz-review-v0.4.0] — 2026-07-20
 
