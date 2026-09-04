@@ -1,26 +1,26 @@
 class DzReview < Formula
   desc "Markdown review syntax scanner and helper CLI"
   homepage "https://github.com/dohzya/tools"
-  version "0.4.0"
+  version "0.4.1"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.0/dz-review-darwin-arm64"
-      sha256 "4b50db1d52bd6b987dd75931028e2f561881a4dea0af53abd37696163c6d19c2"
+      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.1/dz-review-darwin-arm64"
+      sha256 "af6ac54df1f65e43ac7015b027fd6e585c3a13474a4146310aeae2228a9efb0d"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.0/dz-review-darwin-x86_64"
-      sha256 "17b1c03c85dbe7837928c7e2e87d2a2b57ffe6da187c8fa345bda6899d2c49b6"
+      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.1/dz-review-darwin-x86_64"
+      sha256 "f6712b38c848f8a8102d05f3bc26e5e9ec4d2434ed679f4ca07374d592027231"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
-      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.0/dz-review-linux-arm64"
-      sha256 "ec725929ed4c30b4377a27f3791fd84c610c067d12c7861c10476a2c4c8d7b40"
+      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.1/dz-review-linux-arm64"
+      sha256 "3e0beff84a431caf61aa4a330eac47b6da2841f997061e7a8d7151e7fb5ff0c0"
     elsif Hardware::CPU.intel?
-      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.0/dz-review-linux-x86_64"
-      sha256 "4d3af83f4d1efd734685e2be34b6f526e53b3b72d04bb0427e92869bcb603163"
+      url "https://github.com/dohzya/tools/releases/download/dz-review-v0.4.1/dz-review-linux-x86_64"
+      sha256 "9a980d6a69de5b7fac9fdf55a6fa7563f9a6e37d3862040dfc303adee8804e69"
     end
   end
 
