@@ -1304,6 +1304,41 @@ Deno.test("md ref --format base62 - preserves a preserved field value with chara
   assertEquals(debug, "~{v0;r=3:1-3:18;_kind=script%3Bfoo}");
 });
 
+Deno.test("md ref - rejects a malformed range with a format example", async () => {
+  const file = await createTempFile("# Installation\n\nRun the installer.");
+  let exitCode: number | undefined;
+  const originalExit = Deno.exit;
+  const originalError = console.error;
+  let errorOutput = "";
+
+  Deno.exit = ExplicitCast.from<unknown>((code?: number) => {
+    exitCode = code;
+    throw new Error("Deno.exit");
+  }).dangerousCast<typeof Deno.exit>();
+  console.error = (msg: string) => {
+    errorOutput += msg;
+  };
+
+  try {
+    await main(["ref", file, "3-3"]);
+  } catch (error) {
+    assertEquals(
+      ExplicitCast.from<unknown>(error).dangerousCast<Error>().message,
+      "Deno.exit",
+    );
+  } finally {
+    Deno.exit = originalExit;
+    console.error = originalError;
+    await Deno.remove(file);
+  }
+
+  assertEquals(exitCode, 1);
+  assertStringIncludes(errorOutput, "invalid_id");
+  assertStringIncludes(errorOutput, "3-3");
+  assertStringIncludes(errorOutput, "startLine:startColumn-endLine:endColumn");
+  assertStringIncludes(errorOutput, "3:1-3:18");
+});
+
 Deno.test("md ref - rejects a range outside the document", async () => {
   const file = await createTempFile("# Installation\n\nRun the installer.");
   let exitCode: number | undefined;

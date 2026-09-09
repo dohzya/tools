@@ -206,7 +206,9 @@ function parseSourceRange(value: string, file: string): SourceRange {
   if (!match) {
     throw new MdError(
       "invalid_id",
-      `Invalid source range: ${value}`,
+      `Invalid source range: ${value}\n` +
+        "Expected format: startLine:startColumn-endLine:endColumn " +
+        "(e.g. 3:1-3:18)",
       file,
       value,
     );
@@ -227,7 +229,9 @@ function parseSourceRange(value: string, file: string): SourceRange {
   ) {
     throw new MdError(
       "invalid_id",
-      `Invalid source range: ${value}`,
+      `Invalid source range: ${value}\n` +
+        "Expected format: startLine:startColumn-endLine:endColumn " +
+        "(e.g. 3:1-3:18)",
       file,
       value,
     );

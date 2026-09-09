@@ -34,6 +34,9 @@ Markdown Surgeon (\`md\`): Markdown inspection and section-level editing.
 - Append content: \`md append <file> [selector] [content]\`.
 - Frontmatter: \`md meta <file> ...\` reads or updates YAML metadata.
 - Selectors can be section IDs from \`md outline\` or heading selectors; heading selectors can be ambiguous.
+- Find a passage: \`md search <file> <pattern>\` prints matching lines with their current line number and section ID.
+- Get a stable content anchor (MRFI) that survives future edits: \`md ref <file> <startLine>:<startColumn>-<endLine>:<endColumn>\` (e.g. \`md ref notes.md 3:1-3:18\`) generates a reference from a source range; use it instead of a raw \`file:line\` pointer in cross-file audits or notes that must stay valid after the file is edited.
+- Re-locate an MRFI reference after edits: \`md resolve <file> <ref...>\` prints each reference's current line/column position (or reports drift/removal) without you having to recompute line numbers by hand.
 - Help: \`md --help\`.
 `.trim();
 
