@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [md-v0.10.1] — 2026-09-09
+
+### Fixed
+
+- **markdown-surgeon:** `md ref <file> <range>` rejecting a malformed range now names the expected `startLine:startColumn-endLine:endColumn` format and an example in the error message, instead of only echoing back the invalid value.
+
+### Changed
+
+- **markdown-surgeon:** `md agent-instructions` now documents `search`, `ref`, and `resolve`, previously omitted even though they are the commands needed for durable (MRFI) passage references.
+
 ## [wl-v0.20.1 / md-v0.10.0 / dz-review-v0.4.1] — 2026-09-04
 
 ### Changed
