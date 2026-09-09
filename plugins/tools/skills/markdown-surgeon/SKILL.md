@@ -58,6 +58,10 @@ md write doc.md '~{v0;r=1:1-1:8}' --strict "New"  # exact status only
 md search doc.md "TODO"
 md search --summary doc.md "TODO"
 
+# ref/resolve: durable content anchors (survive line-number drift)
+md ref doc.md 15:1-15:40 --quote     # generate a ref from a line:col-line:col range
+md resolve doc.md '~{v0;r=15:1-15:40;...}'  # re-locate it after edits (status: exact/shifted/...)
+
 # concat: merge files (use > for output)
 md concat --shift=1 intro.md guide.md > full.md
 
