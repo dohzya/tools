@@ -46,6 +46,10 @@ import {
 } from "./types.ts";
 import { WtError } from "./domain/entities/errors.ts";
 import {
+  parsePurgeTtlDays,
+  resolvePurgeTtlDays,
+} from "./domain/entities/purge-ttl.ts";
+import {
   normalizeDescParts,
   renderDesc,
 } from "./domain/entities/description.ts";
@@ -2130,11 +2134,58 @@ function _assertActive(meta: TaskMeta): void {
 // Purge logic
 // ============================================================================
 
+/** Set by the --purge-ttl global option; reset on every main() call. */
+let CLI_PURGE_TTL_DAYS: number | undefined;
+
+const ConfigFileSchema = z.object({ purgeTtlDays: z.optional(z.unknown()) });
+
+/** Reads `purgeTtlDays` from a config file; missing file means "not set". */
+async function readPurgeTtlFromConfig(
+  path: string,
+): Promise<number | undefined> {
+  if (!(await exists(path))) return undefined;
+  const config = ConfigFileSchema.parse(JSON.parse(await readFile(path)));
+  return config.purgeTtlDays === undefined
+    ? undefined
+    : parsePurgeTtlDays(config.purgeTtlDays, `${path} purgeTtlDays`);
+}
+
+function globalConfigPath(): string | undefined {
+  try {
+    const xdg = Deno.env.get("XDG_CONFIG_HOME");
+    const home = Deno.env.get("HOME");
+    const base = xdg || (home ? join(home, ".config") : undefined);
+    return base ? join(base, "wl", "config.json") : undefined;
+  } catch {
+    // No --allow-env permission: skip the global config
+    return undefined;
+  }
+}
+
+async function resolveConfiguredPurgeTtlDays(): Promise<number> {
+  let envValue: string | undefined;
+  try {
+    envValue = Deno.env.get("WORKLOG_PURGE_TTL_DAYS") || undefined;
+  } catch {
+    // No --allow-env permission: ignore the env var
+  }
+  const globalPath = globalConfigPath();
+  return resolvePurgeTtlDays({
+    cli: CLI_PURGE_TTL_DAYS,
+    env: envValue === undefined
+      ? undefined
+      : parsePurgeTtlDays(envValue, "WORKLOG_PURGE_TTL_DAYS"),
+    local: await readPurgeTtlFromConfig(`${WORKLOG_DIR}/config.json`),
+    global: globalPath ? await readPurgeTtlFromConfig(globalPath) : undefined,
+  });
+}
+
 async function purge(): Promise<void> {
   if (!(await exists(INDEX_FILE))) return;
 
   const index = await loadIndex();
-  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const ttlDays = await resolveConfiguredPurgeTtlDays();
+  const cutoff = Date.now() - ttlDays * 24 * 60 * 60 * 1000;
   let modified = false;
 
   for (const [id, info] of Object.entries(index.tasks)) {
@@ -7184,6 +7235,16 @@ const cli = new Command()
     "--worklog-dir <path:string>",
     "Path to .worklog directory (relative to -C if set)",
   )
+  .globalOption(
+    "--purge-ttl <days:number>",
+    "Days before done tasks are purged (default 30; overrides " +
+      "WORKLOG_PURGE_TTL_DAYS and config.json 'purgeTtlDays')",
+    {
+      action: ({ purgeTtl }) => {
+        CLI_PURGE_TTL_DAYS = parsePurgeTtlDays(purgeTtl, "--purge-ttl");
+      },
+    },
+  )
   .command("init", initCmd)
   .command("create", createCmd)
   .command("ready", readyCmd)
@@ -7221,6 +7282,7 @@ export async function main(args: string[]): Promise<void> {
     cli.showHelp();
     return;
   }
+  CLI_PURGE_TTL_DAYS = undefined;
   await cli.parse(preserveEmptyDescriptionOptionValues(args));
 }
 

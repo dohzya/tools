@@ -5,6 +5,7 @@ import {
   assertStringIncludes,
 } from "@std/assert";
 import { parse as parseYaml } from "@std/yaml";
+import { join } from "node:path";
 import { WtError } from "./domain/entities/errors.ts";
 import { ExplicitCast } from "../explicit-cast.ts";
 
@@ -1553,6 +1554,101 @@ Deno.test("worklog purge - preserves tasks with uncheckpointed entries", async (
     Deno.chdir(originalCwd);
     await Deno.remove(tempDir, { recursive: true });
   }
+});
+
+/** Creates a worklog in a temp dir holding one task done `daysAgo` days ago. */
+async function withDoneTask(
+  daysAgo: number,
+  fn: (taskPath: string) => Promise<void>,
+  env: Record<string, string> = {},
+): Promise<void> {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  // Isolate from the developer's real global config
+  const vars = { XDG_CONFIG_HOME: join(tempDir, "xdg"), ...env };
+  const previous = Object.keys(vars).map((k) => [k, Deno.env.get(k)] as const);
+  try {
+    Deno.chdir(tempDir);
+    for (const [k, v] of Object.entries(vars)) Deno.env.set(k, v);
+    await main(["init"]);
+    await main(["create", "Aged task"]);
+    const { tasks } = JSON.parse(
+      await captureOutput(() => main(["list", "--json"])),
+    );
+    const taskId = tasks[0].id;
+    const doneAt = new Date(Date.now() - daysAgo * 86_400_000).toISOString();
+    const taskPath = `.worklog/tasks/${taskId}.md`;
+    let content = await Deno.readTextFile(taskPath);
+    content = content.replace(/status: active/, "status: done");
+    content = content.replace(/done_at: null/, `done_at: "${doneAt}"`);
+    await Deno.writeTextFile(taskPath, content);
+    const index = JSON.parse(await Deno.readTextFile(".worklog/index.json"));
+    index.tasks[taskId].status = "done";
+    index.tasks[taskId].done_at = doneAt;
+    await Deno.writeTextFile(".worklog/index.json", JSON.stringify(index));
+    await fn(taskPath);
+  } finally {
+    Deno.chdir(originalCwd);
+    for (const [k, v] of previous) {
+      if (v === undefined) Deno.env.delete(k);
+      else Deno.env.set(k, v);
+    }
+    await Deno.remove(tempDir, { recursive: true });
+  }
+}
+
+const taskFileExists = (path: string) =>
+  Deno.stat(path).then(() => true, () => false);
+
+Deno.test("worklog purge ttl - local .worklog/config.json overrides the 30 days default", async () => {
+  await withDoneTask(45, async (taskPath) => {
+    await Deno.writeTextFile(
+      ".worklog/config.json",
+      JSON.stringify({ purgeTtlDays: 60 }),
+    );
+    await main(["list"]);
+    assertEquals(await taskFileExists(taskPath), true, "45d < 60d TTL");
+  });
+});
+
+Deno.test("worklog purge ttl - global config applies, local config wins over it", async () => {
+  await withDoneTask(45, async (taskPath) => {
+    const globalDir = join(Deno.env.get("XDG_CONFIG_HOME") ?? "", "wl");
+    await Deno.mkdir(globalDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(globalDir, "config.json"),
+      JSON.stringify({ purgeTtlDays: 60 }),
+    );
+    await Deno.writeTextFile(
+      ".worklog/config.json",
+      JSON.stringify({ purgeTtlDays: 10 }),
+    );
+    await main(["list"]);
+    assertEquals(await taskFileExists(taskPath), false, "local 10d wins");
+  });
+  await withDoneTask(45, async (taskPath) => {
+    const globalDir = join(Deno.env.get("XDG_CONFIG_HOME") ?? "", "wl");
+    await Deno.mkdir(globalDir, { recursive: true });
+    await Deno.writeTextFile(
+      join(globalDir, "config.json"),
+      JSON.stringify({ purgeTtlDays: 60 }),
+    );
+    await main(["list"]);
+    assertEquals(await taskFileExists(taskPath), true, "global 60d applies");
+  });
+});
+
+Deno.test("worklog purge ttl - env var beats config, --purge-ttl beats env var", async () => {
+  await withDoneTask(45, async (taskPath) => {
+    await Deno.writeTextFile(
+      ".worklog/config.json",
+      JSON.stringify({ purgeTtlDays: 10 }),
+    );
+    await main(["list"]);
+    assertEquals(await taskFileExists(taskPath), true, "env 90d beats config");
+    await main(["--purge-ttl", "20", "list"]);
+    assertEquals(await taskFileExists(taskPath), false, "flag 20d beats env");
+  }, { WORKLOG_PURGE_TTL_DAYS: "90" });
 });
 
 Deno.test("worklog run - uses WORKLOG_TASK_ID when taskId is omitted", async () => {
