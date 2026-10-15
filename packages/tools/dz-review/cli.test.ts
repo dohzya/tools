@@ -491,7 +491,9 @@ Deno.test("dz-review list - lists review items", async () => {
   await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
 
   try {
-    const output = await captureOutput(() => main(["list", file]));
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["list", file]))
+    );
 
     assertStringIncludes(output, `${file}:1`);
     assertEquals(/addition [0-9A-Za-z]{6} .*file\.md:1-1/.test(output), true);
@@ -518,7 +520,9 @@ Deno.test("dz-review list - sends text output to pager when forced", async () =>
     Deno.env.set("PAGER_CAPTURE", pagerCapture);
     Deno.env.set("FORCE_PAGER", "1");
 
-    const output = await captureOutput(() => main(["list", file]));
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["list", file]))
+    );
 
     assertEquals(output, "");
     const paged = await Deno.readTextFile(pagerCapture);
@@ -548,7 +552,7 @@ Deno.test("dz-review list --no-pager overrides FORCE_PAGER", async () => {
     Deno.env.set("FORCE_PAGER", "1");
 
     const output = await captureOutput(() =>
-      main(["list", "--no-pager", file])
+      withCwd(dir, () => main(["list", "--no-pager", file]))
     );
 
     assertStringIncludes(output, `${file}:1`);
@@ -567,7 +571,9 @@ Deno.test("dz-review me list - reuses list command", async () => {
   await Deno.writeTextFile(file, "{++one++}\n<!-- @agent open -->\n");
 
   try {
-    const output = await captureOutput(() => main(["me", "list", file]));
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["me", "list", file]))
+    );
 
     assertStringIncludes(output, `${file}:1`);
     assertStringIncludes(output, "addition");
@@ -584,7 +590,7 @@ Deno.test("dz-review me review --list - reuses review command options", async ()
 
   try {
     const output = await captureOutput(() =>
-      main(["me", "review", "--list", file])
+      withCwd(dir, () => main(["me", "review", "--list", file]))
     );
 
     assertStringIncludes(output, `${file}:1`);
@@ -628,7 +634,7 @@ Deno.test("dz-review list --conversation - keeps legacy singular alias", async (
 
   try {
     const output = await captureOutput(() =>
-      main(["list", "--conversation", file])
+      withCwd(dir, () => main(["list", "--conversation", file]))
     );
 
     assertStringIncludes(output, "open conversation");
