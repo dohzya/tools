@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.21.0] — 2026-10-15
+
 ### Added
 
 - **worklog:** The purge delay for done tasks (default 30 days) is configurable. Precedence: `--purge-ttl <days>` > `WORKLOG_PURGE_TTL_DAYS` > `purgeTtlDays` in `.worklog/config.json` > `purgeTtlDays` in `$XDG_CONFIG_HOME/wl/config.json` (`~/.config/wl/config.json`).
