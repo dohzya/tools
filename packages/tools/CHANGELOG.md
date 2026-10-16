@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+### Fixed
+
+- **worklog:** `wl dash --quiet` prints nothing and exits 0 in a directory without worklog, instead of failing with `not_initialized`.
+- **dz-review:** `dz-review status --quiet` prints nothing and exits 0 outside a Git worktree when no file and no review session is given, instead of failing with `invalid_args`.
+
 ## [wl-v0.21.0] — 2026-10-15
 
 ### Added

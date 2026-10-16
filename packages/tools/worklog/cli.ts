@@ -7027,7 +7027,10 @@ function createDashboardCommand() {
     .option("--json", "Output as JSON")
     .option("--limit <n:number>", "Limit top-level tasks before expansion")
     .option("--include-blocked", "Include tasks blocked by open dependencies")
-    .option("-q, --quiet", "Print nothing when there are no active tasks")
+    .option(
+      "-q, --quiet",
+      "Print nothing when there are no active tasks or no worklog",
+    )
     .action(async (options) => {
       try {
         applyDirOptions(
@@ -7072,6 +7075,13 @@ function createDashboardCommand() {
           ),
         );
       } catch (e) {
+        // --quiet is meant for hooks/recap run in arbitrary directories:
+        // a folder without worklog is "nothing to show", not a failure.
+        if (
+          options.quiet && e instanceof WtError && e.code === "not_initialized"
+        ) {
+          return;
+        }
         handleError(e, options.json ?? false);
       }
     });

@@ -4822,6 +4822,21 @@ Deno.test("dashboard from child worklog shows child context header", async () =>
   }
 });
 
+Deno.test("dashboard --quiet prints nothing when the worklog is not initialized", async () => {
+  const tempDir = await Deno.makeTempDir();
+  const originalCwd = Deno.cwd();
+  try {
+    Deno.chdir(tempDir);
+
+    const output = await captureOutput(() => main(["dash", "--quiet"]));
+
+    assertEquals(output, "");
+  } finally {
+    Deno.chdir(originalCwd);
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
 Deno.test("status - mirrors dashboard output", async () => {
   const tempDir = await Deno.makeTempDir();
   const originalCwd = Deno.cwd();

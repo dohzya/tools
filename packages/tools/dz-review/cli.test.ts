@@ -240,6 +240,34 @@ Deno.test("dz-review status --oneline --quiet - prints nothing when empty outsid
   }
 });
 
+Deno.test("dz-review status --oneline --quiet - prints nothing outside a Git worktree without files or session", async () => {
+  const dir = await Deno.makeTempDir();
+
+  try {
+    const output = await captureOutput(() =>
+      withCwd(dir, () => main(["status", "--oneline", "--quiet"]))
+    );
+
+    assertEquals(output, "");
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
+Deno.test("dz-review status - still fails outside a Git worktree without --quiet", async () => {
+  const dir = await Deno.makeTempDir();
+
+  try {
+    await assertRejects(
+      () => withCwd(dir, () => main(["status", "--oneline"])),
+      Error,
+      "dz-review requires at least one Markdown file",
+    );
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
+});
+
 Deno.test("dz-review status --oneline --quiet - reports active empty sessions", async () => {
   const dir = await Deno.makeTempDir();
   const file = join(dir, "file.md");

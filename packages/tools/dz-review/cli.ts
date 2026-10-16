@@ -498,6 +498,15 @@ async function runLegacyCommand(argv: string[]): Promise<number> {
   }
 
   if (options.mode === "status") {
+    if (
+      options.statusQuiet &&
+      options.files.length === 0 &&
+      !options.git &&
+      !isInsideGitWorkTree() &&
+      !hasAgentSessionSnapshot()
+    ) {
+      return 0;
+    }
     const { files, addedLinesByFile } = resolveFilesAndDiff(
       options,
       ignoreRules,
@@ -1729,9 +1738,12 @@ function parseArgs(argv: string[]): CliOptions {
     }
   }
 
+  // `status --quiet` outside any review context is "nothing to report"
+  // (handled in runLegacyCommand), so it must not fail here.
   if (
     mode !== "now" &&
     !(mode === "timestamp" && timestampInputMode === "stdin") &&
+    !(mode === "status" && statusQuiet) &&
     files.length === 0 &&
     !git &&
     !isInsideGitWorkTree() &&
