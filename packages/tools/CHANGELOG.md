@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16
+
 ### Fixed
 
 - **worklog:** `wl dash --quiet` prints nothing and exits 0 in a directory without worklog, instead of failing with `not_initialized`.
