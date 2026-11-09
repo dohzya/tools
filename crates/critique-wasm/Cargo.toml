@@ -1,0 +1,19 @@
+[package]
+name = "critique-wasm"
+description = "wasm-bindgen facade over critique-core for the VS Code extension; positions are converted to UTF-16 only here."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+critique-core.workspace = true
+wasm-bindgen.workspace = true
+serde.workspace = true
+serde_json.workspace = true
