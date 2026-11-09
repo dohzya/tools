@@ -1,0 +1,3 @@
+name: markdown-surgeon
+description: Manipulate Markdown files surgically by section without loading entire content. Use when editing large .md files, updating specific sections, using Markdown as a lightweight database, working with MRFI (Markdown Robust Fragment Identifiers) or durable passage references, or when asked to work with sections in a Markdown file. Commands include outline, read, write, append, empty, remove, search, concat, meta, create, ref, resolve.
+user-invocable: false

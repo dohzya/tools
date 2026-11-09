@@ -1,0 +1,2 @@
+name: obsidian-journal
+description: Create journal entries in Obsidian. Use when the user asks to store, save, or record information for later reference. Do NOT use when the user asks to create, write, or draft a document — that implies iterative work where the file should stay in the working directory until explicitly stored.

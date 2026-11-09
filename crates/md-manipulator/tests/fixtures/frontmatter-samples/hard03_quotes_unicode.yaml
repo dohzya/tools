@@ -1,0 +1,4 @@
+a: 'it''s'
+b: "tab\t \u00e9"
+c: "héllo ☃ 日本語"
+status: open

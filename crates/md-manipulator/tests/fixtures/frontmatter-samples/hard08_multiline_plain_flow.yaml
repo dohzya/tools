@@ -1,0 +1,8 @@
+k: v
+long: this is a long plain scalar
+  continued on next line
+status: open
+flow: {a: 1, b: [x, y]}
+"quoted key": 1
+? complex
+: val

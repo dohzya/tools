@@ -1,0 +1,1538 @@
+{
+  "encode": [
+    {
+      "value": 0,
+      "hex": "00"
+    },
+    {
+      "value": 1,
+      "hex": "01"
+    },
+    {
+      "value": 23,
+      "hex": "17"
+    },
+    {
+      "value": 24,
+      "hex": "1818"
+    },
+    {
+      "value": 255,
+      "hex": "18ff"
+    },
+    {
+      "value": 256,
+      "hex": "190100"
+    },
+    {
+      "value": 65535,
+      "hex": "19ffff"
+    },
+    {
+      "value": 65536,
+      "hex": "1a00010000"
+    },
+    {
+      "value": 4294967295,
+      "hex": "1affffffff"
+    },
+    {
+      "value": 4294967296,
+      "hex": "1b0000000100000000"
+    },
+    {
+      "value": 9007199254740991,
+      "hex": "1b001fffffffffffff"
+    },
+    {
+      "value": "",
+      "hex": "60"
+    },
+    {
+      "value": "a",
+      "hex": "6161"
+    },
+    {
+      "value": "héllo",
+      "hex": "6668c3a96c6c6f"
+    },
+    {
+      "value": "🎉",
+      "hex": "64f09f8e89"
+    },
+    {
+      "value": "xxxxxxxxxxxxxxxxxxxxxxx",
+      "hex": "777878787878787878787878787878787878787878787878"
+    },
+    {
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxx",
+      "hex": "7818787878787878787878787878787878787878787878787878"
+    },
+    {
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "hex": "79012c787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878787878"
+    },
+    {
+      "value": [],
+      "hex": "80"
+    },
+    {
+      "value": [
+        1,
+        "a",
+        [
+          2
+        ]
+      ],
+      "hex": "830161618102"
+    },
+    {
+      "value": [
+        [
+          0,
+          0
+        ],
+        [
+          "a",
+          "b"
+        ]
+      ],
+      "hex": "828200008261616162"
+    },
+    {
+      "value": {
+        "map": []
+      },
+      "hex": "a0"
+    },
+    {
+      "value": {
+        "map": [
+          [
+            0,
+            0
+          ],
+          [
+            1,
+            "anchor"
+          ],
+          [
+            2,
+            [
+              1,
+              2,
+              3,
+              4
+            ]
+          ]
+        ]
+      },
+      "hex": "a300000166616e63686f72028401020304"
+    },
+    {
+      "value": {
+        "map": [
+          [
+            "b",
+            1
+          ],
+          [
+            3,
+            2
+          ],
+          [
+            "a",
+            3
+          ],
+          [
+            1,
+            4
+          ],
+          [
+            "🎉",
+            5
+          ],
+          [
+            "￿",
+            6
+          ],
+          [
+            "ab",
+            7
+          ],
+          [
+            "a",
+            8
+          ]
+        ]
+      },
+      "hex": "a8010403026161036161086261620761620164f09f8e890563efbfbf06"
+    },
+    {
+      "value": {
+        "map": [
+          [
+            0,
+            0
+          ],
+          [
+            4,
+            [
+              "xxh64",
+              "abc"
+            ]
+          ],
+          [
+            "_k",
+            "v"
+          ]
+        ]
+      },
+      "hex": "a30000048265787868363463616263625f6b6176"
+    }
+  ],
+  "decode": [
+    {
+      "hex": "00",
+      "ok": 0
+    },
+    {
+      "hex": "1818",
+      "ok": 24
+    },
+    {
+      "hex": "19ffff",
+      "ok": 65535
+    },
+    {
+      "hex": "1a00010000",
+      "ok": 65536
+    },
+    {
+      "hex": "1b0000000100000000",
+      "ok": 4294967296
+    },
+    {
+      "hex": "1b0020000000000000",
+      "err": "CBOR uint is too large"
+    },
+    {
+      "hex": "1b0020000000000001",
+      "err": "CBOR uint is too large"
+    },
+    {
+      "hex": "1b00ffffffffffffff",
+      "err": "CBOR uint is too large"
+    },
+    {
+      "hex": "1bffffffffffffffff",
+      "err": "CBOR uint is too large"
+    },
+    {
+      "hex": "60",
+      "ok": ""
+    },
+    {
+      "hex": "6161",
+      "ok": "a"
+    },
+    {
+      "hex": "62c3a9",
+      "ok": "é"
+    },
+    {
+      "hex": "6162",
+      "ok": "b"
+    },
+    {
+      "hex": "63e282",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "7f",
+      "err": "Unsupported CBOR length"
+    },
+    {
+      "hex": "80",
+      "ok": []
+    },
+    {
+      "hex": "8101",
+      "ok": [
+        1
+      ]
+    },
+    {
+      "hex": "a0",
+      "ok": {
+        "map": []
+      }
+    },
+    {
+      "hex": "a1f60a",
+      "err": "Unsupported CBOR payload"
+    },
+    {
+      "hex": "a10101",
+      "ok": {
+        "map": [
+          [
+            1,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "hex": "a161610a",
+      "ok": {
+        "map": [
+          [
+            "a",
+            10
+          ]
+        ]
+      }
+    },
+    {
+      "hex": "a1816101",
+      "err": "Unsupported CBOR map key"
+    },
+    {
+      "hex": "f6",
+      "err": "Unsupported CBOR payload"
+    },
+    {
+      "hex": "f4",
+      "err": "Unsupported CBOR payload"
+    },
+    {
+      "hex": "fb3ff0000000000000",
+      "err": "CBOR uint is too large"
+    },
+    {
+      "hex": "40",
+      "err": "Unsupported CBOR payload"
+    },
+    {
+      "hex": "c0",
+      "err": "Unsupported CBOR payload"
+    },
+    {
+      "hex": "5f",
+      "err": "Unsupported CBOR length"
+    },
+    {
+      "hex": "9f",
+      "err": "Unsupported CBOR length"
+    },
+    {
+      "hex": "18",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "19ff",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "61",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "8201",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "a2000001",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "a2000000",
+      "err": "Unexpected end of CBOR payload"
+    },
+    {
+      "hex": "01ff",
+      "ok": 1
+    },
+    {
+      "hex": "a1a0a0",
+      "err": "Unsupported CBOR map key"
+    }
+  ],
+  "varuint": [
+    {
+      "value": 0,
+      "hex": "00"
+    },
+    {
+      "value": 1,
+      "hex": "01"
+    },
+    {
+      "value": 127,
+      "hex": "7f"
+    },
+    {
+      "value": 128,
+      "hex": "8100"
+    },
+    {
+      "value": 129,
+      "hex": "8101"
+    },
+    {
+      "value": 255,
+      "hex": "817f"
+    },
+    {
+      "value": 16383,
+      "hex": "ff7f"
+    },
+    {
+      "value": 16384,
+      "hex": "818000"
+    },
+    {
+      "value": 2097151,
+      "hex": "ffff7f"
+    },
+    {
+      "value": 2097152,
+      "hex": "81808000"
+    },
+    {
+      "value": 1000000000,
+      "hex": "83dceb9400"
+    },
+    {
+      "value": 1099511627776,
+      "hex": "a08080808000"
+    },
+    {
+      "value": 9007199254740991,
+      "hex": "8fffffffffffff7f"
+    }
+  ],
+  "varuintDecode": [
+    {
+      "hex": "00",
+      "value": 0,
+      "next": 1
+    },
+    {
+      "hex": "7f",
+      "value": 127,
+      "next": 1
+    },
+    {
+      "hex": "8100",
+      "value": 128,
+      "next": 2
+    },
+    {
+      "hex": "ff7f",
+      "value": 16383,
+      "next": 2
+    },
+    {
+      "hex": "80",
+      "err": "Invalid compact MRFI length"
+    },
+    {
+      "hex": "",
+      "err": "Invalid compact MRFI length"
+    },
+    {
+      "hex": "ffff",
+      "err": "Invalid compact MRFI length"
+    },
+    {
+      "hex": "8080800000",
+      "value": 0,
+      "next": 4
+    }
+  ],
+  "base62": [
+    {
+      "hex": "",
+      "text": "0"
+    },
+    {
+      "hex": "00",
+      "text": "0"
+    },
+    {
+      "hex": "4d",
+      "text": "1F"
+    },
+    {
+      "hex": "4d524649",
+      "text": "1Pn4kj"
+    },
+    {
+      "hex": "ffffff",
+      "text": "18OWF"
+    },
+    {
+      "hex": "0100000000",
+      "text": "4gfFC4"
+    },
+    {
+      "hex": "bf23a0d7286dd9",
+      "text": "3yPKufgp5N"
+    },
+    {
+      "hex": "2eab5fd0abae9ea866ff34418be9e0b960efe753",
+      "text": "6er88rP8oSzkIsRKrY1flP2IiGJ"
+    },
+    {
+      "hex": "c9f169ee760e3d92a62b87404566",
+      "text": "MLlRmg4UFM9e2wkjdry"
+    },
+    {
+      "hex": "d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc5137",
+      "text": "4CPG2qrXDOb5f2ILyhONWR7iCn1SQM0OPiFvtnAzcpcFWzqELeuVn3dqTSq7SO2sfrZjVSu1mpUfp4ZsWKRuXtun1A8xwV7f"
+    },
+    {
+      "hex": "694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51c",
+      "text": "2683VoYyV2MQfGE5PEEZo1NCgeZ63bjYn3zbocvTw9iCIGNbTfFVlx5Zbac1ZbRngW52JWubDwL2idW003pU2y3JBxIZ7EWi"
+    },
+    {
+      "hex": "79a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4",
+      "text": "7vo2xAW6gYQuDUMElp1FpGOpKNrGMJaq4jCUDBJ6MU4DYq"
+    },
+    {
+      "hex": "c62c33",
+      "text": "sUct"
+    },
+    {
+      "hex": "c03e6a134a3b2c485e98deb24bafc23079",
+      "text": "O9qGr7tc6o4Im7TXu8N8cbx"
+    },
+    {
+      "hex": "0d770d726b79a88bd57ce187121306b9",
+      "text": "PPJ3fsysMC5yhZ1CrC8l7"
+    },
+    {
+      "hex": "e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b",
+      "text": "1GgTrAytuXd9VpMMFd8ShpcBtqN5ND467Z6mSZPsnuA112Tj37dmNtkAyYYeB0p9KhH2amvm3t7ydIaeeAH6LJVH9P2ELWsIUW3"
+    },
+    {
+      "hex": "d83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e0",
+      "text": "1ND69OYuvM0WRr3R6aX38Hp7yJ2vxCoxBx0rrKFX3IT7UoioMAPuoNPG6Kjw"
+    },
+    {
+      "hex": "7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f5",
+      "text": "1di76uRZU2TN4UEbrCONoEyYoDPBYXXWTXJO3XEnBZdKks5utn9wPcDLzEdRPzPsYlw8yeKj3oaKSxLp8QhJ"
+    },
+    {
+      "hex": "22394cb7c598d9c314",
+      "text": "C8CBwNtjHnLI"
+    },
+    {
+      "hex": "02910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c11",
+      "text": "tEB3EmuLhaT9ZCYyPrDTXg65cAFs5lpPUM4YSvdwr6Lgkge0Et1ATx"
+    },
+    {
+      "hex": "eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5",
+      "text": "HlNnAht3VShaGR8DKCBcJg8bO6gPBgOGDWHffJsS1eLutoDyy5"
+    },
+    {
+      "hex": "749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474cc",
+      "text": "ItEyqtM7mp5WrvHumxkynMWoEdrBygO"
+    },
+    {
+      "hex": "c8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12",
+      "text": "4XDEkfiNLWZxSLbcYtffYkhA2Fpx0joJet8lk6mECrCQJRBpWGnqBez4cip6RE5zmDoDGbxf3LXJMr4ELHDkZv5bkqknCm7G2r90"
+    },
+    {
+      "hex": "7559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e",
+      "text": "57M3cBXo3UqW6JMwSx7xalMVtaZfElVbxGh1xJ1GcUcmooR02Y9ngKZGkm0TJBXgyxWow8P5TZeMY"
+    },
+    {
+      "hex": "04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d",
+      "text": "ShS1a1TPcAESI0rdHE5U6VQf5NFEsvBSdxLVTgH9ilWlNMfxChFAEhlZHOooOB0pMzXV6IqPnSyKg5U7yGKRMPCac3iEZ8mCEOTt"
+    },
+    {
+      "hex": "6ccbbbfcadc2159e6742",
+      "text": "2ZFK4pr9Ps6GPa"
+    },
+    {
+      "hex": "ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b",
+      "text": "6T5WLJ0Plcy7U1kgBPvx66NkXxBU6RomEtNLzx4crHoWh44omF04veHXxMUmcApFaRcetwNJWXf4cEnmZBqT2hl0sVzAiRRc8EqUlaOxIIpv"
+    },
+    {
+      "hex": "e38de680cb484f218c39ccf39a955850cfe8ce912051",
+      "text": "8vY6xDn5in9kwoYeNqKOp0z1vvwbI1"
+    },
+    {
+      "hex": "e748",
+      "text": "FOy"
+    },
+    {
+      "hex": "7aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b",
+      "text": "1IKwOgJ2SzBf1WWM2fBFFFZQEWKmibFVVk9bRw9Uvad5lMIT3FkDRT5w6Cf5ME119gsze80whaiR"
+    },
+    {
+      "hex": "f11895995ce1f0ca",
+      "text": "KhLbjCkK2ws"
+    },
+    {
+      "hex": "97e46d610983e5e3e6d0e0ba03f5704a20dec1e9dc275688634f30f16970dabb3daa43dc642a839ca70f47f4dd5bc8d4f47d518ea68ac30661c498",
+      "text": "1ox9VZkZbuDWyNurw8JccXHzz2gzloiEkeknz5eSZbpzp5okzAbfslN3MhOSNqClF376tptWamPBDemm"
+    },
+    {
+      "hex": "7a656802a263e0f153a474",
+      "text": "BvjTstbI0BeXMrk"
+    },
+    {
+      "hex": "e1d5626ed7e7765b12c326540cb9586da47a77fad926e31fc902ce54eee5f358f33ed5",
+      "text": "ynpANG5UdYo2i7bCrROryM27fJZAXnGtKn5C404oShXbWuz"
+    },
+    {
+      "hex": "f279580818415e362e",
+      "text": "1NxGx4tiQ0Cju"
+    },
+    {
+      "hex": "1334004ed07095c3903a9316f6b054a28648f488f5b085e6e5f0162204053873c0ea7a622ced8a62fb5704fbe56c0afc5a10576a4de34e91d8730864d37d3dd62c5f23527aa4d2935d",
+      "text": "6WcRCvE26jedKja29DZplx3HRPB1M95r9iP7G4g5bCRGxYwY0l9cWCkRlNJewyCsYzsj5JV4xCj09pofLcdNVLnvVgOu1mTli1"
+    },
+    {
+      "hex": "0b485feead9c0a15d5b5ee57",
+      "text": "4XYf6SfspKMdArNH"
+    },
+    {
+      "hex": "707068396f7fee154a2898381447dadb12b26c34",
+      "text": "G2gJ5MlyU4Xb2G2PAUIHg6J2eLU"
+    },
+    {
+      "hex": "13fb7f07990bbf5005b2377413cd58fdfa046c70d1681018bbab7c58f6d99a6f4bb2a19f543324f3fe81b18fb59b28c7c2",
+      "text": "2SRG6QW9VtzGou6VyjkuylK5mmMoJWNYg4vhtzCqCv1Qbfj7zsPVkyLqjC2moWuofC"
+    },
+    {
+      "hex": "ac83872b2a66ae177d2de31ad2c639b6599eb0c8477bb52e021c182a8c6a16946f6166bcd6",
+      "text": "ClsnGU67QyKYaRFxj5LwVg7SOG2glaQ1u00c8uNa2zNiu9Tumk"
+    },
+    {
+      "hex": "648fe9e9b37f5004d3f71edf5bd2cb4d66d51623af4030570f4aeee9cd5ef02ae92ccd5dd15aa5dea36da229b8ca7095",
+      "text": "2znM7Ao48TNOHgs32stnlYBcKlYK1vcjHAqLlF2ELsoUKSBFl0jC4FSy6CCZrKAbd"
+    },
+    {
+      "hex": "3c7dfb950f7bf181cf21443796e036fb957be20f00883c5f93f63c8737a7c2f82f82102c22980544c459a6974741f203d6731a7c7d70cc7da39b4c9b770e5dee60c09d51a8",
+      "text": "4NsNkTx5oce2X8NntggCiJg93UgqRHyndzCgFpE7kI2VSBRdjx7EtcwxMbjaB5b2s4JlDVsZueHnJPDuQvO4ItHBZl5lQ"
+    },
+    {
+      "hex": "eea5b4d22d7340988e9c5f393c9231429aafa89c3602056ab33e360db7e562d8108dfb2d24d0dd48ae7a459c7ccfe00e21ef51d3de2ca05b87548f41c8956a0faba01004f402355f",
+      "text": "JdoupGjtxZw8kzpjoRMQxG36mQgDQLyPELEIVLXkAJgmuWXq4tXbdR6TgAMtmcfr3rsYKDIPv1w6Hjigvs6h9tOT5r7AlCz7f"
+    },
+    {
+      "hex": "8e409c87b992598416b43232228f36c858cdece7c612b563ffd12dd0c594c98fa3b32d06fb39362ce03a2df98465126c24d5621808511f",
+      "text": "MYzfO925x0gsnMADaoMJVHgsf6IWVawrz3rMyIEJJj2CJ9oTk6LExpgLRxFuMKZ4dwAXrARxNv"
+    },
+    {
+      "hex": "a8dde59d007e6ace3b70202850fa2a2a32f1e2571f6aade0a6f5d324fa9ea7ac9689a457f344be7bf69b494f",
+      "text": "14Y4FbZAYCgvkJfK5XTvYH9q62wHOtZrvEJZhUsxsWx4zMCH8n5fmM7izYUB"
+    },
+    {
+      "hex": "4269cfabe20ac60b160344f0ff5c641b",
+      "text": "21JqfFrNljY3NzIpMtMhuV"
+    },
+    {
+      "hex": "01f371d95f1ea8",
+      "text": "2Vw0enP9U"
+    },
+    {
+      "hex": "2fdef8a002e10a5ebc4d3012a5158e",
+      "text": "LsNZNp9LaUBK4KiOgrXC"
+    },
+    {
+      "hex": "887d805c2d968e366f7de3826e2bc445d50e485670a9fada07731b6c8db2bff5e860477e4c99edcf27b67575256262b5bac0f4ad456054d0c9d312e0f6ffba420b7105",
+      "text": "ZyqmZVpCkoNQfW68bk48rkaEaZlG90EdMKPWp463AqMUGAW8I96xuZLL07AWH30RvhJr16Mhyva8irxSDqxoc2BwKz"
+    },
+    {
+      "hex": "54dba112af654cae4ed1578e6e69dee9520478b14594fdb0eda291ac2d319f0c87f03104ecf25eebbd22f376549459f0130ddee139999aa19876f8ec10b9ccf9",
+      "text": "JhXaSaJAUl0DApcCYZQnf4LqVmGurrlLChpW8oZxVA3T6uMu85uYN1RGyhPgHSteC5OCkhqYseRsg5HtxIqqeP"
+    },
+    {
+      "hex": "30f839bbb9d22a9a4395c68cf70c57d1188f31424b9d2deb23b18bba0642cd411b42",
+      "text": "3ByTe5EYNKKMuZScsKVD6Sp6LI21PcpKCEL5j2HX7TD3ze"
+    },
+    {
+      "hex": "c637a9e4d6c15989b147b43a1c57a94a299246fde2a78036d5470b831a8522",
+      "text": "BNmkb5z4foFz9xDCs9Fdc9Ernjk43FKYVJCg0yNM5C"
+    },
+    {
+      "hex": "7bab53d4e07701953a1825cd9e17d7ae01933a5e569fca64aedc8478dbd5faee946a520b0d79bb09ee9d3219ad9bf840b1bd8e59387168bd7b504c33a5f1d6650aa97a831108fca3397f747a",
+      "text": "licqvirINIKp9KvBqdD4ezgfINefhcCeraN6k80ZgEzKRwiHyNbBQ9nCwCGiKixR8OC2beDOMv6S7EiykpNkL0MPkg1Pjesk1OkvH8"
+    },
+    {
+      "hex": "fe8a72",
+      "text": "17zdq"
+    },
+    {
+      "hex": "5f5d96fbe8863efc4db039b3116449e3ee4011183aaf752712c2a2dc1adc648e82aefbb2d5c68c645da0ba3345cfb90b4d52089961df1ccabe",
+      "text": "49trR2kKMsz8NrgmGwTUa5qoxFhzhLfVleIvPF5jJdFVWAgFitom5AKU3CODIcYyKh3w1Z1Dbf4ZC"
+    },
+    {
+      "hex": "d331a84a2056498338dc257cf7404efcfbdbc03e04105f1f859ae3e2b320d80d2655d29d34ca",
+      "text": "12YpdQ91z1hPCQtlnfV34GvccHgapVkxmcCWWpJRE9UYOFpPlUOA"
+    },
+    {
+      "hex": "dcbe0bde4b3d7c",
+      "text": "4aZSHdM8Pk"
+    },
+    {
+      "hex": "4da7f68fd090fab94a41cb61",
+      "text": "VFtrEjD4ucLAFPf7"
+    },
+    {
+      "hex": "53d2d8579a7fb4c16b88795a4a3fb0e1f02ad755bd711e8061fbbfd4e6c79c5fb50e592aabf2461a8e43224cca474d4fe64145012879fce586",
+      "text": "3egd3KtYo3jyvnnW707VCDnpLPVFCIfneVHFhvzBGT8n8nBFgnAyQV62uGlRc6sW4l0gDnW4RC6wI"
+    },
+    {
+      "hex": "732109da2b456bf4875bddb490785d40",
+      "text": "3VFDPCTj1KyNW5ogZfPwUi"
+    },
+    {
+      "hex": "993e0e6c9467e519c04618201b7306b8aaa978e3a86396728fef53bd53c4e4670c3482c51eff1fc2ccd1279bc49aa7076f964bd0d4254b2a0e00c9e9",
+      "text": "7aXGr1T9MzTVql2EDKQOxl3z5Q4xx8LE446KOd7yUJxQujtvkmMHO1d403uqmqUxdsJ1ljVw41RHtku3l"
+    },
+    {
+      "hex": "248be92a0cae5e9cecac3d6e0703f96cd7c73d1887500fcf680b28873188a45a0c9c0a9249eaf633cd38e01c5d8e318a569c0e3d3db3dd1a6cb258a7f897c3e2622e0384dc861c2ad47ae7bd",
+      "text": "E6KM8fTXo7G2tzqyaUWigU4CxbBpxQB3GLy2FF1kZDdNY1rG221QXvMlgp2OHnCfTcs8cJoAMLTM2ICld657ysJhXKJWz5oOcyUdw5"
+    },
+    {
+      "hex": "19652a53104358ac89cb22be7ac5ed39a78337fdf7445c2ef4b85571dc3e96ba56a116d803de82b69466",
+      "text": "aOW2xPN5cLIS2pKr6bpM6FYAy96AJy3yXjVhMEjy01a9PskUk4BZbmKc"
+    },
+    {
+      "hex": "554fba1b1fd88951d35662e123501d08",
+      "text": "2aymYKM1ERKk0sYAf6GgXY"
+    },
+    {
+      "hex": "71",
+      "text": "1p"
+    },
+    {
+      "hex": "b21978182cdb0f192bc53554ef257b32269e32367740becfd7c35ca9f8e944a851479b68f348cae08d77e298d9a68feb239726f2c7ad29103f920614",
+      "text": "8orOfUA16VvChJU1nmSmaZx3GxhvzoTa0UhbhwvpXx0F7e7GuiM24rr6vGJvXR9FKMyGflx7dNaPlkiAO"
+    }
+  ],
+  "base62Decode": [
+    {
+      "text": "0",
+      "hex": ""
+    },
+    {
+      "text": "1",
+      "hex": "01"
+    },
+    {
+      "text": "zz",
+      "hex": "0f03"
+    },
+    {
+      "text": "",
+      "err": "Invalid base62 MRFI payload"
+    },
+    {
+      "text": "a-b",
+      "err": "Invalid base62 MRFI payload"
+    },
+    {
+      "text": "M",
+      "hex": "16"
+    },
+    {
+      "text": "MRFI",
+      "hex": "519a70"
+    },
+    {
+      "text": " 1",
+      "err": "Invalid base62 MRFI payload"
+    },
+    {
+      "text": "00",
+      "hex": ""
+    },
+    {
+      "text": "0A",
+      "hex": "0a"
+    },
+    {
+      "text": "ÿ",
+      "err": "Invalid base62 MRFI payload"
+    }
+  ],
+  "hangul": [
+    {
+      "hex": "",
+      "bits13": "",
+      "bits11": "",
+      "dec13": "",
+      "dec11": ""
+    },
+    {
+      "hex": "00",
+      "bits13": "가",
+      "bits11": "가",
+      "dec13": "00",
+      "dec11": "00"
+    },
+    {
+      "hex": "4d",
+      "bits13": "떠",
+      "bits11": "깨",
+      "dec13": "4d",
+      "dec11": "4d"
+    },
+    {
+      "hex": "4d524649",
+      "bits13": "떪딙낀",
+      "bits11": "깪낑낒",
+      "dec13": "4d524649",
+      "dec11": "4d524649"
+    },
+    {
+      "hex": "ffffff",
+      "bits13": "쯿쯼",
+      "bits11": "돿돿눀",
+      "dec13": "ffffff",
+      "dec11": "ffffff00"
+    },
+    {
+      "hex": "0100000000",
+      "bits13": "갠가가가",
+      "bits11": "갈가가가",
+      "dec13": "010000000000",
+      "dec11": "0100000000"
+    },
+    {
+      "hex": "bf23a0d7286dd9",
+      "bits13": "쏤몃랔닝븀",
+      "bits11": "뇹골궮꺆달뀀",
+      "dec13": "bf23a0d7286dd900",
+      "dec11": "bf23a0d7286dd900"
+    },
+    {
+      "hex": "2eab5fd0abae9ea866ff34418be9e0b960efe753",
+      "bits13": "뇕륿둕웩쥐얿얢궋줼껥뱷쩵눀",
+      "bits11": "굵껗뎡꺺덏꺡냟댴긌껺꿁꾖걷뎝깠",
+      "dec13": "2eab5fd0abae9ea866ff34418be9e0b960efe75300",
+      "dec11": "2eab5fd0abae9ea866ff34418be9e0b960efe753"
+    },
+    {
+      "hex": "c9f169ee760e3d92a62b87404566",
+      "bits13": "씾놧쌻곣윥떊젺걅룀",
+      "bits11": "뉏끚꿜덠댞뉊냅꾇긂굙뀀",
+      "dec13": "c9f169ee760e3d92a62b87404566",
+      "dec11": "c9f169ee760e3d92a62b8740456600"
+    },
+    {
+      "hex": "d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc5137",
+      "bits13": "왖뷈궬쓪즕섉씏쥎쨳닍봆깘앦뤕껨셣죎댔쎱쩑껸쉮딪맧쒴놞긥낢쀲뉹쏶쓈숱쉝땡윾럿껡쟪딓라뉧먨뽰",
+      "bits11": "늕넜뀆놘덗꼫꺄댡돪꾼꼳꼶괆겖궖꼴꺢덅껇뉧곢낽끼넑꿢뉮깊냞꿢늅냰끊깑꺆긳뉯덬꼢눱놗꺖곬돋돸뇃뇵괢꽛댌뉷겢꽰",
+      "dec13": "d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc5137",
+      "dec11": "d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc5137"
+    },
+    {
+      "hex": "694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51c",
+      "bits13": "뤩럈껾괫깉띋넌꽁읗덓쬆띱맙쉔괲뷚웪쬹쀽쮨렰곮의씑뇾뻣늛겡쓭뜡땗괇쬓놗딴썽씑땪맞뉥삉즊졪뷀",
+      "bits11": "꽊꺼뀋돁굘낒놥낡뀚걶녳녏댆껜껝냙꺁궔꾵녵꿧궡덿꺆곀곮닖궑겗돒댙넶걐댝녙걒녰뀟댓굥늓깝뎹겊껔닯곌놤깻겮궪귀",
+      "dec13": "694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51c",
+      "dec11": "694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51c"
+    },
+    {
+      "hex": "79a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4",
+      "bits13": "무씚뵚좟쥤붻숳렪돻쨍앐랏쪋렭슃즯뇪웺썤빭쭈",
+      "bits11": "꿍궑녅꽜냿껉곝닆꽡꺏뎿갷교껣돨놰놶뀟꽞껵꽟꺻괤닟넠",
+      "dec13": "79a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4",
+      "dec11": "79a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4"
+    },
+    {
+      "hex": "c62c33",
+      "bits13": "쓅볌",
+      "bits11": "눱꼌눀",
+      "dec13": "c62c33",
+      "dec11": "c62c3300"
+    },
+    {
+      "hex": "c03e6a134a3b2c485e98deb24bafc23079",
+      "bits13": "쐇얨떥꾲쒐쎦답빋쇸듁좀",
+      "bits11": "눁뎚뀦낣놖괡꿓곞높껫뎄꼇낀",
+      "dec13": "c03e6a134a3b2c485e98deb24bafc23079",
+      "dec11": "c03e6a134a3b2c485e98deb24bafc23079"
+    },
+    {
+      "hex": "0d770d726b79a88bd57ce187121306b9",
+      "bits13": "궮젵씵쎚봗셟댌댒깠웤",
+      "bits11": "걫뇃껤늷냔긯꺯냡뀸낄눍꾐",
+      "dec13": "0d770d726b79a88bd57ce187121306b9",
+      "dec11": "0d770d726b79a88bd57ce187121306b9"
+    },
+    {
+      "hex": "e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b",
+      "bits13": "죰쯛쪃녢뫚왩샾묨끯넵뜷됵뉛쪖뷻뀖귥띨숅읷묧뭊엾욑몬쏻꺸쌅잀꿰뉐쪳꿚쑽뇇쁑쌷쩛쏩옠몤뉺쪀엋뺖",
+      "bits11": "댼귽뇺걥꼓놵넴늟뉹금닲냕꼷긍깥뇺껑동갬곲녭결굶덷낝덊뉿놩겺놗돘녱꾂데갟뀌넏껌꿚눟깜꿑긷궿낷꿴덄걵괌뎯긃귋낥뀀",
+      "dec13": "e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b",
+      "dec11": "e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b00"
+    },
+    {
+      "hex": "d83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e0",
+      "bits13": "윇궢삄죲뷬렩쟠젴슟둭띭벫읥뺻꽄땕랸븐쑼뉘념잾삑밸듽쯇뛰가",
+      "bits11": "닁눚굒겜뎔꿘눔덼곡넭귴궵꽭뀪뎶껊덣긢꺪뇜깂곃댌놂녃꾾네꼃뀣뎿눺뇠",
+      "dec13": "d83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e000",
+      "dec11": "d83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e0"
+    },
+    {
+      "hex": "7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f5",
+      "bits13": "묎앍쥗쪚듐걤뿄쇀쌐깺옿뎾줛묛솵뚃븜쓭뾘민븒뛮꼍얨쉢똫뾟쑾믩봂굮뾱삦뻠릗삿뼒롽됀",
+      "bits11": "꿃놔답껾냒궠갲깸낮갮괁귫긿귯뇑놼꽵놪넇괎꼝놜눟돉걉껮곃꾚끙끊굜댿뀿귽궈겂닩닆낦낸곙꿒돳겓곺뀀",
+      "dec13": "7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f500",
+      "dec11": "7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f500"
+    },
+    {
+      "hex": "22394cb7c598d9c314",
+      "bits13": "끇넲쟢얍뾆넀",
+      "bits11": "광뉓굯끙끬댌꺀",
+      "dec13": "22394cb7c598d9c314",
+      "dec11": "22394cb7c598d9c314"
+    },
+    {
+      "hex": "02910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c11",
+      "bits13": "걒뀀또삂넎쏵짧쒀냺떝뮯쟰줜굒긂군궐꺫댐먜셨솬쥓땅뾂뀀",
+      "bits11": "갔끀갨긔뀑긝꿺뎼도갉뎤뉵뎯닼귑눅깂감껠곈걕꼸뀜귊놢놬더는껎걄",
+      "dec13": "02910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c1100",
+      "dec11": "02910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c11"
+    },
+    {
+      "hex": "eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5",
+      "bits13": "짾궡쁇꽎뢹띎쌈읔꽨본룶볦쇌넘쭫덗쮐땛쮴쑜믷졎쪨",
+      "bits11": "덿뀚곑곣깳굲놧껡곚넆늈꿡냶뀹녜눔꼟꽙늯돈괫꿽넰뇇돟끎뎪",
+      "dec13": "eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5",
+      "dec11": "eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5"
+    },
+    {
+      "hex": "749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474cc",
+      "bits13": "몓먄앦녪띾녜듑읞뇢쎧숶댼끈줳가",
+      "bits11": "꾤닠깥냅꽒닼꺮괚귚뎋눫늞눶귏걄끴뉠",
+      "dec13": "749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474cc00",
+      "dec11": "749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474cc"
+    },
+    {
+      "hex": "c8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12",
+      "bits13": "씌좴쪼둜늉뾳뜱띐뿃뿾숧꼬빢섑쇷븠끱맗쬎쯁듗볉렱왓봟낵쇮녗뼙쀮딉옹뼷엌깰읍뾖놲꺤쨉쑼쑝깇죘뾶낀",
+      "bits11": "뉃귋깺뎈껡넓귙녦굚뀧뀹돺눧곋괦굔긵뎼끀길놺돸꾿뀔꽞곉꼌꾥귄꿤놭꿜꺫뉣궡꾒겝곦꼷뉳갧걭궳낱꽤굒꿁귃댰뇑괟냘냭끈",
+      "dec13": "c8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12",
+      "dec11": "c8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12"
+    },
+    {
+      "hex": "7559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e",
+      "bits13": "몫닲뀢녩뚍쓯봾쌆졋귲죒비왉엉멞즵뫿등욦댙뽋륯짪뒉겓좚덎늃뛚갅벡쑩뎑셦얷가",
+      "bits11": "꾪뉯괐끅꽊넛끷눧늸궸낰돋냒낑궤냧괮껷꽪덿넞귕궎궙넭녯덺낈낂깼냑늜꽁녛글굡긜궤뎑녙놛꾀",
+      "dec13": "7559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e00",
+      "dec11": "7559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e"
+    },
+    {
+      "hex": "04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d",
+      "bits13": "겞뱩굡뱮꼎떿않썘뱐쌖쫶끘밉놧쁘럭왼싓즩앀셼글뵂앀앇똛꼭닯쀀덍껊좳젪득굢덞괮뾓꿊솿룶멋꽷뼔줮궛됀",
+      "bits11": "갧넆낅뀰꽰눜냟댩꺺눠넋끛닶괖관낖냴껂돛넾껚꿭깲뀊뇰글끐놔걥곪곘뉚꽷늀갺꽅낮껏뀪긷긖괝꿁굴댦귥꺷덧놜낱뇞꼔덋뀙놠",
+      "dec13": "04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d00",
+      "dec11": "04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d"
+    },
+    {
+      "hex": "6ccbbbfcadc2159e6742",
+      "bits13": "릙뫯쩖젡뜼에밀",
+      "bits11": "꽦껮돹껜괊뉹냨글",
+      "dec13": "6ccbbbfcadc2159e674200",
+      "dec11": "6ccbbbfcadc2159e674200"
+    },
+    {
+      "hex": "ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b",
+      "bits13": "잷객뿃깘꼫싅벪긹웖윜묚붖멾즮볺쌿괝쪾욱뷏뫷델놸볷뙘뉈꾱멙걵랚웜셱꺗겧뛵륐졼쯊쎫쟿낃읹뢒뮏꺆릆쬙떧딏렀",
+      "bits11": "닭눁닏걢껀뉗꽢눕긑뉵녭끱댚끥냧덶뇐돕뉾겎돗닕끣냷꿜델굮괏꾩꼆김덢댬뀎녜늵뇊뇄꺗갩늯꺵긜꿧뎕꿕덿댤곶뎖깉뎏겡냘꽼꼩넺긞눀",
+      "dec13": "ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b00",
+      "dec11": "ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b00"
+    },
+    {
+      "hex": "e38de680cb484f218c39ccf39a955850cfe8ce912051",
+      "bits13": "족쎚걥삄쩃꼎멧뾚뺫굃돴룩김쁀",
+      "bits11": "댜꽹넁내뀧낆궇귌뎜능꺰넌돴꼺긤걑",
+      "dec13": "e38de680cb484f218c39ccf39a955850cfe8ce912051",
+      "dec11": "e38de680cb484f218c39ccf39a955850cfe8ce912051"
+    },
+    {
+      "hex": "e748",
+      "bits13": "죩가",
+      "bits11": "댺글",
+      "dec13": "e74800",
+      "dec11": "e748"
+    },
+    {
+      "hex": "7aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b",
+      "bits13": "뭕냭댠뗒욡쁔맖썔왰뼖쌗쫉닙뇒유쇅랎꺦쫐뵪뷰긣좇밷늄뤔뗡댣쭺맍왎쏊쩮꼦릀",
+      "bits11": "꿕깎늜뀉늖녃긪궺늺넴댉끚댗뎲깭낗깛괅꾊뇇걔닶뀢늨돀긣댡댃꾚겍겢꿂꾑돯깮꽴냫댫뉮곉냘",
+      "dec13": "7aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b",
+      "dec11": "7aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b"
+    },
+    {
+      "hex": "f11895995ce1f0ca",
+      "bits13": "쨣깖뢮먟궔",
+      "bits11": "뎈눥꼲뇎곸꼨",
+      "dec13": "f11895995ce1f0ca",
+      "dec11": "f11895995ce1f0ca"
+    },
+    {
+      "hex": "97e46d610983e5e3e6d0e0ba03f5704a20dec1e9dc275688634f30f16970dabb3daa43dc642a839ca70f47f4dd5bc8d4f47d518ea68ac30661c498",
+      "bits13": "뻼붵버쐾럇어댅옃쪮괨뱯렞뾸뗕쁃꽏눞놥쑭랳읔볷꼡뚃뾔젽꿺맕쎑섽꿪붎샑뜌꼰졉밀",
+      "bits11": "낿괛껂겘귲뎏냚고뇐곽껠낢걯꼇넻뀧꺴긘늞꼏겴뇃꽗꼽녒곷곈꺨귎꺜귨돴닪닲궩덇늨눺냑껃갳걱괰",
+      "dec13": "97e46d610983e5e3e6d0e0ba03f5704a20dec1e9dc275688634f30f16970dabb3daa43dc642a839ca70f47f4dd5bc8d4f47d518ea68ac30661c49800",
+      "dec11": "97e46d610983e5e3e6d0e0ba03f5704a20dec1e9dc275688634f30f16970dabb3daa43dc642a839ca70f47f4dd5bc8d4f47d518ea68ac30661c498"
+    },
+    {
+      "hex": "7a656802a263e0f153a474",
+      "bits13": "뭌솠굑눾귢샩꾠",
+      "bits11": "꿓굚갅긦귰꿅깴끴",
+      "dec13": "7a656802a263e0f153a474",
+      "dec11": "7a656802a263e0f153a474"
+    },
+    {
+      "hex": "e1d5626ed7e7765b12c326540cb9586da47a77fad926e31fc902ce54eee5f358f33ed5",
+      "bits13": "젺솉썫쩷뢶낰씲쀌쌫궶븽덿솲떸쓾딂엊뾻뻹솏뉽셀",
+      "bits11": "댎녘냝녾꾻구깘꼦꺠꼮꺰닚긽귟덛괦댘돲긅냥깷꾗뉫곳귶녀",
+      "dec13": "e1d5626ed7e7765b12c326540cb9586da47a77fad926e31fc902ce54eee5f358f33ed5",
+      "dec11": "e1d5626ed7e7765b12c326540cb9586da47a77fad926e31fc902ce54eee5f358f33ed5"
+    },
+    {
+      "hex": "f279580818415e362e",
+      "bits13": "쩏녠뀌뀕졬란",
+      "bits11": "뎓뉖감궄겯곘뇀",
+      "dec13": "f279580818415e362e",
+      "dec11": "f279580818415e362e"
+    },
+    {
+      "hex": "1334004ed07095c3903a9316f6b054a28648f488f5b085e6e5f0162204053873c0ea7a622ced8a62fb5704fbe56c0afc5a10576a4de34e91d8730864d37d3dd62c5f23527aa4d2935d",
+      "bits13": "깦밁덨댉랇뀎삘싶숊뺊꼤뭈뷫렡묷뇰껄됐꺜댼귔쪘뵧릊롟륜깽쩖쐕쬖벂썪떼뤺듬댰볉샟뗮숬럤륉쥒뤩늺",
+      "bits11": "겙넀겝넇걊댎긇꺓겷놬격긨꼤꿒괞놰뀯궹꿠굢괂갔댎꿀덓늘끙님넱꿭껠냻댫꼂뇸놡갫놩궼꽎낎눜눐뉍궾냷껅끟괚낞녉넩궮뀀",
+      "dec13": "1334004ed07095c3903a9316f6b054a28648f488f5b085e6e5f0162204053873c0ea7a622ced8a62fb5704fbe56c0afc5a10576a4de34e91d8730864d37d3dd62c5f23527aa4d2935d",
+      "dec11": "1334004ed07095c3903a9316f6b054a28648f488f5b085e6e5f0162204053873c0ea7a622ced8a62fb5704fbe56c0afc5a10576a4de34e91d8730864d37d3dd62c5f23527aa4d2935d00"
+    },
+    {
+      "hex": "0b485feead9c0a15d5b5ee57",
+      "bits13": "굩굿썖엀쀫셭뭲쌀",
+      "bits11": "걚긗돝껙눅걗꺶뇮꺸",
+      "dec13": "0b485feead9c0a15d5b5ee5700",
+      "dec11": "0b485feead9c0a15d5b5ee57"
+    },
+    {
+      "hex": "707068396f7fee154a2898381447dadb12b26c34",
+      "bits13": "먎궠좷쏾젪뺊냁쐔듻띬땙닃됀",
+      "bits11": "꾃뀚걲닷돷걕굅겘귀넑뎵놱굙궰늀",
+      "dec13": "707068396f7fee154a2898381447dadb12b26c3400",
+      "dec11": "707068396f7fee154a2898381447dadb12b26c34"
+    },
+    {
+      "hex": "13fb7f07990bbf5005b2377413cd58fdfa046c70d1681018bbab7c58f6d99a6f4bb2a19f543324f3fe81b18fb59b28c7c2",
+      "bits13": "깿맼꿌벻쪠구붻쀓얫꿷줂닇궢옄곅잫뮋꿛룍담썥둧욡뼤쩿옆쓇읙쉑뷰밀",
+      "bits11": "겟닟눏궐뇟녀겶긷꾠냳꺱돟넂궱눚굨검눮덖독끻꽦꽍덋놕걧늨꼲깹돺갶궏놬닊궏뀠",
+      "dec13": "13fb7f07990bbf5005b2377413cd58fdfa046c70d1681018bbab7c58f6d99a6f4bb2a19f543324f3fe81b18fb59b28c7c200",
+      "dec11": "13fb7f07990bbf5005b2377413cd58fdfa046c70d1681018bbab7c58f6d99a6f4bb2a19f543324f3fe81b18fb59b28c7c2"
+    },
+    {
+      "hex": "ac83872b2a66ae177d2de31ad2c639b6599eb0c8477bb52e021c182a8c6a16946f6166bcd6",
+      "bits13": "손먜솕뉪젮쭋묘웒쓇닙룏뜌벎쫭땰긜꼅똱섋땆쫂얯늰",
+      "bits11": "녤곡뉖꺦꽗걝뎥뇣곖낱끳꽥냏껃괈덻놩꾀뀸궂녆궨껒끯꼋궯궬",
+      "dec13": "ac83872b2a66ae177d2de31ad2c639b6599eb0c8477bb52e021c182a8c6a16946f6166bcd6",
+      "dec11": "ac83872b2a66ae177d2de31ad2c639b6599eb0c8477bb52e021c182a8c6a16946f6166bcd6"
+    },
+    {
+      "hex": "648fe9e9b37f5004d3f71edf5bd2cb4d66d51623af4030570f4aeee9cd5ef02ae92ccd5dd15aa5dea36da229b8ca7095",
+      "bits13": "뢑쮧샙쏵갉샽쓶쭛왙뤵뽪뵢덞밌꺸뭊짝댵뭸꺮빙뽗몊욥쟔릶봔잌샡녀",
+      "bits11": "꼤꿺꿓꼷뎨갓깾댞닺담놖냖꽪끘끵덀궂뇃늕닮냦녻눅껩굦꽗꾢놪껯꺍놴긩뇆꺜괪",
+      "dec13": "648fe9e9b37f5004d3f71edf5bd2cb4d66d51623af4030570f4aeee9cd5ef02ae92ccd5dd15aa5dea36da229b8ca7095",
+      "dec11": "648fe9e9b37f5004d3f71edf5bd2cb4d66d51623af4030570f4aeee9cd5ef02ae92ccd5dd15aa5dea36da229b8ca7095"
+    },
+    {
+      "hex": "3c7dfb950f7bf181cf21443796e036fb957be20f00883c5f93f63c8737a7c2f82f82102c22980544c459a6974741f203d6731a7c7d70cc7da39b4c9b770e5dee60c09d51a8",
+      "bits13": "뎏쏮뚇쎿꼃뿈똡쎖젆쟮뚽쨠쨁긏껼뿶뎐죞뿡뮂쬄뀋괔쐅뒘뵦뽋쁴꿤공뾘왼뮮꼱쫑어씶짃뻯멠쐓셆쀀",
+      "bits11": "귣덾댪곷뇸눇귤굄궼놸걭뎹꺽뎈균겈귢돤돬꿈꾛늟걟갯뀐뀋걅궀꺢꼑꼴늗긺걼뀇녧궍귱뎮곌꿭곦늙궷꾇굷뇌곀냪끪가",
+      "dec13": "3c7dfb950f7bf181cf21443796e036fb957be20f00883c5f93f63c8737a7c2f82f82102c22980544c459a6974741f203d6731a7c7d70cc7da39b4c9b770e5dee60c09d51a8",
+      "dec11": "3c7dfb950f7bf181cf21443796e036fb957be20f00883c5f93f63c8737a7c2f82f82102c22980544c459a6974741f203d6731a7c7d70cc7da39b4c9b770e5dee60c09d51a800"
+    },
+    {
+      "hex": "eea5b4d22d7340988e9c5f393c9231429aafa89c3602056ab33e360db7e562d8108dfb2d24d0dd48ae7a459c7ccfe00e21ef51d3de2ca05b87548f41c8956a0faba01004f402355f",
+      "bits13": "짔싓딖쌴괱꾧껹씼빆넊륗욉쑬겁띕뼾닁싟뺱릁괛쫋딦볝딕엩껎돌쯀꾈뭺뷓쟅뺁맃셈쪃븥띐뮫쀂갓영꽕쨀",
+      "bits11": "덵국궤껗궠깢귓끟귉댤끢뀩녗늢꾆눂갫꺬뉼꽠닛뎕끛감끯닋깉넍늤꺹덈놜꿦꿸개긞뎨덏꿅날껜귕괞뀜끊놨귵꾠검괽간꽕뎀",
+      "dec13": "eea5b4d22d7340988e9c5f393c9231429aafa89c3602056ab33e360db7e562d8108dfb2d24d0dd48ae7a459c7ccfe00e21ef51d3de2ca05b87548f41c8956a0faba01004f402355f00",
+      "dec11": "eea5b4d22d7340988e9c5f393c9231429aafa89c3602056ab33e360db7e562d8108dfb2d24d0dd48ae7a459c7ccfe00e21ef51d3de2ca05b87548f41c8956a0faba01004f402355f"
+    },
+    {
+      "hex": "8e409c87b992598416b43232228f36c858cdece7c612b563ffd12dd0c594c98fa3b32d06fb39362ce03a2df98465126c24d5621808511f",
+      "bits13": "뷈깲꿜씥뼈놭궑븢뷦육롦쫎뮌낭뜟쯑놺꼖뙤쓺덦띁쏙씶놜골싼쑆똤윉늫긘괊끼",
+      "bits11": "끲갧괏꾙괬눐껖뀲궑겣뉭낅끦뎳냸눒놫곿뎢껝걢뉓괱뎣놙꽁뇶꾓꼖꾀덅뇹뀣굄냘깍꺱걠괊괟",
+      "dec13": "8e409c87b992598416b43232228f36c858cdece7c612b563ffd12dd0c594c98fa3b32d06fb39362ce03a2df98465126c24d5621808511f",
+      "dec11": "8e409c87b992598416b43232228f36c858cdece7c612b563ffd12dd0c594c98fa3b32d06fb39362ce03a2df98465126c24d5621808511f"
+    },
+    {
+      "hex": "a8dde59d007e6ace3b70202850fa2a2a32f1e2571f6aade0a6f5d324fa9ea7ac9689a457f344be7bf69b494f",
+      "bits13": "섛쎖몀돦솜뫜괁두쭅뒨앸쨥먾욫묅답왤뿪뭓웉뤓딕쮚낾뭾왭낧밀",
+      "bits11": "녆덹꼺갇댵꼸덮갠굂뀾끔꺣굸뎉껣덪녯갩뇫넲깽깺냵낖끍괕돦끋댽돚꽩굏",
+      "dec13": "a8dde59d007e6ace3b70202850fa2a2a32f1e2571f6aade0a6f5d324fa9ea7ac9689a457f344be7bf69b494f00",
+      "dec11": "a8dde59d007e6ace3b70202850fa2a2a32f1e2571f6aade0a6f5d324fa9ea7ac9689a457f344be7bf69b494f"
+    },
+    {
+      "hex": "4269cfabe20ac60b160344f0ff5c641b",
+      "bits13": "둍댾쇱견렖놀옧볿람뱬",
+      "bits11": "긓깳덗눠녣갬껀꽄뎇돗곈궰",
+      "dec13": "4269cfabe20ac60b160344f0ff5c641b",
+      "dec11": "4269cfabe20ac60b160344f0ff5c641b"
+    },
+    {
+      "hex": "01f371d95f1ea8",
+      "bits13": "갾맇뢯뷪밀",
+      "bits11": "갏냜꾲뇱더가",
+      "dec13": "01f371d95f1ea800",
+      "dec11": "01f371d95f1ea800"
+    },
+    {
+      "hex": "2fdef8a002e10a5ebc4d3012a5158e",
+      "bits13": "뇻쟢밁먐삽묓떀뺥꺱쐀",
+      "bits11": "굾뎾굀갮겅굺뎉넰겕굅꼜",
+      "dec13": "2fdef8a002e10a5ebc4d3012a5158e00",
+      "dec11": "2fdef8a002e10a5ebc4d3012a5158e"
+    },
+    {
+      "hex": "887d805c2d968e366f7de3826e2bc445d50e485670a9fada07731b6c8db2bff5e860477e4c99edcf27b67575256262b5bac0f4ad456054d0c9d312e0f6ffba420b7105",
+      "bits13": "봏숁먖앨졬쟟묜깮노봗뚇낅룡뙾싐덳꽭븶앟쭞변뷟빤역엤쫙욺빖냅륮숇삭뒬굓둤줱뇁즿짒긋먠쀀",
+      "bits11": "끃덠겸껙꽇곙뇯뇣뀓꾊뎈끝꺇괡껎격돖늁닦궶뉆닊돾뇨꼂귟낙궞닧낞닎녵괫겘녫꾬걺꺵견걔늆깴눥눏꽿닩걁꽱갨",
+      "dec13": "887d805c2d968e366f7de3826e2bc445d50e485670a9fada07731b6c8db2bff5e860477e4c99edcf27b67575256262b5bac0f4ad456054d0c9d312e0f6ffba420b710500",
+      "dec11": "887d805c2d968e366f7de3826e2bc445d50e485670a9fada07731b6c8db2bff5e860477e4c99edcf27b67575256262b5bac0f4ad456054d0c9d312e0f6ffba420b7105"
+    },
+    {
+      "hex": "54dba112af654cae4ed1578e6e69dee9520478b14594fdb0eda291ac2d319f0c87f03104ecf25eebbd22f376549459f0130ddee139999aa19876f8ec10b9ccf9",
+      "bits13": "뚛몄땗쉔앜뾴뚼멮뤻장딂뎋꺋넿릇릢븵벴쓏볈믠롁덧빞쥷삋얻녉뒳전쑮쫡댳뉪볌덯뷘뀮멧씀",
+      "bits11": "꺦단긥껶꺦꺹귚굗끳꾚꾽늕괂귢눨놔돭뀻꽅괚눖냆꿡낇뎁끁귙댥덵담끞꽶꺤넖꿠괰닯꾄댳궚넌눝뇱닁걜댳댠",
+      "dec13": "54dba112af654cae4ed1578e6e69dee9520478b14594fdb0eda291ac2d319f0c87f03104ecf25eebbd22f376549459f0130ddee139999aa19876f8ec10b9ccf900",
+      "dec11": "54dba112af654cae4ed1578e6e69dee9520478b14594fdb0eda291ac2d319f0c87f03104ecf25eebbd22f376549459f0130ddee139999aa19876f8ec10b9ccf9"
+    },
+    {
+      "hex": "30f839bbb9d22a9a4395c68cf70c57d1188f31424b9d2deb23b18bba0642cd411b42",
+      "bits13": "눟곦짜줢섴볥먴룷궊쭄롇뼔낗덋뭙꾱뵷됙굦쀑슄",
+      "bits11": "궇눎꽷꾝괕깩걲뇆끧뇃겯넑끇냅걉꾝굯껈덣겻넃괋궨괛긐",
+      "dec13": "30f839bbb9d22a9a4395c68cf70c57d1188f31424b9d2deb23b18bba0642cd411b42",
+      "dec11": "30f839bbb9d22a9a4395c68cf70c57d1188f31424b9d2deb23b18bba0642cd411b42"
+    },
+    {
+      "hex": "c637a9e4d6c15989b147b43a1c57a94a299246fde2a78036d5470b831a8522",
+      "bits13": "쓆쪧빫렕뼓롑즡옜뛵넨색끯쟅뗠궶셇군롪꺑가",
+      "bits11": "눱뇪꿉녬견눦눨뎴귐댕덒낢냉괛뎼꺧뀁놵꺎겸궍긔끀",
+      "dec13": "c637a9e4d6c15989b147b43a1c57a94a299246fde2a78036d5470b831a852200",
+      "dec11": "c637a9e4d6c15989b147b43a1c57a94a299246fde2a78036d5470b831a8522"
+    },
+    {
+      "hex": "7bab53d4e07701953a1825cd9e17d7ae01933a5e569fca64aedc8478dbd5faee946a520b0d79bb09ee9d3219ad9bf840b1bd8e59387168bd7b504c33a5f1d6650aa97a831108fca3397f747a",
+      "bits13": "뭵륏뙰데꼪몆괮릞껺쪸곉뾥좭돲뼥뫜벏꽯뛽뫩듔삂쑫얻괽왴씌웙쏰밬맬멙댎놢쪽섄쑧땼몳넊섯똌뒄믊뉲쯝꿐",
+      "bits11": "꿝껔뎩눇꾀뉔덃갥뉬뎅뎯껠곉냩꿊늟뉓괫놹걇끭덗덝는꽒낂눚뎛놄뎺꾦긙녬닾겁꼛닇굤댎굨뇫닔겘꼺껸덙낡꺩꿔계긑돊궜뇽늏글",
+      "dec13": "7bab53d4e07701953a1825cd9e17d7ae01933a5e569fca64aedc8478dbd5faee946a520b0d79bb09ee9d3219ad9bf840b1bd8e59387168bd7b504c33a5f1d6650aa97a831108fca3397f747a",
+      "dec11": "7bab53d4e07701953a1825cd9e17d7ae01933a5e569fca64aedc8478dbd5faee946a520b0d79bb09ee9d3219ad9bf840b1bd8e59387168bd7b504c33a5f1d6650aa97a831108fca3397f747a00"
+    },
+    {
+      "hex": "fe8a72",
+      "bits13": "쯑뗈",
+      "bits11": "돴꺜뀀",
+      "dec13": "fe8a72",
+      "dec11": "fe8a7200"
+    },
+    {
+      "hex": "5f5d96fbe8863efc4db039b3116449e3ee4011183aaf752712c2a2dc1adc648e82aefbb2d5c68c645da0ba3345cfb90b4d52089961df1ccabe",
+      "bits13": "럫쉛짴둣째뽬귍뼑뢉뎏쌠광뱵럝딸뻂쁛뱫먲듨녝쫬슮늌뢋슂줙쁜쭲껓뚐뒙렻졳녟가",
+      "bits11": "껺덥뇷늈꼟꿱궶갹놘끙겓눾댠걄꼇꺯꾩귄놅긭눍꽱낑늂녷달놫끨눲굶뀗긳긮꿮긖냕괄깥뀻댜뉕뎀",
+      "dec13": "5f5d96fbe8863efc4db039b3116449e3ee4011183aaf752712c2a2dc1adc648e82aefbb2d5c68c645da0ba3345cfb90b4d52089961df1ccabe00",
+      "dec11": "5f5d96fbe8863efc4db039b3116449e3ee4011183aaf752712c2a2dc1adc648e82aefbb2d5c68c645da0ba3345cfb90b4d52089961df1ccabe"
+    },
+    {
+      "hex": "d331a84a2056498338dc257cf7404efcfbdbc03e04105f1f859ae3e2b320d80d2655d29d34ca",
+      "bits13": "왦늡널녤뼆먷괫죷됉쟳짭젃절뀗쓼놚졼뛌뱬곒뢫삧떦똀",
+      "bits11": "늙끪겔긅꼤눌댛뀥꿧뇐겝돏뇭대돀뀐껸돡꼵눾굙낃꼁넦꺮낧깩날",
+      "dec13": "d331a84a2056498338dc257cf7404efcfbdbc03e04105f1f859ae3e2b320d80d2655d29d34ca00",
+      "dec11": "d331a84a2056498338dc257cf7404efcfbdbc03e04105f1f859ae3e2b320d80d2655d29d34ca"
+    },
+    {
+      "hex": "dcbe0bde4b3d7c",
+      "bits13": "잗쐯묥뿗쐀",
+      "bits11": "닥뎂뎼낳늾가",
+      "dec13": "dcbe0bde4b3d7c00",
+      "dec11": "dcbe0bde4b3d7c00"
+    },
+    {
+      "hex": "4da7f68fd090fab94a41cb61",
+      "bits13": "떴쯚돨딏셲뺐멛관",
+      "bits11": "깭귽넟넉걽껥굈귋꼈",
+      "dec13": "4da7f68fd090fab94a41cb6100",
+      "dec11": "4da7f68fd090fab94a41cb61"
+    },
+    {
+      "hex": "53d2d8579a7fb4c16b88795a4a3fb0e1f02ad755bd711e8061fbbfd4e6c79c5fb50e592aabf2461a8e43224cca474d4fe64145012879fce586",
+      "bits13": "뙺띡럍돻떂웢꿊왊돶꾇쐕륵띺졇쀃귻쏺뾛꿎뇻똜쉊셟빆꽑씌봦뢤몚뿹븊넁넏돳뻃가",
+      "bits11": "꺞낶겯궧돚꼅녱걹껒꺏덡눟강꽝꺷녱곴갘꿷꿽깳꼞꾋뎵걲뉊녗댤꼍긹걤까뉒귓꺟뉤겢뀄넏근댬궀",
+      "dec13": "53d2d8579a7fb4c16b88795a4a3fb0e1f02ad755bd711e8061fbbfd4e6c79c5fb50e592aabf2461a8e43224cca474d4fe64145012879fce58600",
+      "dec11": "53d2d8579a7fb4c16b88795a4a3fb0e1f02ad755bd711e8061fbbfd4e6c79c5fb50e592aabf2461a8e43224cca474d4fe64145012879fce586"
+    },
+    {
+      "hex": "732109da2b456bf4875bddb490785d40",
+      "bits13": "멤뀧뤕쁖쏩귖쫭삐묋섀",
+      "bits11": "꾙걂꾴꺴꺵돒곫꿝놤뀞겺뀀",
+      "dec13": "732109da2b456bf4875bddb490785d40",
+      "dec11": "732109da2b456bf4875bddb490785d40"
+    },
+    {
+      "hex": "993e0e6c9467e519c04618201b7306b8aaa978e3a86396728fef53bd53c4e4670c3482c51eff1fc2ccd1279bc49aa7076f964bd0d4254b2a0e00c9e9",
+      "bits13": "뼧쐹쉊뉾똳밑볁갛멠웢셔쎎덐쓥뾔믯뙷셏깲뉰쑩겱듷쬟쑙뽄뿍졉셎귛좲럐욄섬섇갌뿒",
+      "bits11": "냉뎃냙굆꿲끧갈눘관닜눍꾊녔뇣끵걣낳낣돞넻늩댓낌댌궤겱긽돱돡꼳긤뎛눤늩눎당꼥덃꺄녋교꾀궓느",
+      "dec13": "993e0e6c9467e519c04618201b7306b8aaa978e3a86396728fef53bd53c4e4670c3482c51eff1fc2ccd1279bc49aa7076f964bd0d4254b2a0e00c9e9",
+      "dec11": "993e0e6c9467e519c04618201b7306b8aaa978e3a86396728fef53bd53c4e4670c3482c51eff1fc2ccd1279bc49aa7076f964bd0d4254b2a0e00c9e9"
+    },
+    {
+      "hex": "248be92a0cae5e9cecac3d6e0703f96cd7c73d1887500fcf680b28873188a45a0c9c0a9249eaf633cd38e01c5d8e318a569c0e3d3db3dd1a6cb258a7f897c3e2622e0384dc861c2ad47ae7bd",
+      "bits13": "낑뮤섆뛥줹윫귫먇걿놳럣뿑봎쀃쩻됋널죆끒놠씸꺤빏뛶뉹샣밎뇘졣꺕샠먽뎶뭴뤶뜥뵏쨥쨟깢뇀먓멃귂솨쪹짨",
+      "bits11": "괤껺깔곊댯깳놕뀽꽰귀돲닍꿣냴꼐덐걾꿚갖꺈꾘눢낋긌냠꺤낓늯꼙댴댜개껬꾌꼔녩눇곴뎶꿝곓꼬낱깿끋댏끌긮개괷괌귂녪귫냷넀",
+      "dec13": "248be92a0cae5e9cecac3d6e0703f96cd7c73d1887500fcf680b28873188a45a0c9c0a9249eaf633cd38e01c5d8e318a569c0e3d3db3dd1a6cb258a7f897c3e2622e0384dc861c2ad47ae7bd",
+      "dec11": "248be92a0cae5e9cecac3d6e0703f96cd7c73d1887500fcf680b28873188a45a0c9c0a9249eaf633cd38e01c5d8e318a569c0e3d3db3dd1a6cb258a7f897c3e2622e0384dc861c2ad47ae7bd00"
+    },
+    {
+      "hex": "19652a53104358ac89cb22be7ac5ed39a78337fdf7445c2ef4b85571dc3e96ba56a116d803de82b69466",
+      "bits13": "꼬삩떈뀵뵙깲씕쩺쒽샦뿁뽿쟮봗굷삸뚮데쭋랥륂놶갞쪂싒붘",
+      "bits11": "곋굊낦괄궬꺲괹꼢뇳늱꿚꾚꿁냟뎾덄껡꾽군녗곮곺껗깖너놶갇뇨굛깑냀",
+      "dec13": "19652a53104358ac89cb22be7ac5ed39a78337fdf7445c2ef4b85571dc3e96ba56a116d803de82b69466",
+      "dec11": "19652a53104358ac89cb22be7ac5ed39a78337fdf7445c2ef4b85571dc3e96ba56a116d803de82b69466"
+    },
+    {
+      "hex": "554fba1b1fd88951d35662e123501d08",
+      "bits13": "뚩쫨릏즈뺣샕뼗괣똃쀠",
+      "bits11": "꺪꿮뀶귽끄녇깪뉢댉곔갺검",
+      "dec13": "554fba1b1fd88951d35662e123501d08",
+      "dec11": "554fba1b1fd88951d35662e123501d08"
+    },
+    {
+      "hex": "71",
+      "bits13": "먠",
+      "bits11": "꾈",
+      "dec13": "71",
+      "dec11": "71"
+    },
+    {
+      "hex": "b21978182cdb0f192bc53554ef257b32269e32367740becfd7c35ca9f8e944a851479b68f348cae08d77e298d9a68feb239726f2c7ad29103f920614",
+      "bits13": "쉃뇠렖린쨲뛱떪샯낯룈뽏꼣룮밯쉾쏃랕돣삢뚅꺏닚뎚듊접쇟뵌릚뤟웈좹닲쓵삤됟씠련",
+      "bits11": "놐뉞갰껍놇끤노넵꺧꿉껶꼢꽏곈닎덀뇶꿵뎆뇊냼꾥겕걑긼닚귦낌녰긵닼꺘닍궣돖긹꾓꿋공넩겁돤뀌굀",
+      "dec13": "b21978182cdb0f192bc53554ef257b32269e32367740becfd7c35ca9f8e944a851479b68f348cae08d77e298d9a68feb239726f2c7ad29103f920614",
+      "dec11": "b21978182cdb0f192bc53554ef257b32269e32367740becfd7c35ca9f8e944a851479b68f348cae08d77e298d9a68feb239726f2c7ad29103f920614"
+    }
+  ],
+  "envelopes": [
+    {
+      "payload": "",
+      "envelope": "4d5246490000360d83",
+      "checksum": "e3b0c4",
+      "back": {
+        "ok": ""
+      }
+    },
+    {
+      "payload": "00",
+      "envelope": "4d524649000100ec8044",
+      "checksum": "6e340b",
+      "back": {
+        "ok": "00"
+      }
+    },
+    {
+      "payload": "4d",
+      "envelope": "4d52464900014d2e641f",
+      "checksum": "08f271",
+      "back": {
+        "ok": "4d"
+      }
+    },
+    {
+      "payload": "4d524649",
+      "envelope": "4d52464900044d524649ec5459",
+      "checksum": "fbf62c",
+      "back": {
+        "ok": "4d524649"
+      }
+    },
+    {
+      "payload": "ffffff",
+      "envelope": "4d5246490003ffffff118649",
+      "checksum": "5ae7e6",
+      "back": {
+        "ok": "ffffff"
+      }
+    },
+    {
+      "payload": "0100000000",
+      "envelope": "4d52464900050100000000922c92",
+      "checksum": "957b88",
+      "back": {
+        "ok": "0100000000"
+      }
+    },
+    {
+      "payload": "bf23a0d7286dd9",
+      "envelope": "4d5246490007bf23a0d7286dd9fc7307",
+      "checksum": "6a341e",
+      "back": {
+        "ok": "bf23a0d7286dd9"
+      }
+    },
+    {
+      "payload": "2eab5fd0abae9ea866ff34418be9e0b960efe753",
+      "envelope": "4d52464900142eab5fd0abae9ea866ff34418be9e0b960efe753f75d9f",
+      "checksum": "ed56ad",
+      "back": {
+        "ok": "2eab5fd0abae9ea866ff34418be9e0b960efe753"
+      }
+    },
+    {
+      "payload": "c9f169ee760e3d92a62b87404566",
+      "envelope": "4d524649000ec9f169ee760e3d92a62b87404566168c20",
+      "checksum": "c936e3",
+      "back": {
+        "ok": "c9f169ee760e3d92a62b87404566"
+      }
+    },
+    {
+      "payload": "d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc5137",
+      "envelope": "4d5246490047d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc513731c586",
+      "checksum": "7ed97f",
+      "back": {
+        "ok": "d2b47203598eaecad42721fd4ef199b3620c258cb334545d1563e671c52f63e5117c59b9254de7c5a167844a4a2a1919e6fed8c8b18d9752c3b3e5ff8b877d49135be199dc5137"
+      }
+    },
+    {
+      "payload": "694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51c",
+      "envelope": "4d5246490047694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51ce0db51",
+      "checksum": "848e05",
+      "back": {
+        "ok": "694af205fc12b124ad2ca18341dab9d4fe0cb716ecd9502651dad757ce687bfa861803bb6b19112ff4b8cd360a1c76ac852ae107f89965d26977dc88a5a9bbc665a44f62b8d51c"
+      }
+    },
+    {
+      "payload": "79a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4",
+      "envelope": "4d524649002279a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4defd80",
+      "checksum": "bccd49",
+      "back": {
+        "ok": "79a646a2b5c9feb246eec66c2a3fdf8372a0b8ff45b0b6d07daf2f56beaec926dfa4"
+      }
+    },
+    {
+      "payload": "c62c33",
+      "envelope": "4d5246490003c62c33a6f3f6",
+      "checksum": "637f21",
+      "back": {
+        "ok": "c62c33"
+      }
+    },
+    {
+      "payload": "c03e6a134a3b2c485e98deb24bafc23079",
+      "envelope": "4d5246490011c03e6a134a3b2c485e98deb24bafc230793a70c2",
+      "checksum": "a0aa1f",
+      "back": {
+        "ok": "c03e6a134a3b2c485e98deb24bafc23079"
+      }
+    },
+    {
+      "payload": "0d770d726b79a88bd57ce187121306b9",
+      "envelope": "4d52464900100d770d726b79a88bd57ce187121306b950b5ab",
+      "checksum": "9720c0",
+      "back": {
+        "ok": "0d770d726b79a88bd57ce187121306b9"
+      }
+    },
+    {
+      "payload": "e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b",
+      "envelope": "4d5246490049e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b881b06",
+      "checksum": "e62dec",
+      "back": {
+        "ok": "e787f6fd0656276d69a69fcf2823794d566e83532dfa5a3f64160f2ada2c0bb77793bd2b3fda917565fec571705dc00fc0ca1eb31ed61f4b8f451b9bf96efd3a2075219ebd019cb94b"
+      }
+    },
+    {
+      "payload": "d83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e0",
+      "envelope": "4d524649002cd83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e0c005e8",
+      "checksum": "648b22",
+      "back": {
+        "ok": "d83868a909cf28f630a77c1c34b4fa1b56db0abdb2caec6889555dc48430f86582a86efa92303847eff1d5e0"
+      }
+    },
+    {
+      "payload": "7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f5",
+      "envelope": "4d524649003e7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f57b1132",
+      "checksum": "fb7871",
+      "back": {
+        "ok": "7876537aafe9a46801927895c0b8809eb47e7bee8dbc6eb6aa8390e63b6730ffc9092bb861b9a8b3128ae73f87e7f4c4082dd3b1a534b81b2f4bf98931f5"
+      }
+    },
+    {
+      "payload": "22394cb7c598d9c314",
+      "envelope": "4d524649000922394cb7c598d9c31499fce3",
+      "checksum": "6e8596",
+      "back": {
+        "ok": "22394cb7c598d9c314"
+      }
+    },
+    {
+      "payload": "02910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c11",
+      "envelope": "4d524649002902910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c11d00698",
+      "checksum": "a218cd",
+      "back": {
+        "ok": "02910014214822875fd7bcf88027d2675f5fbf0e8e05484041700c80aace20e1cab456b3aa69459c11"
+      }
+    },
+    {
+      "payload": "eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5",
+      "envelope": "4d5246490025eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5cd3aba",
+      "checksum": "da15a1",
+      "back": {
+        "ok": "eff068688e34e65cad3ae11b541b443e19ed0e6ae61463ed6757fc8256ff6985c7fbf13bd5"
+      }
+    },
+    {
+      "payload": "749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474cc",
+      "envelope": "4d5246490017749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474ccc82343",
+      "checksum": "d9b53b",
+      "back": {
+        "ok": "749b8132cc56a5bf15711a3b5e2f15e9ec6c73c22474cc"
+      }
+    },
+    {
+      "payload": "c8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12",
+      "envelope": "4d524649004ac8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12d564b6",
+      "checksum": "1b7ef7",
+      "back": {
+        "ok": "c8672d3d7885c344cecd662b509e1cffac4e32c9315446bef220238b75fe1dfc146bc325863a5388f92d6bdc55798cd0b9213a3999be7304e1b4d9cb16c8549e09c3e617448fcd89db12"
+      }
+    },
+    {
+      "payload": "7559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e",
+      "envelope": "4d52464900397559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e8f9043",
+      "checksum": "741898",
+      "back": {
+        "ok": "7559bc8844569546e3be27d706e2587cb9a5244d24e725cbddb577fa3c754c7199a5b5bfbd4889049f268e9c68356d00161438693c8d59b36e"
+      }
+    },
+    {
+      "payload": "04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d",
+      "envelope": "4d524649004b04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d1f3c7d",
+      "checksum": "cd1cb4",
+      "back": {
+        "ok": "04f41a42c306e18726ff2957588285c5bdec458804969e8b0bedd3e5b4fb53940abe0802285940ca3a86c65a6efa001d34595cb3e1523742c475e0974e4c7955bf67b392c6ef314e97066d"
+      }
+    },
+    {
+      "payload": "6ccbbbfcadc2159e6742",
+      "envelope": "4d524649000a6ccbbbfcadc2159e6742261aa7",
+      "checksum": "a0c216",
+      "back": {
+        "ok": "6ccbbbfcadc2159e6742"
+      }
+    },
+    {
+      "payload": "ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b",
+      "envelope": "4d5246490050ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b975941",
+      "checksum": "083a8d",
+      "back": {
+        "ok": "ddb8076786258195db16154239d6b6c71e3519673f76ba1f573f08efafb5631cf77b9de0b710f752c1920762e5903aae6b5b957114b829d5ead50e3e7f2af57bff241ede5924f8f143361be329a7487b"
+      }
+    },
+    {
+      "payload": "e38de680cb484f218c39ccf39a955850cfe8ce912051",
+      "envelope": "4d5246490016e38de680cb484f218c39ccf39a955850cfe8ce912051c61f1e",
+      "checksum": "0f52eb",
+      "back": {
+        "ok": "e38de680cb484f218c39ccf39a955850cfe8ce912051"
+      }
+    },
+    {
+      "payload": "e748",
+      "envelope": "4d5246490002e7487c5dd1",
+      "checksum": "15030f",
+      "back": {
+        "ok": "e748"
+      }
+    },
+    {
+      "payload": "7aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b",
+      "envelope": "4d52464900387aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b19beb7",
+      "checksum": "257f1f",
+      "back": {
+        "ok": "7aa93b4e409d2d50d151bad754d384c5ae2fec936c974b6415c55c70a9bda116a8f8088f90f03734234513c2723fbd373749d7caf370c99b"
+      }
+    }
+  ],
+  "damaged": [
+    {
+      "label": "ok",
+      "envelope": "4d52464900050102030405fa910d",
+      "result": {
+        "ok": "0102030405"
+      }
+    },
+    {
+      "label": "short",
+      "envelope": "4d52464900",
+      "result": {
+        "err": "Invalid compact MRFI envelope"
+      }
+    },
+    {
+      "label": "magic",
+      "envelope": "0052464900050102030405fa910d",
+      "result": {
+        "err": "Invalid compact MRFI magic"
+      }
+    },
+    {
+      "label": "version",
+      "envelope": "4d52464901050102030405fa910d",
+      "result": {
+        "err": "Unsupported compact MRFI version"
+      }
+    },
+    {
+      "label": "length-too-long",
+      "envelope": "4d52464900640102030405fa910d",
+      "result": {
+        "err": "Invalid compact MRFI length"
+      }
+    },
+    {
+      "label": "checksum",
+      "envelope": "4d52464900050102030405fa910c",
+      "result": {
+        "err": "Invalid compact MRFI checksum"
+      }
+    },
+    {
+      "label": "padding-zero",
+      "envelope": "4d52464900050102030405fa910d0000",
+      "result": {
+        "ok": "0102030405"
+      }
+    },
+    {
+      "label": "padding-nonzero",
+      "envelope": "4d52464900050102030405fa910d01",
+      "result": {
+        "err": "Invalid compact MRFI padding"
+      }
+    },
+    {
+      "label": "empty",
+      "envelope": "",
+      "result": {
+        "err": "Invalid compact MRFI envelope"
+      }
+    }
+  ]
+}
