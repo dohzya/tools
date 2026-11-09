@@ -1,5 +1,13 @@
 {
   "fmt": {
-    "proseWrap": "never"
+    "proseWrap": "never",
+    "exclude": [
+      "docs/explorations/*/fixtures",
+      "docs/explorations/*/expected",
+      "docs/explorations/*/md-corpus",
+      "tests/blackbox/fixtures",
+      "tests/blackbox/cases",
+      "crates/*/tests/fixtures"
+    ]
   }
 }

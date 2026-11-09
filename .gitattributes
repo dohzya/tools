@@ -1,0 +1,9 @@
+# Fixtures and expected outputs are byte-exact: CRLF/CR line endings are
+# part of what the tests check, so git must never normalize them (the
+# local core.autocrlf=input would otherwise rewrite CRLF files to LF).
+/tests/blackbox/** -text
+/docs/explorations/**/md-corpus/** -text
+/docs/explorations/**/fixtures/** -text
+/docs/explorations/**/expected/** -text
+/crates/*/tests/fixtures/** -text
+/crates/*/tests/vectors/** -text

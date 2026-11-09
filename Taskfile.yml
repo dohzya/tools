@@ -211,3 +211,37 @@ tasks:
       - echo "   ./dist/{{.TOOL}}-darwin-arm64 --version"
       - echo "   git push origin main && git tag {{.TOOL}}-v{{.VERSION}} && git push origin {{.TOOL}}-v{{.VERSION}}"
       - echo "   task update-tap TOOL={{.TOOL}} VERSION={{.VERSION}}"
+
+  rust:fmt:
+    desc: "Format the Rust code"
+    cmds:
+      - cargo fmt --all
+
+  rust:check:
+    desc: "Type-check the Rust workspace"
+    cmds:
+      - cargo check --locked --workspace --all-targets
+
+  rust:lint:
+    desc: "Run clippy with warnings denied"
+    cmds:
+      - cargo clippy --locked --workspace --all-targets -- -D warnings
+
+  rust:test:
+    desc: "Run the Rust tests"
+    cmds:
+      - cargo test --locked --workspace {{.CLI_ARGS}}
+
+  rust:validate:
+    desc: "Rust fmt check, lint, test and wasm build"
+    cmds:
+      - cargo fmt --all --check
+      - task: rust:lint
+      - task: rust:test
+      - task: rust:wasm
+
+  rust:wasm:
+    desc: "Build the pure crates for wasm32 (requires: rustup target add wasm32-unknown-unknown)"
+    cmds:
+      - cargo build --locked -p critique-wasm --target wasm32-unknown-unknown
+      - cargo build --locked -p md-manipulator --target wasm32-unknown-unknown

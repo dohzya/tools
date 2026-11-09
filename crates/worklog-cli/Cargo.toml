@@ -1,0 +1,19 @@
+[package]
+name = "worklog-cli"
+description = "Worklog CLI: task, trace and checkpoint model with its command handlers."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "worklog"
+path = "src/main.rs"
+
+[dependencies]
+md-manipulator.workspace = true
+dz-cli-support.workspace = true
+clap.workspace = true

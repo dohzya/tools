@@ -8,3 +8,12 @@ mise.toml
 CLAUDE.local.md
 recap.local.yaml
 recap.local.yml
+
+# Exploration fixtures: keep the fixture worklog tracked
+!/docs/explorations/*/fixtures/**/.worklog/
+
+# Black-box fixtures: keep dotted dirs and local-config files byte-exact
+!/tests/blackbox/fixtures/**/.worklog/
+!/tests/blackbox/fixtures/**/recap.local.yaml
+!/tests/blackbox/fixtures/**/recap.local.yml
+target/

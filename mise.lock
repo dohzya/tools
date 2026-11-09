@@ -262,6 +262,10 @@ url = "https://nodejs.org/dist/v22.22.3/node-v22.22.3-win-x64.zip"
 checksum = "sha256:6c8d54f635feff4df76c2ca80f45332eb2ff57d25226edce36592e51a177ee33"
 url = "https://nodejs.org/dist/v22.22.3/node-v22.22.3-win-x64.zip"
 
+[[tools.rust]]
+version = "1.99.1"
+backend = "core:rust"
+
 [[tools.task]]
 version = "3.51.1"
 backend = "aqua:go-task/task"
