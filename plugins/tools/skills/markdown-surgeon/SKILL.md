@@ -1,6 +1,6 @@
 ---
 name: markdown-surgeon
-description: Manipulate Markdown files surgically by section without loading entire content. Use when editing large .md files, updating specific sections, using Markdown as a lightweight database, working with MRFI (Markdown Robust Fragment Identifiers) or durable passage references, or when asked to work with sections in a Markdown file. Commands include outline, read, write, append, empty, remove, search, concat, meta, create, ref, resolve.
+description: Manipulate Markdown files surgically by section without loading entire content. Use when editing large .md files, updating specific sections, using Markdown as a lightweight database, working with MRFI (Markdown Robust Fragment Identifiers) or durable passage references, or when asked to work with sections in a Markdown file. Commands include outline, read, write, append, empty, remove, search, concat, meta, create, ref, resolve, compare, rank.
 user-invocable: false
 ---
 
@@ -61,6 +61,8 @@ md search --summary doc.md "TODO"
 # ref/resolve: durable content anchors (survive line-number drift)
 md ref doc.md 15:1-15:40 --quote     # generate a ref from a line:col-line:col range
 md resolve doc.md '~{v0;r=15:1-15:40;...}'  # re-locate it after edits (status: exact/shifted/...)
+md compare '<refA>' '<refB>'         # same passage? verdict + scores, no document needed
+md rank '<target>' '<ref1>' '<ref2>' # order candidates, best first (--stdin: one per line)
 
 # concat: merge files (use > for output)
 md concat --shift=1 intro.md guide.md > full.md

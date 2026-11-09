@@ -1,0 +1,19 @@
+id: 7natz8
+full id: 7natz8duzlrdundln184ylct7
+name: Investigate SSO provider
+status: started
+parent: 9n3ksy  "Fix login bug"  (started)
+history:
+  created: 2026-01-05 08:00
+  started: 2026-01-20 10:00
+
+desc:
+  
+
+entries since checkpoint: 1
+  2026-01-05 08:10  info
+    Listing provider docs
+
+todos: 2
+  hynh1p [x] ask vendor for sandbox
+  cIyt2Y [ ] read RFC

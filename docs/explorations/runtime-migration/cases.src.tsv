@@ -1,0 +1,39 @@
+md-read-id-shallow	md	md	read doc-basic.md 074ff574
+md-read-id-deep	md	md	read doc-basic.md 074ff574 --deep
+md-read-json-deep	md	md	read doc-basic.md 074ff574 --deep --json
+md-read-heading-codefence	md	md	read doc-basic.md ## Usage
+md-read-top-level-deep	md	md	read doc-basic.md # Introduction --deep
+md-read-empty-section	md	md	read doc-nofm.md ## Empty Section
+md-read-unicode-deep-json	md	md	read doc-nofm.md ## Café ☕ Crème brûlée --deep --json
+md-read-last-section-trailing-blanks	md	md	read doc-nofm.md # Second Top
+md-read-repeated-by-id	md	md	read doc-nofm.md daac9e3b
+md-read-edge-json	md	md	read doc-edge.md # Header with trailing spaces --deep --json
+md-read-unterminated-frontmatter	md	md	read doc-unterminated-fm.md # Heading inside
+md-read-err-ambiguous-heading	md	md	read doc-nofm.md ## Repeated
+md-read-err-unknown-id	md	md	read doc-basic.md deadbeef
+md-read-err-invalid-id	md	md	read doc-basic.md nothex
+md-read-err-heading-not-found	md	md	read doc-basic.md ## Missing
+md-read-err-wrong-level	md	md	read doc-basic.md # Background
+md-read-err-file-missing	md	md	read nope.md 074ff574
+wl-list-default	wl	wl-project	list
+wl-list-all	wl	wl-project	list --all
+wl-list-started	wl	wl-project	list --started
+wl-list-ready-and-started	wl	wl-project	list --ready --started
+wl-list-subtasks	wl	wl-project	list --subtasks
+wl-list-json	wl	wl-project	list --json
+wl-list-all-subtasks-json	wl	wl-project	list --all --subtasks --json
+wl-list-cancelled	wl	wl-project	list --cancelled
+wl-list-err-not-initialized	wl	wl-empty	list
+wl-list-err-not-initialized-json	wl	wl-empty	list --json
+wl-show-checkpoint-entries-subtasks	wl	wl-project	show 9n3ksy
+wl-show-json-checkpoint-entries	wl	wl-project	show 9n3ksy --json
+wl-show-todos	wl	wl-project	show cq3984
+wl-show-todos-active-json	wl	wl-project	show cq3984 --active --json
+wl-show-subtask-parent	wl	wl-project	show 7natz8
+wl-show-multipart-desc	wl	wl-project	show 4gsf0b
+wl-show-done-prefix-case-insensitive	wl	wl-project	show 4Q2R
+wl-show-err-unknown	wl	wl-project	show zzzzzz
+wl-show-err-unknown-json	wl	wl-project	show zzzzzz --json
+wl-show-err-ambiguous	wl	wl-project	show 4
+wl-show-err-no-id	wl	wl-project	show
+wl-show-err-not-initialized	wl	wl-empty	show abc

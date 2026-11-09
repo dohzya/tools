@@ -4,35 +4,35 @@ MRFI creates durable references to passages in Markdown documents that survive e
 
 ## Reference Forms in Review Context
 
-| Form                  | Meaning                                                 | Example                           |
-| --------------------- | ------------------------------------------------------- | --------------------------------- |
-| `^stable-id`          | Anchor in target doc (`<!-- ^stable-id -->`)            | `ref: source.md:82^install_sdk`   |
-| `~GdwjSq`             | Compact dz-review item ID (generated, no `rvw_` prefix) | `ref: source.md:82~GdwjSq`        |
-| `~{v0;key=value;...}` | Debug encoding (rare in reviews, valid)                 | `~{v0;r=42:1-42:68;fh=xxh64:...}` |
+| Form                  | Meaning                                               | Example                           |
+| --------------------- | ----------------------------------------------------- | --------------------------------- |
+| `^stable-id`          | Anchor in target doc (`<!-- ^stable-id -->`)          | `ref: source.md:82^install_sdk`   |
+| `~<compact>`          | MRFI, Hangul or Base62 (from `md ref <file> <range>`) | `ref: source.md:82~떪딙낀...`     |
+| `~{v0;key=value;...}` | MRFI, debug encoding (readable, valid)                | `~{v0;r=42:1-42:68;fh=xxh64:...}` |
 
-Anchors (`^`) are not MRFI locators; they resolve by ID lookup. Compact references (`~`) are MRFI locators encoded in Hangul or Base62.
+Anchors (`^`) are not MRFI locators; they resolve by ID lookup. References after `~` are MRFI locators (compact Hangul or Base62, or debug form). A bare id such as the old `~GdwjSq`, or a review item id, is not an MRFI and is rejected by `ref check`.
 
 ## Passage References (`ref:` comments)
 
 Syntax:
 
 ```markdown
-<!-- ref: file.md:82~GdwjSq -->
+<!-- ref: file.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407} -->
 <!-- ref: file.md:82^stable-id -->
-<!-- ref%2026-06-16T17:35:35+0200: file.md:82~GdwjSq -->
+<!-- ref%2026-06-16T17:35:35+0200: file.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407} -->
 ```
 
 Multiple targets separated by `;`:
 
 ```markdown
-<!-- ref: source.md:82~GdwjSq; ../other.md:40^anchor -->
+<!-- ref: source.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407}; ../other.md:40^anchor -->
 ```
 
 Snapshots embed source text inline using labelled delimiters:
 
 ```markdown
 <!-- ref%궩거깇걸:
-  source.md:82~GdwjSq {&&rFZEOtB
+  source.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407} {&&rFZEOtB
   Passage content here.
   rFZEOtB&&};
 -->

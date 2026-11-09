@@ -1,0 +1,110 @@
+# Markdown parsing: TS scanner vs CommonMark parsers
+
+Date: 2026-10-28. Task: wl c2gku6. Spikes: this dir (JS) and `../../../rust/experiment/md-parse-spike-rust/` (Rust). Reproduce: `bun make-corpus.mjs`, `deno run -A ref-ts.ts`, `bun run-js.mjs`, Rust `target/release/md-parse-spike-rust <lib> corpus out.json`, `bun compare.mjs`, `bun gen-matrix.mjs`.
+
+## 1. What the TS reference really does
+
+Source: `packages/tools/markdown-surgeon/domain/use-cases/parse-document.ts` (shared by `md`, `wl` via `parser.ts` shim / `surgeon-adapter.ts`, and `dz-review/reference-map.ts`).
+
+- **Output**: a flat list of sections `{id, level, title, line, lineEnd}` plus `lines[]` (split on `"\n"` only), `frontmatter` raw text and `frontmatterEndLine`. No tree, no byte offsets, no blocks. Line ranges only: a section ends the line before the next header of ANY level (`--deep`: next header of level <= own); the last section ends at the last non-blank line.
+- **ID hash**: blake3, 8 hex chars, of `level:lowercased-trimmed-title:occurrence` (occurrence counted per level+title). The title is the RAW text after `#`s (closing `#`s and inline markup kept), so IDs are derived from source text, not from a rendered heading.
+- **Header rule**: `/^(#{1,6})\s+(.+)$/` on the raw line. Column 0 only; `\s` is JS whitespace (NBSP, tab, ...); no setext; `.`/`$` fail on a trailing `\r`, so a CRLF file has ZERO headings (verified with the real `md outline --json` on `corpus/crlf.md`: `[]`).
+- **Fence rule**: any line whose `trim()` starts with ``` or `~~~` toggles "in code". No fence char/length matching, no info-string rule, no indentation rule, no unterminated handling beyond "rest of file".
+- **Frontmatter rule**: only if line 1 `trim() === "---"`, closed by the next `trim() === "---"` (unterminated => no frontmatter). `+++` and `...` are not recognised. YAML parsing is separate (`yaml.ts`).
+- **`commonmark` npm (^0.31.2)** is used ONLY by `adapters/services/commonmark-block-tree-parser.ts` (port `BlockTreeParser`), instantiated in `markdown-surgeon/cli.ts` and `dz-review/adapters/markdown/mrfi-adapter.ts`. It builds MRFI `p`-path steps (`p/ul/ol/li/blockquote` + sibling occurrence) INSIDE a section's text, using `sourcepos` -> codepoint offsets. It never decides what a section is. So the repo already runs two incompatible notions of structure: regex sections (outline/read/write/...) and CommonMark blocks (MRFI paths). `docs/specs/mrfi.md` even says identity headings are "ATX or setext" and "a heading-looking line inside a fenced code block is not a heading", while the section parser has no setext support.
+- **Who needs exact positions**: `write`, `append`, `remove`, `empty`, `concat --shift`, `meta` (frontmatter splice) all work by splicing `lines[]` by line index (`write-section.ts`, `mutate-range.ts`) and re-joining with `"\n"`: line-exact, byte-identical elsewhere. Only MRFI (`r=line:col`, `o=` byte offset) needs columns, and it gets them from commonmark.js `sourcepos`. A parser only has to deliver "heading line numbers + level" for the surgical ops.
+- **Intentional vs accidental** (tests: `use-cases.test.ts` "ignores headers in code blocks", "handles tilde code blocks", frontmatter tests, `cli.test.ts` anchors-in-fences; no test/doc for CRLF, setext, indented headers, HTML blocks, longer fences): the documented/tested intent is "skip fenced code, skip frontmatter, ATX only at column 0". Everything else in the matrix is untested, hence accidental in effect, except "a `#` line in an HTML block counts" which is undocumented either way.
+
+## 2. Corpus
+
+80 files in `corpus/`: 64 hand-made edge cases (ATX indent 0/1/3/4/tab, no space, closing `#`, empty, 7 `#`, NBSP; setext; fences ``` / ~~~ / longer / mixed / unterminated / indented / in list / in quote / inline-triple / info on closer; indented code; HTML blocks, comments, `<pre>`; quote, list, lazy paragraph, link ref def, table; frontmatter: normal, unterminated, `...`, `+++`, `#` inside YAML, not first, trailing spaces; thematic break vs setext; CRLF, bare CR, tabs, unicode, no trailing newline, empty) + 16 real files (AGENTS.md, ARCHI.md, CHANGELOG, mrfi spec, plans, postmortem, SKILL.md files; 319 headings).
+
+Comparison mode: ROOT-LEVEL headings `(level, line)`, sections derived as "up to the line before the next heading". Candidates get the TS frontmatter rule applied first (lines blanked, numbering kept), because none of them knows YAML frontmatter; raw (unstripped) behaviour was NOT measured. Headings nested in quotes/lists are excluded (MRFI spec: they are ordinary content). Titles are compared only informally (see 4).
+
+## 3. Divergence matrix
+
+`=` same as the TS reference, `≠` differs. CM column = headings found by commonmark.js (arbiter). Cells show `level@line`. CommonMark spec 0.31.2 example numbers checked against `spec.json`.
+
+| Case                          | TS ref            | commonmark.js     | rs-hand | rs-comrak | rs-pulldown | rs-mdrs | commonmark | markdown-it | mdast | marked | Who is right                                                                                               |
+| ----------------------------- | ----------------- | ----------------- | ------- | --------- | ----------- | ------- | ---------- | ----------- | ----- | ------ | ---------------------------------------------------------------------------------------------------------- |
+| atx-1sp                       | `-`               | `1@1`             | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.68 (1-3 spaces of indent allowed)                                                              |
+| atx-3sp                       | `-`               | `1@1 2@5`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.68                                                                                             |
+| atx-empty                     | `2@5 1@7`         | `1@1 1@3 2@5 1@7` | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.79 (`#`, `#` are empty headings)                                                               |
+| atx-nbsp                      | `1@1`             | `-`               | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | =      | **CM** — needs space/tab after `#` (cf. ex.64); JS `\s` accepts NBSP: accidental                           |
+| cr-only                       | `-`               | `1@1 2@5`         | ≠       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — bare CR is a line ending (spec 2.1); TS splits on `\n` only                                       |
+| crlf-fence                    | `-`               | `1@1 2@7`         | ≠       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — same CRLF bug                                                                                     |
+| crlf                          | `-`               | `1@1 2@5`         | ≠       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — spec 2.1 line endings; TS yields 0 headings because `.` / `$` choke on `\r`: bug                  |
+| dashes-no-frontmatter-late    | `1@1 2@7`         | `1@1 2@4 2@7`     | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM (but unwanted)** — `title: x` + `---` becomes setext h2                                               |
+| fence-indented4               | `1@1 2@7`         | `1@1 1@4 2@7`     | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.134 (4-space indent = indented code, not a fence)                                              |
+| fence-info-close              | `1@1 1@6`         | `1@1 2@9`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.147 (closing fence has no info string)                                                         |
+| fence-inline-triple           | `1@1`             | `1@1 1@5`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.145 (backtick in info string => not a fence)                                                   |
+| fence-longer                  | `1@1 1@5 2@10`    | `1@1 2@10`        | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.124 (inner shorter fence does not close)                                                       |
+| fence-mixed                   | `1@1 1@5 2@9`     | `1@1 2@9`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.122 (other fence char does not close)                                                          |
+| frontmatter-not-first         | `1@6`             | `2@3 1@6`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **TS (tool semantics)** — CM has no frontmatter: sees setext h2 'title: X'; TS: frontmatter must be line 1 |
+| heading-after-fence-same-line | `1@1 2@7`         | `1@1`             | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — ex.147                                                                                            |
+| html-block                    | `1@1 1@4 2@7`     | `1@1 2@7`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — HTML block type 6 (ex.150/188) swallows `# x` until blank line                                    |
+| html-comment                  | `1@1 1@4 2@5 2@8` | `1@1 2@8`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — HTML block type 2 (ex.177/179) until `-->`                                                        |
+| html-pre                      | `1@1 1@5 2@8`     | `1@1 2@8`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — HTML block type 1 (ex.148) until `</pre>`                                                         |
+| setext-multiline              | `-`               | `1@1`             | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — spec 4.3 (multi-line setext content)                                                              |
+| setext                        | `-`               | `1@1 2@6`         | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM** — spec 4.3 setext headings; TS ignores them (but docs/specs/mrfi.md says setext is supported)       |
+| thematic-vs-setext            | `1@1 2@7`         | `1@1 2@3 2@7`     | =       | ≠         | ≠           | ≠       | ≠          | ≠           | ≠     | ≠      | **CM (but unwanted)** — ex.59/83: `text` + `---` = setext h2; TS keeps it as body                          |
+
+Identical for ALL 8 implementations (59): atx-0sp, atx-4sp-indented-code, atx-7hash, atx-closing, atx-nospace, atx-tab-after-hash, atx-tab-indent, atx-trailing-spaces, blockquote, dup-headings, emphasis-title, empty, fence-backtick, fence-in-blockquote, fence-in-list, fence-indented3, fence-tilde, fence-unterminated, frontmatter-dots, frontmatter-hash-in-yaml, frontmatter-only-dashes-twice, frontmatter-toml, frontmatter-trailing-space, frontmatter-unterminated, frontmatter, hash-with-escape, heading-in-html-inline, html-block-blank, html-comment-oneline, indented-code, lazy-para-hash, level-skip, linkref, list-item-indented, list-item, no-trailing-newline, only-heading-no-nl, only-newline, real-AGENTS, real-ARCHI, real-README, real-RELEASE, real-docs_plans_2026-02-13-hexagonal-architecture-design, real-docs_postmortems_2026-02-19-0955-release-wl-0.8.0-md-0.7.0, real-docs_specs_mrfi, real-packages_tools_CHANGELOG, real-packages_tools_README, real-packages_tools_TYPESCRIPT, real-plugins_tools_skills_agent-context-writing_SKILL, real-plugins_tools_skills_docs-maintainer_SKILL, real-plugins_tools_skills_markdown-review-workflow_SKILL, real-plugins_tools_skills_obsidian-journal_SKILL, real-plugins_tools_skills_rex-session_SKILL, real-plugins_tools_skills_worklog_SKILL, table, tabs-content, thematic-break, trailing-blank-lines, unicode
+
+### Summary counts (80 files)
+
+| Impl                                                                                         | Differs from TS                                      | Differs from commonmark.js  |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------- |
+| hand-rolled Rust (`experiment/rust` rules)                                                   | 3 (CRLF/CR only: Rust finds headings, TS finds none) | 18                          |
+| comrak 0.59, pulldown-cmark 0.13.5, markdown 1.0.0 (markdown-rs)                             | 21 each                                              | 0                           |
+| commonmark.js 0.31.2, markdown-it 15.0.3 (commonmark preset), mdast-util-from-markdown 2.1.0 | 21 each                                              | 0                           |
+| marked 18.1.2                                                                                | 20                                                   | 1 (NBSP after `#`, JS `\s`) |
+
+Take-aways:
+
+1. All six CommonMark-compliant parsers return IDENTICAL root-level heading lists on all 80 files; they are interchangeable for this purpose. Cross-stack (Rust vs JS) the findings are equal.
+2. On the 16 real repo documents (319 headings) every implementation agrees with the TS reference: the divergences only appear on pathological/edge inputs.
+3. Of 21 divergent files, the TS scanner is wrong per CommonMark in 18 (fences: longer/mixed/info/inline/ indented; HTML blocks x3; CRLF x3; ATX indent x2; NBSP; empty headings; setext x2), debatable in 3 (accidental setext from `text` + `---`, x2; frontmatter-not-first), and the TS rule wins on the tool-level frontmatter case.
+4. Reviewer claim "`# x` is not a header in the rules": TRUE for the TS parser, but it is a defect w.r.t. CommonMark (ex.68), not a documented choice. The claim "CommonMark would change observable behaviour": TRUE, on exactly the 21 files above, none of them real docs in this repo.
+5. The hand-rolled Rust port is NOT byte-for-byte with TS on CRLF/CR (3 files): it silently "fixes" the TS CRLF bug. On the 77 other files it matches.
+6. Title text differs for closing sequences: `# A #` -> TS title `A #`, CommonMark `A` (ex.71-74). Since the section ID hashes the title, a CommonMark-based locator must keep deriving titles from the raw source line (strip `#`s and whitespace only) or all existing IDs change.
+
+## 4. Weight and speed
+
+Synthetic `out/big.md`: 5.7 MB, 60 000 headings (+ list/inline/fence content), one run after warm-up, this machine (WSL2), Rust release+LTO, bun 1.3.14.
+
+| Impl                     | Time, 60k sections | Notes                                                                               |
+| ------------------------ | ------------------ | ----------------------------------------------------------------------------------- |
+| TS regex scanner (bun)   | 41 ms              | no hashing included                                                                 |
+| hand-rolled Rust         | 5 ms               |                                                                                     |
+| pulldown-cmark           | 60 ms              | byte offsets via `into_offset_iter`                                                 |
+| comrak                   | 158 ms             | arena AST, sourcepos line:col only                                                  |
+| markdown-rs              | > 25 s (killed)    | 200 KB: 104 ms, 400 KB: 320 ms: super-linear on this input                          |
+| commonmark.js            | 655 ms             |                                                                                     |
+| markdown-it              | 623 ms             | `token.map` = lines only                                                            |
+| mdast-util-from-markdown | > 60 s (killed)    | 200 KB: 0.5 s, 400 KB: 1.26 s: super-linear                                         |
+| marked                   | > 60 s (killed)    | 100 KB: 2.4 s: clearly super-linear (my line-lookup bug was fixed before measuring) |
+
+Cause of the super-linearity was not investigated (micromark-family parsers; may relate to this specific list/fence mix). Realistic documents are far below 1 MB so it is not a practical issue, but it rules out mdast/marked/markdown-rs if multi-MB files matter.
+
+Rust binary size (release, LTO, strip, defaults off; base = serde_json + fs only = 382 KB): hand +16 KB, pulldown-cmark +401 KB, markdown-rs +602 KB, comrak +816 KB. Cold build of the whole spike with one lib: pulldown 6.5 s, markdown-rs 6.8 s, comrak 15.9 s (includes serde_json). JS minified single-lib bundles: marked 48 KB, mdast-util-from-markdown 87 KB, markdown-it 106 KB, commonmark 154 KB (entity tables); installed node_modules: commonmark 708 KB, markdown-it 2.6 MB (with locales/deps), marked 560 KB, mdast-from-markdown 164 KB + deps.
+
+Maintenance (crates.io API / npm, 2026-10-28): comrak 0.59.0 (2026-10-26), pulldown-cmark 0.13.5 (2026-10-21, 62M recent downloads), markdown 1.0.0 (2025-04-23: 18 months without release), commonmark.js 0.31.2, markdown-it 15.0.3, mdast-util-from-markdown 2.1.0 (2026-10-03).
+
+Exact positions: pulldown-cmark gives byte ranges of every block (heading start AND end). markdown-rs and mdast give byte/UTF-16 `offset` + line/column. comrak gives only line:column (byte columns) -> offset needs a line table. commonmark.js gives line:column (UTF-16 columns). markdown-it gives only line ranges. marked gives token `raw` strings, offsets only by summing raw lengths (it normalises CRLF). For heading start line + level, all work; the section END is always "next heading start - 1" (own rule), no lib knows about sections.
+
+## 5. Design question: A, B or C?
+
+- **(C) full AST round-trip**: reject. Re-rendering (comrak `format_commonmark`, pulldown-cmark-to-cmark, `remark-stringify`) normalises list markers, emphasis style, escapes, table padding, line wraps and link-reference style: not "rest byte-identical". It would also change CRLF, trailing whitespace, and everything `md` promises to leave alone. Not evaluated experimentally; this is the known behaviour of those serialisers.
+- **(A) purpose-built scanner**: fast (5 ms Rust, 41 ms TS for 5.7 MB), zero deps (+16 KB), exact line splicing. Its problems are a handful of FIXABLE rules, not the approach: CRLF/CR line endings, fence matching (char, min length 3, closer >= opener, no info on closer, 0-3 indent, backtick info rule), ATX with 0-3 leading spaces and empty headings, closing-sequence handling for titles, optionally HTML blocks and indented code. A CommonMark-correct scanner for fences + indentation is ~60 lines; HTML block start/end conditions (7 kinds) and setext are where a hand scanner starts to become a parser.
+- **(B) CommonMark parser for positions only, edit the source yourself**: gives correct fences/HTML blocks/indented code/setext/CR line endings for free, identical across the 6 libs, and it is already the mechanism of the MRFI side. Costs: +0.4 MB (pulldown) / +0.8 MB (comrak) or 150 KB in JS, 12x-100x slower than the scanner (still 60 ms per 5.7 MB with pulldown), and it changes behaviour where TS is "wrong": setext headings appear (any `text` + `---` becomes a section: surprising for notes with horizontal rules and YAML-ish text), frontmatter must still be handled by us, section IDs must keep hashing raw titles.
+
+Recommendation: (B)-light, in the spirit of the existing design. Make the parser behind a port (`BlockTreeParser`-like) return `(level, startLine, [startByte])` of root-level ATX headings only, keep frontmatter, section-end, ID and splice logic in our code, and DISABLE/ignore setext if the product wants `---` separators to stay inert (decision needed: the mrfi spec says setext counts). If a dependency is unwanted, fix (A) with the rule list above and use this corpus as a regression suite: the TS scanner would then match commonmark.js on all 80 files except the deliberate setext/frontmatter choices. Per stack: Rust -> `pulldown-cmark` (fastest, byte ranges, best maintained, smallest); Bun/JS -> keep `commonmark` (already a dependency, `sourcepos`, linear on this input) or `markdown-it` if only lines are needed; avoid `marked` and `mdast-util-from-markdown` for large files. Findings are equal between Rust and Bun (same 21 divergences); only cost differs (Rust: +400 KB binary, JS: dependency already present, so zero marginal cost).
+
+Changing from the current rules is a user-visible behaviour change (IDs of weird headings, CRLF files now working). It should be a deliberate, versioned/CHANGELOG'd decision, not a side effect of the migration.
+
+## 6. Limits of this evaluation
+
+- Verified: corpus runs, TS reference via the real `ParseDocumentUseCase` (and CLI on CRLF), spec example numbers from `spec.json` 0.31.2, timings, sizes. Single run per timing, no warmup statistics.
+- Not verified: raw frontmatter handling inside the libs (we pre-stripped it); headings inside containers (excluded by design); astral/UTF-16 vs byte columns; the markdown-rs byte offset (only asserted in debug builds); the real end-to-end `write/append/remove` through a CommonMark locator (not implemented); super-linear causes; GFM extensions (tables/autolinks off everywhere; they do not change heading detection in the corpus); comrak default features (syntect etc.) were disabled.
+- Corpus bias: edge cases are mine; real docs only 16 files from one repo.

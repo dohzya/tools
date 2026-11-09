@@ -1,0 +1,1 @@
+{"id":"ca2699db","level":1,"title":"Header with trailing spaces","lineStart":9,"lineEnd":25,"content":"\nBody A\n   \n> quote line\n> second quote line\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n## ##  Weird\n\n   # indented header is not a header\n\nFinal line without newline\nFinal no newline"}

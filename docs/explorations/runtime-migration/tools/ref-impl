@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Reference entry point: `ref-impl md read ...` / `ref-impl wl list ...`
+d="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+tool="$1"; shift
+case "$tool" in
+  md) exec "$d/ref-md" "$@" ;;
+  wl) exec "$d/ref-wl" "$@" ;;
+  *) echo "unknown tool $tool" >&2; exit 64 ;;
+esac

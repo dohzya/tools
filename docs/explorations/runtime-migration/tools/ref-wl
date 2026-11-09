@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Reference TS implementation of wl (Deno)
+unset NO_COLOR WORKLOG_TASK_ID
+export NO_COLOR=1
+exec deno -A /home/dohzya/.local/share/tuios/worktrees/dz-tools/bun/packages/tools/worklog/cli.ts "$@"
