@@ -1,0 +1,19 @@
+
+────────────────────────────────────────────────
+1/9 handled conversation 5SUMpH doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+{??
+@me 2026-06-16T17:35:35+02:00 Please say whether sources are stored too.
+??}
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: 
+────────────────────────────────────────────────
+1/1 handled conversation 4N8lYs other.md:3-3
+ 1 │ # Other
+ 2 │ 
+>3 │ Other file. {?? @me%2026-06-16T17:35:35+02:00 hi ??}
+{??
+@me 2026-06-16T17:35:35+02:00 hi
+??}
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: 

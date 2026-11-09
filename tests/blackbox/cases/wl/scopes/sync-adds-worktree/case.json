@@ -1,0 +1,21 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "sync-worktrees"
+  ],
+  "ignore_changes": [
+    "../*",
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/scope.json"
+  ]
+}

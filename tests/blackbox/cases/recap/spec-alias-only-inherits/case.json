@@ -1,0 +1,12 @@
+{
+  "tool": "recap",
+  "fixture": "recap-spec",
+  "args": [
+    "show",
+    "old"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "recap:3b",
+  "note": "a sections: list with only aliases keeps the parent sections and registers the aliases (Deno: empties the list)",
+  "cwd": "rule-b"
+}

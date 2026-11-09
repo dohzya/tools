@@ -1,0 +1,15 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "assign",
+    "web",
+    "--tag",
+    "nope"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "parity"
+}

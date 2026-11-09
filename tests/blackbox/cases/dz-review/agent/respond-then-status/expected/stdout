@@ -1,0 +1,20 @@
+Agent status
+Snapshot: .dz-review/agent-session.json
+files annotated: 1
+files modified: 1
+conversations answered: 1
+validated/cleanable conversations: 1
+remaining open items: 2
+guardrail failures: 1
+
+id: 5SUMpH doc.md:3 open answer
+id: A3vwnq doc.md:5 annotation review annotation
+id: E96pi6 doc.md:5 annotation review annotation
+id: CWUZeY doc.md:5 annotation review annotation
+id: 5g7itt doc.md:5 annotation review annotation
+id: CFi8Jd doc.md:5 annotation review annotation
+id: 5SUN8d doc.md:7 handled reply
+id: 5SUNRz doc.md:12 resolved clean after validation
+id: 5SUNlL doc.md:14 open answer
+
+- 5SUNRz doc.md:12 validated conversation remains cleanable

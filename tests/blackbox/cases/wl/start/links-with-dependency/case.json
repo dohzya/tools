@@ -1,0 +1,19 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "start",
+    "doc003"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "starting a task whose dependency is still open is allowed",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/doc003xxxxxxxxxxxxxxxxxxx.md"
+  ]
+}

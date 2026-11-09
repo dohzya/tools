@@ -1,0 +1,10 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-formats",
+  "args": [
+    "timestamp",
+    "iso.md",
+    "--format-info"
+  ],
+  "behavior": "parity"
+}

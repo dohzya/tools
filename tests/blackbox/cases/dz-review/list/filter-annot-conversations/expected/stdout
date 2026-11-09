@@ -1,0 +1,41 @@
+
+────────────────────────────────────────────────
+1/4 handled conversation KHxQF0 doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+{??
+@me Please say whether sources are stored too.
+??}
+
+────────────────────────────────────────────────
+2/4 handled conversation 85i8v2 doc.md:7-10
+  5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+  6 │ 
+> 7 │ <!--
+> 8 │ @agent%2026-06-16T17:35:35+0200 I chose this wording.
+> 9 │ @me%1WzvP91W Can we soften it?
+>10 │ -->
+<!--
+@agent 2026-06-16T17:35:35+02:00 I chose this wording.
+@me 2026-06-16T17:35:35+02:00 Can we soften it?
+-->
+
+────────────────────────────────────────────────
+3/4 resolved conversation B9XL0Q doc.md:12-12
+ 10 │ -->
+ 11 │ 
+>12 │ Done thread. {?? @agent Fixed. @me ok ??}
+{??
+@agent Fixed.
+@me ok
+??}
+
+────────────────────────────────────────────────
+4/4 handled conversation GmRdXm doc.md:15-15
+ 13 │ 
+ 14 │ ```
+>15 │ {?? @me in fence ??}
+{??
+@me in fence
+??}

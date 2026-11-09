@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "tags",
+    "add",
+    "extra",
+    "9n3ksy"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    "services/web/.worklog/index.json",
+    "services/web/.worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md"
+  ]
+}

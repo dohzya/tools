@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "sync-worktrees",
+    "--dry-run"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "parity"
+}

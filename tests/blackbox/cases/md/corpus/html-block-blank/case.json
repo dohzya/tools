@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "html-block-blank.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

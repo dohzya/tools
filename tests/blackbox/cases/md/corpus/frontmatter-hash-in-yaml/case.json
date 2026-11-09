@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "frontmatter-hash-in-yaml.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

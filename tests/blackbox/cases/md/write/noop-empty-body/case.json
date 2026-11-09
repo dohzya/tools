@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-spec",
+  "args": [
+    "write",
+    "blank-body.md",
+    "# A",
+    ""
+  ],
+  "files": [
+    "blank-body.md"
+  ],
+  "check_stdout": false,
+  "behavior": "new-spec",
+  "spec_row": "9"
+}

@@ -1,0 +1,1 @@
+[{"ref":"~{v0;a=stable-id}","status":"ambiguous","confidence":0.6,"anchor":"stable-id","diagnostics":["MRFI anchor signal","duplicate anchor"],"candidates":[{"range":"5:1-5:20","score":60,"reasons":["anchor occurrence"]},{"range":"16:1-16:20","score":60,"reasons":["anchor occurrence"]}]}]

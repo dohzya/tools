@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "duplicate-nested-label",
+      "message": "snapshot label rDDD is invalid",
+      "reference": {
+        "end": 82,
+        "index": 1,
+        "lineEnd": 5,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 {&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&} -->",
+        "start": 19,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6 {&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&}",
+            "snapshot": {
+              "content": "{&&rDDD\ninner\nrDDD&&}",
+              "label": "rDDD",
+              "raw": "{&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&}"
+            }
+          }
+        ]
+      },
+      "sourceFile": "snap-nested-dup.md"
+    },
+    {
+      "kind": "stale-snapshot",
+      "message": "stale snapshot",
+      "reference": {
+        "end": 82,
+        "index": 1,
+        "lineEnd": 5,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 {&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&} -->",
+        "start": 19,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6 {&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&}",
+            "snapshot": {
+              "content": "{&&rDDD\ninner\nrDDD&&}",
+              "label": "rDDD",
+              "raw": "{&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&}"
+            }
+          }
+        ]
+      },
+      "sourceFile": "snap-nested-dup.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6 {&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&}",
+        "snapshot": {
+          "content": "{&&rDDD\ninner\nrDDD&&}",
+          "label": "rDDD",
+          "raw": "{&&rDDD\n{&&rDDD\ninner\nrDDD&&}\nrDDD&&}"
+        }
+      }
+    }
+  ]
+}

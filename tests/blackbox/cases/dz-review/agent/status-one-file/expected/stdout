@@ -1,0 +1,15 @@
+Agent status
+Snapshot: .dz-review/agent-session.json
+files annotated: 1
+files modified: 1
+conversations answered: 0
+validated/cleanable conversations: 0
+remaining open items: 0
+guardrail failures: 4
+
+id: 4N8lYs other.md:3 handled reply
+
+- 5SUMpH doc.md:3 started conversation missing; verify no durable rationale was deleted
+- 5SUN8d doc.md:7 started conversation missing; verify no durable rationale was deleted
+- 5SUNRz doc.md:12 started conversation missing; verify no durable rationale was deleted
+- 5SUNlL doc.md:14 started conversation missing; verify no durable rationale was deleted

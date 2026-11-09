@@ -1,0 +1,10 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "args": [
+    "show"
+  ],
+  "check_stderr": false,
+  "check_stdout": false,
+  "behavior": "parity"
+}

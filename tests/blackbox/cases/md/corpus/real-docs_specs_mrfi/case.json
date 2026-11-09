@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "real-docs_specs_mrfi.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

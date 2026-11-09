@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "invalid-target",
+      "message": "invalid target",
+      "reference": {
+        "end": 38,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:10-8 -->",
+        "start": 10,
+        "targets": [
+          {
+            "path": "source.md",
+            "raw": "source.md:10-8"
+          }
+        ]
+      },
+      "sourceFile": "bad-reversed.md",
+      "target": {
+        "path": "source.md",
+        "raw": "source.md:10-8"
+      }
+    }
+  ]
+}

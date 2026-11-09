@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "9n3ksy",
+    "sh",
+    "-c",
+    "echo to-stderr >&2"
+  ],
+  "behavior": "parity"
+}

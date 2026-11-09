@@ -1,0 +1,25 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "create",
+    "In api",
+    "--scope",
+    "api",
+    "-t",
+    "2030-01-02T03:04"
+  ],
+  "ignore_changes": [
+    ".git/*",
+    "services/api/.worklog/tasks/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    "services/api/.worklog/index.json"
+  ]
+}

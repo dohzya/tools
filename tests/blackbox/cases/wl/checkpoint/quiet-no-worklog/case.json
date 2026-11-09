@@ -1,0 +1,9 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "checkpoint",
+    "-q"
+  ],
+  "behavior": "parity"
+}

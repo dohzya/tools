@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "list",
+    "doc.md",
+    "--no-color"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

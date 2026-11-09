@@ -1,0 +1,4 @@
+sections:
+  - id: old
+    alias: g1
+    deprecated: true

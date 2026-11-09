@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "traces",
+    "9n3ksy",
+    "--kind",
+    "finding,learning"
+  ],
+  "behavior": "parity"
+}

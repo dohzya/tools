@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_3l8ictFsB5R": {
+      "file": "compact.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:34;p=h1[1]/p[1];fh=xxh64:EXF9uh6s;hh=smh64:eca6d023416bfbe6;ctx=pre:BtIqXAYW,suf:derh3bK7;doc=smh64:eca6d023416bfbe6}"
+    },
+    "rvw_3yj0BQ3QoBA": {
+      "file": "compact.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:24;p=h1[1]/p[2];fh=xxh64:1PSgTjcx;hh=smh64:eca6d023416bfbe6;ctx=pre:dxQMEDKW,suf:rzWtdMwJ;doc=smh64:eca6d023416bfbe6}"
+    }
+  }
+}

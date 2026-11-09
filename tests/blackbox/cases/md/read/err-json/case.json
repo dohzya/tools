@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "doc.md",
+    "deadbeef",
+    "--json"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,41 @@
+
+[1mUsage:[22m   [95mwl create [33m<[95m[95mname[95m[33m>[95m [33m[[95m[95mdesc[95m[33m][95m[39m
+[1mVersion:[22m [33m0.21.1[39m                 
+
+[1mDescription:[22m
+
+  Create a new task with lifecycle states                              
+  Default state is 'created' (not started yet)                         
+                                                                       
+  With --claude / --codex / --agent:                                   
+    wl create --claude "task name"           # Create and launch Claude
+    wl create --codex "task name"            # Create and launch Codex 
+    wl create --agent "task name"            # Auto-detect agent       
+    wl create --claude "task name" -- -c     # Pass args to agent      
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m                           [31m[1m-[22m[39m Show this help.                                                                  
+  [94m-C[39m, [94m--cwd[39m                  [33m<[39m[95mdir[39m[33m>[39m     [31m[1m-[22m[39m Change to directory before doing anything                                        
+  [94m--worklog-dir[39m              [33m<[39m[95mpath[39m[33m>[39m    [31m[1m-[22m[39m Path to .worklog directory (relative to -C if set)                               
+  [94m--purge-ttl[39m                [33m<[39m[95mdays[39m[33m>[39m    [31m[1m-[22m[39m Days before done tasks are purged (default 30; overrides WORKLOG_PURGE_TTL_DAYS  
+                                         and config.json 'purgeTtlDays')                                                  
+  [94m--json[39m                               [31m[1m-[22m[39m Output as JSON                                                                   
+  [94m--scope[39m                    [33m<[39m[95mscope[39m[33m>[39m   [31m[1m-[22m[39m Target specific scope                                                            
+  [94m--ready[39m                              [31m[1m-[22m[39m Create task in 'ready' state                                                     
+  [94m--started[39m                            [31m[1m-[22m[39m Create task in 'started' state                                                   
+  [94m-t[39m, [94m--timestamp[39m            [33m<[39m[95mts[39m[33m>[39m      [31m[1m-[22m[39m Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)                              
+  [94m--todo[39m                     [33m<[39m[95mtext[39m[33m>[39m    [31m[1m-[22m[39m Add a todo item (repeatable)                                                     
+  [94m--meta[39m                     [33m<[39m[95mkv[39m[33m>[39m      [31m[1m-[22m[39m Set metadata key=value (repeatable)                                              
+  [94m--tag[39m                      [33m<[39m[95mtag[39m[33m>[39m     [31m[1m-[22m[39m Add tag (repeatable)                                                             
+  [94m--parent[39m                   [33m<[39m[95mtaskId[39m[33m>[39m  [31m[1m-[22m[39m Set parent task (creates a subtask)                                              
+  [94m--depends-on[39m               [33m<[39m[95mtaskId[39m[33m>[39m  [31m[1m-[22m[39m Link new task as depending on task                                               
+  [94m--blocks[39m                   [33m<[39m[95mtaskId[39m[33m>[39m  [31m[1m-[22m[39m Link new task as blocking task                                                   
+  [94m--related[39m                  [33m<[39m[95mtaskId[39m[33m>[39m  [31m[1m-[22m[39m Link new task as related to task                                                 
+  [94m--desc[39m                     [33m<[39m[95mdesc[39m[33m>[39m    [31m[1m-[22m[39m Add a description part (repeatable)                                              
+  [94m--desc-src[39m                 [33m<[39m[95msource[39m[33m>[39m  [31m[1m-[22m[39m Read description part from file path, or "-" for stdin (repeatable)              
+  [94m-P[39m, [94m--desc-from-clipboard[39m            [31m[1m-[22m[39m Read description from the system clipboard                                       
+  [94m--claude[39m                             [31m[1m-[22m[39m Launch Claude after creation with WORKLOG_TASK_ID set                            
+  [94m--codex[39m                              [31m[1m-[22m[39m Launch Codex after creation with WORKLOG_TASK_ID set                             
+  [94m--agent[39m                              [31m[1m-[22m[39m Auto-detect and launch AI agent after creation                                   
+

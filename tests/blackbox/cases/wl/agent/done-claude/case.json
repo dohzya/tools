@@ -1,0 +1,18 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "done",
+    "9n3ksy",
+    "--claude"
+  ],
+  "env": {
+    "PATH": "./bin:/usr/bin:/bin"
+  },
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity"
+}

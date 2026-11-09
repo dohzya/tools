@@ -1,0 +1,16 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "list",
+    "--refresh"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/scope.json"
+  ]
+}

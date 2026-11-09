@@ -1,0 +1,15 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "list",
+    "doc.md",
+    "--since",
+    "2030-01-01T00:00:00+00:00",
+    "--json"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

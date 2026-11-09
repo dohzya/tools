@@ -1,0 +1,16 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "list",
+    "doc.md",
+    "--pager"
+  ],
+  "env": {
+    "PAGER": "cat"
+  },
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

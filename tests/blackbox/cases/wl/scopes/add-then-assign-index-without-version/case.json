@@ -1,0 +1,19 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "list",
+    "api"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "'scopes add' creates the child index.json without a version field and 'scopes assign' keeps it that way: the file recorded after the command (here: 'scopes list') is what a rewrite must reproduce"
+}

@@ -1,0 +1,9 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "traces",
+    "cq3984"
+  ],
+  "behavior": "parity"
+}

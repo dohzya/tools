@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "init",
+    "--purge-ttl",
+    "7"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json"
+  ]
+}

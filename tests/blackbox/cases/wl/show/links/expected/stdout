@@ -1,0 +1,19 @@
+id: api001
+full id: api001xxxxxxxxxxxxxxxxxxx
+name: Build API
+status: started
+tags: #backend
+links:
+  depends_on: sch002  "Design schema"  (created)
+history:
+  created: 2020-03-01 09:00
+  started: 2020-03-01 09:00
+
+desc:
+  
+
+entries since checkpoint: 2
+  2020-03-01 09:30  action
+    Started the endpoints
+  2020-03-01 10:00  info
+    Uses the new schema

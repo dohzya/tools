@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "cr-only.md",
+    "--json"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1"
+}

@@ -1,0 +1,63 @@
+
+────────────────────────────────────────────────
+1/6 handled conversation 5SUMpH doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+{??
+@me 2026-06-16T17:35:35+02:00 Please say whether sources are stored too.
+??}
+
+────────────────────────────────────────────────
+2/6 addition A3vwnq doc.md:5-5
+ 1 │ # Title
+ 2 │ 
+ 3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.
+{++%2026-06-16T17:35:35+02:00|added++}
+
+────────────────────────────────────────────────
+3/6 deletion E96pi6 doc.md:5-5
+ 1 │ # Title
+ 2 │ 
+ 3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.
+{--%2026-06-16T17:35:35+02:00|removed--}
+
+────────────────────────────────────────────────
+4/6 substitution CWUZeY doc.md:5-5
+ 1 │ # Title
+ 2 │ 
+ 3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.
+{~~%2026-06-16T17:35:35+02:00|old~>new~~}
+
+────────────────────────────────────────────────
+5/6 handled conversation 5SUN8d doc.md:7-10
+  3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+  4 │ 
+  5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.
+  6 │ 
+> 7 │ <!--
+> 8 │ @agent%2026-06-16T17:35:35+02:00 I chose this wording.
+> 9 │ @me%2026-06-16T17:36:35+02:00 Can we soften it?
+>10 │ -->
+<!--
+@agent 2026-06-16T17:35:35+02:00 I chose this wording.
+@me 2026-06-16T17:36:35+02:00 Can we soften it?
+-->
+
+────────────────────────────────────────────────
+6/6 resolved conversation 5SUNRz doc.md:12-12
+  8 │ @agent%2026-06-16T17:35:35+02:00 I chose this wording.
+  9 │ @me%2026-06-16T17:36:35+02:00 Can we soften it?
+ 10 │ -->
+ 11 │ 
+>12 │ Done thread. {?? @agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok ??}
+{??
+@agent 2026-06-16T17:35:35+02:00 Fixed.
+@me 2026-06-16T17:37:35+02:00 ok
+??}

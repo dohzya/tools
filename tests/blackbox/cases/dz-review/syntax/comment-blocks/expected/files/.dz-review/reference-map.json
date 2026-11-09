@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_Kzt6n9VD512": {
+      "file": "comment-blocks.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 6
+      },
+      "mrfi": "~{v0;r=3:1-6:4;p=h1[1];fh=xxh64:GhuaQ13T;hh=smh64:4ff95ea0c53280a6;ctx=pre:cH6FrJPW,suf:U9DuEM79;doc=smh64:4ff95ea0c53280a6}"
+    },
+    "rvw_1Ua8w0hUF03": {
+      "file": "comment-blocks.md",
+      "range": {
+        "startLine": 8,
+        "endLine": 8
+      },
+      "mrfi": "~{v0;r=8:1-8:43;p=h1[1]/p[1];fh=xxh64:K01epjKD;hh=smh64:4ff95ea0c53280a6;ctx=pre:eZrELIrt,suf:3a0OYu0q;doc=smh64:4ff95ea0c53280a6}"
+    },
+    "rvw_COFlrQ0AW1G": {
+      "file": "comment-blocks.md",
+      "range": {
+        "startLine": 10,
+        "endLine": 15
+      },
+      "mrfi": "~{v0;r=10:1-15:4;p=h1[1];fh=xxh64:inSeGS5z;hh=smh64:4ff95ea0c53280a6;ctx=pre:CM6cev3D,suf:M3AAdwh0;doc=smh64:4ff95ea0c53280a6}"
+    },
+    "rvw_3JvlIkmS88k": {
+      "file": "comment-blocks.md",
+      "range": {
+        "startLine": 23,
+        "endLine": 27
+      },
+      "mrfi": "~{v0;r=23:1-27:4;p=h1[1];fh=xxh64:81pTrf32;hh=smh64:4ff95ea0c53280a6;ctx=pre:GaL8p7Wt,suf:rzWtdMwJ;doc=smh64:4ff95ea0c53280a6}"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-import",
+  "args": [
+    "import",
+    "-p",
+    "../nope/.worklog",
+    "--allow-missing"
+  ],
+  "cwd": "dst",
+  "behavior": "parity"
+}

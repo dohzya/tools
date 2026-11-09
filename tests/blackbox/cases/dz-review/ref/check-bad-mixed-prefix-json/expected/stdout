@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "invalid-target",
+      "message": "invalid target",
+      "reference": {
+        "end": 43,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:8-L10 -->",
+        "start": 14,
+        "targets": [
+          {
+            "path": "source.md",
+            "raw": "source.md:8-L10"
+          }
+        ]
+      },
+      "sourceFile": "bad-mixed-prefix.md",
+      "target": {
+        "path": "source.md",
+        "raw": "source.md:8-L10"
+      }
+    }
+  ]
+}

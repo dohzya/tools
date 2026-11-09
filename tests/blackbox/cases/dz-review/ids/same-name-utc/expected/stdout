@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_Bb3SwMS7inM",
+      "file": "iso.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same body.",
+        "timestamp": "2026-06-16T15:35:35Z"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same body.",
+        "timestamp": "2026-06-16T15:35:35Z"
+      },
+      "context": "@me%2026-06-16T15:35:35Z Same body.",
+      "suggestedAction": "reply",
+      "rawHash": "3f5f0faba721d3ab"
+    },
+    {
+      "id": "rvw_DTP1dasLQbJ",
+      "file": "iso.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%2026-06-16T15:35:35+00:00|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    }
+  ]
+}

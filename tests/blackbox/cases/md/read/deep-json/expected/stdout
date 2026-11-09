@@ -1,0 +1,1 @@
+{"id":"aa142dbd","level":2,"title":"Setup","lineStart":13,"lineEnd":25,"content":"\nInstall the thing.\n\n```sh\n# not a heading\nmake install\n```\n\n### Details\n\nDeep details here.\n"}

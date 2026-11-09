@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-formats",
+  "args": [
+    "timestamp",
+    "mixed.md",
+    "--inline",
+    "--hangul"
+  ],
+  "files": [
+    "mixed.md"
+  ],
+  "behavior": "parity"
+}

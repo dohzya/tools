@@ -1,0 +1,595 @@
+{
+  "version": 1,
+  "refs": [
+    {
+      "excerpt": "Intro line.",
+      "reference": {
+        "end": 49,
+        "index": 1,
+        "lineEnd": 3,
+        "lineStart": 3,
+        "raw": "<!-- ref: source.md:3 -->",
+        "start": 24,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "source.md",
+            "raw": "source.md:3"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 3,
+          "start": 3
+        },
+        "path": "source.md",
+        "raw": "source.md:3"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Second paragraph line one.\nSecond paragraph line two.\nSecond paragraph line three.",
+      "reference": {
+        "end": 86,
+        "index": 2,
+        "lineEnd": 5,
+        "lineStart": 5,
+        "raw": "<!-- ref: source.md:8-10 -->",
+        "start": 58,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 10,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:8-10"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 10,
+          "start": 8
+        },
+        "path": "source.md",
+        "raw": "source.md:8-10"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Second paragraph line one.",
+      "reference": {
+        "end": 123,
+        "index": 3,
+        "lineEnd": 7,
+        "lineStart": 7,
+        "raw": "<!-- ref: source.md:L8 -->",
+        "start": 97,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 8,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:L8"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 8,
+          "start": 8
+        },
+        "path": "source.md",
+        "raw": "source.md:L8"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Second paragraph line one.\nSecond paragraph line two.\nSecond paragraph line three.",
+      "reference": {
+        "end": 154,
+        "index": 4,
+        "lineEnd": 7,
+        "lineStart": 7,
+        "raw": "<!-- ref: source.md:L8-L10 -->",
+        "start": 124,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 10,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:L8-L10"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 10,
+          "start": 8
+        },
+        "path": "source.md",
+        "raw": "source.md:L8-L10"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Second paragraph line one.\nSecond paragraph line two.\nSecond paragraph line three.",
+      "reference": {
+        "end": 184,
+        "index": 5,
+        "lineEnd": 7,
+        "lineStart": 7,
+        "raw": "<!-- ref: source.md:L8-10 -->",
+        "start": 155,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 10,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:L8-10"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 10,
+          "start": 8
+        },
+        "path": "source.md",
+        "raw": "source.md:L8-10"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 229,
+        "index": 6,
+        "lineEnd": 9,
+        "lineStart": 9,
+        "raw": "<!-- ref: source.md:6^stable-id -->",
+        "start": 194,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6^stable-id",
+            "stableId": "stable-id"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6^stable-id",
+        "stableId": "stable-id"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 410,
+        "index": 7,
+        "lineEnd": 11,
+        "lineStart": 11,
+        "raw": "<!-- ref: source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f} -->",
+        "start": 243,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "mrfi": "~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}",
+            "path": "source.md",
+            "raw": "source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "mrfi": "~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}",
+        "path": "source.md",
+        "raw": "source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 519,
+        "index": 8,
+        "lineEnd": 13,
+        "lineStart": 13,
+        "raw": "<!-- ref: source.md:6~떪딙낀뉚밀가띋뽴렬떱뺖슖됅괁밈눘꿀릩쀘솳꺺럜껙빝겍곑잺냆끪쇚밬군롦놕봲꼳멦씘양밷눬붘꽁늃뢦셌떁빤땭궥뎸셖룖뾜걄군롦놅봲꼳멮씘양쀷눧놘쩤꼰 -->",
+        "start": 425,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "mrfi": "~떪딙낀뉚밀가띋뽴렬떱뺖슖됅괁밈눘꿀릩쀘솳꺺럜껙빝겍곑잺냆끪쇚밬군롦놕봲꼳멦씘양밷눬붘꽁늃뢦셌떁빤땭궥뎸셖룖뾜걄군롦놅봲꼳멮씘양쀷눧놘쩤꼰",
+            "path": "source.md",
+            "raw": "source.md:6~떪딙낀뉚밀가띋뽴렬떱뺖슖됅괁밈눘꿀릩쀘솳꺺럜껙빝겍곑잺냆끪쇚밬군롦놕봲꼳멦씘양밷눬붘꽁늃뢦셌떁빤땭궥뎸셖룖뾜걄군롦놅봲꼳멮씘양쀷눧놘쩤꼰"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "mrfi": "~떪딙낀뉚밀가띋뽴렬떱뺖슖됅괁밈눘꿀릩쀘솳꺺럜껙빝겍곑잺냆끪쇚밬군롦놕봲꼳멦씘양밷눬붘꽁늃뢦셌떁빤땭궥뎸셖룖뾜걄군롦놅봲꼳멮씘양쀷눧놘쩤꼰",
+        "path": "source.md",
+        "raw": "source.md:6~떪딙낀뉚밀가띋뽴렬떱뺖슖됅괁밈눘꿀릩쀘솳꺺럜껙빝겍곑잺냆끪쇚밬군롦놕봲꼳멦씘양밷눬붘꽁늃뢦셌떁빤땭궥뎸셖룖뾜걄군롦놅봲꼳멮씘양쀷눧놘쩤꼰"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 708,
+        "index": 9,
+        "lineEnd": 15,
+        "lineStart": 15,
+        "raw": "<!-- ref: source.md:6~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH -->",
+        "start": 534,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "mrfi": "~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH",
+            "path": "source.md",
+            "raw": "source.md:6~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "mrfi": "~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH",
+        "path": "source.md",
+        "raw": "source.md:6~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 908,
+        "index": 10,
+        "lineEnd": 17,
+        "lineStart": 17,
+        "raw": "<!-- ref: source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}^stable-id -->",
+        "start": 731,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "mrfi": "~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}",
+            "path": "source.md",
+            "raw": "source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}^stable-id",
+            "stableId": "stable-id"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "mrfi": "~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}",
+        "path": "source.md",
+        "raw": "source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}^stable-id",
+        "stableId": "stable-id"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Para one. {?? @me Why SAS? ??}",
+      "reference": {
+        "end": 1096,
+        "index": 11,
+        "lineEnd": 19,
+        "lineStart": 19,
+        "raw": "<!-- ref: source.md:14~{v0;r=14:1-14:20;p=h1[1]/h2[1]/p[1];fh=xxh64:FuimTJCD;hh=smh64:7f2a4e879f377bfd;ctx=pre:lEylNaSY,suf:ml2sXCLe;doc=smh64:c1abd377dc24719f} -->",
+        "start": 932,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 14,
+              "start": 14
+            },
+            "mrfi": "~{v0;r=14:1-14:20;p=h1[1]/h2[1]/p[1];fh=xxh64:FuimTJCD;hh=smh64:7f2a4e879f377bfd;ctx=pre:lEylNaSY,suf:ml2sXCLe;doc=smh64:c1abd377dc24719f}",
+            "path": "source.md",
+            "raw": "source.md:14~{v0;r=14:1-14:20;p=h1[1]/h2[1]/p[1];fh=xxh64:FuimTJCD;hh=smh64:7f2a4e879f377bfd;ctx=pre:lEylNaSY,suf:ml2sXCLe;doc=smh64:c1abd377dc24719f}"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 14,
+          "start": 14
+        },
+        "mrfi": "~{v0;r=14:1-14:20;p=h1[1]/h2[1]/p[1];fh=xxh64:FuimTJCD;hh=smh64:7f2a4e879f377bfd;ctx=pre:lEylNaSY,suf:ml2sXCLe;doc=smh64:c1abd377dc24719f}",
+        "path": "source.md",
+        "raw": "source.md:14~{v0;r=14:1-14:20;p=h1[1]/h2[1]/p[1];fh=xxh64:FuimTJCD;hh=smh64:7f2a4e879f377bfd;ctx=pre:lEylNaSY,suf:ml2sXCLe;doc=smh64:c1abd377dc24719f}"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Intro line.",
+      "reference": {
+        "end": 1162,
+        "index": 12,
+        "lineEnd": 21,
+        "lineStart": 21,
+        "raw": "<!-- ref%2026-06-16T17:35:35+02:00: source.md:3 -->",
+        "start": 1111,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "source.md",
+            "raw": "source.md:3"
+          }
+        ],
+        "timestamp": "2026-06-16T17:35:35+02:00"
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 3,
+          "start": 3
+        },
+        "path": "source.md",
+        "raw": "source.md:3"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Intro line.",
+      "reference": {
+        "end": 1235,
+        "index": 13,
+        "lineEnd": 23,
+        "lineStart": 23,
+        "raw": "<!-- ref: source.md:3; source.md:8-10; sub/../source.md:6 -->",
+        "start": 1174,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "source.md",
+            "raw": "source.md:3"
+          },
+          {
+            "lineRange": {
+              "end": 10,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:8-10"
+          },
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "sub/../source.md",
+            "raw": "sub/../source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 3,
+          "start": 3
+        },
+        "path": "source.md",
+        "raw": "source.md:3"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "Second paragraph line one.\nSecond paragraph line two.\nSecond paragraph line three.",
+      "reference": {
+        "end": 1235,
+        "index": 13,
+        "lineEnd": 23,
+        "lineStart": 23,
+        "raw": "<!-- ref: source.md:3; source.md:8-10; sub/../source.md:6 -->",
+        "start": 1174,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "source.md",
+            "raw": "source.md:3"
+          },
+          {
+            "lineRange": {
+              "end": 10,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:8-10"
+          },
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "sub/../source.md",
+            "raw": "sub/../source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 10,
+          "start": 8
+        },
+        "path": "source.md",
+        "raw": "source.md:8-10"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 1235,
+        "index": 13,
+        "lineEnd": 23,
+        "lineStart": 23,
+        "raw": "<!-- ref: source.md:3; source.md:8-10; sub/../source.md:6 -->",
+        "start": 1174,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "source.md",
+            "raw": "source.md:3"
+          },
+          {
+            "lineRange": {
+              "end": 10,
+              "start": 8
+            },
+            "path": "source.md",
+            "raw": "source.md:8-10"
+          },
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "sub/../source.md",
+            "raw": "sub/../source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "sub/../source.md",
+        "raw": "sub/../source.md:6"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "# Inner",
+      "reference": {
+        "end": 1278,
+        "index": 14,
+        "lineEnd": 25,
+        "lineStart": 25,
+        "raw": "<!-- ref: sub/inner.md:1 -->",
+        "start": 1250,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 1,
+              "start": 1
+            },
+            "path": "sub/inner.md",
+            "raw": "sub/inner.md:1"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 1,
+          "start": 1
+        },
+        "path": "sub/inner.md",
+        "raw": "sub/inner.md:1"
+      },
+      "targetFile": "<WORK>/sub/inner.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 1387,
+        "index": 15,
+        "lineEnd": 31,
+        "lineStart": 31,
+        "raw": "source.md:6",
+        "start": 1376,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6"
+      },
+      "targetFile": "<WORK>/source.md"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "timestamp",
+    "doc.md",
+    "-s",
+    "-S"
+  ],
+  "sed": [
+    "s/%[0-9A-Za-z]{8}([ |])/%<CTS>\\1/g"
+  ],
+  "behavior": "parity"
+}

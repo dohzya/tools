@@ -1,0 +1,66 @@
+
+[1mUsage:[22m   [95mwl[39m    
+[1mVersion:[22m [33m0.21.1[39m
+
+[1mDescription:[22m
+
+  Worklog - Track work progress with traces and checkpoints               
+                                                                          
+  Core workflow:                                                          
+    1. wl create "task"           # Create worktask (returns ID)          
+    2. wl trace taskId -k finding "msg"  # Log typed trace                
+    3. wl checkpoint taskId ...      # Consolidate traces into narrative  
+    4. wl done taskId ...            # Final learnings (after git commit!)
+                                                                          
+  Key principles:                                                         
+    - Always work within a worktask (create with 'wl create' first)       
+    - Trace kinds: action, info, state, hypothesis, finding, learning     
+    - Traces need context: causes (why failed) + pistes (what next)       
+    - Checkpoints consolidate traces (not conclusions)                    
+    - Done = final consolidation + learnings with critical distance       
+    - Use -t for batch tracing: wl trace taskId -k state -t T14:30 "msg"  
+    - Subtasks: wl create --parent taskId "subtask name"                  
+                                                                          
+  See 'wl <command> --help' for details                                   
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m             [31m[1m-[22m[39m Show this help.                                                                  
+  [94m-V[39m, [94m--version[39m          [31m[1m-[22m[39m Show the version number for this program.                                        
+  [94m-C[39m, [94m--cwd[39m      [33m<[39m[95mdir[39m[33m>[39m   [31m[1m-[22m[39m Change to directory before doing anything                                        
+  [94m--worklog-dir[39m  [33m<[39m[95mpath[39m[33m>[39m  [31m[1m-[22m[39m Path to .worklog directory (relative to -C if set)                               
+  [94m--purge-ttl[39m    [33m<[39m[95mdays[39m[33m>[39m  [31m[1m-[22m[39m Days before done tasks are purged (default 30; overrides WORKLOG_PURGE_TTL_DAYS  
+                           and config.json 'purgeTtlDays')                                                  
+
+[1mCommands:[22m
+
+  [94minit[39m                                                      [31m[1m-[22m[39m Initialize worklog in current directory                                        
+  [94mcreate[39m              [33m<[39m[95mname[39m[33m>[39m [33m[[39m[95mdesc[39m[33m][39m                         [31m[1m-[22m[39m Create a new task with lifecycle states                                        
+  [94mready[39m               [33m[[39m[95mtaskId[39m[33m][39m                              [31m[1m-[22m[39m Mark task as ready to work on                                                  
+  [94mstart[39m               [33m[[39m[95mtaskId[39m[33m][39m                              [31m[1m-[22m[39m Start working on a task (or reopen a done/cancelled task)                      
+  [94mrun[39m                 [33m[[39m[95margs...[39m[33m][39m                             [31m[1m-[22m[39m Execute a command with WORKLOG_TASK_ID set in environment                      
+  [94mclaude[39m              [33m[[39m[95mtaskId[39m[33m][39m [33m[[39m[95margs...[39m[33m][39m                    [31m[1m-[22m[39m Launch Claude with task context injected via system prompt                     
+  [94mcodex[39m               [33m[[39m[95mtaskId[39m[33m][39m [33m[[39m[95margs...[39m[33m][39m                    [31m[1m-[22m[39m Launch Codex with task context injected via developer instructions             
+  [94magent[39m               [33m[[39m[95mtaskId[39m[33m][39m [33m[[39m[95margs...[39m[33m][39m                    [31m[1m-[22m[39m Auto-detect AI agent and launch with task context                              
+  [94magent-instructions[39m                                        [31m[1m-[22m[39m Print AGENTS.md instructions for wl                                            
+  [94mupdate[39m              [33m<[39m[95mtaskId[39m[33m>[39m                              [31m[1m-[22m[39m Update task name or description                                                
+  [94mtrace[39m               [33m<[39m[95mtaskId[39m[33m>[39m [33m<[39m[95mmessage[39m[33m>[39m                    [31m[1m-[22m[39m Log a typed entry: action, info, state, hypothesis, finding, or learning       
+  [94mtraces[39m              [33m<[39m[95mtaskId[39m[33m>[39m                              [31m[1m-[22m[39m List all traces for a task                                                     
+  [94mshow[39m                [33m[[39m[95mtaskId[39m[33m][39m                              [31m[1m-[22m[39m Show task context (alias for 'logs')                                           
+  [94mcheckpoint[39m          [33m[[39m[95mtaskId[39m[33m][39m [33m[[39m[95mchanges[39m[33m][39m [33m[[39m[95mlearnings[39m[33m][39m        [31m[1m-[22m[39m Create a self-contained synthesis of the task context.                         
+  [94mdone[39m                [33m<[39m[95mtaskId[39m[33m>[39m [33m[[39m[95mchanges[39m[33m][39m [33m[[39m[95mlearnings[39m[33m][39m        [31m[1m-[22m[39m Final self-contained synthesis: close the task with changes + learnings.       
+  [94mcancel[39m              [33m[[39m[95mtaskId[39m[33m][39m [33m[[39m[95mreason[39m[33m][39m                     [31m[1m-[22m[39m Cancel/abandon a task (marks as cancelled)                                     
+  [94mmeta[39m                [33m<[39m[95mtaskId[39m[33m>[39m [33m[[39m[95mkey[39m[33m][39m [33m[[39m[95mvalue[39m[33m][39m                [31m[1m-[22m[39m Get or set task metadata (e.g., 'wl meta status active' to reopen current task)
+  [94mlink[39m                [33m<[39m[95msourceTaskId[39m[33m>[39m [33m<[39m[95mtype[39m[33m>[39m [33m<[39m[95mtargetTaskId[39m[33m>[39m  [31m[1m-[22m[39m Link two tasks without making either task a subtask                            
+  [94mtags[39m                [33m[[39m[95mtaskId[39m[33m][39m                              [31m[1m-[22m[39m Manage task tags                                                               
+  [94mlist[39m                [33m[[39m[95mpattern[39m[33m][39m                             [31m[1m-[22m[39m List tasks (optionally filter by tag or scope pattern)                         
+  [94mstatus[39m                                                    [31m[1m-[22m[39m Show a compact dashboard of active work                                        
+  [94mdash[39m                                                      [31m[1m-[22m[39m Show a compact dashboard of active work                                        
+  [94mdashboard[39m                                                 [31m[1m-[22m[39m Show a compact dashboard of active work                                        
+  [94msummary[39m                                                   [31m[1m-[22m[39m Aggregate all tasks                                                            
+  [94mimport[39m                                                    [31m[1m-[22m[39m Import tasks from another worktree                                             
+  [94mtodo[39m                                                      [31m[1m-[22m[39m Todo management                                                                
+  [94madd-parent[39m          [33m<[39m[95mpath[39m[33m>[39m                                [31m[1m-[22m[39m Configure parent for current scope                                             
+  [94mscopes[39m                                                    [31m[1m-[22m[39m Scope management                                                               
+  [94mcompletions[39m                                               [31m[1m-[22m[39m Generate shell completions.                                                    
+

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_coarse": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 100,
+        "endLine": 100
+      },
+      "mrfi": "~{v0;r=1:1-3:15;p=h1[1];fh=xxh64:AjAXQ728;hh=smh64:523f49688a480c0b;ctx=suf:rzWtdMwJ;doc=smh64:523f49688a480c0b}"
+    },
+    "rvw_own": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:15;p=h1[1]/p[1];fh=xxh64:FhAKPVpE;hh=smh64:523f49688a480c0b;ctx=pre:XwovWhJk,suf:rzWtdMwJ;doc=smh64:523f49688a480c0b}"
+    }
+  }
+}

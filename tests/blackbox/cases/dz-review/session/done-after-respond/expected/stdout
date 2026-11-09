@@ -1,0 +1,9 @@
+Agent handoff
+files annotated: 1
+files modified: 1
+conversations answered: 1
+validated/cleanable conversations: 1
+remaining open items: 2
+guardrail failures: 1
+
+- 5SUNRz doc.md:12 validated conversation remains cleanable

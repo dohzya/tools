@@ -1,0 +1,24 @@
+
+────────────────────────────────────────────────
+1/3 handled conversation B8GPKH d.md:3-6
+ 1 │ # T
+ 2 │ 
+>3 │ <!--
+>4 │ @agent%<TS> Q one?
+>5 │ @me%<TS> A.
+>6 │ -->
+<!--
+@agent <TS> Q one?
+@me <TS> A.
+-->
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: Reply: 
+────────────────────────────────────────────────
+2/3 resolved conversation B8GPde d.md:10-10
+  8 │ 
+  9 │ Text {++%<TS>|new++} end.
+>10 │ 
+{??
+@agent <TS> Fixed.
+@me <TS> ok
+??}
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: 

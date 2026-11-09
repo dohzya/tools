@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "list",
+    "doc.md",
+    "--resolved"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

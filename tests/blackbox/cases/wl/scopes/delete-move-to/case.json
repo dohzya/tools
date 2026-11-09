@@ -1,0 +1,30 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "delete",
+    "api",
+    "--move-to",
+    "web"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/scope.json",
+    "services/api/.worklog/index.json",
+    "services/api/.worklog/scope.json",
+    "services/api/.worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md",
+    "services/api/.worklog/tasks/cq3984ojmyg5s21oujzleuats.md",
+    "services/web/.worklog/index.json",
+    "services/web/.worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md",
+    "services/web/.worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

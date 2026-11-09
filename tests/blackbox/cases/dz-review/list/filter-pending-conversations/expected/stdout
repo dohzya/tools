@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_4xJ6VSf98Wk",
+      "file": "states.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Question?"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Answer."
+      },
+      "context": "@me Question? @agent Answer.",
+      "suggestedAction": "answer",
+      "rawHash": "d94bc658224e4199"
+    },
+    {
+      "id": "rvw_7MryuNO3bk7",
+      "file": "states.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "wip",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Question?"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": ""
+      },
+      "context": "@agent Question? @me",
+      "suggestedAction": "wait for human input",
+      "rawHash": "abe237daeff9f177"
+    },
+    {
+      "id": "rvw_AiGduN2E5hg",
+      "file": "states.md",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Please validate this claim."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Please validate this claim."
+      },
+      "context": "@agent Please validate this claim.",
+      "suggestedAction": "answer",
+      "rawHash": "fb244d2a8dd4b5f2"
+    },
+    {
+      "id": "rvw_7gfoaZcxdE4",
+      "file": "states.md",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Colon form."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Reply."
+      },
+      "context": "@me: Colon form. @agent: Reply.",
+      "suggestedAction": "answer",
+      "rawHash": "e0b2b71aa86d58f9"
+    }
+  ]
+}

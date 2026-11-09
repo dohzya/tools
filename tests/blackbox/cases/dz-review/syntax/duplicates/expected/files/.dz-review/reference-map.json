@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_JORvlA9P52J": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:17;p=h1[1]/p[1];fh=xxh64:EdEBMd5C;hh=smh64:ba5257e3b7a7d35a;ctx=pre:R0BAfCug,suf:qImen0mt;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_JORvRnz6L6m": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:17;p=h1[1]/p[2];fh=xxh64:EdEBMd5C;hh=smh64:ba5257e3b7a7d35a;ctx=pre:WRR6ioxa,suf:MH2k8EAZ;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_JORwNsU0YtN": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 7,
+        "endLine": 7
+      },
+      "mrfi": "~{v0;r=7:1-7:51;p=h1[1]/p[3];fh=xxh64:LF6OwXkJ;hh=smh64:ba5257e3b7a7d35a;ctx=pre:fyg8IAip,suf:Z6MVgumP;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_JORw4WJhoxq": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 7,
+        "endLine": 7
+      },
+      "mrfi": "~{v0;r=7:1-7:51;p=h1[1]/p[3];fh=xxh64:LF6OwXkJ;hh=smh64:ba5257e3b7a7d35a;ctx=pre:fyg8IAip,suf:Z6MVgumP;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_5jIJLydZ880": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 9,
+        "endLine": 9
+      },
+      "mrfi": "~{v0;r=9:1-9:26;p=h1[1]/p[4];fh=xxh64:6tFU4bYI;hh=smh64:ba5257e3b7a7d35a;ctx=pre:bMbHyfYZ,suf:4zhh7JCC;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_5jIJfKnrs3X": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 9,
+        "endLine": 9
+      },
+      "mrfi": "~{v0;r=9:1-9:26;p=h1[1]/p[4];fh=xxh64:6tFU4bYI;hh=smh64:ba5257e3b7a7d35a;ctx=pre:bMbHyfYZ,suf:4zhh7JCC;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_8eKEfNvVPYI": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 11,
+        "endLine": 13
+      },
+      "mrfi": "~{v0;r=11:1-13:4;p=h1[1];fh=xxh64:GltR3rwE;hh=smh64:ba5257e3b7a7d35a;ctx=pre:TUKt6fhq,suf:er9YoTLn;doc=smh64:ba5257e3b7a7d35a}"
+    },
+    "rvw_8eKEyk5o9Tp": {
+      "file": "duplicates.md",
+      "range": {
+        "startLine": 15,
+        "endLine": 17
+      },
+      "mrfi": "~{v0;r=15:1-17:4;p=h1[1];fh=xxh64:GltR3rwE;hh=smh64:ba5257e3b7a7d35a;ctx=pre:Rjy1dCT4,suf:Wy0DZv3w;doc=smh64:ba5257e3b7a7d35a}"
+    }
+  }
+}

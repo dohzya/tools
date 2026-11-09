@@ -1,0 +1,16 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "list",
+    "--json"
+  ],
+  "normalize": [
+    "wl-id",
+    "short-ts"
+  ],
+  "behavior": "parity",
+  "ignore_changes": [
+    ".worklog/*"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "trace",
+    "9n3ksy",
+    "-k",
+    "bogus",
+    "x"
+  ],
+  "behavior": "parity"
+}

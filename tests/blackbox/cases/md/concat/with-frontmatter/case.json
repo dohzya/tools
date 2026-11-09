@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "concat",
+    "meta-a.md",
+    "meta-b.md"
+  ],
+  "behavior": "parity"
+}

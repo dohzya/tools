@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Name",
+    "--parent",
+    "zzzzzz"
+  ],
+  "behavior": "parity"
+}

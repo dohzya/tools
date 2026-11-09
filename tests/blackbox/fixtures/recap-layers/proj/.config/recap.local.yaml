@@ -1,0 +1,4 @@
+sections:
+  - ref: "*"
+  - id: personal
+    value: local personal

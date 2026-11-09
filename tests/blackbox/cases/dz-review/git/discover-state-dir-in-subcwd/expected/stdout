@@ -1,0 +1,86 @@
+
+────────────────────────────────────────────────
+1/10 handled conversation GR1QDS ../doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+{??
+@me 2026-06-16T17:35:35+02:00 Please say whether sources are stored too.
+??}
+
+────────────────────────────────────────────────
+2/10 addition HC3cEQ ../doc.md:5-5
+ 3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Annotations: {++%2026-06-16T17:35:35+02:00|added++} {--%2026-06-16T17:35:35+02:00|removed--} {~~%2026-06-16T17:35:35+02:00|old~>new~~} {==%2026-06-16T17:35:35+02:00|highlighted==} {>>%2026-06-16T17:35:35+02:00|a note<<}
+{++%2026-06-16T17:35:35+02:00|added++}
+
+────────────────────────────────────────────────
+3/10 deletion 2pgNqu ../doc.md:5-5
+ 3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Annotations: {++%2026-06-16T17:35:35+02:00|added++} {--%2026-06-16T17:35:35+02:00|removed--} {~~%2026-06-16T17:35:35+02:00|old~>new~~} {==%2026-06-16T17:35:35+02:00|highlighted==} {>>%2026-06-16T17:35:35+02:00|a note<<}
+{--%2026-06-16T17:35:35+02:00|removed--}
+
+────────────────────────────────────────────────
+4/10 substitution 2Qu4zF ../doc.md:5-5
+ 3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Annotations: {++%2026-06-16T17:35:35+02:00|added++} {--%2026-06-16T17:35:35+02:00|removed--} {~~%2026-06-16T17:35:35+02:00|old~>new~~} {==%2026-06-16T17:35:35+02:00|highlighted==} {>>%2026-06-16T17:35:35+02:00|a note<<}
+{~~%2026-06-16T17:35:35+02:00|old~>new~~}
+
+────────────────────────────────────────────────
+5/10 highlight CbhzBe ../doc.md:5-5
+ 3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Annotations: {++%2026-06-16T17:35:35+02:00|added++} {--%2026-06-16T17:35:35+02:00|removed--} {~~%2026-06-16T17:35:35+02:00|old~>new~~} {==%2026-06-16T17:35:35+02:00|highlighted==} {>>%2026-06-16T17:35:35+02:00|a note<<}
+{==%2026-06-16T17:35:35+02:00|highlighted==}
+
+────────────────────────────────────────────────
+6/10 comment Jbjw5V ../doc.md:5-5
+ 3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Annotations: {++%2026-06-16T17:35:35+02:00|added++} {--%2026-06-16T17:35:35+02:00|removed--} {~~%2026-06-16T17:35:35+02:00|old~>new~~} {==%2026-06-16T17:35:35+02:00|highlighted==} {>>%2026-06-16T17:35:35+02:00|a note<<}
+{>>%2026-06-16T17:35:35+02:00|a note<<}
+
+────────────────────────────────────────────────
+7/10 handled conversation GR1Pu6 ../doc.md:7-10
+  5 │ Annotations: {++%2026-06-16T17:35:35+02:00|added++} {--%2026-06-16T17:35:35+02:00|removed--} {~~%2026-06-16T17:35:35+02:00|old~>new~~} {==%2026-06-16T17:35:35+02:00|highlighted==} {>>%2026-06-16T17:35:35+02:00|a note<<}
+  6 │ 
+> 7 │ <!--
+> 8 │ @agent%2026-06-16T17:35:35+02:00 I chose this wording.
+> 9 │ @me%2026-06-16T17:36:35+02:00 Can we soften it?
+>10 │ -->
+<!--
+@agent 2026-06-16T17:35:35+02:00 I chose this wording.
+@me 2026-06-16T17:36:35+02:00 Can we soften it?
+-->
+
+────────────────────────────────────────────────
+8/10 resolved conversation GR1QqA ../doc.md:12-12
+ 10 │ -->
+ 11 │ 
+>12 │ Validated thread. {?? @agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok ??}
+{??
+@agent 2026-06-16T17:35:35+02:00 Fixed.
+@me 2026-06-16T17:37:35+02:00 ok
+??}
+
+────────────────────────────────────────────────
+9/10 open conversation GR1QWo ../doc.md:14-14
+ 12 │ Validated thread. {?? @agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok ??}
+ 13 │ 
+>14 │ Waiting on human. {?? @me%2026-06-16T17:35:35+02:00 Q. @agent%2026-06-16T17:38:35+02:00 Answer. ??}
+{??
+@me 2026-06-16T17:35:35+02:00 Q.
+@agent 2026-06-16T17:38:35+02:00 Answer.
+??}
+
+────────────────────────────────────────────────
+10/10 handled conversation Eb7mpS ../doc.md:16-16
+ 14 │ Waiting on human. {?? @me%2026-06-16T17:35:35+02:00 Q. @agent%2026-06-16T17:38:35+02:00 Answer. ??}
+ 15 │ 
+>16 │ Added. {?? @me hi ??}
+{??
+@me hi
+??}

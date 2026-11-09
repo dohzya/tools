@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "review",
+    "--diff-conversations",
+    "--list"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

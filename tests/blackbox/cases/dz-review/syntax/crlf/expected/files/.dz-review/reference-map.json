@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_59EQcZmDf5r": {
+      "file": "crlf.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:27;p=h1[1]/p[1];fh=xxh64:Iz8rgfhA;hh=smh64:8bbbc1fdcd2484cb;ctx=pre:UGtnu8b5,suf:sD8iAxHj;doc=smh64:8bbbc1fdcd2484cb}"
+    },
+    "rvw_4dMZqLGjwID": {
+      "file": "crlf.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 8
+      },
+      "mrfi": "~{v0;r=5:1-8:4;p=h1[1];fh=xxh64:Farb5XaX;hh=smh64:8bbbc1fdcd2484cb;ctx=pre:6GaohUAl,suf:rzWtdMwJ;doc=smh64:8bbbc1fdcd2484cb}"
+    }
+  }
+}

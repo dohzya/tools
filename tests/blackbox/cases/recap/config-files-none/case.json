@@ -1,0 +1,9 @@
+{
+  "tool": "recap",
+  "fixture": "empty",
+  "args": [
+    "config",
+    "files"
+  ],
+  "behavior": "parity"
+}

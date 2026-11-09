@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "codex",
+    "cq3984"
+  ],
+  "env": {
+    "PATH": "./bin:/usr/bin:/bin"
+  },
+  "behavior": "parity"
+}

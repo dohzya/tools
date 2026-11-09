@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "trace",
+    "4q2r74",
+    "-k",
+    "info",
+    "late"
+  ],
+  "behavior": "parity"
+}

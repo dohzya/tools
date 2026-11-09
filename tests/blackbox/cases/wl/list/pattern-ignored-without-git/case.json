@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "list",
+    "backend"
+  ],
+  "behavior": "parity",
+  "note": "pattern arg is ignored outside git/scopes (all tasks listed)"
+}

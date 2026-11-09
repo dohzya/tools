@@ -1,0 +1,14 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "9n3ksy",
+    "sh",
+    "-c",
+    "echo out; exit 4",
+    "--json"
+  ],
+  "behavior": "parity",
+  "note": "--json has no effect on wl run"
+}

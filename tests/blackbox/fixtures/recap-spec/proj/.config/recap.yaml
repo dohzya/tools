@@ -1,0 +1,15 @@
+dotenv:
+  - .env.local
+  - .missing
+  - .env
+sections:
+  - id: vars
+    value: "A=${A} B=${B} C=${C} D=${D}"
+  - id: export
+    sh: echo "$A"
+  - id: rel
+    sh: pwd | sed 's#.*/##'
+    cwd: deep
+  - id: bad
+    sh: "true"
+    cwd: nope

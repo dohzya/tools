@@ -1,0 +1,18 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "respond",
+    "5SUN8d",
+    "-m",
+    "Softened."
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "parity"
+}

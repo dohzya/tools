@@ -1,0 +1,4 @@
+sections:
+  - ref: "*"
+  - id: gp
+    value: global-personal

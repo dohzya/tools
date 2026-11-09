@@ -1,0 +1,14 @@
+## Setup ^aa142dbd L13-L25
+
+
+Install the thing.
+
+```sh
+# not a heading
+make install
+```
+
+### Details
+
+Deep details here.
+

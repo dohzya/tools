@@ -1,0 +1,9 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "status",
+    "nofile.md"
+  ],
+  "behavior": "parity"
+}

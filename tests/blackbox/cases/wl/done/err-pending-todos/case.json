@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "done",
+    "cq3984",
+    "c",
+    "l"
+  ],
+  "behavior": "parity"
+}

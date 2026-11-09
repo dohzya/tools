@@ -1,0 +1,138 @@
+
+────────────────────────────────────────────────
+1/18 addition 39G5wB annotations.md:3-3
+ 1 │ # Annotations
+ 2 │ 
+>3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+{++new text++}
+
+────────────────────────────────────────────────
+2/18 deletion 49hG2e annotations.md:3-3
+ 1 │ # Annotations
+ 2 │ 
+>3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+{--old text--}
+
+────────────────────────────────────────────────
+3/18 substitution 4QcRS4 annotations.md:3-3
+ 1 │ # Annotations
+ 2 │ 
+>3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+{~~old text~>new text~~}
+
+────────────────────────────────────────────────
+4/18 highlight 9G5Gf0 annotations.md:3-3
+ 1 │ # Annotations
+ 2 │ 
+>3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+{==text to review==}
+
+────────────────────────────────────────────────
+5/18 comment Fsze7E annotations.md:3-3
+ 1 │ # Annotations
+ 2 │ 
+>3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+{>>review note<<}
+
+────────────────────────────────────────────────
+6/18 open conversation 30A6ml annotations.md:3-3
+ 1 │ # Annotations
+ 2 │ 
+>3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+{??
+@agent Please validate this sentence.
+??}
+
+────────────────────────────────────────────────
+7/18 addition 32DjZv annotations.md:5-5
+ 3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+ 4 │ 
+>5 │ Adjacent: {++new wording++}{?? @agent Please validate this addition. ??}
+{++new wording++}
+
+────────────────────────────────────────────────
+8/18 open conversation 4ZtSck annotations.md:5-5
+ 3 │ Addition: {++new text++} Deletion: {--old text--} Replacement: {~~old text~>new text~~} Highlight: {==text to review==} Comment: {>>review note<<} Discussion: {?? @agent Please validate this sentence. ??}
+ 4 │ 
+>5 │ Adjacent: {++new wording++}{?? @agent Please validate this addition. ??}
+{??
+@agent Please validate this addition.
+??}
+
+────────────────────────────────────────────────
+9/18 substitution 4QcRlQ annotations.md:7-9
+ 5 │ Adjacent: {++new wording++}{?? @agent Please validate this addition. ??}
+ 6 │ 
+>7 │ Multi-line {~~old
+>8 │ text~>new
+>9 │ text~~} annotation.
+{~~old
+text~>new
+text~~}
+
+────────────────────────────────────────────────
+10/18 addition CkCfQq annotations.md:11-11
+  9 │ text~~} annotation.
+ 10 │ 
+>11 │ Timestamped: {++%1WzvP91W|compact++} {--%2026-06-16T17:35:35+0200|iso--} {==%갚붋륇걸|hangul==} {>>%2026-06-16T17:35:35+02:00|comment<<} {~~%1WzvP91W|a~>b~~}
+{++%2026-06-16T17:35:35+02:00|compact++}
+
+────────────────────────────────────────────────
+11/18 deletion Iqcwmv annotations.md:11-11
+  9 │ text~~} annotation.
+ 10 │ 
+>11 │ Timestamped: {++%1WzvP91W|compact++} {--%2026-06-16T17:35:35+0200|iso--} {==%갚붋륇걸|hangul==} {>>%2026-06-16T17:35:35+02:00|comment<<} {~~%1WzvP91W|a~>b~~}
+{--%2026-06-16T17:35:35+02:00|iso--}
+
+────────────────────────────────────────────────
+12/18 highlight 4RglMR annotations.md:11-11
+  9 │ text~~} annotation.
+ 10 │ 
+>11 │ Timestamped: {++%1WzvP91W|compact++} {--%2026-06-16T17:35:35+0200|iso--} {==%갚붋륇걸|hangul==} {>>%2026-06-16T17:35:35+02:00|comment<<} {~~%1WzvP91W|a~>b~~}
+{==%2026-06-16T17:35:35+02:00|hangul==}
+
+────────────────────────────────────────────────
+13/18 comment HQUi2U annotations.md:11-11
+  9 │ text~~} annotation.
+ 10 │ 
+>11 │ Timestamped: {++%1WzvP91W|compact++} {--%2026-06-16T17:35:35+0200|iso--} {==%갚붋륇걸|hangul==} {>>%2026-06-16T17:35:35+02:00|comment<<} {~~%1WzvP91W|a~>b~~}
+{>>%2026-06-16T17:35:35+02:00|comment<<}
+
+────────────────────────────────────────────────
+14/18 substitution 6w8lla annotations.md:11-11
+  9 │ text~~} annotation.
+ 10 │ 
+>11 │ Timestamped: {++%1WzvP91W|compact++} {--%2026-06-16T17:35:35+0200|iso--} {==%갚붋륇걸|hangul==} {>>%2026-06-16T17:35:35+02:00|comment<<} {~~%1WzvP91W|a~>b~~}
+{~~%2026-06-16T17:35:35+02:00|a~>b~~}
+
+────────────────────────────────────────────────
+15/18 addition 4g2JJt annotations.md:13-15
+ 11 │ Timestamped: {++%1WzvP91W|compact++} {--%2026-06-16T17:35:35+0200|iso--} {==%갚붋륇걸|hangul==} {>>%2026-06-16T17:35:35+02:00|comment<<} {~~%1WzvP91W|a~>b~~}
+ 12 │ 
+>13 │ Unclosed {++ never closed
+>14 │ 
+>15 │ Empty {++++} and {----} and {====} and {>><<}.
+{++ never closed
+
+Empty {++++}
+
+────────────────────────────────────────────────
+16/18 deletion 8IxQgP annotations.md:15-15
+ 13 │ Unclosed {++ never closed
+ 14 │ 
+>15 │ Empty {++++} and {----} and {====} and {>><<}.
+{----}
+
+────────────────────────────────────────────────
+17/18 highlight 6jo72w annotations.md:15-15
+ 13 │ Unclosed {++ never closed
+ 14 │ 
+>15 │ Empty {++++} and {----} and {====} and {>><<}.
+{====}
+
+────────────────────────────────────────────────
+18/18 comment 80Rgd5 annotations.md:15-15
+ 13 │ Unclosed {++ never closed
+ 14 │ 
+>15 │ Empty {++++} and {----} and {====} and {>><<}.
+{>><<}

@@ -1,0 +1,21 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "set",
+    "cq3984",
+    "2j7wFc",
+    "text=renamed"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "text=... does not rename the todo: it is stored as a [text:: ...] inline field",
+  "files": [
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

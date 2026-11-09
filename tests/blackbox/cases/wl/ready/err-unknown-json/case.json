@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "ready",
+    "zzzzzz",
+    "--json"
+  ],
+  "behavior": "parity"
+}

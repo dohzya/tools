@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "stale-snapshot",
+      "message": "stale snapshot",
+      "reference": {
+        "end": 85,
+        "index": 1,
+        "lineEnd": 3,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 {&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&} -->",
+        "start": 7,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6 {&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}",
+            "snapshot": {
+              "content": "SAS : permet d'envoyer des fichiers.",
+              "label": "rBBB",
+              "raw": "{&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}"
+            }
+          }
+        ]
+      },
+      "sourceFile": "snap-stale.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6 {&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}",
+        "snapshot": {
+          "content": "SAS : permet d'envoyer des fichiers.",
+          "label": "rBBB",
+          "raw": "{&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}"
+        }
+      }
+    }
+  ]
+}

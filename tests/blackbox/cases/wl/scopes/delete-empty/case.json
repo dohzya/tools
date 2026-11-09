@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "delete",
+    "empty"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/scope.json",
+    "services/empty/.worklog/index.json",
+    "services/empty/.worklog/scope.json"
+  ]
+}

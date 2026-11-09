@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_K9bn7wNJB4y",
+      "file": "fences.md",
+      "lineStart": 4,
+      "lineEnd": 4,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "inside backtick fence"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "inside backtick fence"
+      },
+      "context": "@me inside backtick fence",
+      "suggestedAction": "reply",
+      "rawHash": "6b1f71c138930dd4"
+    },
+    {
+      "id": "rvw_KNCOfRp79sB",
+      "file": "fences.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++fenced addition++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "683f0ece1f323cf6"
+    },
+    {
+      "id": "rvw_10ug2oUiga6",
+      "file": "fences.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "inside tilde fence"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "inside tilde fence"
+      },
+      "context": "@me inside tilde fence",
+      "suggestedAction": "reply",
+      "rawHash": "0a5ee841f3232098"
+    },
+    {
+      "id": "rvw_JcYYENxd3Bn",
+      "file": "fences.md",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "inside inline code"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "inside inline code"
+      },
+      "context": "@me inside inline code",
+      "suggestedAction": "reply",
+      "rawHash": "e5937fd0e354f3a5"
+    },
+    {
+      "id": "rvw_D9X97DWbY5b",
+      "file": "fences.md",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "indented code"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "indented code"
+      },
+      "context": "@me indented code",
+      "suggestedAction": "reply",
+      "rawHash": "229311eb5afeed53"
+    },
+    {
+      "id": "rvw_7OTqiX4hETB",
+      "file": "fences.md",
+      "lineStart": 16,
+      "lineEnd": 16,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "in blockquote"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "in blockquote"
+      },
+      "context": "@me in blockquote",
+      "suggestedAction": "reply",
+      "rawHash": "3656ae8b5786e155"
+    },
+    {
+      "id": "rvw_AisxCI7k5dO",
+      "file": "fences.md",
+      "lineStart": 18,
+      "lineEnd": 18,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "in list"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "in list"
+      },
+      "context": "@me in list",
+      "suggestedAction": "reply",
+      "rawHash": "2540d19f77f11f62"
+    },
+    {
+      "id": "rvw_EhN9pVrx36q",
+      "file": "fences.md",
+      "lineStart": 20,
+      "lineEnd": 20,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "outside"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "outside"
+      },
+      "context": "@me outside",
+      "suggestedAction": "reply",
+      "rawHash": "b11ec7827e81db20"
+    },
+    {
+      "id": "rvw_59GtGzxpo1D",
+      "file": "fences.md",
+      "lineStart": 23,
+      "lineEnd": 25,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "unterminated fence comment"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "unterminated fence comment"
+      },
+      "context": "@me unterminated fence comment",
+      "suggestedAction": "reply",
+      "rawHash": "f6480a0cbf9a4da4"
+    }
+  ]
+}

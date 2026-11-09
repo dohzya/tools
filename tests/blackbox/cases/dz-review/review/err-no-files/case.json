@@ -1,0 +1,8 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "review"
+  ],
+  "behavior": "parity"
+}

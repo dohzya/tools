@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "~{v0;a=stable-id}",
+    "--format",
+    "base62"
+  ],
+  "behavior": "parity"
+}

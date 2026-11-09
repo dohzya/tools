@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-spec",
+  "args": [
+    "append",
+    "crlf-fence.md",
+    "0b6da2a1",
+    "added line",
+    "--deep"
+  ],
+  "files": [
+    "crlf-fence.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1,2"
+}

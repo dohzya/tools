@@ -1,0 +1,17 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "list",
+    "doc.md",
+    "other.md",
+    "--json"
+  ],
+  "env": {
+    "DZ_REVIEW_IGNORE_FILE": "my-ignore"
+  },
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

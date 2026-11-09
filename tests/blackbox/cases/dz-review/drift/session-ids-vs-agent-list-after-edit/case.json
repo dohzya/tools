@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "list"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): ids keep following their item when lines are inserted above (the Deno fast path matched by line range only and swapped ids between items)."
+}

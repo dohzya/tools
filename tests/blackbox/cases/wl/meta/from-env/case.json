@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "meta"
+  ],
+  "env": {
+    "WORKLOG_TASK_ID": "9n3ksy"
+  },
+  "behavior": "parity"
+}

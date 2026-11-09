@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "write",
+    "nofile.md",
+    "aaaaaaaa",
+    "x"
+  ],
+  "behavior": "parity"
+}

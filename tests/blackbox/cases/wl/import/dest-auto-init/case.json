@@ -1,0 +1,29 @@
+{
+  "tool": "wl",
+  "fixture": "wl-import",
+  "args": [
+    "-C",
+    "fresh",
+    "import",
+    "-p",
+    "../src/.worklog"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "import initializes the destination worklog implicitly",
+  "files": [
+    "fresh/.worklog/index.json",
+    "fresh/.worklog/tasks/api001xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/doc003xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/epc005xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/fin008xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/rel004xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/run006xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/sch002xxxxxxxxxxxxxxxxxxx.md",
+    "fresh/.worklog/tasks/wai007xxxxxxxxxxxxxxxxxxx.md"
+  ]
+}

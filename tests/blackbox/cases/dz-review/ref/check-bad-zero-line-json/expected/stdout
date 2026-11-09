@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "invalid-target",
+      "message": "invalid target",
+      "reference": {
+        "end": 31,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:0 -->",
+        "start": 6,
+        "targets": [
+          {
+            "path": "source.md",
+            "raw": "source.md:0"
+          }
+        ]
+      },
+      "sourceFile": "bad-zero-line.md",
+      "target": {
+        "path": "source.md",
+        "raw": "source.md:0"
+      }
+    }
+  ]
+}

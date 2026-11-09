@@ -1,0 +1,14 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "traces",
+    "9n3ksy",
+    "--kind",
+    "finding"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "parity"
+}

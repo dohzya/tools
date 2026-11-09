@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "--aggregate",
+    "tags",
+    "--json",
+    "meta-a.md",
+    "meta-b.md"
+  ],
+  "behavior": "parity"
+}

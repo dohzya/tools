@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-spec",
+  "args": [
+    "outline",
+    "crlf-fence.md",
+    "--json"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1,2"
+}

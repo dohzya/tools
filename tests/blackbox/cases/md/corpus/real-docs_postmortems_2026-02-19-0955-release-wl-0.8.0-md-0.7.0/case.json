@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "real-docs_postmortems_2026-02-19-0955-release-wl-0.8.0-md-0.7.0.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

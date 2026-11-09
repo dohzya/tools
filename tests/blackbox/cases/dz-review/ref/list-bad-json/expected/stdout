@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "refs": [
+    {
+      "reference": {
+        "end": 32,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: nope.md:1 -->",
+        "start": 9,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 1,
+              "start": 1
+            },
+            "path": "nope.md",
+            "raw": "nope.md:1"
+          }
+        ]
+      },
+      "sourceFile": "bad-missing-file.md",
+      "target": {
+        "lineRange": {
+          "end": 1,
+          "start": 1
+        },
+        "path": "nope.md",
+        "raw": "nope.md:1"
+      },
+      "targetFile": "<WORK>/nope.md"
+    }
+  ]
+}

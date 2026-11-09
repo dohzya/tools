@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "nofile.md",
+    "1:1-1:2"
+  ],
+  "behavior": "parity"
+}

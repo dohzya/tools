@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-fm",
+  "args": [
+    "meta",
+    "rich.md",
+    "--set",
+    "added",
+    "ok"
+  ],
+  "files": [
+    "rich.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "10"
+}

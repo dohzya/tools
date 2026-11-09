@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "show",
+    "5SUMpH",
+    "doc.md"
+  ],
+  "behavior": "parity"
+}

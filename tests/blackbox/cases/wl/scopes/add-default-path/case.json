@@ -1,0 +1,24 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "add",
+    "docs"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "without a path the scope directory defaults to the scope id",
+  "files": [
+    ".worklog/scope.json",
+    "docs/.worklog/index.json",
+    "docs/.worklog/scope.json"
+  ]
+}

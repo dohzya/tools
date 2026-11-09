@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "now",
+    "--date",
+    "2026-06-16T17:35:35+02:00",
+    "-H"
+  ],
+  "behavior": "parity"
+}

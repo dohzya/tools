@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "other.md",
+      "timestampFormat": "iso",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_4N8lYs87EGK"
+      ],
+      "originalContent": "# Other\n\nOther file. {?? @me%<TS> hi ??}\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_4N8lYs87EGK",
+      "file": "other.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "hi",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "hi",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> hi",
+      "suggestedAction": "reply",
+      "rawHash": "8f66fd3a2af61720"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "mixed.md",
+      "timestampFormat": "mixed",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_BVWLbLsRujv",
+        "rvw_LTr46WZp8es"
+      ],
+      "originalContent": "# Mixed\n\nA {?? @me%1WzvP91W Compact. @agent%<TS> Iso. @me%갚붋륇걸 Hangul. ??} and {++%1WzvP91W|added++}.\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_BVWLbLsRujv",
+      "file": "mixed.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Compact.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Hangul.",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Compact. @agent%<TS> Iso. @me%<TS> Hangul.",
+      "suggestedAction": "reply",
+      "rawHash": "5ab9c95078e3d837"
+    },
+    {
+      "id": "rvw_LTr46WZp8es",
+      "file": "mixed.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%<TS>|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "list",
+    "doc.md",
+    "--json"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "parity"
+}

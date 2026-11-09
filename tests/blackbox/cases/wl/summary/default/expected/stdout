@@ -1,0 +1,38 @@
+# 9n3ksypyyujvxajl4o1djfk67: Users can't log in with **SSO**.
+Second paragraph with unicode: café ☕ (started)
+
+## Checkpoints
+### 2020-01-20 10:00
+Changes:
+  Root cause: UTC vs local time. Fix: compare in UTC.
+Learnings:
+  Always store timestamps in UTC.
+
+## Entries
+2020-01-10 09:05: Reproduced the bug locally
+2020-01-10 09:30: Token expiry is off by one hour (timezone?)
+2020-01-10 10:15: Cause: tokens issued in UTC but compared in local time
+2020-01-10 11:00: Patched comparison to use UTC
+multi-line message with `code` and unicode: ✓ ñ
+2020-01-10 12:00: Tests green after fix
+2020-02-01 09:00: Post-checkpoint: add regression test
+2020-02-01 09:30: Untyped trace default kind?
+
+---
+
+# 4gsf0bco0o68h9xspa2ux4v52: Part one of the description
+
+---
+
+Part two (ready)
+
+---
+
+# cq3984ojmyg5s21oujzleuats:  (created)
+
+---
+
+# 7natz8duzlrdundln184ylct7:  (started)
+
+## Entries
+2020-01-05 08:10: Listing provider docs

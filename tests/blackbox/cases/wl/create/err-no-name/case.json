@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create"
+  ],
+  "behavior": "parity",
+  "check_stderr": false,
+  "check_stdout": false
+}

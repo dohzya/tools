@@ -1,0 +1,16 @@
+Agent inbox
+Snapshot: .dz-review/agent-session.json
+
+id: 5SUMpH
+location: doc.md:3
+state: handled
+last: @me Please say whether sources are stored too.
+context: @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too.
+suggested action: reply
+
+id: A3vwnq
+location: doc.md:5
+state: annotation
+last: -
+context: {++%2026-06-16T17:35:35+02:00|added++}
+suggested action: review annotation

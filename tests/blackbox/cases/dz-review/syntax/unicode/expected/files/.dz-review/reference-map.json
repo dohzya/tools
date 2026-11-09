@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_5NnPkn6KlQh": {
+      "file": "unicode.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:69;p=h1[1]/p[1];fh=xxh64:Ei3yKvsb;hh=smh64:ae3769ae90c685c1;ctx=pre:up0dkJN2,suf:Eb047S94;doc=smh64:ae3769ae90c685c1}"
+    },
+    "rvw_3SMqv9IoIq6": {
+      "file": "unicode.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:25;p=h1[1]/p[2];fh=xxh64:DzFs0U0p;hh=smh64:ae3769ae90c685c1;ctx=pre:AFDXRhey,suf:ipz9shxx;doc=smh64:ae3769ae90c685c1}"
+    },
+    "rvw_5K6DYy2e4rE": {
+      "file": "unicode.md",
+      "range": {
+        "startLine": 7,
+        "endLine": 7
+      },
+      "mrfi": "~{v0;r=7:1-7:50;p=h1[1]/p[3];fh=xxh64:4d0SNOTb;hh=smh64:ae3769ae90c685c1;ctx=pre:KE9ttWBj,suf:DtZWKfN1;doc=smh64:ae3769ae90c685c1}"
+    },
+    "rvw_80oMTpWQ0Ww": {
+      "file": "unicode.md",
+      "range": {
+        "startLine": 9,
+        "endLine": 9
+      },
+      "mrfi": "~{v0;r=9:1-9:40;p=h1[1]/p[4];fh=xxh64:1yYDlFej;hh=smh64:ae3769ae90c685c1;ctx=pre:OgbTC2um,suf:mymsvctM;doc=smh64:ae3769ae90c685c1}"
+    },
+    "rvw_2XP0ErRDKNv": {
+      "file": "unicode.md",
+      "range": {
+        "startLine": 11,
+        "endLine": 11
+      },
+      "mrfi": "~{v0;r=11:1-11:46;p=h1[1]/p[5];fh=xxh64:COCFYI7Y;hh=smh64:ae3769ae90c685c1;ctx=pre:v3p5pj5i,suf:rzWtdMwJ;doc=smh64:ae3769ae90c685c1}"
+    },
+    "rvw_E0Wrpd0FDYK": {
+      "file": "unicode.md",
+      "range": {
+        "startLine": 11,
+        "endLine": 11
+      },
+      "mrfi": "~{v0;r=11:1-11:46;p=h1[1]/p[5];fh=xxh64:COCFYI7Y;hh=smh64:ae3769ae90c685c1;ctx=pre:v3p5pj5i,suf:rzWtdMwJ;doc=smh64:ae3769ae90c685c1}"
+    }
+  }
+}

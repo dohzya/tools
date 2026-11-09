@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "only-heading-no-nl.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

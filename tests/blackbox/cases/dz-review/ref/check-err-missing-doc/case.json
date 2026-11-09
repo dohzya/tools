@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "nofile.md"
+  ],
+  "behavior": "parity",
+  "note": "A nonexistent document argument gives exit 0 and 'ref check ok' (no error), unlike list/status."
+}

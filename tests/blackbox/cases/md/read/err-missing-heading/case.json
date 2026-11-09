@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "doc.md",
+    "# Nope"
+  ],
+  "behavior": "parity"
+}

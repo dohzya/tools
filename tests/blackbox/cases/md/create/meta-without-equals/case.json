@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "create",
+    "new.md",
+    "--meta",
+    "oops"
+  ],
+  "files": [
+    "new.md"
+  ],
+  "check_stderr": false,
+  "behavior": "parity"
+}

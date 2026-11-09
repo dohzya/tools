@@ -1,0 +1,4 @@
+snap-fresh.md:1 -> source.md:6
+  SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+snap-stale.md:1 -> source.md:6
+  SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.

@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "list",
+    "--parent",
+    "9n3ksy",
+    "--all"
+  ],
+  "behavior": "parity"
+}

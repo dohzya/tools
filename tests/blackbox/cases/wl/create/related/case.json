@@ -1,0 +1,25 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Related",
+    "--related",
+    "cq3984",
+    "-t",
+    "2030-01-02T03:04"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

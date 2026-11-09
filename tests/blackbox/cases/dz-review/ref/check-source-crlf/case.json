@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "snap-fresh.md"
+  ],
+  "behavior": "parity",
+  "note": "CRLF in the target file: snapshots compare as fresh?"
+}

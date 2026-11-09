@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "claude"
+  ],
+  "env": {
+    "PATH": "./bin:/usr/bin:/bin",
+    "WORKLOG_TASK_ID": "cq3984"
+  },
+  "behavior": "parity"
+}

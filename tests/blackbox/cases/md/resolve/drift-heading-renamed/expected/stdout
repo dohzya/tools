@@ -1,0 +1,1 @@
+[{"ref":"~{v0;r=12:1-12:11;p=h1[1]/h2[1];fh=xxh64:3OiG3dh9;hh=smh64:7f2a4e879f377bfd;ctx=pre:YevvUZiY,suf:CWRIKgga;doc=smh64:c1abd377dc24719f}","status":"confident","confidence":0.88,"range":"12:1-12:15","passage":"## Other title","diagnostics":["context prefix match","context suffix match"],"strongSignals":{"bothContext":true}}]

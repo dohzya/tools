@@ -1,0 +1,20 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "list",
+    "doc.md",
+    "--json"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "ignore_changes": [
+    "doc.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "parity",
+  "note": "stamping every item with a timestamp keeps ids when the map exists"
+}

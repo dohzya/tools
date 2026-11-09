@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "unicode.md",
+    "9f03d9b7",
+    "ajout ☃",
+    "--deep"
+  ],
+  "files": [
+    "unicode.md"
+  ],
+  "behavior": "parity"
+}

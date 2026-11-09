@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "filesAnnotated": 1,
+  "filesModified": 1,
+  "conversationsAnswered": 0,
+  "cleanableConversations": [],
+  "remainingOpenItems": [
+    {
+      "id": "rvw_5SUNlLgZKHd",
+      "file": "doc.md",
+      "lineStart": 13,
+      "lineEnd": 13,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Q.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Answer.",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Q. @agent%<TS> Answer.",
+      "suggestedAction": "answer",
+      "rawHash": "edb03af1fee8307f"
+    }
+  ],
+  "guardrailFailures": []
+}

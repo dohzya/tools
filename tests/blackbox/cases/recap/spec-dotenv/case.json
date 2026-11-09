@@ -1,0 +1,17 @@
+{
+  "tool": "recap",
+  "fixture": "recap-spec",
+  "args": [
+    "-C",
+    "proj",
+    "show",
+    "vars",
+    "export"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "recap:2",
+  "note": "dotenv: files resolved against -C, first file wins, system env beats files, files vars exported to sh, missing file ignored (Deno: dotenv never loaded)",
+  "env": {
+    "C": "sys"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "small.md",
+    "18bfa7d1"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "14",
+  "note": "Deno: stdin trailing newline added an empty line (+3, file ends with a blank line)"
+}

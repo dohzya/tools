@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "bad-past-eof.md"
+  ],
+  "behavior": "parity",
+  "note": "Line 999 beyond the end of the target file is accepted (no range validation against the file length)."
+}

@@ -1,0 +1,17 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "create",
+    "new.md",
+    "body",
+    "--title",
+    "T",
+    "--meta",
+    "author=Ada"
+  ],
+  "files": [
+    "new.md"
+  ],
+  "behavior": "parity"
+}

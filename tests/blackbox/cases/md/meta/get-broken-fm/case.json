@@ -1,0 +1,9 @@
+{
+  "tool": "md",
+  "fixture": "md-fm",
+  "args": [
+    "meta",
+    "broken.md"
+  ],
+  "behavior": "parity"
+}

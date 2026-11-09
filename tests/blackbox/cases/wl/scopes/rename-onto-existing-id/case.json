@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "rename",
+    "api",
+    "web"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "renaming onto an id already used is accepted (duplicate scope ids, no error)",
+  "files": [
+    ".worklog/scope.json"
+  ]
+}

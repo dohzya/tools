@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "compact.md",
+      "timestampFormat": "compact",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_3l8ictFsB5R",
+        "rvw_3yj0BQ3QoBA"
+      ],
+      "originalContent": "# Compact\n\nA {?? @me%1WzvP91W Question? ??} and {++%1WzvP91W|added++}.\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_3l8ictFsB5R",
+      "file": "compact.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Question?",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Question?",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Question?",
+      "suggestedAction": "reply",
+      "rawHash": "9b2e53656724e122"
+    },
+    {
+      "id": "rvw_3yj0BQ3QoBA",
+      "file": "compact.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%<TS>|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    }
+  ]
+}

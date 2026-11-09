@@ -1,0 +1,15 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "review",
+    "doc.md",
+    "-c",
+    "2"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): -c/--context works for review. In the Deno tool the review command ignored -c and rejected --context (option library quirk), so only the default 2:0 context was reachable."
+}

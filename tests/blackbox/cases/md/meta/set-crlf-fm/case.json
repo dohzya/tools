@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-fm",
+  "args": [
+    "meta",
+    "crlf.md",
+    "--set",
+    "k",
+    "v"
+  ],
+  "files": [
+    "crlf.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1"
+}

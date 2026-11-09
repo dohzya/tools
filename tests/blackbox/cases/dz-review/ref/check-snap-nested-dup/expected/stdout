@@ -1,0 +1,2 @@
+snap-nested-dup.md:1: snapshot label rDDD is invalid
+snap-nested-dup.md:1 source.md:6: stale snapshot

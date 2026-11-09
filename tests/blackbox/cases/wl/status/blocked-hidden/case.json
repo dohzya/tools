@@ -1,0 +1,8 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "status"
+  ],
+  "behavior": "parity"
+}

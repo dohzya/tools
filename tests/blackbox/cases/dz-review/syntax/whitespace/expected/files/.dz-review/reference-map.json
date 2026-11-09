@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_KC3RZLx1pks": {
+      "file": "whitespace.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=3:1-5:15;p=h1[1]/p[1];fh=xxh64:3xL8cDtu;hh=smh64:9dceb4f39f31ddb1;ctx=pre:eZ4WSdls,suf:KuOB5EoL;doc=smh64:9dceb4f39f31ddb1}"
+    },
+    "rvw_EdKQvy1AnT7": {
+      "file": "whitespace.md",
+      "range": {
+        "startLine": 7,
+        "endLine": 7
+      },
+      "mrfi": "~{v0;r=7:1-7:17;p=h1[1]/p[2];fh=xxh64:8kbWrpEm;hh=smh64:9dceb4f39f31ddb1;ctx=pre:1WLP3odT,suf:t9eggnDo;doc=smh64:9dceb4f39f31ddb1}"
+    },
+    "rvw_KwMN3h6mbE": {
+      "file": "whitespace.md",
+      "range": {
+        "startLine": 9,
+        "endLine": 9
+      },
+      "mrfi": "~{v0;r=9:1-9:17;p=h1[1]/p[3];fh=xxh64:JnTALVYR;hh=smh64:9dceb4f39f31ddb1;ctx=pre:iR6KA0pH,suf:uj1bEaBk;doc=smh64:9dceb4f39f31ddb1}"
+    },
+    "rvw_BpQYKxWkn6L": {
+      "file": "whitespace.md",
+      "range": {
+        "startLine": 11,
+        "endLine": 11
+      },
+      "mrfi": "~{v0;r=11:1-11:26;p=h1[1];fh=xxh64:9mrYvoKk;hh=smh64:9dceb4f39f31ddb1;ctx=pre:2xtndMVj,suf:rzWtdMwJ;doc=smh64:9dceb4f39f31ddb1}"
+    }
+  }
+}

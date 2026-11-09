@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "claude",
+    "9n3ksy",
+    "--",
+    "-c",
+    "--model",
+    "x"
+  ],
+  "env": {
+    "PATH": "./bin:/usr/bin:/bin"
+  },
+  "behavior": "parity",
+  "note": "args after -- are NOT forwarded to claude in the Deno CLI (argc stays 2) although the help documents them"
+}

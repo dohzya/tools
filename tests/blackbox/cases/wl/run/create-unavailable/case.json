@@ -1,0 +1,18 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "--create",
+    "New",
+    "echo",
+    "hi"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "run --create is wired to a missing callback in the Deno CLI: always fails with 'Create task function not available'"
+}

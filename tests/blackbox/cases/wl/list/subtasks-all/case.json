@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "list",
+    "--all",
+    "--subtasks"
+  ],
+  "behavior": "parity"
+}

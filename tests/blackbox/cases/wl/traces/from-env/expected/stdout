@@ -1,0 +1,13 @@
+task: 9n3ksypyyujvxajl4o1djfk67
+desc: Users can't log in with **SSO**.
+Second paragraph with unicode: café ☕
+
+traces: 7
+  ab9175bd  2020-01-10 09:05  info: Reproduced the bug locally
+  932e09bc  2020-01-10 09:30  hypothesis: Token expiry is off by one hour (timezone?)
+  cdf016d6  2020-01-10 10:15  finding: Cause: tokens issued in UTC but compared in local time
+  ae0e0313  2020-01-10 11:00  action: Patched comparison to use UTC
+multi-line message with `code` and unicode: ✓ ñ
+  24278122  2020-01-10 12:00  state: Tests green after fix
+  4a0d6bd3  2020-02-01 09:00  learning: Post-checkpoint: add regression test
+  eb591b74  2020-02-01 09:30: Untyped trace default kind?

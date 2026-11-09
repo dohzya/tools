@@ -1,0 +1,50 @@
+
+────────────────────────────────────────────────
+1/6 handled conversation 5NnPkn unicode.md:3-3
+ 1 │ # Unicode
+ 2 │ 
+>3 │ Accents {?? @me Pourquoi parler du SAS ici ? Été, garçon, naïve. ??}
+{??
+@me Pourquoi parler du SAS ici ? Été, garçon, naïve.
+??}
+
+────────────────────────────────────────────────
+2/6 handled conversation 3SMqv9 unicode.md:5-5
+ 3 │ Accents {?? @me Pourquoi parler du SAS ici ? Été, garçon, naïve. ??}
+ 4 │ 
+>5 │ CJK {?? @me 日本語のコメント ??}
+{??
+@me 日本語のコメント
+??}
+
+────────────────────────────────────────────────
+3/6 handled conversation 5K6DYy unicode.md:7-7
+ 5 │ CJK {?? @me 日本語のコメント ??}
+ 6 │ 
+>7 │ Combining {?? @me é café (NFD) vs café (NFC) ??}
+{??
+@me é café (NFD) vs café (NFC)
+??}
+
+────────────────────────────────────────────────
+4/6 open conversation 80oMTp unicode.md:9-9
+ 7 │ Combining {?? @me é café (NFD) vs café (NFC) ??}
+ 8 │ 
+>9 │ Long dash {?? @agent — and “quotes” ??}
+{??
+@agent — and “quotes”
+??}
+
+────────────────────────────────────────────────
+5/6 addition 2XP0Er unicode.md:11-11
+  9 │ Long dash {?? @agent — and “quotes” ??}
+ 10 │ 
+>11 │ BMP symbols {++★ added ✓++} {--☆ removed ✗--}
+{++★ added ✓++}
+
+────────────────────────────────────────────────
+6/6 deletion E0Wrpd unicode.md:11-11
+  9 │ Long dash {?? @agent — and “quotes” ??}
+ 10 │ 
+>11 │ BMP symbols {++★ added ✓++} {--☆ removed ✗--}
+{--☆ removed ✗--}

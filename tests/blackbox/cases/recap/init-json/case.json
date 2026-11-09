@@ -1,0 +1,12 @@
+{
+  "tool": "recap",
+  "fixture": "empty",
+  "args": [
+    "init",
+    "--json"
+  ],
+  "files": [
+    ".config/recap.yaml"
+  ],
+  "behavior": "parity"
+}

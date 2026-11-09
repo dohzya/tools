@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "search",
+    "doc.md",
+    "TODO",
+    "--summary"
+  ],
+  "behavior": "parity"
+}

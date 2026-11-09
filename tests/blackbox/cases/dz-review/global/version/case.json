@@ -1,0 +1,10 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "--version"
+  ],
+  "check_stderr": false,
+  "check_stdout": false,
+  "behavior": "parity"
+}

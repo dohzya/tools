@@ -1,0 +1,16 @@
+# Title
+
+The service stores summaries. {?? @me%<CTS> Please say whether sources are stored too. ??}
+
+Some text {++%<CTS>|added++} and {--%<CTS>|removed--} and {~~%<CTS>|old~>new~~} and {==%<CTS>|hl==} and {>>%<CTS>|note<<}.
+
+<!--
+@agent%<CTS> I chose this wording.
+@me%<CTS> Can we soften it?
+-->
+
+Done thread. {?? @agent%<CTS> Fixed. @me%<CTS> ok ??}
+
+```
+{?? @me%<CTS> in fence ??}
+```

@@ -1,0 +1,3 @@
+sections:
+  - ref: foo
+  - ref: bar

@@ -1,0 +1,58 @@
+Agent inbox
+Snapshot: .dz-review/agent-session.json
+
+id: 5SUMpH
+location: doc.md:3
+state: open
+last: @agent ok
+context: @me%<TS> Please say whether sources are stored too. @agent%<TS> ok
+suggested action: answer
+
+id: A3vwnq
+location: doc.md:5
+state: annotation
+last: -
+context: {++%<TS>|added++}
+suggested action: review annotation
+
+id: E96pi6
+location: doc.md:5
+state: annotation
+last: -
+context: {--%<TS>|removed--}
+suggested action: review annotation
+
+id: CWUZeY
+location: doc.md:5
+state: annotation
+last: -
+context: {~~%<TS>|old~>new~~}
+suggested action: review annotation
+
+id: 5g7itt
+location: doc.md:5
+state: annotation
+last: -
+context: {==%<TS>|highlighted==}
+suggested action: review annotation
+
+id: CFi8Jd
+location: doc.md:5
+state: annotation
+last: -
+context: {>>%<TS>|a note<<}
+suggested action: review annotation
+
+id: 5SUN8d
+location: doc.md:7
+state: handled
+last: @me Can we soften it?
+context: @agent%<TS> I chose this wording. @me%<TS> Can we soften it?
+suggested action: reply
+
+id: 5SUNlL
+location: doc.md:14
+state: open
+last: @agent Answer.
+context: @me%<TS> Q. @agent%<TS> Answer.
+suggested action: answer

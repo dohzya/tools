@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "next",
+    "4gsf0b",
+    "--json"
+  ],
+  "behavior": "parity"
+}

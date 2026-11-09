@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "9n3ksy",
+    "sh",
+    "-c",
+    "exit 3"
+  ],
+  "behavior": "parity",
+  "note": "wl run exits 0 whatever the child exit code; it only reports it on stdout"
+}

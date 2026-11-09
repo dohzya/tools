@@ -1,0 +1,4 @@
+unrelated similarity=0.29 comparability=0.26
+match: p=1.00, x
+conflict: fh=0.00
+absent: a, hh, ph, ctx, doc, r, o, q

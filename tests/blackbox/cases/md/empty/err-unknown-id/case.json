@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "empty",
+    "small.md",
+    "deadbeef"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

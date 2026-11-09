@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "list",
+    "--pager"
+  ],
+  "behavior": "parity",
+  "note": "--pager without a TTY falls back to plain output"
+}

@@ -1,0 +1,23 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "session",
+    "start",
+    "doc.md"
+  ],
+  "env": {
+    "DZ_REVIEW_STATE_DIR": "envstate"
+  },
+  "files": [
+    "envstate/agent-session.json",
+    "envstate/reference-map.json"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "sed": [
+    "s/\"contentHash\": \"[0-9a-f]+\"/\"contentHash\": \"<H>\"/"
+  ],
+  "behavior": "parity"
+}

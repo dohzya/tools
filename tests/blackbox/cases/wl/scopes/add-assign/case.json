@@ -1,0 +1,28 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "add",
+    "docs",
+    "docs-site",
+    "--assign"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/scope.json",
+    ".worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md",
+    "docs-site/.worklog/index.json",
+    "docs-site/.worklog/scope.json",
+    "docs-site/.worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md"
+  ]
+}

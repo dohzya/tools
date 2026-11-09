@@ -1,0 +1,15 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "init",
+    "--json"
+  ],
+  "normalize": [
+    "now-iso"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json"
+  ]
+}

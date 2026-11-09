@@ -1,0 +1,17 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "apply",
+    "E96pi6"
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "parity",
+  "note": "DEFECT in the Deno reference, recorded as parity: after one annotation on a line is applied, the ids of the remaining annotations on that line no longer address the same items (id of the deletion hits the substitution). "
+}

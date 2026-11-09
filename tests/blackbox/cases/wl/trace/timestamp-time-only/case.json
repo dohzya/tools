@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "trace",
+    "9n3ksy",
+    "-k",
+    "info",
+    "-t",
+    "T10:00",
+    "time only"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid",
+    "today"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md"
+  ]
+}

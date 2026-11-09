@@ -1,0 +1,9 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "small.md"
+  ],
+  "behavior": "parity"
+}

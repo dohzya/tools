@@ -1,0 +1,8 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "list"
+  ],
+  "behavior": "parity"
+}

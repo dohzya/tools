@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "tags",
+    "cq3984",
+    "--json"
+  ],
+  "behavior": "parity"
+}

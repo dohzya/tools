@@ -1,0 +1,10 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "session",
+    "add-file",
+    "nofile.md"
+  ],
+  "behavior": "parity"
+}

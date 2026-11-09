@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "tags",
+    "rename",
+    "nonexist",
+    "x"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "renaming an absent tag succeeds (exit 0) with a not-found message"
+}

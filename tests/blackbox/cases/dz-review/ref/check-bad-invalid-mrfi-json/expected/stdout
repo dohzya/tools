@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "invalid-mrfi",
+      "message": "invalid MRFI reference ~K2mmpo",
+      "reference": {
+        "end": 51,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6~K2mmpo -->",
+        "start": 19,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "mrfi": "~K2mmpo",
+            "path": "source.md",
+            "raw": "source.md:6~K2mmpo"
+          }
+        ]
+      },
+      "sourceFile": "bad-invalid-mrfi.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "mrfi": "~K2mmpo",
+        "path": "source.md",
+        "raw": "source.md:6~K2mmpo"
+      }
+    }
+  ]
+}

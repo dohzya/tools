@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "show",
+    "ok.md",
+    "snap-fresh.md",
+    "--json"
+  ],
+  "behavior": "parity",
+  "note": "ref show --json prints only the list of documents, not the snapshots."
+}

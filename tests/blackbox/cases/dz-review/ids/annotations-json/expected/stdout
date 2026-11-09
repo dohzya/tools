@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_39G5wBrOczv",
+      "file": "annotations.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++new text++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "fa856479ccdc449e"
+    },
+    {
+      "id": "rvw_49hG2ejt6yA",
+      "file": "annotations.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "deletion",
+      "state": "annotation",
+      "context": "{--old text--}",
+      "suggestedAction": "review annotation",
+      "rawHash": "bc7b1a51cf511e89"
+    },
+    {
+      "id": "rvw_4QcRS4Ehp6e",
+      "file": "annotations.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "substitution",
+      "state": "annotation",
+      "context": "{~~old text~>new text~~}",
+      "suggestedAction": "review annotation",
+      "rawHash": "c8d2f216cce55696"
+    },
+    {
+      "id": "rvw_9G5Gf0qUbfs",
+      "file": "annotations.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "highlight",
+      "state": "annotation",
+      "context": "{==text to review==}",
+      "suggestedAction": "review annotation",
+      "rawHash": "14529bb9ac4d3241"
+    },
+    {
+      "id": "rvw_Fsze7E0BIYd",
+      "file": "annotations.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>>review note<<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "0fd88789c3aa1051"
+    },
+    {
+      "id": "rvw_30A6mlzwIeX",
+      "file": "annotations.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Please validate this sentence."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Please validate this sentence."
+      },
+      "context": "@agent Please validate this sentence.",
+      "suggestedAction": "answer",
+      "rawHash": "fa5775f935c5de83"
+    },
+    {
+      "id": "rvw_32DjZvoxJyi",
+      "file": "annotations.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++new wording++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "82c75f432e54a85f"
+    },
+    {
+      "id": "rvw_4ZtSckFoxXW",
+      "file": "annotations.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Please validate this addition."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Please validate this addition."
+      },
+      "context": "@agent Please validate this addition.",
+      "suggestedAction": "answer",
+      "rawHash": "7b33be2d9a0b2984"
+    },
+    {
+      "id": "rvw_4QcRlQP0Z2B",
+      "file": "annotations.md",
+      "lineStart": 7,
+      "lineEnd": 9,
+      "kind": "substitution",
+      "state": "annotation",
+      "context": "{~~old\ntext~>new\ntext~~}",
+      "suggestedAction": "review annotation",
+      "rawHash": "3e2526ce121988c2"
+    },
+    {
+      "id": "rvw_CkCfQqP1wth",
+      "file": "annotations.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%2026-06-16T17:35:35+02:00|compact++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "d9797f887cbc18f2"
+    },
+    {
+      "id": "rvw_IqcwmvvZefz",
+      "file": "annotations.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "deletion",
+      "state": "annotation",
+      "context": "{--%2026-06-16T17:35:35+02:00|iso--}",
+      "suggestedAction": "review annotation",
+      "rawHash": "51acc83d9d4624ee"
+    },
+    {
+      "id": "rvw_4RglMRjPcKL",
+      "file": "annotations.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "highlight",
+      "state": "annotation",
+      "context": "{==%2026-06-16T17:35:35+02:00|hangul==}",
+      "suggestedAction": "review annotation",
+      "rawHash": "e8a6af420b362b3a"
+    },
+    {
+      "id": "rvw_HQUi2U4w0Dy",
+      "file": "annotations.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>>%2026-06-16T17:35:35+02:00|comment<<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "fcf908abb189e832"
+    },
+    {
+      "id": "rvw_6w8llalKto6",
+      "file": "annotations.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "substitution",
+      "state": "annotation",
+      "context": "{~~%2026-06-16T17:35:35+02:00|a~>b~~}",
+      "suggestedAction": "review annotation",
+      "rawHash": "6f2ea052925d0138"
+    },
+    {
+      "id": "rvw_4g2JJtYkbz0",
+      "file": "annotations.md",
+      "lineStart": 13,
+      "lineEnd": 15,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++ never closed\n\nEmpty {++++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "ded240aa09e36b05"
+    },
+    {
+      "id": "rvw_8IxQgPYE3yw",
+      "file": "annotations.md",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "kind": "deletion",
+      "state": "annotation",
+      "context": "{----}",
+      "suggestedAction": "review annotation",
+      "rawHash": "e8f8d8a51fb5c791"
+    },
+    {
+      "id": "rvw_6jo72wpj1ae",
+      "file": "annotations.md",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "kind": "highlight",
+      "state": "annotation",
+      "context": "{====}",
+      "suggestedAction": "review annotation",
+      "rawHash": "d510746eaa11ebb1"
+    },
+    {
+      "id": "rvw_80Rgd5Ns8yB",
+      "file": "annotations.md",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>><<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "89c61396a91f77a1"
+    }
+  ]
+}

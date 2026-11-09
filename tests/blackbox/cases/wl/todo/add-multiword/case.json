@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "add",
+    "cq3984",
+    "new",
+    "item",
+    "with",
+    "several",
+    "words"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

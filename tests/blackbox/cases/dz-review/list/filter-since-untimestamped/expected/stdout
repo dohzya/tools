@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_85i8v29MC8K",
+      "file": "doc.md",
+      "lineStart": 7,
+      "lineEnd": 10,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "I chose this wording.",
+        "timestamp": "2026-06-16T17:35:35+0200"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Can we soften it?",
+        "timestamp": "1WzvP91W"
+      },
+      "context": "@agent%2026-06-16T17:35:35+0200 I chose this wording. @me%1WzvP91W Can we soften it?",
+      "suggestedAction": "reply",
+      "rawHash": "457fd8992602e303"
+    }
+  ]
+}

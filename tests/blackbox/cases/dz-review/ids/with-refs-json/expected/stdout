@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_AMDLFayzbi1",
+      "file": "with-refs.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Why?"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Why?"
+      },
+      "context": "@me Why?",
+      "suggestedAction": "reply",
+      "rawHash": "d33f333c5ee07c84"
+    }
+  ]
+}

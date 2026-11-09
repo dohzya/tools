@@ -1,0 +1,22 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "show",
+    "4gsf0b"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "SUSPECTED DENO BUG: the first read of a scope whose index.json has no version runs 'Migrating worklog to v2', which overwrites the task name with its description and clears started_at (data loss). Recorded as parity; a rewrite must not copy this blindly",
+  "files": [
+    "services/api/.worklog/index.json",
+    "services/api/.worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md"
+  ]
+}

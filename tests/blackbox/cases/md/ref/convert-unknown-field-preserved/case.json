@@ -1,0 +1,12 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "~{v0;r=6:1-6:30;zz=hello\\;world;a=stable-id}",
+    "--format",
+    "base62"
+  ],
+  "behavior": "parity",
+  "note": "unknown keys are preserved verbatim"
+}

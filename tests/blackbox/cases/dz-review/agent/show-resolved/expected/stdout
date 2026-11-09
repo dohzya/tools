@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "item": {
+    "id": "rvw_5SUNRzWGaM6",
+    "file": "doc.md",
+    "lineStart": 12,
+    "lineEnd": 12,
+    "kind": "conversation",
+    "state": "resolved",
+    "firstMessage": {
+      "author": "@agent",
+      "body": "Fixed.",
+      "timestamp": "2026-06-16T17:35:35+02:00"
+    },
+    "lastMessage": {
+      "author": "@me",
+      "body": "ok",
+      "timestamp": "2026-06-16T17:37:35+02:00"
+    },
+    "context": "@agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok",
+    "suggestedAction": "clean after validation",
+    "rawHash": "a5ef8e06fc8d56b4"
+  }
+}

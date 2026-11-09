@@ -1,0 +1,17 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-syntax",
+  "args": [
+    "timestamp",
+    "crlf.md",
+    "-i",
+    "-S"
+  ],
+  "files": [
+    "crlf.md"
+  ],
+  "sed": [
+    "s/%[0-9A-Za-z]{8}([ |])/%<CTS>\\1/g"
+  ],
+  "behavior": "parity"
+}

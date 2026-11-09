@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "list",
+    "--related-to",
+    "doc003"
+  ],
+  "behavior": "parity"
+}

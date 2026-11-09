@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_5SUN8dLxqQZ",
+      "file": "doc.md",
+      "lineStart": 7,
+      "lineEnd": 10,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "I chose this wording.",
+        "timestamp": "2026-06-16T17:35:35+02:00"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Can we soften it?",
+        "timestamp": "2026-06-16T17:36:35+02:00"
+      },
+      "context": "@agent%2026-06-16T17:35:35+02:00 I chose this wording. @me%2026-06-16T17:36:35+02:00 Can we soften it?",
+      "suggestedAction": "reply",
+      "rawHash": "457fd8992602e303"
+    },
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Fixed.",
+        "timestamp": "2026-06-16T17:35:35+02:00"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "2026-06-16T17:37:35+02:00"
+      },
+      "context": "@agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "a5ef8e06fc8d56b4"
+    }
+  ]
+}

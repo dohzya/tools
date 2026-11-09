@@ -1,0 +1,3 @@
+sections:
+  - id: bar
+    value: bar from local

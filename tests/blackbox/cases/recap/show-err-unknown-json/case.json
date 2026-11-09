@@ -1,0 +1,10 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "args": [
+    "show",
+    "nope",
+    "--json"
+  ],
+  "behavior": "parity"
+}

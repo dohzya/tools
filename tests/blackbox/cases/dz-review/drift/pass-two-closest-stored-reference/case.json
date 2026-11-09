@@ -1,0 +1,8 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": ["list", "doc.md", "--json"],
+  "files": [".dz-review/reference-map.json"],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): pass 2 of the reference map ranks the stored locators against a fresh reference of the item's current lines and tries the closest first. The Deno tool passed the item's raw text as rank target (never a reference), so the stored order won: the coarse locator stored first took the id (rvw_coarse); the item's own locator now wins (rvw_own)."
+}

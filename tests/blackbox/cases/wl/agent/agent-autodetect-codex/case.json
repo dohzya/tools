@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "agent",
+    "9n3ksy"
+  ],
+  "env": {
+    "PATH": "./bin:/usr/bin:/bin",
+    "AGENT": "codex"
+  },
+  "behavior": "parity"
+}

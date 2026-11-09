@@ -1,0 +1,18 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "apply",
+    "CWUZeY",
+    "--replace",
+    "REPLACED"
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "parity"
+}

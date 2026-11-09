@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "atx-0sp.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

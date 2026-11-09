@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "sub/doc-in-sub.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

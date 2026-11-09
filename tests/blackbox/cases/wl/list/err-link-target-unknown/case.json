@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "list",
+    "--depends-on",
+    "zzzzzz"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "meta",
+    "cq3984"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

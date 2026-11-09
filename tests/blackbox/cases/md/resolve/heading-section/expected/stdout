@@ -1,0 +1,4 @@
+~{v0;r=12:1-12:11;p=h1[1]/h2[1];fh=xxh64:3OiG3dh9;hh=smh64:7f2a4e879f377bfd;ctx=pre:YevvUZiY,suf:CWRIKgga;doc=smh64:c1abd377dc24719f} confident 0.75 12:1-12:11
+reasons: range matched, range smh64 distance 0, range exact fragment hash matched, context prefix match, context suffix match
+
+    ## Details

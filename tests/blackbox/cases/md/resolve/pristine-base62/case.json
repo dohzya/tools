@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "resolve",
+    "source.md",
+    "~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH"
+  ],
+  "behavior": "parity"
+}

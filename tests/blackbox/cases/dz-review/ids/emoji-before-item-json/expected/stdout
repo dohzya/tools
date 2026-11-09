@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_IscVihB7u9c",
+      "file": "emoji-before-item.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "hi"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "hi"
+      },
+      "context": "@me hi",
+      "suggestedAction": "reply",
+      "rawHash": "8f66fd3a2af61720"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "show",
+    "sch002",
+    "--json"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,7 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "cwd": "sub",
+  "args": [],
+  "behavior": "parity"
+}

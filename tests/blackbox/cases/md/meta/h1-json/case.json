@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "doc.md",
+    "--h1",
+    "--json"
+  ],
+  "behavior": "parity"
+}

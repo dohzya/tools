@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "create",
+    "small.md",
+    "--force",
+    "--title",
+    "Replaced"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "outline",
+    "nofile.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

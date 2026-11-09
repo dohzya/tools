@@ -1,0 +1,12 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "--count",
+    "author",
+    "meta-a.md",
+    "meta-b.md"
+  ],
+  "behavior": "parity"
+}

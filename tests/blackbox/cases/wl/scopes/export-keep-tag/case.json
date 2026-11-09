@@ -1,0 +1,30 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "export",
+    "backend",
+    "exported",
+    "--keep-tag"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/scope.json",
+    ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md",
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md",
+    "exported/.worklog/index.json",
+    "exported/.worklog/scope.json",
+    "exported/.worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md",
+    "exported/.worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

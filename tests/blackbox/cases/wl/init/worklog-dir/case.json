@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "--worklog-dir",
+    "custom/wl",
+    "init"
+  ],
+  "behavior": "parity",
+  "files": [
+    "custom/wl/index.json"
+  ]
+}

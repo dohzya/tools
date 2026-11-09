@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "~{v9;r=1:1-1:2}",
+    "--format",
+    "hangul"
+  ],
+  "behavior": "parity"
+}

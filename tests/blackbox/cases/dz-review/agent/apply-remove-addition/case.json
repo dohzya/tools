@@ -1,0 +1,1 @@
+{"tool":"dz-review","fixture":"dz-review-session","args":["agent","apply","A3vwnq","--remove"],"files":["doc.md"],"normalize":["iso-ts"],"behavior":"new-spec","note":"New spec (docs/specs/critique.md): `agent apply --remove` deletes the annotation (neither applied nor cancelled) and the blanks around it; `--replace \"\"` stays an error, and --remove excludes --replace."}

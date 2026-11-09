@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "-C",
+    "..",
+    "show",
+    "cq3984"
+  ],
+  "cwd": "sub",
+  "behavior": "parity"
+}

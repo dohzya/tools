@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_K9bn7wNJB4y": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 4,
+        "endLine": 4
+      },
+      "mrfi": "~{v0;r=4:1-4:34;p=h1[1];fh=xxh64:D53ZNpSS;hh=smh64:c4aed6d0874fe957;ctx=pre:6CkEY0o8,suf:oDNtXsHF;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_KNCOfRp79sB": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:22;p=h1[1];fh=xxh64:Bc4KwZ3p;hh=smh64:c4aed6d0874fe957;ctx=pre:b3sflxTE,suf:WHdr2xvE;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_10ug2oUiga6": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 9,
+        "endLine": 9
+      },
+      "mrfi": "~{v0;r=9:1-9:31;p=h1[1];fh=xxh64:71KwUjT3;hh=smh64:c4aed6d0874fe957;ctx=pre:Wf1EQs7t,suf:w994z6B3;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_JcYYENxd3Bn": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 12,
+        "endLine": 12
+      },
+      "mrfi": "~{v0;r=12:1-12:51;p=h1[1]/p[1];fh=xxh64:Hf88h6pG;hh=smh64:c4aed6d0874fe957;ctx=pre:er7Jgkb2,suf:v82aBhkI;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_D9X97DWbY5b": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 14,
+        "endLine": 14
+      },
+      "mrfi": "~{v0;r=14:1-14:30;p=h1[1];fh=xxh64:JWftB0kV;hh=smh64:c4aed6d0874fe957;ctx=pre:BXSD0prd,suf:QRSLQWIP;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_7OTqiX4hETB": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 16,
+        "endLine": 16
+      },
+      "mrfi": "~{v0;r=16:1-16:28;p=h1[1]/blockquote[1];fh=xxh64:7NRQE6AP;hh=smh64:c4aed6d0874fe957;ctx=pre:R9lHFfbn,suf:rbylPaLg;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_AisxCI7k5dO": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 18,
+        "endLine": 18
+      },
+      "mrfi": "~{v0;r=18:1-18:27;p=h1[1]/ul[1]/li[1];fh=xxh64:LIO72DIU;hh=smh64:c4aed6d0874fe957;ctx=pre:2if1rf9R,suf:Kg5SaNRW;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_EhN9pVrx36q": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 20,
+        "endLine": 20
+      },
+      "mrfi": "~{v0;r=20:1-20:29;p=h1[1]/p[2];fh=xxh64:FRvDT1BP;hh=smh64:c4aed6d0874fe957;ctx=pre:EopW6hBq,suf:799YuAZi;doc=smh64:c4aed6d0874fe957}"
+    },
+    "rvw_59GtGzxpo1D": {
+      "file": "fences.md",
+      "range": {
+        "startLine": 23,
+        "endLine": 25
+      },
+      "mrfi": "~{v0;r=23:1-25:4;p=h1[1];fh=xxh64:DOWUq4Nv;hh=smh64:c4aed6d0874fe957;ctx=pre:rbylPaLg,suf:rzWtdMwJ;doc=smh64:c4aed6d0874fe957}"
+    }
+  }
+}

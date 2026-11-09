@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_JORvlA9P52J",
+      "file": "duplicates.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "context": "@me Same",
+      "suggestedAction": "reply",
+      "rawHash": "9e0812fe5d6acdf5"
+    },
+    {
+      "id": "rvw_JORvRnz6L6m",
+      "file": "duplicates.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "context": "@me Same",
+      "suggestedAction": "reply",
+      "rawHash": "9e0812fe5d6acdf5"
+    },
+    {
+      "id": "rvw_JORwNsU0YtN",
+      "file": "duplicates.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "context": "@me Same",
+      "suggestedAction": "reply",
+      "rawHash": "9e0812fe5d6acdf5"
+    },
+    {
+      "id": "rvw_JORw4WJhoxq",
+      "file": "duplicates.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same"
+      },
+      "context": "@me Same",
+      "suggestedAction": "reply",
+      "rawHash": "9e0812fe5d6acdf5"
+    },
+    {
+      "id": "rvw_5jIJLydZ880",
+      "file": "duplicates.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++same++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "48d1c7f2a4c5144b"
+    },
+    {
+      "id": "rvw_5jIJfKnrs3X",
+      "file": "duplicates.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++same++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "48d1c7f2a4c5144b"
+    },
+    {
+      "id": "rvw_8eKEfNvVPYI",
+      "file": "duplicates.md",
+      "lineStart": 11,
+      "lineEnd": 13,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same comment"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same comment"
+      },
+      "context": "@me Same comment",
+      "suggestedAction": "reply",
+      "rawHash": "b5a88ea472031d31"
+    },
+    {
+      "id": "rvw_8eKEyk5o9Tp",
+      "file": "duplicates.md",
+      "lineStart": 15,
+      "lineEnd": 17,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same comment"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same comment"
+      },
+      "context": "@me Same comment",
+      "suggestedAction": "reply",
+      "rawHash": "b5a88ea472031d31"
+    }
+  ]
+}

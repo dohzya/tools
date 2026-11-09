@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "list",
+    "--all",
+    "--subtasks",
+    "--include-blocked"
+  ],
+  "behavior": "parity"
+}

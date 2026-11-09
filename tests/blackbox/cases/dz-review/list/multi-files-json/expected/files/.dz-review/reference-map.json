@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_KHxQF0dyuqc": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:85;p=h1[1]/p[1];fh=xxh64:DEHGoxnz;hh=smh64:0aa095ba3f729f9d;ctx=pre:EoLgtInH,suf:6rocTIOA;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_E1bMT6lFKbs": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:88;p=h1[1]/p[2];fh=xxh64:CxNiJSYM;hh=smh64:0aa095ba3f729f9d;ctx=pre:qcMNA6Dg,suf:U4aOJVtL;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_3HE8yhNIC3Q": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:88;p=h1[1]/p[2];fh=xxh64:CxNiJSYM;hh=smh64:0aa095ba3f729f9d;ctx=pre:qcMNA6Dg,suf:U4aOJVtL;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_5bO2j3u711E": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:88;p=h1[1]/p[2];fh=xxh64:CxNiJSYM;hh=smh64:0aa095ba3f729f9d;ctx=pre:qcMNA6Dg,suf:U4aOJVtL;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_LxzcbGBDTUK": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:88;p=h1[1]/p[2];fh=xxh64:CxNiJSYM;hh=smh64:0aa095ba3f729f9d;ctx=pre:qcMNA6Dg,suf:U4aOJVtL;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_7ok9YjAHlS7": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:88;p=h1[1]/p[2];fh=xxh64:CxNiJSYM;hh=smh64:0aa095ba3f729f9d;ctx=pre:qcMNA6Dg,suf:U4aOJVtL;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_85i8v29MC8K": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 7,
+        "endLine": 10
+      },
+      "mrfi": "~{v0;r=7:1-10:4;p=h1[1];fh=xxh64:JjzVfxIf;hh=smh64:0aa095ba3f729f9d;ctx=pre:ytHCSrro,suf:NRXaelqh;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_B9XL0QzLulU": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 12,
+        "endLine": 12
+      },
+      "mrfi": "~{v0;r=12:1-12:42;p=h1[1]/p[3];fh=xxh64:G2lrePIT;hh=smh64:0aa095ba3f729f9d;ctx=pre:Xs1V0leU,suf:NYGJnRgR;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_GmRdXmiGFof": {
+      "file": "doc.md",
+      "range": {
+        "startLine": 15,
+        "endLine": 15
+      },
+      "mrfi": "~{v0;r=15:1-15:21;p=h1[1];fh=xxh64:7YNcrPq1;hh=smh64:0aa095ba3f729f9d;ctx=pre:rvvNR6bp,suf:vJpfHM7I;doc=smh64:0aa095ba3f729f9d}"
+    },
+    "rvw_5ECdWXomdch": {
+      "file": "other.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:55;p=h1[1]/p[1];fh=xxh64:4V91gDMu;hh=smh64:092969e300620771;ctx=pre:xICiwFXb,suf:Q6eFxehw;doc=smh64:092969e300620771}"
+    }
+  }
+}

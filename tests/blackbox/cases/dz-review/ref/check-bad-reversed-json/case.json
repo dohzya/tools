@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "bad-reversed.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

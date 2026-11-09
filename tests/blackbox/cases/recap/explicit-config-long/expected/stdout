@@ -1,0 +1,9 @@
+[
+  {
+    "id": "sub-only",
+    "lines": [
+      "from sub config"
+    ],
+    "separator": "blank_line"
+  }
+]

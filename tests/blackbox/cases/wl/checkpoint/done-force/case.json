@@ -1,0 +1,20 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "checkpoint",
+    "4q2r74",
+    "forced",
+    "yes",
+    "-f"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/4q2r74ayb7kmimtll2kc4kxsv.md"
+  ]
+}

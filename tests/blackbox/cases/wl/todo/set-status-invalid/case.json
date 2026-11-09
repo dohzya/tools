@@ -1,0 +1,18 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "set",
+    "cq3984",
+    "2j7wFc",
+    "status=bogus"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "status=<invalid> prints 'todo updated' but changes nothing (silent no-op)"
+}

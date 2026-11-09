@@ -1,0 +1,15 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "--state-dir",
+    "state-b",
+    "list",
+    "doc.md",
+    "--json"
+  ],
+  "files": [
+    "state-b/reference-map.json"
+  ],
+  "behavior": "parity"
+}

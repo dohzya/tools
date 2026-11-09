@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "tags",
+    "remove",
+    "x",
+    "zzzzzz"
+  ],
+  "behavior": "parity"
+}

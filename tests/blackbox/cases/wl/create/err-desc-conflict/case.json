@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Name",
+    "positional",
+    "--desc",
+    "flag"
+  ],
+  "behavior": "parity"
+}

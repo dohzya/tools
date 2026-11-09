@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "hangul.md",
+      "timestampFormat": "hangul",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_JndmU058FD",
+        "rvw_AWP1UZ0pGAg"
+      ],
+      "originalContent": "# Hangul\n\nA {?? @me%갚붋륇걸 Question? ??} and {++%갚붋륇걸|added++}.\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_JndmU058FD",
+      "file": "hangul.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Question?",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Question?",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Question?",
+      "suggestedAction": "reply",
+      "rawHash": "9b2e53656724e122"
+    },
+    {
+      "id": "rvw_AWP1UZ0pGAg",
+      "file": "hangul.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%<TS>|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    }
+  ]
+}

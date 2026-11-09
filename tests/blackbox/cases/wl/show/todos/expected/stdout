@@ -1,0 +1,15 @@
+id: cq3984
+full id: cq3984ojmyg5s21oujzleuats
+name: Refactor auth module
+status: created
+tags: #backend #urgent
+history:
+  created: 2020-01-12 08:30
+
+desc:
+  
+
+todos: 3
+  WlLc1B [x] write tests
+  VzXKmm [/] refactor
+  2j7wFc [ ] polish ✨ docs

@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "status",
+    "--limit",
+    "1"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,39 @@
+[
+  {
+    "id": "hello",
+    "title": "Greeting",
+    "lines": [
+      "Hello Ada"
+    ],
+    "separator": "blank_line"
+  },
+  {
+    "id": "shell",
+    "title": "Shell",
+    "lines": [
+      "a",
+      "b",
+      "... (2 more lines)"
+    ],
+    "separator": "line"
+  },
+  {
+    "id": "nothing",
+    "lines": [],
+    "separator": "blank_line"
+  },
+  {
+    "id": "with-env",
+    "lines": [
+      "foo-bar"
+    ],
+    "separator": "none"
+  },
+  {
+    "id": "in-sub",
+    "lines": [
+      "sub"
+    ],
+    "separator": "blank_line"
+  }
+]

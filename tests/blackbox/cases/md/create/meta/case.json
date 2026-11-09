@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "create",
+    "new.md",
+    "--meta",
+    "a=1",
+    "--meta",
+    "b=two"
+  ],
+  "files": [
+    "new.md"
+  ],
+  "behavior": "parity"
+}

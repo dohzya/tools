@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "outline",
+    "doc.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

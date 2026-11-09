@@ -1,0 +1,17 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": [
+    "agent",
+    "status",
+    "d.md"
+  ],
+  "files": [
+    "d.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): the session rawHash is computed on the EOL-normalized block, so converting a file between CRLF, CR and LF does not make its items look modified (Deno: every multi-line item changed). Sessions started before this change see a CRLF/CR item as modified once."
+}

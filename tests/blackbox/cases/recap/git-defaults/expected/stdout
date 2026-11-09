@@ -1,0 +1,7 @@
+main
+
+<HASH> (HEAD -> main) second commit
+<HASH> first commit
+
+ M a.txt (1+ 0-)
+?? untracked.txt (1+ 0-)

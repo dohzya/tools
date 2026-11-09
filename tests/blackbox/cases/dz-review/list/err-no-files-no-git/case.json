@@ -1,0 +1,8 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "list"
+  ],
+  "behavior": "parity"
+}

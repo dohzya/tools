@@ -1,0 +1,17 @@
+id: fin008
+full id: fin008xxxxxxxxxxxxxxxxxxx
+name: Subtask finished
+status: done
+parent: epc005  "Epic"  (started)
+history:
+  created: 2020-03-08 09:00
+  started: 2020-03-08 09:00
+
+desc:
+  
+
+last checkpoint: 2099-01-01 09:00
+  CHANGES
+    Finished
+  LEARNINGS
+    Nothing

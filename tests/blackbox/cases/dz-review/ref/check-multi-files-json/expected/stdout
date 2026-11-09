@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "missing-file",
+      "message": "missing file nope.md",
+      "reference": {
+        "end": 32,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: nope.md:1 -->",
+        "start": 9,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 1,
+              "start": 1
+            },
+            "path": "nope.md",
+            "raw": "nope.md:1"
+          }
+        ]
+      },
+      "sourceFile": "bad-missing-file.md",
+      "target": {
+        "lineRange": {
+          "end": 1,
+          "start": 1
+        },
+        "path": "nope.md",
+        "raw": "nope.md:1"
+      }
+    },
+    {
+      "kind": "stale-snapshot",
+      "message": "stale snapshot",
+      "reference": {
+        "end": 85,
+        "index": 1,
+        "lineEnd": 3,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 {&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&} -->",
+        "start": 7,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6 {&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}",
+            "snapshot": {
+              "content": "SAS : permet d'envoyer des fichiers.",
+              "label": "rBBB",
+              "raw": "{&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}"
+            }
+          }
+        ]
+      },
+      "sourceFile": "snap-stale.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6 {&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}",
+        "snapshot": {
+          "content": "SAS : permet d'envoyer des fichiers.",
+          "label": "rBBB",
+          "raw": "{&&rBBB\nSAS : permet d'envoyer des fichiers.\nrBBB&&}"
+        }
+      }
+    }
+  ]
+}

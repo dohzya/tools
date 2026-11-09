@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_Eq3GqMPDlIf",
+      "file": "unicode-nfd.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "café"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "café"
+      },
+      "context": "@me café",
+      "suggestedAction": "reply",
+      "rawHash": "45b31bbd7c2eef5b"
+    },
+    {
+      "id": "rvw_K2Nj8fs1G",
+      "file": "unicode-nfd.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "café"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "café"
+      },
+      "context": "@me café",
+      "suggestedAction": "reply",
+      "rawHash": "bf7b3520f5676786"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-import",
+  "args": [
+    "import",
+    "-p",
+    "../src/.worklog"
+  ],
+  "cwd": "dst",
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "second import of the same source: tasks are skipped/merged, nothing duplicated"
+}

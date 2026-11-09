@@ -1,0 +1,25 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "-C",
+    "services/web",
+    "create",
+    "In web",
+    "-t",
+    "2030-01-02T03:04"
+  ],
+  "ignore_changes": [
+    ".git/*",
+    "services/web/.worklog/tasks/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    "services/web/.worklog/index.json"
+  ]
+}

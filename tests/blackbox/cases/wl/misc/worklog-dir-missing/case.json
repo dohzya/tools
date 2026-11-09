@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "--worklog-dir",
+    "nowhere",
+    "list"
+  ],
+  "behavior": "parity"
+}

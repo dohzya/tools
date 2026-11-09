@@ -1,0 +1,9 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "show",
+    "4q2r74"
+  ],
+  "behavior": "parity"
+}

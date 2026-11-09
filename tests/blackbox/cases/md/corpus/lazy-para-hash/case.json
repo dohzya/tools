@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "lazy-para-hash.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

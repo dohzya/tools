@@ -1,0 +1,13 @@
+{
+  "tool": "recap",
+  "fixture": "recap-spec",
+  "args": [
+    "-C",
+    "proj",
+    "show",
+    "rel"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "recap:1",
+  "note": "relative section cwd is resolved against -C (Deno: against the process cwd)"
+}

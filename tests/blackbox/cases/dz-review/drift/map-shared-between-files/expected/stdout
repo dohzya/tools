@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_5ECdWXomdch",
+      "file": "other.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Is this correct?"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Is this correct?"
+      },
+      "context": "@agent Is this correct?",
+      "suggestedAction": "answer",
+      "rawHash": "b93bd72af55557e1"
+    }
+  ]
+}

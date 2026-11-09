@@ -1,0 +1,15 @@
+{
+  "tool": "recap",
+  "fixture": "recap-git",
+  "cwd": "..",
+  "args": [
+    "-C",
+    "work",
+    "show",
+    "git-log"
+  ],
+  "normalize": [
+    "git-hash"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,8 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "args": [
+    "--no-color"
+  ],
+  "behavior": "parity"
+}

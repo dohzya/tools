@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "real-plugins_tools_skills_rex-session_SKILL.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

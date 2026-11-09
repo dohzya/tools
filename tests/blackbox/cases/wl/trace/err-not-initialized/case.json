@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "trace",
+    "abc",
+    "x"
+  ],
+  "behavior": "parity"
+}

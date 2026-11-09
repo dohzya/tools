@@ -1,0 +1,1 @@
+export GIT_AUTHOR_DATE=2026-01-01T00:00:00Z GIT_COMMITTER_DATE=2026-01-01T00:00:00Z; git init -q . && git config user.email a@b.c && git config user.name T && git add -A && git commit -q -m init --date=2026-01-01T00:00:00Z; mkdir sub; cp other.md fresh.md; printf "\nAdded. {?? @me hi ??}\n" >> doc.md

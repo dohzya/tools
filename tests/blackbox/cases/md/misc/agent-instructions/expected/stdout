@@ -1,0 +1,12 @@
+Markdown Surgeon (`md`): Markdown inspection and section-level editing.
+- Outline a file: `md outline <file>` lists headings, section IDs, and line numbers; `--json` gives structured output.
+- Read a section: `md read <file> <selector>`; `--deep` includes subsections.
+- Replace a section: `md write <file> <selector> [content]`; omitted content is read from stdin.
+- Append content: `md append <file> [selector] [content]`.
+- Frontmatter: `md meta <file> ...` reads or updates YAML metadata.
+- Selectors can be section IDs from `md outline` or heading selectors; heading selectors can be ambiguous.
+- Find a passage: `md search <file> <pattern>` prints matching lines with their current line number and section ID.
+- Get a stable content anchor (MRFI) that survives future edits: `md ref <file> <startLine>:<startColumn>-<endLine>:<endColumn>` (e.g. `md ref notes.md 3:1-3:18`) generates a reference from a source range; use it instead of a raw `file:line` pointer in cross-file audits or notes that must stay valid after the file is edited.
+- Re-locate an MRFI reference after edits: `md resolve <file> <ref...>` prints each reference's current line/column position (or reports drift/removal) without you having to recompute line numbers by hand.
+- Compare references without a document: `md compare <A> <B>` says whether two MRFI references probably designate the same passage (verdict, scores, matching and conflicting fields); `md rank <target> <candidate...>` (or `--stdin`, one per line) orders candidates from most to least likely, to choose the order of `md resolve` attempts. Both are prefilters, not proof; `--json` is available.
+- Help: `md --help`.

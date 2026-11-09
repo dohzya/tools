@@ -1,0 +1,22 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "tags",
+    "rename",
+    "backend",
+    "core",
+    "--json"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md",
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

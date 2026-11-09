@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-purge",
+  "args": [
+    "--purge-ttl",
+    "0",
+    "list"
+  ],
+  "behavior": "parity",
+  "check_stderr": false,
+  "note": "Deno crashes with an uncaught exception (stack trace) for --purge-ttl 0; only the exit code is asserted"
+}

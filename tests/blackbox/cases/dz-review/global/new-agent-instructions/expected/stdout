@@ -1,0 +1,12 @@
+DZ Review (`critique`): Markdown review syntax scanner and helper CLI.
+- Start a review session once with `critique session start [file...]`; it records an `agent-session.json` snapshot in the configured state directory, normalizes timestamps for editing, and prints stable item IDs with suggested actions.
+- During that session, use `critique agent status [file...]` for progress checks; do not rerun `session start` just to refresh state.
+- Before handing work back, run `critique session done [file...]`; it restores each file's recorded timestamp format and reports the final handoff.
+- Rerun `session start --force [file...]` only when intentionally replacing the active snapshot.
+- For passage references, use `critique ref check [file...]` to validate links, `critique ref list [file...]` to inspect referenced passages, `critique ref show [file...]` to print source-replaceable refs with snapshots, and `critique ref snapshots [--ref <selector>] [file...]` to print only selected snapshot blocks by label, source location, or target location.
+- Reply by editing the Markdown thread: append a new `@agent` message and preserve unresolved history until human validation.
+- Conversation statuses: `handled` means a `@me` message awaits agent action; `open` means the last message is from `@agent`, awaiting human validation; `resolved` means the human approved with `ok`. Always follow the `suggested action` column from `agent status`.
+- After `agent clean --validated`, the cleaned items are recorded in the session snapshot so `session done` won't flag them as missing.
+- If a conversation was deleted outside `agent clean` (e.g. manual edit), use `session done --acknowledge <id>` to dismiss the guardrail for that item.
+- Never include `<!--` or `-->` inside a reply message; these corrupt the enclosing HTML comment block. Use plain text references instead, e.g. `(source: file:line)`.
+- Help: `critique --help`.

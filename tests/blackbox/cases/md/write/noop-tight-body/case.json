@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-spec",
+  "args": [
+    "write",
+    "tight.md",
+    "# T",
+    "body line"
+  ],
+  "files": [
+    "tight.md"
+  ],
+  "check_stdout": false,
+  "behavior": "new-spec",
+  "spec_row": "9"
+}

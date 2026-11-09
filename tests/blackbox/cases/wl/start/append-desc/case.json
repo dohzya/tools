@@ -1,0 +1,22 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "start",
+    "9n3ksy",
+    "--append-desc",
+    "extra part",
+    "--append-desc",
+    "another"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md"
+  ]
+}

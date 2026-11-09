@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "doc.md",
+      "timestampFormat": "iso",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_5SUMpHBf6V2",
+        "rvw_A3vwnqpkCkj",
+        "rvw_E96pi6gj1mh",
+        "rvw_CWUZeYggiyA",
+        "rvw_5SUN8dLxqQZ",
+        "rvw_5SUNRzWGaM6"
+      ],
+      "originalContent": "# Title\n\nThe service stores summaries. {?? @me%<TS> Please say whether sources are stored too. ??}\n\nSome {++%<TS>|added++} and {--%<TS>|removed--} and {~~%<TS>|old~>new~~}.\n\n<!--\n@agent%<TS> I chose this wording.\n@me%<TS> Can we soften it?\n-->\n\nDone thread. {?? @agent%<TS> Fixed. @me%<TS> ok ??}\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_5SUMpHBf6V2",
+      "file": "doc.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Please say whether sources are stored too.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Please say whether sources are stored too.",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Please say whether sources are stored too.",
+      "suggestedAction": "reply",
+      "rawHash": "c93ed83e4aa51eaa"
+    },
+    {
+      "id": "rvw_A3vwnqpkCkj",
+      "file": "doc.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%<TS>|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    },
+    {
+      "id": "rvw_E96pi6gj1mh",
+      "file": "doc.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "deletion",
+      "state": "annotation",
+      "context": "{--%<TS>|removed--}",
+      "suggestedAction": "review annotation",
+      "rawHash": "d3457dc71bec9235"
+    },
+    {
+      "id": "rvw_CWUZeYggiyA",
+      "file": "doc.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "substitution",
+      "state": "annotation",
+      "context": "{~~%<TS>|old~>new~~}",
+      "suggestedAction": "review annotation",
+      "rawHash": "3caff2b4ccadcf5a"
+    },
+    {
+      "id": "rvw_5SUN8dLxqQZ",
+      "file": "doc.md",
+      "lineStart": 7,
+      "lineEnd": 10,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "I chose this wording.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Can we soften it?",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> I chose this wording. @me%<TS> Can we soften it?",
+      "suggestedAction": "reply",
+      "rawHash": "457fd8992602e303"
+    },
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Fixed.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> Fixed. @me%<TS> ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "a5ef8e06fc8d56b4"
+    }
+  ]
+}

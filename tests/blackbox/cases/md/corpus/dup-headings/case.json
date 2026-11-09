@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "dup-headings.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

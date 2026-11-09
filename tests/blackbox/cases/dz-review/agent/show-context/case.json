@@ -1,0 +1,12 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "show",
+    "5SUMpH",
+    "-c",
+    "2:2"
+  ],
+  "behavior": "parity"
+}

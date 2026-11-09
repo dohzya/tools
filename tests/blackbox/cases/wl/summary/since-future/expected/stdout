@@ -1,0 +1,25 @@
+# 9n3ksypyyujvxajl4o1djfk67: Users can't log in with **SSO**.
+Second paragraph with unicode: café ☕ (started)
+
+## Checkpoints
+### 2020-01-20 10:00
+Changes:
+  Root cause: UTC vs local time. Fix: compare in UTC.
+Learnings:
+  Always store timestamps in UTC.
+
+---
+
+# 4gsf0bco0o68h9xspa2ux4v52: Part one of the description
+
+---
+
+Part two (ready)
+
+---
+
+# cq3984ojmyg5s21oujzleuats:  (created)
+
+---
+
+# 7natz8duzlrdundln184ylct7:  (started)

@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "doc.md",
+    "c0c42456",
+    "--json"
+  ],
+  "behavior": "parity"
+}
