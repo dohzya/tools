@@ -97,3 +97,31 @@ impl<'de, V: Deserialize<'de>> Deserialize<'de> for OrderedMap<V> {
         d.deserialize_map(Vis(std::marker::PhantomData))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_keeps_position_and_remove_works() {
+        let mut m = OrderedMap::new();
+        m.insert("b", 1);
+        m.insert("a", 2);
+        m.insert("b", 3);
+        assert_eq!(m.keys().cloned().collect::<Vec<_>>(), ["b", "a"]);
+        assert_eq!(m.get("b"), Some(&3));
+        assert_eq!(m.remove("b"), Some(3));
+        assert_eq!(m.len(), 1);
+        assert!(!m.contains_key("b"));
+    }
+
+    #[test]
+    fn serializes_as_a_map_in_order() {
+        let mut m = OrderedMap::new();
+        m.insert("z", "1".to_string());
+        m.insert("a", "2".to_string());
+        assert_eq!(serde_json::to_string(&m).unwrap(), r#"{"z":"1","a":"2"}"#);
+        let back: OrderedMap<String> = serde_json::from_str(r#"{"z":"1","a":"2"}"#).unwrap();
+        assert_eq!(back, m);
+    }
+}

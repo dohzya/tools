@@ -12,7 +12,7 @@
     "now-short",
     "wl-newid"
   ],
-  "behavior": "parity",
+  "behavior": "new-spec",
   "files": [
     "src/.worklog/index.json",
     "src/.worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md",
@@ -22,5 +22,7 @@
     "src/.worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md",
     "src/.worklog/tasks/cq3984ojmyg5s21oujzleuats.md",
     "src/.worklog/tasks/derbkvh9va8oh421qd5i6duom.md"
-  ]
+  ],
+  "spec_row": "worklog.md D10",
+  "note": "import and scopes assign copy the whole index entry of the source (tags, links, parent, timestamps); the Deno version kept only name, desc, status and dates."
 }

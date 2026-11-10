@@ -6,8 +6,10 @@
     "cq3984",
     "--json"
   ],
-  "behavior": "parity",
+  "behavior": "new-spec",
   "files": [
     ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
-  ]
+  ],
+  "spec_row": "worklog.md D9",
+  "note": "Reading the metadata of a task does not rewrite its file (the Deno version added metadata: {})."
 }

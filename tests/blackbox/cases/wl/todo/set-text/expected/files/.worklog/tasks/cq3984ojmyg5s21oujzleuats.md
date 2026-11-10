@@ -24,4 +24,4 @@ tags:
 - [/] refactor  [id:: VzXKmmB] ^VzXKmmB
 
 
-- [ ] polish ✨ docs  [id:: 2j7wFcm] [text:: renamed] ^2j7wFcm
+- [ ] renamed  [id:: 2j7wFcm] ^2j7wFcm

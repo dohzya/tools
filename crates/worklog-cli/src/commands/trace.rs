@@ -290,7 +290,7 @@ fn show_resolved(
         task.todos.clone()
     };
     let wl = ctx.wl_path();
-    let tags = effective_tags(ctx, &task.tags(), &wl, git_root);
+    let tags = effective_tags(ctx, &task.tags(), &wl, git_root, false);
     let parent = task.parent().and_then(|p| {
         let e = summary_entry(&index, &p)?;
         Some(ParentRef {

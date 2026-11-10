@@ -262,6 +262,13 @@ impl Env for SystemEnv {
         Some(line.trim_end_matches(['\n', '\r']).to_string())
     }
 
+    fn select(&self, prompt: &str, options: &[String]) -> Option<usize> {
+        inquire::Select::new(prompt, options.to_vec())
+            .raw_prompt()
+            .ok()
+            .map(|o| o.index)
+    }
+
     fn uuid(&self) -> String {
         let mut b = random_bytes::<16>();
         b[6] = (b[6] & 0x0f) | 0x40;

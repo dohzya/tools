@@ -760,8 +760,9 @@ pub fn add_todo(content: &str, text: &str, id: &str, metadata: &[(String, String
     }
 }
 
-/// Rewrites the todo line holding `^id`: sets the status and the `[key:: v]`
-/// fields. Returns the new content.
+/// Rewrites the todo line holding `^id`: sets the status, renames the todo
+/// for the key `text`, and sets the other `[key:: v]` fields. Returns the new
+/// content.
 pub fn update_todo_line(
     content: &str,
     id: &str,
@@ -799,7 +800,18 @@ pub fn update_todo_line(
             marker = s.marker();
         }
         for (key, value) in fields {
-            if let Some((start, end)) = find_field(&rest, key) {
+            if key == "text" {
+                // The text ends where the first field or the block reference
+                // starts; the separator after it is kept.
+                let end = metadata_matches(&rest)
+                    .first()
+                    .map(|m| m.2)
+                    .or_else(|| block_ref_start(&rest))
+                    .unwrap_or(rest.len());
+                let old = &rest[..end];
+                let trailing = &old[old.trim_end().len()..];
+                rest = format!("{value}{trailing}{}", &rest[end..]);
+            } else if let Some((start, end)) = find_field(&rest, key) {
                 rest = format!("{}[{key}:: {value}]{}", &rest[..start], &rest[end..]);
             } else if let Some(pos) = block_ref_start(&rest) {
                 rest = format!("{} [{key}:: {value}]{}", &rest[..pos], &rest[pos..]);
@@ -978,6 +990,24 @@ last_checkpoint: null\nhas_uncheckpointed_entries: false\n---\n\n# Entries\n\n\
             t.todos[2].metadata.get("due").map(String::as_str),
             Some("now")
         );
+    }
+
+    #[test]
+    fn todo_text_key_renames_the_todo() {
+        let out = update_todo_line(
+            TASK,
+            "Ab12CdE",
+            None,
+            &[("text".into(), "better name".into())],
+        );
+        let t = parse_task_file(&out).unwrap();
+        assert_eq!(t.todos[0].text, "better name");
+        assert_eq!(
+            t.todos[0].metadata.get("due").map(String::as_str),
+            Some("soon")
+        );
+        assert!(t.todos[0].metadata.get("text").is_none());
+        assert_eq!(t.todos[0].id, "Ab12CdE");
     }
 
     #[test]

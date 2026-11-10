@@ -79,6 +79,9 @@ pub trait Env: Send + Sync {
     fn read_stdin(&self) -> Result<String, String>;
     /// Reads one line of stdin (without the line ending).
     fn read_line(&self) -> Option<String>;
+    /// Asks the user to pick one of `options` (fuzzy filter while typing,
+    /// arrows, enter). `None` when cancelled or not possible.
+    fn select(&self, prompt: &str, options: &[String]) -> Option<usize>;
     /// A random UUID v4.
     fn uuid(&self) -> String;
     /// A random 7-char base62 id.

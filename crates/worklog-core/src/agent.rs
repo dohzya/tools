@@ -480,3 +480,72 @@ Cheap Learnings check: review the finding and learning traces as the highest-sig
     ));
     sections.join("\n\n")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_the_agent_from_the_environment() {
+        let env = |pairs: &'static [(&'static str, &'static str)]| {
+            move |k: &str| {
+                pairs
+                    .iter()
+                    .find(|(n, _)| *n == k)
+                    .map(|(_, v)| v.to_string())
+            }
+        };
+        assert_eq!(
+            detect_agent_type(&env(&[("CLAUDECODE", "1")])),
+            Some(AgentType::Claude)
+        );
+        assert_eq!(
+            detect_agent_type(&env(&[("AGENT", "codex")])),
+            Some(AgentType::Codex)
+        );
+        assert_eq!(detect_agent_type(&env(&[("AGENT", "other")])), None);
+    }
+
+    #[test]
+    fn claude_subcommands_get_no_system_prompt() {
+        let cmd = interactive_cmd(AgentType::Claude, "P", &["agents".into()], None);
+        assert_eq!(cmd, ["claude", "agents"]);
+    }
+
+    #[test]
+    fn codex_developer_instructions_are_extended_not_duplicated() {
+        let args = vec![
+            "-c".to_string(),
+            "developer_instructions='mine'".to_string(),
+            "-m".into(),
+            "x".into(),
+        ];
+        let cmd = interactive_cmd(AgentType::Codex, "P", &args, Some("config file"));
+        assert_eq!(cmd[..3], ["codex", "-m", "x"]);
+        assert_eq!(cmd[3], "-c");
+        assert_eq!(cmd[4], "developer_instructions=\"mine\\n\\n---\\n\\nP\"");
+    }
+
+    #[test]
+    fn codex_config_toml_is_read_at_the_top_level_only() {
+        assert_eq!(
+            parse_developer_instructions("model = 'x'\ndeveloper_instructions = \"hi # no\" # c\n")
+                .as_deref(),
+            Some("hi # no")
+        );
+        assert_eq!(
+            parse_developer_instructions("developer_instructions = '''\nline1\nline2'''\n")
+                .as_deref(),
+            Some("line1\nline2")
+        );
+        assert_eq!(
+            parse_developer_instructions("[profile]\ndeveloper_instructions = 'x'\n"),
+            None
+        );
+        assert_eq!(
+            codex_profile(&["-p".into(), "work".into()]).as_deref(),
+            Some("work")
+        );
+        assert_eq!(codex_profile(&["--profile=a".into()]).as_deref(), Some("a"));
+    }
+}

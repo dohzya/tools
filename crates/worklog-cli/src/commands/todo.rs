@@ -98,6 +98,17 @@ pub fn next_todo(ctx: &mut Ctx, task_id: Option<&str>) -> Res<Option<Todo>> {
 
 /// `UpdateTodoUseCase`
 pub fn set_todo(ctx: &mut Ctx, todo_id: &str, updates: &[(String, String)]) -> Res<StatusOutput> {
+    if let Some((_, v)) = updates.iter().find(|(k, _)| k == "status")
+        && !v.is_empty()
+        && TodoStatus::parse(v).is_none()
+    {
+        return fail(
+            Code::InvalidArgs,
+            format!(
+                "Invalid todo status: {v}. Must be one of: todo, wip, blocked, cancelled, done"
+            ),
+        );
+    }
     ctx.purge()?;
     let index = ctx.load_index()?;
     let mut found: Vec<(String, String, String)> = Vec::new();
@@ -263,7 +274,7 @@ pub fn manage_tags(
     let task = taskfile::parse_task_file(&content).map_err(crate::ctx::Fail::Wt)?;
     if add.is_empty() && remove.is_empty() {
         let wl = crate::path::join(cwd, &ctx.wl_dir);
-        let tags = effective_tags(ctx, &task.tags(), &wl, git_root);
+        let tags = effective_tags(ctx, &task.tags(), &wl, git_root, true);
         return Ok(TagsOutput {
             tags: Some(tags),
             all_tags: None,

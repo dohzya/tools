@@ -236,3 +236,37 @@ pub struct TaskLink {
     /// Full id of the other task.
     pub task: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn names_roundtrip() {
+        for s in TaskStatus::ALL {
+            assert_eq!(TaskStatus::parse(s.as_str()), Some(s));
+        }
+        for k in TraceKind::ALL {
+            assert_eq!(TraceKind::parse(k.as_str()), Some(k));
+        }
+        assert_eq!(TaskStatus::parse("active"), None);
+        assert!(TaskStatus::Cancelled.is_closed() && !TaskStatus::Started.is_closed());
+    }
+
+    #[test]
+    fn todo_markers_and_link_reciprocals() {
+        for s in [
+            TodoStatus::Todo,
+            TodoStatus::Wip,
+            TodoStatus::Blocked,
+            TodoStatus::Cancelled,
+            TodoStatus::Done,
+        ] {
+            assert_eq!(TodoStatus::from_marker(s.marker()), s);
+        }
+        assert_eq!(TodoStatus::from_marker('?'), TodoStatus::Todo);
+        assert_eq!(LinkType::DependsOn.reciprocal(), LinkType::Blocks);
+        assert_eq!(LinkType::Related.reciprocal(), LinkType::Related);
+        assert_eq!(LinkType::parse("depends_on"), Some(LinkType::DependsOn));
+    }
+}

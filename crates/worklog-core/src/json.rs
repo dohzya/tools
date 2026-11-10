@@ -189,3 +189,38 @@ impl<'de> Deserialize<'de> for J {
         d.deserialize_any(Vis)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn objects_keep_key_order_through_a_roundtrip() {
+        let text = r#"{"z":1,"a":{"y":[1,2],"b":null},"m":"x"}"#;
+        assert_eq!(J::parse(text).unwrap().to_compact(), text);
+    }
+
+    #[test]
+    fn pretty_printing_matches_json_stringify_with_two_spaces() {
+        let j = J::parse(r#"{"a":[],"b":{},"c":[1,"x"]}"#).unwrap();
+        assert_eq!(
+            j.to_pretty(),
+            "{\n  \"a\": [],\n  \"b\": {},\n  \"c\": [\n    1,\n    \"x\"\n  ]\n}"
+        );
+    }
+
+    #[test]
+    fn set_replaces_in_place_appends_and_removes() {
+        let mut j = J::parse(r#"{"a":1,"b":2}"#).unwrap();
+        j.set("a", Some(J::int(9)));
+        j.set("c", Some(J::int(3)));
+        j.set("b", None);
+        assert_eq!(j.to_compact(), r#"{"a":9,"c":3}"#);
+    }
+
+    #[test]
+    fn duplicate_keys_keep_the_first_position() {
+        let j = J::parse(r#"{"a":1,"b":2,"a":3}"#).unwrap();
+        assert_eq!(j.to_compact(), r#"{"a":3,"b":2}"#);
+    }
+}

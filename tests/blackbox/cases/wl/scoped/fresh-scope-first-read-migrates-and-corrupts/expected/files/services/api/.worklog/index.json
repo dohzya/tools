@@ -10,7 +10,10 @@
       "status": "ready",
       "created": "2020-01-11T10:00:00+01:00",
       "status_updated_at": "2020-01-11T10:00:00+01:00",
-      "done_at": null
+      "done_at": null,
+      "tags": [
+        "docs"
+      ]
     }
   }
 }

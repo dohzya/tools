@@ -29,5 +29,5 @@ fn worklog_black_box_suite() {
     let passed = stdout.lines().filter(|l| l.starts_with("PASS")).count();
     assert!(failures.is_empty(), "failing cases: {failures:#?}");
     // Guards against a runner that silently runs nothing.
-    assert!(passed >= 521, "only {passed} cases passed:\n{stdout}");
+    assert!(passed >= 524, "only {passed} cases passed:\n{stdout}");
 }

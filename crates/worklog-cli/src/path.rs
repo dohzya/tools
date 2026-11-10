@@ -88,7 +88,7 @@ pub fn normalize(p: &str) -> String {
 /// `resolveRelativePath`: like [`resolve`] but always rooted at `/` for
 /// relative inputs, dropping a leading `..` that has nothing to climb.
 pub fn resolve_relative(base: &str, relative: &str) -> String {
-    if relative.starts_with('/') {
+    if is_absolute(relative) {
         return relative.to_string();
     }
     let mut parts: Vec<&str> = base.split('/').filter(|p| !p.is_empty()).collect();
@@ -133,5 +133,8 @@ mod tests {
         assert_eq!(relative_path("/r", "/r"), ".");
         assert_eq!(resolve_relative("/r/a", "../b"), "/r/b");
         assert!(is_absolute("C:/x"));
+        assert!(is_absolute("C:"));
+        assert!(!is_absolute("CC:/x"));
+        assert!(!is_absolute("rel/C:/x"));
     }
 }

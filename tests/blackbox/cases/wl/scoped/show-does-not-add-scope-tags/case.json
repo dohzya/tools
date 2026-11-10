@@ -1,0 +1,16 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "ignore_changes": [
+    ".git/*",
+    ".worklog/*",
+    "services/*"
+  ],
+  "behavior": "new-spec",
+  "args": [
+    "show",
+    "4gsf0b"
+  ],
+  "spec_row": "worklog.md D14",
+  "note": "The scope entry of api carries the tag team: show prints only the own tags of the task (the scope is already displayed by list; tags of a scope are not copied into its tasks)."
+}

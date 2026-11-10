@@ -792,3 +792,95 @@ pub fn format_import(o: &ImportOutput) -> String {
     }
     lines.join("\n")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::TaskLink;
+
+    struct UtcClock;
+    impl crate::time::Clock for UtcClock {
+        fn now_ms(&self) -> i64 {
+            0
+        }
+        fn local_offset_minutes(&self, _: i64) -> i32 {
+            0
+        }
+    }
+
+    fn item(id: &str, name: &str, created: &str) -> ListTaskItem {
+        ListTaskItem {
+            id: id.into(),
+            name: name.into(),
+            desc: String::new(),
+            desc_parts: vec![],
+            status: "started".into(),
+            created: created.into(),
+            scope_prefix: None,
+            tags: None,
+            links: None,
+            filter_pattern: None,
+            source_worklog_path: None,
+            parent: None,
+        }
+    }
+
+    #[test]
+    fn list_sorts_newest_first_and_hides_the_filter_tag() {
+        let mut a = item("aaaaaaaaaa", "Old", "2020-01-01 10:00");
+        a.tags = Some(vec!["foo".into(), "bar".into()]);
+        a.filter_pattern = Some("foo".into());
+        a.links = Some(vec![TaskLink {
+            kind: crate::types::LinkType::Blocks,
+            task: "bbbbbbbbbb".into(),
+        }]);
+        let b = item("bbbbbbbbbb", "New", "2021-01-01 10:00");
+        let out = ListOutput {
+            child_worklog: None,
+            tasks: vec![a, b],
+        };
+        let text = format_list(&out, false, &Palette::new(false), true, &UtcClock);
+        assert_eq!(
+            text,
+            "bbbbbb  started  \"New\"  2021-01-01 10:00\n#bar  aaaaaa  started  \"Old\"  2020-01-01 10:00  blk:bbbbbb"
+        );
+    }
+
+    #[test]
+    fn empty_list_messages() {
+        let out = ListOutput::default();
+        let p = Palette::new(false);
+        assert_eq!(
+            format_list(&out, false, &p, true, &UtcClock),
+            "no active tasks"
+        );
+        assert_eq!(format_list(&out, true, &p, true, &UtcClock), "no tasks");
+    }
+
+    #[test]
+    fn palette_wraps_in_24_bit_ansi_only_when_on() {
+        assert_eq!(Palette::new(false).status("done"), "done");
+        assert_eq!(
+            Palette::new(true).status("done"),
+            "\u{1b}[38;2;64;160;43mdone\u{1b}[39m"
+        );
+        assert_eq!(Palette::new(true).status("weird"), "weird");
+    }
+
+    #[test]
+    fn scopes_and_meta_text() {
+        let o = ScopesOutput {
+            scopes: vec![ScopeLine {
+                id: "api".into(),
+                path: "services/api/.worklog/".into(),
+                is_active: true,
+            }],
+        };
+        assert_eq!(
+            format_scopes(&o),
+            "Scopes:\n  api             services/api/.worklog/  [active]"
+        );
+        assert_eq!(format_meta(&[]), "(no metadata)");
+        assert_eq!(format_meta(&[("k".into(), "v".into())]), "k: v");
+    }
+}

@@ -13,9 +13,10 @@
     "now-short",
     "wl-newid"
   ],
-  "behavior": "parity",
-  "note": "text=... does not rename the todo: it is stored as a [text:: ...] inline field",
+  "behavior": "new-spec",
+  "note": "todo set text=.. renames the todo (the Deno version stored a [text:: ..] field).",
   "files": [
     ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
-  ]
+  ],
+  "spec_row": "worklog.md D11"
 }

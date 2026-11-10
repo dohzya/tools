@@ -13,8 +13,8 @@
     "now-short",
     "wl-newid"
   ],
-  "behavior": "parity",
-  "note": "import initializes the destination worklog implicitly",
+  "behavior": "new-spec",
+  "note": "import and scopes assign copy the whole index entry of the source (tags, links, parent, timestamps); the Deno version kept only name, desc, status and dates.",
   "files": [
     "fresh/.worklog/index.json",
     "fresh/.worklog/tasks/api001xxxxxxxxxxxxxxxxxxx.md",
@@ -25,5 +25,6 @@
     "fresh/.worklog/tasks/run006xxxxxxxxxxxxxxxxxxx.md",
     "fresh/.worklog/tasks/sch002xxxxxxxxxxxxxxxxxxx.md",
     "fresh/.worklog/tasks/wai007xxxxxxxxxxxxxxxxxxx.md"
-  ]
+  ],
+  "spec_row": "worklog.md D10"
 }

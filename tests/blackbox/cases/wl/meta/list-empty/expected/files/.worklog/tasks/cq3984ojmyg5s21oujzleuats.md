@@ -13,7 +13,6 @@ has_uncheckpointed_entries: false
 tags:
   - backend
   - urgent
-metadata: {}
 ---
 
 # Entries

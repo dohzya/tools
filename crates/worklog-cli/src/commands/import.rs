@@ -205,22 +205,10 @@ pub fn import_tasks(ctx: &mut Ctx, source_arg: &str, remove_source: bool) -> Res
                 source_content.clone()
             };
             ctx.save_task_content(&target_id, &content)?;
-            let src = source_index.raw(&source_id).cloned().unwrap_or_else(J::obj);
-            let mut entry: Vec<(String, J)> = Vec::new();
-            for key in [
-                "name",
-                "desc",
-                "status",
-                "created",
-                "status_updated_at",
-                "done_at",
-            ] {
-                if let Some(v) = src.get(key) {
-                    entry.push((key.to_string(), v.clone()));
-                }
-            }
+            // The whole source entry: tags, links, parent and timestamps too.
+            let entry = source_index.raw(&source_id).cloned().unwrap_or_else(J::obj);
             dest_index = ctx.load_index()?;
-            dest_index.put(&target_id, J::Obj(entry));
+            dest_index.put(&target_id, entry);
             ctx.save_index(&dest_index)?;
             results.push(ImportTaskResult {
                 id: target_id.clone(),

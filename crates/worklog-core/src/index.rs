@@ -306,3 +306,74 @@ pub fn matches_tag_pattern(pattern: &str, tag: &str) -> bool {
             .strip_prefix(pattern)
             .is_some_and(|r| r.starts_with('/'))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const INDEX: &str = r#"{"version":2,"tasks":{"aaaaa1":{"name":"A","desc":"old","status":"started","created":"2020-01-01T10:00:00+01:00","status_updated_at":"x","done_at":null,"tags":["t/u"]},"aaaaa2":{"name":"B","desc":[],"status":"done","created":"c","status_updated_at":"s"}}}"#;
+
+    #[test]
+    fn parse_normalizes_desc_and_exposes_typed_entries() {
+        let idx = Index::parse(INDEX, true).unwrap();
+        assert_eq!(idx.version(), 2);
+        let a = idx.entry("aaaaa1").unwrap();
+        assert_eq!(a.desc, vec!["old"]);
+        assert_eq!(a.status, Some(TaskStatus::Started));
+        assert_eq!(a.tags, vec!["t/u"]);
+        assert_eq!(idx.ids(), ["aaaaa1", "aaaaa2"]);
+    }
+
+    #[test]
+    fn update_and_remove_keep_other_keys_in_place() {
+        let mut idx = Index::parse(INDEX, false).unwrap();
+        assert!(idx.update(
+            "aaaaa1",
+            vec![("status", Some(J::str("done"))), ("tags", None)]
+        ));
+        assert!(!idx.update("nope", vec![]));
+        assert!(idx.remove("aaaaa2"));
+        assert_eq!(
+            idx.to_text().replace(['\n', ' '], ""),
+            r#"{"version":2,"tasks":{"aaaaa1":{"name":"A","desc":"old","status":"done","created":"2020-01-01T10:00:00+01:00","status_updated_at":"x","done_at":null}}}"#
+        );
+    }
+
+    #[test]
+    fn short_ids_need_five_chars_and_a_margin() {
+        let all = vec![
+            "abcdefghij".to_string(),
+            "abcdxyz".to_string(),
+            "zzzzzzzzzz".to_string(),
+        ];
+        assert_eq!(short_id("zzzzzzzzzz", &all), "zzzzzz");
+        assert_eq!(short_id("abcdefghij", &all), "abcdef");
+        assert_eq!(short_id("abc", &["abc".to_string()]), "abc");
+    }
+
+    #[test]
+    fn tags_are_validated_and_matched_hierarchically() {
+        assert_eq!(validate_tag(""), Some("Tag cannot be empty"));
+        assert_eq!(validate_tag("a b"), Some("Tag cannot contain whitespace"));
+        assert_eq!(validate_tag("/a"), Some("Tag cannot start or end with /"));
+        assert_eq!(
+            validate_tag("a//b"),
+            Some("Tag cannot contain consecutive slashes")
+        );
+        assert!(validate_tag("é").is_some());
+        assert_eq!(validate_tag("feat/auth-2_x"), None);
+        assert!(matches_tag_pattern("feat", "feat/auth"));
+        assert!(matches_tag_pattern("feat", "feat"));
+        assert!(!matches_tag_pattern("feat", "feature"));
+        assert!(!matches_tag_pattern("feat/auth", "feat"));
+    }
+
+    #[test]
+    fn format_short_cuts_the_iso_timestamp() {
+        assert_eq!(
+            format_short("2020-01-21T09:00:00+01:00"),
+            "2020-01-21 09:00"
+        );
+        assert_eq!(format_short("2020-01-21 09:00"), "2020-01-21 09:00");
+    }
+}

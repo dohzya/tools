@@ -523,13 +523,16 @@ pub fn update_meta(
         }
         metadata.insert(k, v.to_string());
     }
-    let meta_value = Value::Map(
-        metadata
-            .iter()
-            .map(|(k, v)| (k.clone(), Value::str(v.clone())))
-            .collect(),
-    );
-    status_updates(ctx, id, vec![("metadata", Some(meta_value))])?;
+    // Reading must not rewrite the file (the TS tool added `metadata: {}`).
+    if metadata != task.metadata() {
+        let meta_value = Value::Map(
+            metadata
+                .iter()
+                .map(|(k, v)| (k.clone(), Value::str(v.clone())))
+                .collect(),
+        );
+        status_updates(ctx, id, vec![("metadata", Some(meta_value))])?;
+    }
     Ok(MetaOutput { metadata })
 }
 

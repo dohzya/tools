@@ -1,7 +1,7 @@
 //! `list`, the dashboard, `summary` and the interactive task picker.
 
 use crate::ctx::{Ctx, Res, fail};
-use crate::path::{join, resolve};
+use crate::path::{is_absolute, join, resolve};
 use crate::resolve::resolve_across_scopes;
 use crate::scope::{
     children_of, discover_scopes, entry_id, entry_path, is_child_worklog, load_scope_config,
@@ -296,7 +296,7 @@ pub fn resolve_scope_identifier_list(ctx: &Ctx, identifier: &str, git_root: &str
             .collect();
         if matches.len() == 1 {
             let p = entry_path(&matches[0]);
-            return Ok(if p.starts_with('/') {
+            return Ok(if is_absolute(&p) {
                 format!("{p}/{}", ctx.wl_dir)
             } else {
                 format!("{git_root}/{p}/{}", ctx.wl_dir)
@@ -350,58 +350,87 @@ fn find_by_tag(ctx: &Ctx, pattern: &str, root: &str) -> Vec<Tagged> {
     out
 }
 
+/// Worklogs of the scopes designated by `pattern`: the scope with this path or
+/// id, and the scopes whose entry in the root `scope.json` carries this tag.
+fn scopes_for_pattern(ctx: &Ctx, pattern: &str, root: &str) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    if let Ok(wl) = resolve_scope_identifier_list(ctx, pattern, root) {
+        out.push(wl);
+    }
+    if let Some(cfg) = load_scope_config(ctx, &join(root, &ctx.wl_dir)) {
+        for child in children_of(&cfg) {
+            let tagged = matches!(child.get("tags"), Some(J::Arr(ts))
+                if ts.iter().filter_map(J::as_str).any(|t| matches_tag_pattern(pattern, t)));
+            if tagged {
+                let p = entry_path(&child);
+                let wl = if is_absolute(&p) {
+                    format!("{p}/{}", ctx.wl_dir)
+                } else {
+                    format!("{root}/{p}/{}", ctx.wl_dir)
+                };
+                if !out.contains(&wl) {
+                    out.push(wl);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// `list <pattern>`: the tasks carrying the tag, plus the tasks of the scope
+/// named or tagged by the pattern.
 fn filter_by_tag_or_scope(ctx: &mut Ctx, f: &Filter, pattern: &str, root: &str) -> Res<ListOutput> {
     let tagged = find_by_tag(ctx, pattern, root);
-    if !tagged.is_empty() {
-        let tasks = tagged
-            .iter()
-            .filter(|t| f.match_status(t.task.status))
-            .filter(|t| f.include(&t.task, t.parent_status, &t.index_tasks, None))
-            .map(|t| {
-                let mut it = item(&t.id, &t.task, f);
-                it.filter_pattern = Some(pattern.to_string());
-                it
-            })
-            .collect();
-        return Ok(ListOutput {
-            child_worklog: None,
-            tasks,
-        });
+    let scope_wls = scopes_for_pattern(ctx, pattern, root);
+    let mut seen: Vec<(String, String)> = Vec::new();
+    let mut tasks: Vec<ListTaskItem> = Vec::new();
+    for t in &tagged {
+        if f.match_status(t.task.status)
+            && f.include(&t.task, t.parent_status, &t.index_tasks, None)
+        {
+            let mut it = item(&t.id, &t.task, f);
+            it.filter_pattern = Some(pattern.to_string());
+            seen.push((t.scope_path.clone(), t.id.clone()));
+            tasks.push(it);
+        }
     }
-    if let Ok(wl) = resolve_scope_identifier_list(ctx, pattern, root)
-        && let Ok(Some(text)) = ctx.ports.fs.read_to_string(&join(&wl, "index.json"))
-        && let Ok(index) = Index::parse(&text, false)
-    {
-        let tasks = index.entries();
-        let items = sorted(&tasks)
-            .into_iter()
-            .filter(|(_, e)| f.match_status(e.status))
-            .filter(|(_, e)| {
-                f.include(
-                    e,
-                    e.parent
-                        .as_ref()
-                        .and_then(|p| index.entry(p))
-                        .and_then(|p| p.status),
-                    &tasks,
-                    None,
-                )
-            })
-            .map(|(id, e)| {
+    let mut scope_found = false;
+    for wl in &scope_wls {
+        let Ok(Some(text)) = ctx.ports.fs.read_to_string(&join(wl, "index.json")) else {
+            continue;
+        };
+        let Ok(index) = Index::parse(&text, false) else {
+            continue;
+        };
+        scope_found = true;
+        let all = index.entries();
+        for (id, e) in sorted(&all) {
+            let ps = e
+                .parent
+                .as_ref()
+                .and_then(|p| index.entry(p))
+                .and_then(|p| p.status);
+            if f.match_status(e.status)
+                && f.include(&e, ps, &all, None)
+                && !seen.contains(&(wl.clone(), id.clone()))
+            {
                 let mut it = item(&id, &e, f);
                 it.filter_pattern = Some(pattern.to_string());
-                it
-            })
-            .collect();
-        return Ok(ListOutput {
-            child_worklog: None,
-            tasks: items,
-        });
+                seen.push((wl.clone(), id));
+                tasks.push(it);
+            }
+        }
     }
-    fail(
-        Code::TaskNotFound,
-        format!("No tag or scope matching: {pattern}"),
-    )
+    if tagged.is_empty() && !scope_found {
+        return fail(
+            Code::TaskNotFound,
+            format!("No tag or scope matching: {pattern}"),
+        );
+    }
+    Ok(ListOutput {
+        child_worklog: None,
+        tasks,
+    })
 }
 
 fn norm_trailing(p: &str) -> String {
@@ -420,7 +449,7 @@ fn child_scope_id(ctx: &Ctx, child_wl: &str, root: &str) -> String {
         let nc = norm_trailing(&child_dir);
         for c in children_of(&cfg) {
             let p = entry_path(&c);
-            let entry_dir = if p.starts_with('/') {
+            let entry_dir = if is_absolute(&p) {
                 p
             } else {
                 crate::path::resolve_relative(&parent_dir, &p)
@@ -544,7 +573,7 @@ fn list_current_scope(ctx: &mut Ctx, f: &Filter, current: &str, root: &str) -> R
     if let Some(cfg) = load_scope_config(ctx, current) {
         for child in children_of(&cfg) {
             let p = entry_path(&child);
-            let cwl = if p.starts_with('/') {
+            let cwl = if is_absolute(&p) {
                 format!("{p}/{}", ctx.wl_dir)
             } else {
                 format!("{root}/{p}/{}", ctx.wl_dir)
@@ -821,35 +850,29 @@ pub fn select_task_interactively(ctx: &mut Ctx, git_root: Option<&str>) -> Res<S
         None => t.id.clone(),
     };
     let targets: Vec<String> = tasks.iter().map(|t| target(t)).collect();
-    ctx.eprintln("Select task");
-    for (i, t) in tasks.iter().enumerate() {
-        let tags = if t.tags.as_ref().is_some_and(|t| !t.is_empty()) {
+    let labels: Vec<String> = tasks
+        .iter()
+        .enumerate()
+        .map(|(i, t)| {
+            let tags = if t.tags.as_ref().is_some_and(|t| !t.is_empty()) {
+                format!(
+                    " #{}",
+                    t.tags.as_ref().map(|t| t.join(" #")).unwrap_or_default()
+                )
+            } else {
+                String::new()
+            };
             format!(
-                " #{}",
-                t.tags.as_ref().map(|t| t.join(" #")).unwrap_or_default()
+                "{} [{}] {}{tags}",
+                short_id(&targets[i], &targets),
+                t.status,
+                t.name
             )
-        } else {
-            String::new()
-        };
-        let line = format!(
-            "{}) {} [{}] {}{tags}",
-            i + 1,
-            short_id(&targets[i], &targets),
-            t.status,
-            t.name
-        );
-        ctx.eprintln(&line);
-    }
-    let chosen = loop {
-        ctx.eprintln("Number: ");
-        let Some(line) = ctx.ports.env.read_line() else {
-            return fail(Code::InvalidArgs, "No task selected");
-        };
-        if let Ok(n) = line.trim().parse::<usize>()
-            && (1..=targets.len()).contains(&n)
-        {
-            break targets[n - 1].clone();
-        }
+        })
+        .collect();
+    let Some(index) = ctx.ports.env.select("Select task", &labels) else {
+        return fail(Code::InvalidArgs, "No task selected");
     };
+    let chosen = targets[index].clone();
     resolve_across_scopes(ctx, &chosen, git_root)
 }

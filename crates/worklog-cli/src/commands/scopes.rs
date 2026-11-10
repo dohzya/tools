@@ -3,7 +3,7 @@
 
 use super::list::resolve_scope_identifier_list;
 use crate::ctx::{Ctx, Res, fail};
-use crate::path::{basename, join, relative_path};
+use crate::path::{basename, is_absolute, join, relative_path};
 use crate::scope::*;
 use worklog_core::error::Code;
 use worklog_core::index::{Index, matches_tag_pattern, prefix_matches, validate_tag};
@@ -262,7 +262,7 @@ pub fn add(
         git_ref_used = Some(gr);
     } else {
         effective_path = path.unwrap_or(scope_id_arg).to_string();
-        target_dir = if effective_path.starts_with('/') {
+        target_dir = if is_absolute(&effective_path) {
             effective_path.clone()
         } else {
             format!("{root}/{effective_path}")
@@ -337,7 +337,7 @@ pub fn add_parent(ctx: &mut Ctx, parent_path: &str, id: Option<&str>) -> Res<Sta
         );
     };
     let child_dir = child_wl[..child_wl.len() - wl_len(ctx)].to_string();
-    let resolved = if parent_path.starts_with('/') {
+    let resolved = if is_absolute(parent_path) {
         parent_path.to_string()
     } else {
         format!("{cwd}/{parent_path}")
@@ -503,7 +503,7 @@ pub fn delete(
             .into_iter()
             .filter(|c| {
                 let p = entry_path(c);
-                let cwl = if p.starts_with('/') {
+                let cwl = if is_absolute(&p) {
                     format!("{p}/{}", ctx.wl_dir)
                 } else {
                     format!("{root}/{p}/{}", ctx.wl_dir)
@@ -593,23 +593,10 @@ pub fn assign(ctx: &mut Ctx, target: &str, task_ids: &[String]) -> Res<AssignOut
                 merged += 1;
             } else {
                 ctx.write_text(&join(&target_wl, &format!("tasks/{task_id}.md")), &content)?;
-                let mut entry = vec![
-                    ("name".to_string(), J::str(parsed.name())),
-                    ("desc".into(), J::strings(parsed.desc())),
-                    (
-                        "status".into(),
-                        parsed.timestamp("status").map_or(J::Null, J::Str),
-                    ),
-                    ("created".into(), J::str(parsed.created_at())),
-                    ("status_updated_at".into(), J::str(parsed.created_at())),
-                ];
-                if parsed.fm.iter().any(|(k, _)| k == "done_at") {
-                    entry.push((
-                        "done_at".into(),
-                        parsed.timestamp("done_at").map_or(J::Null, J::Str),
-                    ));
-                }
-                target_index.put(&task_id, J::Obj(entry));
+                // The whole source entry: tags, links, parent and timestamps too.
+                let source_index = raw_index(ctx, &source_wl)?;
+                let entry = source_index.raw(&task_id).cloned().unwrap_or_else(J::obj);
+                target_index.put(&task_id, entry);
                 ctx.save_index_to(&target_wl, &target_index)?;
                 assigned += 1;
             }
@@ -753,7 +740,7 @@ pub fn export(
     if matching.is_empty() {
         return fail(Code::TaskNotFound, format!("No tasks with tag: {tag}"));
     }
-    let abs_target = if target_path.starts_with('/') {
+    let abs_target = if is_absolute(target_path) {
         target_path.to_string()
     } else {
         format!("{}/{target_path}", ctx.cwd)

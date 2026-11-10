@@ -111,3 +111,18 @@ pub type WtResult<T> = Result<T, WtError>;
 pub fn err<T>(code: Code, message: impl Into<String>) -> WtResult<T> {
     Err(WtError::new(code, message))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn renders_text_and_json() {
+        let e = WtError::new(Code::TaskNotFound, "No task: x");
+        assert_eq!(e.to_text(), "error: task_not_found\nNo task: x");
+        assert_eq!(
+            e.to_json(),
+            r#"{"error":"task_not_found","code":"task_not_found","message":"No task: x"}"#
+        );
+    }
+}

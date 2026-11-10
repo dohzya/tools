@@ -345,12 +345,15 @@ pub fn relative_scope_path(ctx: &Ctx, worklog_path: &str, git_root: &str) -> Str
     rel[..rel.len().saturating_sub(ctx.wl_dir.len() + 1)].to_string()
 }
 
-/// Own tags plus the tags the parent config gives to this scope.
+/// Tags of a task. With `inherit`, the tags the parent config gives to the
+/// scope are added; without, only the task's own tags (sorted when the scope
+/// has a `scope.json`, like the TS tool did).
 pub fn effective_tags(
     ctx: &Ctx,
     own: &[String],
     scope_path: &str,
     git_root: Option<&str>,
+    inherit: bool,
 ) -> Vec<String> {
     let mut tags: Vec<String> = Vec::new();
     for t in own {
@@ -364,31 +367,33 @@ pub fn effective_tags(
     let Some(cfg) = load_scope_config(ctx, scope_path) else {
         return tags;
     };
-    let mut add = |entry: &J| {
-        if let Some(J::Arr(ts)) = entry.get("tags") {
-            for t in ts.iter().filter_map(J::as_str) {
-                if !tags.contains(&t.to_string()) {
-                    tags.push(t.to_string());
+    if inherit {
+        let mut add = |entry: &J| {
+            if let Some(J::Arr(ts)) = entry.get("tags") {
+                for t in ts.iter().filter_map(J::as_str) {
+                    if !tags.contains(&t.to_string()) {
+                        tags.push(t.to_string());
+                    }
                 }
             }
-        }
-    };
-    if let Some(parent) = cfg.get("parent").and_then(J::as_str) {
-        let parent_path = resolve(&dirname(scope_path), parent);
-        if let Some(pcfg) = load_scope_config(ctx, &parent_path) {
-            let me = children_of(&pcfg)
+        };
+        if let Some(parent) = cfg.get("parent").and_then(J::as_str) {
+            let parent_path = resolve(&dirname(scope_path), parent);
+            if let Some(pcfg) = load_scope_config(ctx, &parent_path) {
+                let me = children_of(&pcfg)
+                    .into_iter()
+                    .find(|c| resolve(&parent_path, &entry_path(c)) == scope_path);
+                if let Some(m) = me {
+                    add(&m);
+                }
+            }
+        } else if is_parent_config(&cfg) {
+            let me = children_of(&cfg)
                 .into_iter()
-                .find(|c| resolve(&parent_path, &entry_path(c)) == scope_path);
+                .find(|c| resolve(scope_path, &entry_path(c)) == scope_path);
             if let Some(m) = me {
                 add(&m);
             }
-        }
-    } else if is_parent_config(&cfg) {
-        let me = children_of(&cfg)
-            .into_iter()
-            .find(|c| resolve(scope_path, &entry_path(c)) == scope_path);
-        if let Some(m) = me {
-            add(&m);
         }
     }
     tags.sort();

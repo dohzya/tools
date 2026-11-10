@@ -26,6 +26,9 @@ serde.workspace = true
 serde_json.workspace = true
 jiff = "0.2.39"
 getrandom = "0.4"
+# Interactive task picker: fuzzy filter while typing, arrows, enter. Pure Rust
+# on crossterm, so it works on Windows terminals too.
+inquire = { version = "0.9", default-features = false, features = ["crossterm", "fuzzy"] }
 
 [dev-dependencies]
 tempfile = "3.27.0"

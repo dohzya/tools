@@ -81,7 +81,16 @@
       "status": "started",
       "created": "2020-03-01T09:00:00+00:00",
       "status_updated_at": "2020-03-01T09:00:00+00:00",
-      "done_at": null
+      "done_at": null,
+      "tags": [
+        "backend"
+      ],
+      "links": [
+        {
+          "type": "depends_on",
+          "task": "sch002xxxxxxxxxxxxxxxxxxx"
+        }
+      ]
     },
     "sch002xxxxxxxxxxxxxxxxxxx": {
       "name": "Design schema",
@@ -89,7 +98,16 @@
       "status": "created",
       "created": "2020-03-02T09:00:00+00:00",
       "status_updated_at": "2020-03-02T09:00:00+00:00",
-      "done_at": null
+      "done_at": null,
+      "tags": [
+        "backend"
+      ],
+      "links": [
+        {
+          "type": "blocks",
+          "task": "api001xxxxxxxxxxxxxxxxxxx"
+        }
+      ]
     },
     "doc003xxxxxxxxxxxxxxxxxxx": {
       "name": "Write docs",
@@ -99,7 +117,16 @@
       "status": "ready",
       "created": "2020-03-03T09:00:00+00:00",
       "status_updated_at": "2020-03-03T09:00:00+00:00",
-      "done_at": null
+      "done_at": null,
+      "tags": [
+        "docs"
+      ],
+      "links": [
+        {
+          "type": "related",
+          "task": "rel004xxxxxxxxxxxxxxxxxxx"
+        }
+      ]
     },
     "rel004xxxxxxxxxxxxxxxxxxx": {
       "name": "Release notes",
@@ -107,7 +134,16 @@
       "status": "created",
       "created": "2020-03-04T09:00:00+00:00",
       "status_updated_at": "2020-03-04T09:00:00+00:00",
-      "done_at": null
+      "done_at": null,
+      "tags": [
+        "docs"
+      ],
+      "links": [
+        {
+          "type": "related",
+          "task": "doc003xxxxxxxxxxxxxxxxxxx"
+        }
+      ]
     },
     "epc005xxxxxxxxxxxxxxxxxxx": {
       "name": "Epic",
@@ -123,7 +159,8 @@
       "status": "started",
       "created": "2020-03-06T09:00:00+00:00",
       "status_updated_at": "2020-03-06T09:00:00+00:00",
-      "done_at": null
+      "done_at": null,
+      "parent": "epc005xxxxxxxxxxxxxxxxxxx"
     },
     "wai007xxxxxxxxxxxxxxxxxxx": {
       "name": "Subtask waiting",
@@ -131,7 +168,8 @@
       "status": "created",
       "created": "2020-03-07T09:00:00+00:00",
       "status_updated_at": "2020-03-07T09:00:00+00:00",
-      "done_at": null
+      "done_at": null,
+      "parent": "epc005xxxxxxxxxxxxxxxxxxx"
     },
     "fin008xxxxxxxxxxxxxxxxxxx": {
       "name": "Subtask finished",
@@ -139,7 +177,8 @@
       "status": "done",
       "created": "2020-03-08T09:00:00+00:00",
       "status_updated_at": "2020-03-08T09:00:00+00:00",
-      "done_at": "2099-01-01T09:00:00+00:00"
+      "done_at": "2099-01-01T09:00:00+00:00",
+      "parent": "epc005xxxxxxxxxxxxxxxxxxx"
     }
   }
 }
