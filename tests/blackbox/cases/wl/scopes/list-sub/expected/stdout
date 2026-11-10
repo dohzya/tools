@@ -1,4 +1,4 @@
 Scopes:
-  web             services/web/.worklog/
-  api             services/api/.worklog/
   (root)          .worklog/  [active]
+  api             services/api/.worklog/
+  web             services/web/.worklog/

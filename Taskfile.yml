@@ -245,3 +245,4 @@ tasks:
     cmds:
       - cargo build --locked -p critique-wasm --target wasm32-unknown-unknown
       - cargo build --locked -p md-manipulator --target wasm32-unknown-unknown
+      - cargo build --locked -p worklog-core --target wasm32-unknown-unknown

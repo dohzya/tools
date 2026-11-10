@@ -13,6 +13,13 @@
     "now-short",
     "wl-newid"
   ],
-  "behavior": "parity",
-  "note": "run --create is wired to a missing callback in the Deno CLI: always fails with 'Create task function not available'"
+  "behavior": "new-spec",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D4): wl run --create creates the task, then runs the command with WORKLOG_TASK_ID set.",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ],
+  "spec_row": "worklog.md D4"
 }

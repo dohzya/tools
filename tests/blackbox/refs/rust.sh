@@ -9,3 +9,4 @@ _target="${CARGO_TARGET_DIR:-$_root/target}/${BB_RUST_PROFILE:-debug}"
 # wrapper exports CRITIQUE_COMPAT_DZ_REVIEW=1 unless a case sets it (see
 # docs/specs/critique.md).
 [ -x "$_target/critique" ] && export CMD_DZ_REVIEW="$_root/tests/blackbox/refs/rust/dz-review"
+[ -x "$_target/worklog" ] && export CMD_WL="$_target/worklog"

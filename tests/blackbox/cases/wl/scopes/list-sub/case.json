@@ -8,5 +8,6 @@
   "ignore_changes": [
     ".git/*"
   ],
-  "behavior": "parity"
+  "behavior": "new-spec",
+  "note": "Rust sorts scopes by name (docs/specs/worklog.md D8); Deno used the directory order of the file system."
 }

@@ -1,0 +1,17 @@
+[package]
+name = "worklog-core"
+description = "Worklog model: task files, index, text formatting and agent prompts. Performs no I/O and builds for wasm32."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+md-manipulator.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# libyaml-backed parser, as in recap-cli: keeps mapping order.
+serde_yaml_ng = "0.10.0"

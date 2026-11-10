@@ -14,6 +14,7 @@ recap.local.yml
 
 # Black-box fixtures: keep dotted dirs and local-config files byte-exact
 !/tests/blackbox/fixtures/**/.worklog/
+!/tests/blackbox/cases/**/.worklog/
 !/tests/blackbox/fixtures/**/recap.local.yaml
 !/tests/blackbox/fixtures/**/recap.local.yml
 target/

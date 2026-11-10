@@ -1,12 +1,13 @@
-//! Binary entry point for `worklog`.
+//! `worklog` binary: wires the process streams to `worklog_cli::run`.
 
-use clap::Parser;
+use std::process::ExitCode;
 
-/// Worklog CLI: task, trace and checkpoint model with its command handlers.
-#[derive(Parser)]
-#[command(name = "worklog", version)]
-struct Cli {}
-
-fn main() {
-    Cli::parse();
+fn main() -> ExitCode {
+    let (mut stdout, mut stderr) = (std::io::stdout().lock(), std::io::stderr().lock());
+    let mut io = worklog_cli::Io {
+        stdout: &mut stdout,
+        stderr: &mut stderr,
+    };
+    let code = worklog_cli::run(std::env::args_os(), &mut io, &worklog_cli::system_ports());
+    ExitCode::from(u8::try_from(code).unwrap_or(1))
 }

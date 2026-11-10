@@ -1,0 +1,10 @@
+{
+  "children": [
+    {
+      "path": "<TMP>/wt1",
+      "id": "wt1",
+      "type": "worktree",
+      "gitRef": "wt1"
+    }
+  ]
+}

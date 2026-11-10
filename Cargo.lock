@@ -1057,11 +1057,27 @@ dependencies = [
 
 [[package]]
 name = "worklog-cli"
-version = "0.1.0"
+version = "0.21.1"
 dependencies = [
  "clap",
+ "clap_complete",
  "dz-cli-support",
+ "getrandom",
+ "jiff",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "worklog-core",
+]
+
+[[package]]
+name = "worklog-core"
+version = "0.1.0"
+dependencies = [
  "md-manipulator",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
 ]
 
 [[package]]

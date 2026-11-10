@@ -17,6 +17,7 @@ dz-encodings = { path = "crates/dz-encodings" }
 md-manipulator = { path = "crates/md-manipulator" }
 dz-cli-support = { path = "crates/dz-cli-support" }
 critique-core = { path = "crates/critique-core" }
+worklog-core = { path = "crates/worklog-core" }
 markdown-surgeon-cli = { path = "crates/markdown-surgeon-cli" }
 
 [workspace.lints.rust]

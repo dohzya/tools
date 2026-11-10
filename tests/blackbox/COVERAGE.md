@@ -6,7 +6,7 @@ Counts come from `--help` of the Deno reference (rough: option lines include inh
 | ----------- | ----------------------------------------------------------------------- | ------------ | ------------------ | ---------------------------------------------------------------------------- |
 | `md`        | 13                                                                      | ~60          | 249                | done except MRFI (`ref`, `resolve`, `--mrfi`, `-x/--strict/--force` on refs) |
 | `recap`     | 5 (`show`, `config show/files`, `init`, `agent-instructions`)           | ~10          | 51                 | done (builtins `status`, `git-log`, `git-ops`, `git-stash`, config layers)   |
-| `wl`        | ~45                                                                     | ~350         | 5 smoke            | backlog                                                                      |
+| `wl`        | ~45                                                                     | ~350         | 521                | done (Rust port, see [`docs/specs/worklog.md`](../../docs/specs/worklog.md)) |
 | `dz-review` | ~28 (+ `review/status/list/diff/timestamp` aliases under root and `me`) | ~170         | 0                  | backlog                                                                      |
 
 ## wl backlog (~45 commands)
@@ -104,3 +104,9 @@ Not covered: `--help`/`--version`/`completions`; error message text beyond the f
 - `wl run` exits 0 whatever the child's exit code and ignores `--json`; `run --create` always fails ("Create task function not available").
 - `wl claude <id> -- <args>` does not forward the args; `--purge-ttl 0` and a `--worklog-dir` with a missing parent dir end in an uncaught exception with a stack trace (exit 1).
 - `list <pattern>` and `--scope/--all-scopes` are silently ignored outside git; `summary --since garbage` and `meta --delete`/`meta <key>` for a missing key succeed silently; `scopes rename a b` accepts an id already in use; `cancel` ignores the reason and does not bump `status_updated_at`; `create` works without prior `init` while every other command fails with `not_initialized`.
+
+## Additions of 2026-11-10 (wl in Rust)
+
+- The Rust `worklog` passes the 521 `wl` cases (504 parity, 17 new-spec). 15 former `parity` cases are `new-spec` now, one per Deno defect fixed (`spec_row` = `worklog.md D<n>`, see [`docs/specs/worklog.md`](../../docs/specs/worklog.md)): `scopes/add-*` (6) and `scoped/fresh-scope-first-read-migrates-and-corrupts` (D1, D2), `run/exit-code-not-propagated` and `run/json-flag-ignored` (D3), `run/create-unavailable` (D4), `agent/claude-passthrough-args` (D5), `traces-update/kind`, `kind-json`, `untyped-trace` (D6), `list/err-purge-ttl-zero` (D7). Two cases are new (D7): `init/worklog-dir-no-parent`, `misc/worklog-dir-no-parent-read`.
+- `.gitignore` ignored every `.worklog/` directory, including the `expected/files/.worklog/**` of the `wl` cases (372 files were never committed). `!/tests/blackbox/cases/**/.worklog/` fixes it.
+- Scope scanning is sorted by name (D8): the Deno order depended on the file system. `scopes/list`, `list-json`, `list-sub`, `list-sub-json` and `list-refresh` are `new-spec`.

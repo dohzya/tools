@@ -12,6 +12,7 @@
   "env": {
     "PATH": "./bin:/usr/bin:/bin"
   },
-  "behavior": "parity",
-  "note": "args after -- are NOT forwarded to claude in the Deno CLI (argc stays 2) although the help documents them"
+  "behavior": "new-spec",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D5): arguments after -- are forwarded to the agent (the -- itself is not).",
+  "spec_row": "worklog.md D5"
 }

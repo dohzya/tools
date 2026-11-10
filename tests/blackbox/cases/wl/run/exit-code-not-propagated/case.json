@@ -8,6 +8,7 @@
     "-c",
     "exit 3"
   ],
-  "behavior": "parity",
-  "note": "wl run exits 0 whatever the child exit code; it only reports it on stdout"
+  "behavior": "new-spec",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D3): wl run exits with the status of the child; the 'Ran task' line is still printed.",
+  "spec_row": "worklog.md D3"
 }

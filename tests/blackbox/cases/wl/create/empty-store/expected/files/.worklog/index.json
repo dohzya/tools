@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "tasks": {
+    "<NEWID>": {
+      "name": "First in store",
+      "desc": [],
+      "status": "created",
+      "created": "2030-01-02T03:04:00+00:00",
+      "status_updated_at": "2030-01-02T03:04:00+00:00",
+      "done_at": null
+    }
+  }
+}

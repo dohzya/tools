@@ -13,10 +13,11 @@
     "now-short",
     "wl-newid"
   ],
-  "behavior": "parity",
-  "note": "SUSPECTED DENO BUG: the first read of a scope whose index.json has no version runs 'Migrating worklog to v2', which overwrites the task name with its description and clears started_at (data loss). Recorded as parity; a rewrite must not copy this blindly",
+  "behavior": "new-spec",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D1, D2): a scope created by 'scopes add' is read without migration, so name and started_at survive; the index has version first.",
   "files": [
     "services/api/.worklog/index.json",
     "services/api/.worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md"
-  ]
+  ],
+  "spec_row": "worklog.md D1, D2"
 }

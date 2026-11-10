@@ -14,8 +14,10 @@
     "now-short",
     "wl-newid"
   ],
-  "behavior": "parity",
+  "behavior": "new-spec",
   "files": [
     ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md"
-  ]
+  ],
+  "note": "Rust edits only the heading of the trace (docs/specs/worklog.md D6); the Deno version re-serialized the whole file, dropping cancelled_at and unknown frontmatter keys and squeezing blank lines.",
+  "spec_row": "worklog.md D6"
 }

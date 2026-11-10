@@ -1,1 +1,1 @@
-{"scopes":[{"id":"web","path":"services/web/.worklog/","isActive":false},{"id":"api","path":"services/api/.worklog/","isActive":false},{"id":"(root)","path":".worklog/","isActive":true}]}
+{"scopes":[{"id":"(root)","path":".worklog/","isActive":true},{"id":"api","path":"services/api/.worklog/","isActive":false},{"id":"web","path":"services/web/.worklog/","isActive":false}]}
