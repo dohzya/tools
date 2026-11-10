@@ -16,7 +16,8 @@ fn run_process(ctx: &mut Ctx, cmd: &[String], task_id: &str) -> Res<i32> {
     let env = vec![("WORKLOG_TASK_ID".to_string(), task_id.to_string())];
     let cwd = ctx.cwd.clone();
     let _ = std::io::Write::flush(ctx.out);
-    match ctx.ports.proc_.run(cmd, &env, &cwd) {
+    let ran = ctx.unlocked(|c| c.ports.proc_.run(cmd, &env, &cwd))?;
+    match ran {
         Ok(code) => Ok(code),
         Err(msg) => fail(Code::IoError, msg),
     }

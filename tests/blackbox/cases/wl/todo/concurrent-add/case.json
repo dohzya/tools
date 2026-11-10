@@ -1,0 +1,9 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": ["todo", "list", "cq3984"],
+  "normalize": ["sed:s/^[A-Za-z0-9]{6} \\[ \\] item-[0-9]+$/ID [ ] item/"],
+  "behavior": "new-spec",
+  "spec_row": "worklog.md Concurrency",
+  "note": "Hand-written from the spec: concurrent commands on one worklog are serialized, so none of the eight todos is lost. Items are normalized to one constant line because the order between processes is not specified."
+}

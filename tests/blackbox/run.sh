@@ -90,12 +90,13 @@ execute_case() {
     [ -f "$run/work/$f" ] && { mkdir -p "$run/actual/files/$(dirname "$f")"; normalize "$run" "${norm[@]}" <"$run/work/$f" >"$run/actual/files/$f"; }
   done < <(jq -r '(.files // [])[]' "$cdir/case.json")
   : >"$run/changed"
+  # .worklog/.lock: empty file `wl` leaves behind for its inter-process lock; not state.
   while IFS= read -r f; do
     cmp -s "$run/work/$f" "$run/snapshot/$f" || echo "$f" >>"$run/changed"
-  done < <(cd "$run/work" && find . -type f | sed 's#^\./##')
+  done < <(cd "$run/work" && find . -type f ! -name .lock | sed 's#^\./##')
   while IFS= read -r f; do
     [ -e "$run/work/$f" ] || echo "$f" >>"$run/changed"
-  done < <(cd "$run/snapshot" && find . -type f | sed 's#^\./##')
+  done < <(cd "$run/snapshot" && find . -type f ! -name .lock | sed 's#^\./##')
   return 0
 }
 

@@ -51,6 +51,7 @@ pub fn dispatch(
         env_task_id,
         purge_ttl_cli: None,
         depth_limit: depth,
+        lock: None,
     };
     match run_command(
         &mut ctx,
@@ -194,6 +195,7 @@ fn run_command(
         ctx.purge_ttl_cli = Some(parse_purge_ttl(v, "--purge-ttl")?);
     }
     let explicit = apply_dir_options(ctx, cwd, worklog_dir)?;
+    ctx.lock_worklog()?;
     let pal = palette(ctx);
     match command {
         Command::Init(a) => task::init(ctx, a.json, &pal),

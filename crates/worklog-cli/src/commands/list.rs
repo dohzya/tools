@@ -832,6 +832,11 @@ pub fn can_select_interactively(ctx: &Ctx, task_id: Option<&str>) -> bool {
 
 /// Lists the active tasks and asks which one.
 pub fn select_task_interactively(ctx: &mut Ctx, git_root: Option<&str>) -> Res<String> {
+    // The prompt waits on the user: do not hold the worklog meanwhile.
+    ctx.unlocked(|c| select_task_unlocked(c, git_root))?
+}
+
+fn select_task_unlocked(ctx: &mut Ctx, git_root: Option<&str>) -> Res<String> {
     ctx.purge()?;
     let cwd = ctx.cwd.clone();
     let opts = ListOptions {

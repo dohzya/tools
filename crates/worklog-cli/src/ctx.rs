@@ -3,7 +3,7 @@
 //! files, purge).
 
 use crate::path::{join, resolve};
-use crate::ports::Ports;
+use crate::ports::{LockGuard, Ports};
 use std::io::Write;
 use worklog_core::error::{Code, WtError, WtResult, err};
 use worklog_core::index::Index;
@@ -60,9 +60,45 @@ pub struct Ctx<'a> {
     pub purge_ttl_cli: Option<i64>,
     /// `WORKLOG_DEPTH_LIMIT`.
     pub depth_limit: usize,
+    /// Lock of the current worklog, held while a command runs.
+    pub lock: Option<LockGuard>,
 }
 
+/// How long a command waits for another one to finish.
+const LOCK_TIMEOUT_MS: u64 = 10_000;
+
 impl Ctx<'_> {
+    /// Serializes this command with the others working on the same worklog:
+    /// every command is a read-modify-write of `index.json` (even the readers
+    /// may purge), so the lock is per worklog, not per task. Skipped when the
+    /// worklog does not exist yet, or when its directory cannot hold the lock
+    /// file (read-only checkout): those fall back to the unlocked behavior.
+    pub fn lock_worklog(&mut self) -> WtResult<()> {
+        self.lock = None;
+        let dir = self.wl_path();
+        if !self.ports.fs.is_dir(&dir) {
+            return Ok(());
+        }
+        match self.ports.fs.lock(&join(&dir, ".lock"), LOCK_TIMEOUT_MS) {
+            Ok(g) => self.lock = Some(g),
+            Err(m) if m.starts_with("Timed out") => return err(Code::IoError, m),
+            Err(_) => {}
+        }
+        Ok(())
+    }
+
+    /// Runs `f` without the lock: for what waits on something else than the
+    /// files (a prompt, a spawned agent that runs `wl` itself and would
+    /// deadlock). The lock is taken again afterwards.
+    pub fn unlocked<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> WtResult<T> {
+        let held = self.lock.take().is_some();
+        let out = f(self);
+        if held {
+            self.lock_worklog()?;
+        }
+        Ok(out)
+    }
+
     /// Prints a line on stdout.
     pub fn println(&mut self, s: &str) {
         let _ = writeln!(self.out, "{s}");

@@ -31,7 +31,14 @@ pub trait Fs: Send + Sync {
     fn remove(&self, path: &str);
     /// Canonical absolute path.
     fn real_path(&self, path: &str) -> Result<String, String>;
+    /// Takes an exclusive advisory lock on `path` (created when missing),
+    /// waiting up to `timeout_ms`. The lock is held until the guard is
+    /// dropped, or the process dies.
+    fn lock(&self, path: &str, timeout_ms: u64) -> Result<LockGuard, String>;
 }
+
+/// Releases the lock it stands for when dropped.
+pub struct LockGuard(pub Box<dyn Send>);
 
 /// A git worktree.
 #[derive(Debug, Clone)]

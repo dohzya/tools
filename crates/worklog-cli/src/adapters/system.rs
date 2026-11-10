@@ -1,7 +1,7 @@
 //! Real file system, git, processes, environment and clock.
 
 use crate::path::slashes;
-use crate::ports::{DirEntry, Env, Fs, Git, Ports, Proc, Worktree};
+use crate::ports::{DirEntry, Env, Fs, Git, LockGuard, Ports, Proc, Worktree};
 use std::io::{BufRead, Read, Write};
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -70,6 +70,32 @@ impl Fs for SystemFs {
     fn real_path(&self, path: &str) -> Result<String, String> {
         let p = std::fs::canonicalize(path).map_err(|e| e.to_string())?;
         Ok(strip_verbatim(&slashes(&p.to_string_lossy())))
+    }
+
+    fn lock(&self, path: &str, timeout_ms: u64) -> Result<LockGuard, String> {
+        // OS-level lock (flock / LockFileEx) rather than a create-exclusive
+        // marker file: it vanishes with a crashed process, so there is no
+        // stale lock to detect, and the file can stay in place, which avoids
+        // the unlink-then-relock race.
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(path)
+            .map_err(|e| e.to_string())?;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+        loop {
+            match file.try_lock() {
+                Ok(()) => return Ok(LockGuard(Box::new(file))),
+                Err(std::fs::TryLockError::WouldBlock) => {
+                    if std::time::Instant::now() >= deadline {
+                        return Err(format!("Timed out waiting for lock: {path}"));
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(25));
+                }
+                Err(std::fs::TryLockError::Error(e)) => return Err(e.to_string()),
+            }
+        }
     }
 }
 
