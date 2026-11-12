@@ -42,6 +42,10 @@ fn increment_letter(s: &str) -> String {
 /// `ImportTasksUseCase`
 pub fn import_tasks(ctx: &mut Ctx, source_arg: &str, remove_source: bool) -> Res<ImportOutput> {
     let source = resolve(&ctx.cwd, source_arg);
+    // Both worklogs are rewritten (the source too with `--rm`, and for the
+    // uid it gets when it has none).
+    let current = ctx.wl_path();
+    ctx.lock_worklogs(vec![current, source.clone()])?;
     let source_index_path = join(&source, "index.json");
     if !ctx.ports.fs.exists(&source_index_path) {
         return fail(

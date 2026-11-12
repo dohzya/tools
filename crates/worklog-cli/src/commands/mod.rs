@@ -51,7 +51,7 @@ pub fn dispatch(
         env_task_id,
         purge_ttl_cli: None,
         depth_limit: depth,
-        lock: None,
+        locks: Default::default(),
     };
     match run_command(
         &mut ctx,

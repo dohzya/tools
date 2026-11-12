@@ -139,6 +139,10 @@ pub fn list(ctx: &mut Ctx, refresh: bool) -> Res<ScopesOutput> {
             .exists(&join(&join(&root, &ctx.wl_dir), "scope.json"));
     let scopes = discover_scopes(ctx, &root, ctx.depth_limit, false);
     if needs_refresh {
+        // Rewrites the scope.json of the root and of every child.
+        let mut all = vec![join(&root, &ctx.wl_dir)];
+        all.extend(scopes.iter().map(|s| s.absolute_path.clone()));
+        ctx.lock_worklogs(all)?;
         refresh_scope_hierarchy(ctx, &root, &scopes)?;
     }
     let active = resolve_active_scope(ctx, &cwd, None, Some(&root))?;
@@ -272,6 +276,7 @@ pub fn add(
     let rel_to_root = target_dir.get(root.len() + 1..).unwrap_or("");
     let depth = rel_to_root.split('/').filter(|p| !p.is_empty()).count();
     let parent_path = "../".repeat(depth);
+    ctx.lock_worklogs(vec![join(&root, &ctx.wl_dir), worklog_path.clone()])?;
     let mut already = false;
     if ctx.ports.fs.exists(&worklog_path) {
         let cfg = load_scope_config(ctx, &worklog_path);
@@ -369,6 +374,7 @@ pub fn add_parent(ctx: &mut Ctx, parent_path: &str, id: Option<&str>) -> Res<Sta
             format!("No worklog found at parent path: {parent_path}. Run 'wl init' there first."),
         );
     }
+    ctx.lock_worklogs(vec![child_wl.clone(), parent_wl.clone()])?;
     let rel_to_parent = relative_path(&child_dir, &parent_dir);
     let mut already = false;
     if let Some(cfg) = load_scope_config(ctx, &child_wl)
@@ -421,6 +427,7 @@ pub fn add_parent(ctx: &mut Ctx, parent_path: &str, id: Option<&str>) -> Res<Sta
 pub fn rename(ctx: &mut Ctx, scope: &str, new_id: &str) -> Res<StatusOutput> {
     let root = root_or_fail(ctx, NOT_GIT)?;
     let root_wl = join(&root, &ctx.wl_dir);
+    ctx.lock_worklogs(vec![root_wl.clone()])?;
     let cfg = load_scope_config(ctx, &root_wl);
     let Some(cfg) = cfg.filter(is_parent_config) else {
         return fail(
@@ -449,12 +456,20 @@ pub fn delete(
 ) -> Res<StatusOutput> {
     let cwd = ctx.cwd.clone();
     let root = root_or_fail(ctx, NOT_GIT)?;
+    // Root config (the child is removed from it), the scope itself and the
+    // scope its tasks move to. Unresolvable ones fail later, as before.
+    let mut touched = vec![join(&root, &ctx.wl_dir)];
+    touched.extend(resolve_scope_identifier_list(ctx, scope, &root).ok());
+    if let Some(dest) = move_to.filter(|m| !m.is_empty()) {
+        touched.extend(resolve_scope_identifier_list(ctx, dest, &root).ok());
+    }
+    ctx.lock_worklogs(touched)?;
     if let Some(dest) = move_to.filter(|m| !m.is_empty()) {
         let wl = resolve_scope_identifier(ctx, scope, &root, &cwd)?;
         let index = ctx.load_index_from(&wl)?;
         let ids = index.ids();
         if !ids.is_empty() {
-            let res = assign(ctx, dest, &ids)?;
+            let res = assign_unlocked(ctx, dest, &ids)?;
             if !res.errors.is_empty() {
                 return fail(
                     Code::IoError,
@@ -555,8 +570,21 @@ fn raw_index(ctx: &Ctx, wl: &str) -> Res<Index> {
         .or_else(|_| fail(Code::IoError, format!("Failed to read file: {path}")))
 }
 
-/// `AssignScopeUseCase`
+/// `AssignScopeUseCase`: locks the target and the scopes holding the tasks.
 pub fn assign(ctx: &mut Ctx, target: &str, task_ids: &[String]) -> Res<AssignOutput> {
+    let root = root_or_fail(ctx, NOT_GIT)?;
+    let target_wl = resolve_scope_identifier_list(ctx, target, &root)?;
+    let scopes = discover_scopes(ctx, &root, ctx.depth_limit, true);
+    let mut touched = vec![target_wl];
+    for prefix in task_ids {
+        touched.extend(find_task_in_scopes(ctx, prefix, &scopes).map(|(wl, _)| wl));
+    }
+    ctx.lock_worklogs(touched)?;
+    assign_unlocked(ctx, target, task_ids)
+}
+
+/// `assign` once the worklogs it touches are locked.
+fn assign_unlocked(ctx: &mut Ctx, target: &str, task_ids: &[String]) -> Res<AssignOutput> {
     let root = root_or_fail(ctx, NOT_GIT)?;
     let target_wl = resolve_scope_identifier_list(ctx, target, &root)?;
     let scopes = discover_scopes(ctx, &root, ctx.depth_limit, true);
@@ -635,24 +663,33 @@ pub fn assign_by_tag(ctx: &mut Ctx, scope: &str, tag: &str) -> Res<AssignByTagOu
     let root = root_or_fail(ctx, NOT_GIT)?;
     let target_wl = resolve_scope_identifier_list(ctx, scope, &root)?;
     let scopes = discover_scopes(ctx, &root, ctx.depth_limit, true);
-    let mut matching: Vec<(String, String)> = Vec::new();
-    for s in &scopes {
-        let Ok(Some(text)) = ctx
-            .ports
-            .fs
-            .read_to_string(&join(&s.absolute_path, "index.json"))
-        else {
-            continue;
-        };
-        let Ok(index) = Index::parse(&text, false) else {
-            continue;
-        };
-        for (id, e) in index.entries() {
-            if e.tags.iter().any(|t| matches_tag_pattern(tag, t)) {
-                matching.push((id, s.absolute_path.clone()));
+    // Scanned twice: once to know what to lock, once under the lock.
+    let scan = |ctx: &Ctx, scopes: &[DiscoveredScope]| {
+        let mut matching: Vec<(String, String)> = Vec::new();
+        for s in scopes {
+            let Ok(Some(text)) = ctx
+                .ports
+                .fs
+                .read_to_string(&join(&s.absolute_path, "index.json"))
+            else {
+                continue;
+            };
+            let Ok(index) = Index::parse(&text, false) else {
+                continue;
+            };
+            for (id, e) in index.entries() {
+                if e.tags.iter().any(|t| matches_tag_pattern(tag, t)) {
+                    matching.push((id, s.absolute_path.clone()));
+                }
             }
         }
-    }
+        matching
+    };
+    let matching = scan(ctx, &scopes);
+    let mut touched = vec![target_wl.clone()];
+    touched.extend(matching.iter().map(|(_, wl)| wl.clone()));
+    ctx.lock_worklogs(touched)?;
+    let matching = scan(ctx, &scopes);
     let (mut moved, mut updated) = (0, 0);
     let mut errors: Vec<TaskError> = Vec::new();
     for (task_id, scope_path) in matching {
@@ -721,22 +758,27 @@ pub fn export(
         .unwrap_or(tag)
         .to_string();
     let scopes = discover_scopes(ctx, &root, ctx.depth_limit, true);
-    let mut matching: Vec<(String, String, J)> = Vec::new();
-    for s in &scopes {
-        let index_path = join(&s.absolute_path, "index.json");
-        if !ctx.ports.fs.exists(&index_path) {
-            continue;
-        }
-        let index = raw_index(ctx, &s.absolute_path)?;
-        for (id, raw) in index.raw_entries() {
-            let e = index
-                .entry(id)
-                .unwrap_or_else(|| worklog_core::index::IndexEntry::from_json(raw));
-            if e.tags.iter().any(|t| matches_tag_pattern(tag, t)) {
-                matching.push((id.clone(), s.absolute_path.clone(), raw.clone()));
+    // Scanned twice: once to know what to lock, once under the lock.
+    let scan = |ctx: &Ctx| -> Res<Vec<(String, String, J)>> {
+        let mut matching: Vec<(String, String, J)> = Vec::new();
+        for s in &scopes {
+            let index_path = join(&s.absolute_path, "index.json");
+            if !ctx.ports.fs.exists(&index_path) {
+                continue;
+            }
+            let index = raw_index(ctx, &s.absolute_path)?;
+            for (id, raw) in index.raw_entries() {
+                let e = index
+                    .entry(id)
+                    .unwrap_or_else(|| worklog_core::index::IndexEntry::from_json(raw));
+                if e.tags.iter().any(|t| matches_tag_pattern(tag, t)) {
+                    matching.push((id.clone(), s.absolute_path.clone(), raw.clone()));
+                }
             }
         }
-    }
+        Ok(matching)
+    };
+    let matching = scan(ctx)?;
     if matching.is_empty() {
         return fail(Code::TaskNotFound, format!("No tasks with tag: {tag}"));
     }
@@ -746,6 +788,13 @@ pub fn export(
         format!("{}/{target_path}", ctx.cwd)
     };
     let target_wl = join(&abs_target, &ctx.wl_dir);
+    let mut touched = vec![target_wl.clone(), join(&root, &ctx.wl_dir)];
+    touched.extend(matching.iter().map(|(_, wl, _)| wl.clone()));
+    ctx.lock_worklogs(touched)?;
+    let matching = scan(ctx)?;
+    if matching.is_empty() {
+        return fail(Code::TaskNotFound, format!("No tasks with tag: {tag}"));
+    }
     if ctx.ports.fs.exists(&target_wl) && ctx.ports.fs.exists(&join(&target_wl, "index.json")) {
         let ti = raw_index(ctx, &target_wl)?;
         if !ti.ids().is_empty() {
@@ -834,6 +883,11 @@ pub fn sync_worktrees(ctx: &mut Ctx, dry_run: bool) -> Res<SyncOutput> {
         .worktrees(&cwd)
         .or_else(|e| fail(Code::IoError, format!("Failed to list worktrees: {e}")))?;
     let main = worktrees.iter().find(|w| w.is_main);
+    if !dry_run {
+        let mut touched = vec![root_wl.clone()];
+        touched.extend(worktrees.iter().map(|w| join(&w.path, &ctx.wl_dir)));
+        ctx.lock_worklogs(touched)?;
+    }
     let (mut added, mut removed, mut warnings) = (Vec::new(), Vec::new(), Vec::new());
     let is_wt = |c: &J| c.get("type").and_then(J::as_str) == Some("worktree");
     let existing: Vec<J> = children.iter().filter(|c| is_wt(c)).cloned().collect();

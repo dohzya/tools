@@ -60,8 +60,30 @@ pub struct Ctx<'a> {
     pub purge_ttl_cli: Option<i64>,
     /// `WORKLOG_DEPTH_LIMIT`.
     pub depth_limit: usize,
-    /// Lock of the current worklog, held while a command runs.
-    pub lock: Option<LockGuard>,
+    /// Worklog locks of the running command.
+    pub locks: Locks,
+}
+
+/// A held lock: the worklog directory as the code spells it, its canonical
+/// form (the key of the acquisition order) and the guard.
+pub struct HeldLock {
+    raw: String,
+    canon: String,
+    _guard: LockGuard,
+}
+
+/// Lock state of a command (see [`Ctx::lock_worklog`]).
+#[derive(Default)]
+pub struct Locks {
+    held: Vec<HeldLock>,
+    /// Worklogs asked for, kept to take them again after [`Ctx::unlocked`].
+    requested: Vec<String>,
+    /// Requested worklogs that did not exist yet (a command creating them).
+    creating: Vec<String>,
+    /// The set was chosen by the command: it does not follow `cwd`.
+    pinned: bool,
+    /// Inside [`Ctx::unlocked`].
+    suspended: bool,
 }
 
 /// How long a command waits for another one to finish.
@@ -70,33 +92,115 @@ const LOCK_TIMEOUT_MS: u64 = 10_000;
 impl Ctx<'_> {
     /// Serializes this command with the others working on the same worklog:
     /// every command is a read-modify-write of `index.json` (even the readers
-    /// may purge), so the lock is per worklog, not per task. Skipped when the
-    /// worklog does not exist yet, or when its directory cannot hold the lock
-    /// file (read-only checkout): those fall back to the unlocked behavior.
+    /// may purge), so the lock is per worklog, not per task. The lock follows
+    /// the worklog the command ends up acting on: it starts on the one of
+    /// `cwd`, and moves with `cwd` when `--scope` or a task id resolves to
+    /// another worklog (see [`Self::ensure_lock`]). Commands that write
+    /// several worklogs pick them with [`Self::lock_worklogs`] instead.
     pub fn lock_worklog(&mut self) -> WtResult<()> {
-        self.lock = None;
-        let dir = self.wl_path();
-        if !self.ports.fs.is_dir(&dir) {
+        let wl = self.wl_path();
+        self.acquire(vec![wl], false)
+    }
+
+    /// Locks exactly these worklog directories, whichever `cwd` is, taken
+    /// in the order of their canonical paths so that two commands crossing
+    /// the same worklogs in opposite directions cannot wait for each other.
+    pub fn lock_worklogs(&mut self, worklogs: Vec<String>) -> WtResult<()> {
+        self.acquire(worklogs, true)
+    }
+
+    /// Follows `cwd`: called before the first access to the data of the
+    /// current worklog, after the command resolved which one it is.
+    pub fn ensure_lock(&mut self) -> WtResult<()> {
+        let wl = self.wl_path();
+        if self.locks.suspended || self.locks.pinned || self.locks.requested == [wl.clone()] {
             return Ok(());
         }
-        match self.ports.fs.lock(&join(&dir, ".lock"), LOCK_TIMEOUT_MS) {
-            Ok(g) => self.lock = Some(g),
-            Err(m) if m.starts_with("Timed out") => return err(Code::IoError, m),
-            Err(_) => {}
+        self.lock_worklog()
+    }
+
+    fn acquire(&mut self, worklogs: Vec<String>, pinned: bool) -> WtResult<()> {
+        let mut l = std::mem::take(&mut self.locks);
+        l.held.clear();
+        l.creating.clear();
+        l.requested = worklogs.clone();
+        l.pinned = pinned;
+        let mut todo: Vec<(String, String)> = Vec::new();
+        for raw in worklogs {
+            if !self.ports.fs.is_dir(&raw) {
+                l.creating.push(raw);
+                continue;
+            }
+            let canon = self
+                .ports
+                .fs
+                .real_path(&raw)
+                .unwrap_or_else(|_| raw.clone());
+            if !todo.iter().any(|(_, c)| *c == canon) {
+                todo.push((raw, canon));
+            }
+        }
+        todo.sort_by(|a, b| a.1.cmp(&b.1));
+        let suspended = l.suspended;
+        self.locks = l;
+        if suspended {
+            return Ok(());
+        }
+        for (raw, canon) in todo {
+            match self.ports.fs.lock(&join(&raw, ".lock"), LOCK_TIMEOUT_MS) {
+                Ok(g) => self.locks.held.push(HeldLock {
+                    raw,
+                    canon,
+                    _guard: g,
+                }),
+                Err(m) if m.starts_with("Timed out") => return err(Code::IoError, m),
+                // Directory that cannot hold the file (read-only checkout).
+                Err(_) => {}
+            }
         }
         Ok(())
     }
 
-    /// Runs `f` without the lock: for what waits on something else than the
+    /// Runs `f` without the locks: for what waits on something else than the
     /// files (a prompt, a spawned agent that runs `wl` itself and would
-    /// deadlock). The lock is taken again afterwards.
+    /// deadlock). They are taken again afterwards.
     pub fn unlocked<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> WtResult<T> {
-        let held = self.lock.take().is_some();
+        self.locks.held.clear();
+        self.locks.suspended = true;
         let out = f(self);
-        if held {
-            self.lock_worklog()?;
+        self.locks.suspended = false;
+        let (requested, pinned) = (self.locks.requested.clone(), self.locks.pinned);
+        if !requested.is_empty() {
+            self.acquire(requested, pinned)?;
         }
         Ok(out)
+    }
+
+    /// Debug builds only: a write must land in a worklog this command holds
+    /// (or is creating), otherwise another process could race it.
+    #[cfg(debug_assertions)]
+    fn assert_locked(&self, path: &str) {
+        let l = &self.locks;
+        if l.held.is_empty() || l.suspended {
+            return;
+        }
+        let real = self
+            .ports
+            .fs
+            .real_path(&crate::path::dirname(path))
+            .map(|d| join(&d, &crate::path::basename(path)))
+            .ok();
+        let under = |root: &str, p: &str| p == root || p.starts_with(&format!("{root}/"));
+        let ok = |p: &str| {
+            l.held
+                .iter()
+                .any(|h| under(&h.raw, p) || under(&h.canon, p))
+                || l.creating.iter().any(|c| under(c, p))
+        };
+        assert!(
+            ok(path) || real.as_deref().is_some_and(ok),
+            "write outside the locked worklogs: {path}"
+        );
     }
 
     /// Prints a line on stdout.
@@ -181,6 +285,8 @@ impl Ctx<'_> {
 
     /// Writes a file as is.
     pub fn write_raw(&self, path: &str, content: &str) -> WtResult<()> {
+        #[cfg(debug_assertions)]
+        self.assert_locked(path);
         self.ports
             .fs
             .write(path, content)
@@ -191,6 +297,7 @@ impl Ctx<'_> {
 
     /// Loads the index, migrating a v1 worklog first.
     pub fn load_index(&mut self) -> WtResult<Index> {
+        self.ensure_lock()?;
         let path = self.index_file();
         let Some(text) = self.read_index_text(&path)? else {
             return err(
