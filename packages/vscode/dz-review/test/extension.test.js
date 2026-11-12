@@ -6,6 +6,11 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
+// Panel timestamps render in the host's local zone, and the expectations are
+// written for Paris. Set here rather than in the npm script so it also holds
+// on Windows shells and when this file is run directly with `node --test`.
+process.env.TZ = "Europe/Paris";
+
 function offsetAt(text, position) {
   const lines = text.split("\n");
   return lines.slice(0, position.line).join("\n").length +
