@@ -9,3 +9,4 @@ out/vscode/**
 *.vsix
 .gitignore
 .vscodeignore
+wasm/**

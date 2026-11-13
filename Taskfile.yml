@@ -47,6 +47,23 @@ tasks:
       - node_modules/.package-lock.json
     cmds:
       - npm ci --silent
+  vscode:dz-review:wasm:
+    desc: "Build the critique-wasm glue the VS Code dz-review extension inlines"
+    sources:
+      - Cargo.toml
+      - Cargo.lock
+      # critique-core pulls in other workspace crates.
+      - crates/*/Cargo.toml
+      - crates/*/src/**/*.rs
+    generates:
+      - packages/vscode/dz-review/wasm/critique_wasm.js
+      - packages/vscode/dz-review/wasm/critique_wasm_bg.wasm
+    cmds:
+      - rm -rf packages/vscode/dz-review/wasm
+      - cargo build --release --locked --target wasm32-unknown-unknown -p critique-wasm
+      # --target web exposes initSync, which takes the bytes esbuild inlines.
+      # Its .d.ts files would need DOM types: src/wasm.d.ts declares the glue.
+      - wasm-bindgen --target web --no-typescript --out-dir packages/vscode/dz-review/wasm target/wasm32-unknown-unknown/release/critique_wasm.wasm
   vscode:dz-review:test:
     desc: "Run VS Code dz-review extension tests"
     dir: packages/vscode/dz-review
@@ -68,6 +85,8 @@ tasks:
       - "!../../tools/dz-review/*.test.ts"
       - src/**/*.ts
       - syntaxes/**/*.json
+      - ../../../crates/*/Cargo.toml
+      - ../../../crates/*/src/**/*.rs
     generates:
       - dz-review-vscode-0.0.1.vsix
     cmds:

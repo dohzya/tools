@@ -9,7 +9,9 @@ license = "MIT"
 publish = false
 
 [workspace.dependencies]
-wasm-bindgen = "0.2"
+# Must equal the wasm-bindgen-cli pinned in mise.toml: the CLI refuses a
+# schema from another version.
+wasm-bindgen = "=0.2.129"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 clap = { version = "4", features = ["derive"] }

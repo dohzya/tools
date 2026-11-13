@@ -293,6 +293,9 @@ function createHarness() {
     TextEncoder,
     crypto,
     process,
+    // esbuild decodes the inlined wasm with Buffer, a global of the real
+    // extension host.
+    Buffer,
   });
 
   function createEditor(text, start, end = start) {

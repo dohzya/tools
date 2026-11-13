@@ -58,7 +58,7 @@
     "onView:dzMdReview.reviewItems"
   ],
   "scripts": {
-    "compile": "tsc --noEmit -p ./ && esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --alias:@zod/zod=zod --alias:commonmark=commonmark --sourcemap=external --outfile=out/extension.js",
+    "compile": "task vscode:dz-review:wasm && tsc --noEmit -p ./ && esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --alias:@zod/zod=zod --alias:commonmark=commonmark --loader:.wasm=binary --log-override:empty-import-meta=silent --sourcemap=external --outfile=out/extension.js",
     "test": "npm run compile && node --test test/*.test.js",
     "check": "node -e \"const fs=require('fs'); JSON.parse(fs.readFileSync('package.json','utf8')); for (const file of fs.readdirSync('syntaxes').filter(f => f.endsWith('.json'))) JSON.parse(fs.readFileSync('syntaxes/' + file,'utf8'));\" && node --check out/extension.js",
     "vsix": "npm run compile && npm exec --yes @vscode/vsce -- package",

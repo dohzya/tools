@@ -17,6 +17,7 @@ import {
   type ReferenceTarget,
   type ReviewReference,
 } from "../../../tools/dz-review/ref-core";
+import * as critique from "./critique";
 import { createVscodeDzReviewEnvironment } from "./dz-review-environment";
 
 declare const TextDecoder: {
@@ -3478,6 +3479,7 @@ export const __test = {
   createCompactCriticMarkupReviewNote,
   createCompactReviewNote,
   createReviewConversation,
+  critique,
   cycleReviewMode,
   enterBatchMode,
   enterEditMode,
