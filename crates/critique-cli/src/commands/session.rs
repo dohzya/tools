@@ -600,21 +600,23 @@ fn dismiss(ctx: &Ctx<'_>, snapshot: &mut SessionSnapshot, input: &[String]) -> R
     write_snapshot(ctx, snapshot)
 }
 
-/// Unique id matching `input` exactly, or by prefix of the canonical or display id.
+/// Unique id of `all` matching `input` (see [`matches_id`]).
 fn resolve_prefix(input: &str, all: &[String]) -> Option<String> {
     let wanted = input.to_lowercase();
-    let matches: Vec<&String> = all
-        .iter()
-        .filter(|id| {
-            let canonical = id.to_lowercase();
-            let display = display_id(id, all).to_lowercase();
-            canonical == wanted
-                || display == wanted
-                || canonical.starts_with(&wanted)
-                || display.starts_with(&wanted)
-        })
-        .collect();
+    let matches: Vec<&String> = all.iter().filter(|id| matches_id(id, &wanted)).collect();
     (matches.len() == 1).then(|| matches[0].clone())
+}
+
+/// `wanted` (lowercase) is a prefix of `id`, with or without `rvw_`. Display
+/// ids are such prefixes, whatever set they were shortened over: the VS Code
+/// panel shortens over the whole reference map, so it may show more
+/// characters than the command's own display id.
+fn matches_id(id: &str, wanted: &str) -> bool {
+    let canonical = id.to_lowercase();
+    canonical.starts_with(wanted)
+        || canonical
+            .strip_prefix(PREFIX)
+            .is_some_and(|bare| bare.starts_with(wanted))
 }
 
 fn done(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
@@ -836,18 +838,10 @@ fn resolve_located(
 ) -> Result<Located> {
     let targets = target_files(ctx, snapshot, given)?;
     let items = collect_located(ctx, &targets, None, false, Filter::All, None)?;
-    let all: Vec<String> = items.iter().map(|l| l.id.clone()).collect();
     let wanted = id.to_lowercase();
     let mut matches: Vec<Located> = items
         .into_iter()
-        .filter(|l| {
-            let canonical = l.id.to_lowercase();
-            let display = display_id(&l.id, &all).to_lowercase();
-            canonical == wanted
-                || display == wanted
-                || canonical.starts_with(&wanted)
-                || display.starts_with(&wanted)
-        })
+        .filter(|l| matches_id(&l.id, &wanted))
         .collect();
     match matches.len() {
         0 => err(format!("No review item found for id {id}.")),
