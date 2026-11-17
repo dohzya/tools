@@ -313,9 +313,7 @@ pub fn command() -> Command {
                 .value_name("dir")
                 .global(true)
                 .help(
-                    "Agent state directory. Defaults to CRITIQUE_STATE_DIR (or \
-                        DZ_REVIEW_STATE_DIR) or Git-root .critique; a legacy .dz-review is read \
-                        when .critique is absent.",
+                    "Agent state directory. Defaults to CRITIQUE_STATE_DIR or Git-root .critique.",
                 ),
         )
         .arg(
@@ -323,10 +321,7 @@ pub fn command() -> Command {
                 .long("ignore-file")
                 .value_name("file")
                 .global(true)
-                .help(
-                    "Review ignore file. Defaults to CRITIQUE_IGNORE_FILE (or \
-                        DZ_REVIEW_IGNORE_FILE) or .critique-ignore.",
-                ),
+                .help("Review ignore file. Defaults to CRITIQUE_IGNORE_FILE or .critique-ignore."),
         )
         .subcommand(files(context(pager(selection(
             Command::new("review")

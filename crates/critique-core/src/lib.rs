@@ -14,4 +14,5 @@ pub mod refs;
 pub mod review;
 pub mod scan;
 pub mod sha1;
+pub mod state;
 pub mod timestamp;

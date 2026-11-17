@@ -183,10 +183,9 @@ fn started_at(ctx: &Ctx<'_>) -> String {
 }
 
 fn write_snapshot(ctx: &Ctx<'_>, snapshot: &SessionSnapshot) -> Result<()> {
-    let dir = config::state_dirs(ctx.host, &ctx.settings).write;
+    let dir = config::state_dir(ctx.host, &ctx.settings);
     ctx.host.create_dir_all(&crate::paths::slashes(&dir))?;
-    ctx.host
-        .write(&ctx.session_write_path(), &json_text(snapshot))?;
+    ctx.host.write(&ctx.session_path(), &json_text(snapshot))?;
     Ok(())
 }
 
@@ -296,7 +295,7 @@ struct StartJson<'a> {
 
 fn start(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
     let (force, dry_run) = (parsed.flag("force"), parsed.flag("dry-run"));
-    let session = ctx.session_read_path();
+    let session = ctx.session_path();
     if !dry_run && !force && ctx.host.exists(&session) {
         let p = ctx.program();
         return err(format!(
@@ -332,7 +331,7 @@ fn start(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             dry_run,
         })
     } else {
-        inbox(ctx, &snapshot.items, dry_run, &ctx.session_write_path())
+        inbox(ctx, &snapshot.items, dry_run, &ctx.session_path())
     };
     ctx.print(&text);
     Ok(())
@@ -367,7 +366,7 @@ fn add_file(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
     let text = if parsed.flag("json") {
         json_text(&merged)
     } else {
-        inbox(ctx, &merged.items, false, &ctx.session_write_path())
+        inbox(ctx, &merged.items, false, &ctx.session_path())
     };
     ctx.print(&text);
     Ok(())
@@ -691,7 +690,7 @@ fn status_cmd(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
     } else {
         let mut lines = vec![
             "Agent status".to_string(),
-            format!("Snapshot: {}", ctx.session_read_path()),
+            format!("Snapshot: {}", ctx.session_path()),
         ];
         lines.extend(counters(&status.handoff, true));
         if !status.items.is_empty() {
@@ -824,7 +823,7 @@ fn list_cmd(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             items: &items,
         })
     } else {
-        inbox(ctx, &items, false, &ctx.session_write_path())
+        inbox(ctx, &items, false, &ctx.session_path())
     };
     ctx.print(&text);
     Ok(())
@@ -1108,7 +1107,7 @@ fn rollback(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
         rolled.push(file.path.clone());
     }
     if close {
-        let _ = ctx.host.remove_file(&ctx.session_read_path());
+        let _ = ctx.host.remove_file(&ctx.session_path());
     }
     let result = RollbackResult {
         version: 1,

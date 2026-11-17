@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "status"
+  ],
+  "env": {
+    "CRITIQUE_COMPAT_DZ_REVIEW": "",
+    "DZ_REVIEW_STATE_DIR": ".dz-review"
+  },
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): nothing named dz-review is read outside the legacy identity switch. The session started by the old tool in `.dz-review` is not found, neither as a fallback of the default `.critique` nor through DZ_REVIEW_STATE_DIR."
+}

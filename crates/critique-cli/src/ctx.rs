@@ -37,30 +37,22 @@ impl Ctx<'_> {
         paths::relative_to(&self.host.cwd(), file)
     }
 
-    /// Session snapshot path to read.
-    pub fn session_read_path(&self) -> String {
+    /// Session snapshot path.
+    pub fn session_path(&self) -> String {
         config::file_in(
-            &config::state_dirs(self.host, &self.settings).read,
-            config::SESSION_FILE,
-        )
-    }
-
-    /// Session snapshot path to write.
-    pub fn session_write_path(&self) -> String {
-        config::file_in(
-            &config::state_dirs(self.host, &self.settings).write,
+            &config::state_dir(self.host, &self.settings),
             config::SESSION_FILE,
         )
     }
 
     /// Whether a session is active.
     pub fn has_session(&self) -> bool {
-        self.host.exists(&self.session_read_path())
+        self.host.exists(&self.session_path())
     }
 
     /// Reads the session snapshot.
     pub fn read_session(&self) -> Result<SessionSnapshot> {
-        let path = self.session_read_path();
+        let path = self.session_path();
         if !self.host.exists(&path) {
             return err(format!(
                 "No agent session snapshot found at {path}. Run {} session start first.",
@@ -81,7 +73,7 @@ impl Ctx<'_> {
 
     fn read_map(&self) -> Result<ReferenceMap> {
         let path = config::file_in(
-            &config::state_dirs(self.host, &self.settings).read,
+            &config::state_dir(self.host, &self.settings),
             config::MAP_FILE,
         );
         if !self.host.exists(&path) {
@@ -93,7 +85,7 @@ impl Ctx<'_> {
     }
 
     fn write_map(&self, map: &ReferenceMap) -> Result<()> {
-        let dir = config::state_dirs(self.host, &self.settings).write;
+        let dir = config::state_dir(self.host, &self.settings);
         self.host.create_dir_all(&paths::slashes(&dir))?;
         self.host
             .write(&config::file_in(&dir, config::MAP_FILE), &map.to_json())?;
