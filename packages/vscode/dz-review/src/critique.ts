@@ -9,12 +9,28 @@ const reviewItemsSchema = z.object({
   items: z.array(z.object({
     id: z.string(),
     shortId: z.string(),
-    kind: z.string(),
-    state: z.string(),
+    kind: z.enum([
+      "addition",
+      "deletion",
+      "substitution",
+      "highlight",
+      "comment",
+      "discussion",
+      "conversation",
+    ]),
+    state: z.enum([
+      "open",
+      "wip",
+      "handled",
+      "resolved",
+      "annotation",
+      "discussion",
+    ]),
     start: z.number(),
     end: z.number(),
     lineStart: z.number(),
     lineEnd: z.number(),
+    summary: z.string(),
     timestamp: z.optional(z.string()),
     messages: z.optional(z.array(z.object({
       author: z.string(),
@@ -27,6 +43,16 @@ const reviewItemsSchema = z.object({
 
 export type ReviewItems = z.infer<typeof reviewItemsSchema>;
 export type ReviewItem = ReviewItems["items"][number];
+
+/**
+ * How `summary` is rendered: `display` shows the block as written, `payload`
+ * what it is about (inserted text, comment, `old -> new`...); both are cut at
+ * `width` UTF-16 units.
+ */
+export interface SummaryOptions {
+  source: "display" | "payload";
+  width: number;
+}
 
 let initialized = false;
 
@@ -48,9 +74,12 @@ export function reviewItems(
   file: string,
   text: string,
   mapJson: string | null,
+  summary: SummaryOptions,
 ): ReviewItems {
   ensureInitialized();
   return reviewItemsSchema.parse(
-    JSON.parse(reviewItemsJson(file, text, mapJson)),
+    JSON.parse(
+      reviewItemsJson(file, text, mapJson, summary.source, summary.width),
+    ),
   );
 }

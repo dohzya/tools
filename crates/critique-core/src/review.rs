@@ -1,5 +1,6 @@
 //! Review items: collection, status filters, summaries and git diff lines.
 
+use crate::actions;
 use crate::ids::collapse_whitespace;
 use crate::scan::{self, Annotation, Kind, Marker, Status};
 use crate::timestamp::{ReviewTimestamp, format_for_display, parse_review_timestamp};
@@ -142,25 +143,65 @@ fn conversation_content(raw: &str) -> &str {
     }
 }
 
-fn truncate_summary(text: String) -> String {
-    if utf16_len(&text) <= 120 {
+/// What a summary shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SummarySource {
+    /// Conversations as their whitespace-collapsed content, other items as
+    /// the block itself (see [`render_for_display`]), line breaks included.
+    Display,
+    /// What the item is about, whitespace-collapsed: the inserted, deleted or
+    /// highlighted text, the comment, `old -> new`, or a conversation's content.
+    Payload,
+}
+
+/// How [`summarize`] renders an item: each front end picks the values that
+/// suit its display.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SummaryOptions {
+    /// What the summary shows.
+    pub source: SummarySource,
+    /// Maximum length in UTF-16 units; longer text is cut and ends with `...`.
+    pub width: usize,
+}
+
+fn truncate_summary(text: String, width: usize) -> String {
+    if utf16_len(&text) <= width {
         text
     } else {
-        format!("{}...", utf16_prefix(&text, 117))
+        format!("{}...", utf16_prefix(&text, width.saturating_sub(3)))
     }
 }
 
-/// One-line summary of a conversation block.
-pub fn summarize_conversation(raw: &str) -> String {
-    truncate_summary(collapse_whitespace(conversation_content(raw)))
+fn payload(ann: &Annotation) -> String {
+    let raw = &ann.raw;
+    let inner_end = raw.len() - 3;
+    match ann.kind {
+        Kind::Conversation | Kind::Discussion => conversation_content(raw).to_string(),
+        Kind::Substitution => {
+            let start = actions::payload_start(raw, 3);
+            match raw[start..].find("~>") {
+                Some(k) => format!(
+                    "{} -> {}",
+                    &raw[start..start + k],
+                    &raw[start + k + 2..inner_end]
+                ),
+                None => raw.clone(),
+            }
+        }
+        _ => raw[actions::payload_start(raw, 3).min(inner_end)..inner_end].to_string(),
+    }
 }
 
 /// Summary of any item.
-pub fn summarize(ann: &Annotation) -> String {
-    if ann.kind == Kind::Conversation {
-        return summarize_conversation(&ann.raw);
-    }
-    truncate_summary(render_for_display(ann))
+pub fn summarize(ann: &Annotation, options: &SummaryOptions) -> String {
+    let text = match options.source {
+        SummarySource::Payload => collapse_whitespace(&payload(ann)),
+        SummarySource::Display if ann.kind == Kind::Conversation => {
+            collapse_whitespace(conversation_content(&ann.raw))
+        }
+        SummarySource::Display => render_for_display(ann),
+    };
+    truncate_summary(text, options.width)
 }
 
 /// The block with its metadata timestamp shown as ISO.
@@ -336,9 +377,82 @@ mod tests {
     #[test]
     fn summary_truncates_by_utf16_units() {
         let long = format!("{{>> {} <<}}", "é".repeat(200));
-        let s = summarize(&collect_review_items(&long, false, Filter::All)[0].ann);
+        let s = summarize(
+            &collect_review_items(&long, false, Filter::All)[0].ann,
+            &TUI,
+        );
         assert_eq!(s.encode_utf16().count(), 120);
         assert!(s.ends_with("..."));
+    }
+
+    const TUI: SummaryOptions = SummaryOptions {
+        source: SummarySource::Display,
+        width: 120,
+    };
+    const GUI: SummaryOptions = SummaryOptions {
+        source: SummarySource::Payload,
+        width: 80,
+    };
+
+    fn first_ann(text: &str) -> Annotation {
+        collect_review_items(text, false, Filter::All)[0]
+            .ann
+            .clone()
+    }
+
+    fn payload_summary(text: &str) -> String {
+        summarize(&first_ann(text), &GUI)
+    }
+
+    #[test]
+    fn payload_summary_strips_markers_and_metadata() {
+        assert_eq!(payload_summary("{++%1VB66I0Y|new\n  text++}"), "new text");
+        assert_eq!(
+            payload_summary("{--%\u{ada8}\u{b22d}\u{b147}\u{ac78}|old--}"),
+            "old"
+        );
+        assert_eq!(payload_summary("{== mark ==}"), "mark");
+        assert_eq!(payload_summary("{>>%1VB66I0Y| note <<}"), "note");
+        assert_eq!(payload_summary("{~~%1VB66I0Y|a~>b~~}"), "a -> b");
+        assert_eq!(
+            payload_summary("{?? plain\n discussion ??}"),
+            "plain discussion"
+        );
+        assert_eq!(payload_summary("<!--\n@agent  q\n-->"), "@agent q");
+    }
+
+    #[test]
+    fn payload_summary_cuts_at_the_given_width() {
+        let fits = "x".repeat(80);
+        assert_eq!(payload_summary(&format!("{{>>{fits}<<}}")), fits);
+        let over = "é".repeat(81);
+        assert_eq!(
+            payload_summary(&format!("{{>>{over}<<}}")),
+            format!("{}...", "é".repeat(77))
+        );
+    }
+
+    #[test]
+    fn cli_summary_keeps_an_annotation_block_as_displayed() {
+        let s = summarize(&first_ann("{++%1VB66I0Y|two\n  lines++}"), &TUI);
+        assert_eq!(s, "{++%2026-01-01T01:00:00+01:00|two\n  lines++}");
+    }
+
+    #[test]
+    fn cli_summary_collapses_a_conversation_content() {
+        let s = summarize(&first_ann("<!--\n@agent  q\n@me   a\n-->"), &TUI);
+        assert_eq!(s, "@agent q @me a");
+    }
+
+    #[test]
+    fn cli_summary_cuts_at_120_units() {
+        let fits = format!("{{>>{}<<}}", "x".repeat(114));
+        assert_eq!(summarize(&first_ann(&fits), &TUI), fits);
+        let over = format!("{{>>{}<<}}", "x".repeat(115));
+        assert_eq!(
+            summarize(&first_ann(&over), &TUI),
+            format!("{}...", &over[..117])
+        );
     }
 
     #[test]

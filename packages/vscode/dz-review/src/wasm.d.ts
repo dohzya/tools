@@ -13,5 +13,7 @@ declare module "*/critique_wasm.js" {
     file: string,
     text: string,
     mapJson: string | null,
+    summarySource: string,
+    summaryWidth: number,
   ): string;
 }

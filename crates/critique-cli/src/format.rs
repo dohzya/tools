@@ -7,6 +7,13 @@ use critique_core::scan::{self, Annotation, Kind, Marker, Status};
 use critique_core::timestamp::{ReviewTimestamp, format_for_display, parse_review_timestamp};
 use std::collections::BTreeMap;
 
+/// Summaries in terminal listings and agent JSON: the block as written, on
+/// lines wide enough for a terminal.
+pub const SUMMARY: review::SummaryOptions = review::SummaryOptions {
+    source: review::SummarySource::Display,
+    width: 120,
+};
+
 /// Named ANSI styles.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Paint {

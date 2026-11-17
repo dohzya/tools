@@ -115,7 +115,7 @@ pub fn run(ctx: &mut Ctx<'_>, options: &Options) -> Result<()> {
     if options.json {
         let items = located
             .iter()
-            .map(|l| agent::to_agent_item(&slash(&l.file), &l.id, &l.item))
+            .map(|l| agent::to_agent_item(&slash(&l.file), &l.id, &l.item, &format::SUMMARY))
             .collect();
         let mut text =
             serde_json::to_string_pretty(&Listing { version: 1, items }).unwrap_or_default();

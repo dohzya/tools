@@ -18,7 +18,7 @@ pub enum Action {
     Cancel,
 }
 
-fn payload_start(raw: &str, content_start: usize) -> usize {
+pub(crate) fn payload_start(raw: &str, content_start: usize) -> usize {
     match scan::metadata_prefix_end(raw, content_start) {
         Some(end) => end,
         None => content_start,

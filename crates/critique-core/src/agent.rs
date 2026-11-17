@@ -87,8 +87,13 @@ pub fn message(m: review::Message) -> AgentMessage {
     }
 }
 
-/// Builds the agent view of an item.
-pub fn to_agent_item(file: &str, id: &str, item: &ReviewItem) -> AgentItem {
+/// Builds the agent view of an item, its `context` rendered with `summary`.
+pub fn to_agent_item(
+    file: &str,
+    id: &str,
+    item: &ReviewItem,
+    summary: &review::SummaryOptions,
+) -> AgentItem {
     let messages = if item.ann.kind == Kind::Conversation {
         review::messages(&item.ann.raw)
     } else {
@@ -103,7 +108,7 @@ pub fn to_agent_item(file: &str, id: &str, item: &ReviewItem) -> AgentItem {
         state: state_of(item),
         first_message: messages.first().cloned().map(message),
         last_message: messages.last().cloned().map(message),
-        context: review::summarize(&item.ann),
+        context: review::summarize(&item.ann, summary),
         suggested_action: suggested_action(item).to_string(),
         raw_hash: fingerprint(&item.ann.raw),
     }

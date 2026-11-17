@@ -27,11 +27,14 @@ function loadCritique() {
   return module.exports.__test.critique;
 }
 
+const SUMMARY = { source: "payload", width: 80 };
+
 test("critique wasm reviews items with UTF-16 offsets and short ids", () => {
   const { items, map } = loadCritique().reviewItems(
     "a.md",
     "😀 {>> é <<}",
     null,
+    SUMMARY,
   );
 
   assert.equal(items.length, 1);
@@ -45,8 +48,8 @@ test("critique wasm reviews items with UTF-16 offsets and short ids", () => {
 test("critique wasm returns no map once it is up to date", () => {
   const critique = loadCritique();
   const text = "a\n{>> x <<}\n<!-- @agent q\n@me a -->\n";
-  const first = critique.reviewItems("a.md", text, null);
-  const again = critique.reviewItems("a.md", text, first.map);
+  const first = critique.reviewItems("a.md", text, null, SUMMARY);
+  const again = critique.reviewItems("a.md", text, first.map, SUMMARY);
 
   assert.deepEqual(
     again.items.map(({ id }) => id),
@@ -65,7 +68,7 @@ test("critique wasm returns no map once it is up to date", () => {
 
 test("critique wasm short ids are unique across the reference map", () => {
   const critique = loadCritique();
-  const first = critique.reviewItems("a.md", "{>> x <<}", null);
+  const first = critique.reviewItems("a.md", "{>> x <<}", null, SUMMARY);
   const id = first.items[0].id;
   const map = JSON.parse(first.map);
   // Another file holds an id sharing the 6 first characters of this one.
@@ -78,6 +81,7 @@ test("critique wasm short ids are unique across the reference map", () => {
     "a.md",
     "{>> x <<}",
     JSON.stringify(map),
+    SUMMARY,
   );
 
   assert.equal(first.items[0].shortId.length, 6);
@@ -85,8 +89,24 @@ test("critique wasm short ids are unique across the reference map", () => {
   assert.ok(id.slice(4).startsWith(items[0].shortId));
 });
 
+test("critique wasm summarizes items with the given options", () => {
+  const { items } = loadCritique().reviewItems(
+    "a.md",
+    "{~~%1VB66I0Y|old~>new~~} {>> a\n  b <<}",
+    null,
+    { source: "payload", width: 4 },
+  );
+
+  assert.deepEqual(Array.from(items, ({ summary }) => summary), [
+    "o...",
+    "a b",
+  ]);
+});
+
 test("critique wasm rejects an invalid reference map", () => {
-  assert.throws(() => loadCritique().reviewItems("a.md", "{>> x <<}", "{"));
+  assert.throws(() =>
+    loadCritique().reviewItems("a.md", "{>> x <<}", "{", SUMMARY)
+  );
 });
 
 test("critique wasm accepts a lone surrogate without shifting offsets", () => {
@@ -95,6 +115,7 @@ test("critique wasm accepts a lone surrogate without shifting offsets", () => {
     "a.md",
     "\uD800 {>> x <<}",
     null,
+    SUMMARY,
   );
 
   assert.equal(items.length, 1);

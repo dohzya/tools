@@ -104,7 +104,7 @@ fn collect_state(ctx: &Ctx<'_>, file_list: &[String], include_empty: bool) -> Re
         let items: Vec<AgentItem> = collected
             .iter()
             .zip(&ids)
-            .map(|(item, id)| agent::to_agent_item(&path, id, item))
+            .map(|(item, id)| agent::to_agent_item(&path, id, item, &format::SUMMARY))
             .collect();
         if items.is_empty() && !include_empty {
             continue;
@@ -871,7 +871,12 @@ fn show(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
         }
         ctx.print(&json_text(&Out {
             version: 1,
-            item: agent::to_agent_item(&slash(&located.file), &located.id, &located.item),
+            item: agent::to_agent_item(
+                &slash(&located.file),
+                &located.id,
+                &located.item,
+                &format::SUMMARY,
+            ),
         }));
         return Ok(());
     }
@@ -1038,7 +1043,7 @@ fn clean(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
         cleaned: if dry_run { 0 } else { targets.len() },
         cleanable: targets
             .iter()
-            .map(|t| agent::to_agent_item(&slash(&t.file), &t.id, &t.item))
+            .map(|t| agent::to_agent_item(&slash(&t.file), &t.id, &t.item, &format::SUMMARY))
             .collect(),
     };
     let text = if parsed.flag("json") {

@@ -6,7 +6,7 @@
 
 use critique_core::agent::{self, AgentMessage};
 use critique_core::refmap::{self, ReferenceMap};
-use critique_core::review::{self, Filter};
+use critique_core::review::{self, Filter, SummaryOptions, SummarySource};
 use critique_core::scan::Kind;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
@@ -33,6 +33,8 @@ pub struct Item {
     pub line_start: usize,
     /// Last line (1-based).
     pub line_end: usize,
+    /// One-line summary, rendered with the caller's options.
+    pub summary: String,
     /// `%timestamp` value of the annotation metadata.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<String>,
@@ -50,12 +52,27 @@ struct Items {
 /// Items of `text` (as the file `file`) with persistent ids, given the current
 /// `reference-map.json` content (`None` or blank for none). Returns
 /// `{ items, map }` where `map` is the new file content to write, or `null`
-/// when nothing changed.
+/// when nothing changed. Summaries show `summary_source` (`display` or
+/// `payload`, see [`SummarySource`]) cut at `summary_width` UTF-16 units.
 ///
 /// Ids are assigned over every item, before any filtering, like `critique
 /// list`, `session start` and the `agent` commands: an id must not depend on
 /// what the caller shows.
-pub fn review_items_json(file: &str, text: &str, map_json: Option<&str>) -> Result<String, String> {
+pub fn review_items_json(
+    file: &str,
+    text: &str,
+    map_json: Option<&str>,
+    summary_source: &str,
+    summary_width: usize,
+) -> Result<String, String> {
+    let summary = SummaryOptions {
+        source: match summary_source {
+            "display" => SummarySource::Display,
+            "payload" => SummarySource::Payload,
+            other => return Err(format!("unknown summary source: {other}")),
+        },
+        width: summary_width,
+    };
     let map = match map_json.filter(|m| !m.trim().is_empty()) {
         Some(json) => ReferenceMap::parse(json)?,
         None => ReferenceMap::default(),
@@ -69,7 +86,7 @@ pub fn review_items_json(file: &str, text: &str, map_json: Option<&str>) -> Resu
         .zip(&assigned.ids)
         .zip(short_ids)
         .map(|((item, id), short_id)| {
-            let view = agent::to_agent_item(file, id, item);
+            let view = agent::to_agent_item(file, id, item, &summary);
             let messages = (item.ann.kind == Kind::Conversation).then(|| {
                 review::messages(&item.ann.raw)
                     .into_iter()
@@ -85,6 +102,7 @@ pub fn review_items_json(file: &str, text: &str, map_json: Option<&str>) -> Resu
                 end: utf16(text, item.ann.end),
                 line_start: item.ann.line_start,
                 line_end: item.ann.line_end,
+                summary: view.context,
                 timestamp: item.ann.timestamp.clone(),
                 messages,
             }
@@ -103,8 +121,21 @@ fn utf16(text: &str, byte: usize) -> usize {
 
 /// JS entry point of [`review_items_json`].
 #[wasm_bindgen(js_name = reviewItems)]
-pub fn review_items(file: &str, text: &str, map_json: Option<String>) -> Result<String, JsError> {
-    review_items_json(file, text, map_json.as_deref()).map_err(|e| JsError::new(&e))
+pub fn review_items(
+    file: &str,
+    text: &str,
+    map_json: Option<String>,
+    summary_source: &str,
+    summary_width: usize,
+) -> Result<String, JsError> {
+    review_items_json(
+        file,
+        text,
+        map_json.as_deref(),
+        summary_source,
+        summary_width,
+    )
+    .map_err(|e| JsError::new(&e))
 }
 
 #[cfg(test)]
@@ -130,7 +161,7 @@ mod tests {
 
     #[test]
     fn ids_without_a_map_are_the_historical_ts_values() {
-        let out = parse(&review_items_json("doc.md", TEXT, None).unwrap());
+        let out = parse(&review_items_json("doc.md", TEXT, None, "payload", 80).unwrap());
         assert_eq!(
             ids(&out),
             [
@@ -152,7 +183,7 @@ mod tests {
             &collect_annotations(text),
             &ReferenceMap::default(),
         );
-        let out = parse(&review_items_json("a/b.md", text, None).unwrap());
+        let out = parse(&review_items_json("a/b.md", text, None, "payload", 80).unwrap());
         assert_eq!(ids(&out), core.ids);
         assert_eq!(
             out["map"].as_str(),
@@ -178,14 +209,21 @@ mod tests {
 
     #[test]
     fn short_ids_are_unique_across_the_files_of_the_map() {
-        let alone = parse(&review_items_json("doc.md", TEXT, None).unwrap());
+        let alone = parse(&review_items_json("doc.md", TEXT, None, "payload", 80).unwrap());
         let id = alone["items"][0]["id"].as_str().unwrap().to_string();
         assert_eq!(alone["items"][0]["shortId"].as_str().unwrap().len(), 6);
         let written = ReferenceMap::parse(alone["map"].as_str().unwrap()).unwrap();
         // First call (the map gets this file's entries) and later calls (map
         // unchanged): the lookalike of another file lengthens the short id.
         for map in [ReferenceMap::default(), written] {
-            let out = review_items_json("doc.md", TEXT, Some(&with_lookalike(map, &id))).unwrap();
+            let out = review_items_json(
+                "doc.md",
+                TEXT,
+                Some(&with_lookalike(map, &id)),
+                "payload",
+                80,
+            )
+            .unwrap();
             let out = parse(&out);
             assert_eq!(out["items"][0]["id"], id.as_str());
             let short = out["items"][0]["shortId"].as_str().unwrap();
@@ -198,7 +236,7 @@ mod tests {
     #[test]
     fn offsets_are_utf16_units() {
         let text = "😀 {>> é <<}";
-        let out = parse(&review_items_json("a.md", text, None).unwrap());
+        let out = parse(&review_items_json("a.md", text, None, "payload", 80).unwrap());
         let item = &out["items"][0];
         let (start, end) = (
             item["start"].as_u64().unwrap() as usize,
@@ -211,7 +249,7 @@ mod tests {
 
     #[test]
     fn items_carry_kind_state_lines_timestamp_and_messages() {
-        let out = parse(&review_items_json("doc.md", TEXT, None).unwrap());
+        let out = parse(&review_items_json("doc.md", TEXT, None, "payload", 80).unwrap());
         let conversation = &out["items"][0];
         assert_eq!(conversation["kind"], "conversation");
         assert_eq!(conversation["state"], "handled");
@@ -229,9 +267,9 @@ mod tests {
 
     #[test]
     fn map_is_null_once_written_back() {
-        let first = parse(&review_items_json("doc.md", TEXT, None).unwrap());
+        let first = parse(&review_items_json("doc.md", TEXT, None, "payload", 80).unwrap());
         let map = first["map"].as_str().unwrap().to_string();
-        let again = parse(&review_items_json("doc.md", TEXT, Some(&map)).unwrap());
+        let again = parse(&review_items_json("doc.md", TEXT, Some(&map), "payload", 80).unwrap());
         assert_eq!(ids(&again), ids(&first));
         assert!(again["map"].is_null());
     }
@@ -239,8 +277,8 @@ mod tests {
     #[test]
     fn a_blank_map_is_no_map() {
         assert_eq!(
-            review_items_json("doc.md", TEXT, Some("  ")),
-            review_items_json("doc.md", TEXT, None)
+            review_items_json("doc.md", TEXT, Some("  "), "payload", 80),
+            review_items_json("doc.md", TEXT, None, "payload", 80)
         );
     }
 
@@ -250,18 +288,28 @@ mod tests {
         let map = r#"{"version":1,"entries":{
 "rvw_coarse":{"file":"doc.md","range":{"startLine":100,"endLine":100},"mrfi":"~{v0;r=1:1-3:15;p=h1[1];fh=xxh64:AjAXQ728;hh=smh64:523f49688a480c0b;ctx=suf:rzWtdMwJ;doc=smh64:523f49688a480c0b}"},
 "rvw_own":{"file":"doc.md","range":{"startLine":100,"endLine":100},"mrfi":"~{v0;r=3:1-3:15;p=h1[1]/p[1];fh=xxh64:FhAKPVpE;hh=smh64:523f49688a480c0b;ctx=pre:XwovWhJk,suf:rzWtdMwJ;doc=smh64:523f49688a480c0b}"}}}"#;
-        let out =
-            parse(&review_items_json("doc.md", "# T\n\nonly {>> b <<}\n", Some(map)).unwrap());
+        let out = parse(
+            &review_items_json(
+                "doc.md",
+                "# T\n\nonly {>> b <<}\n",
+                Some(map),
+                "payload",
+                80,
+            )
+            .unwrap(),
+        );
         assert_eq!(ids(&out), ["rvw_own"]);
         assert_eq!(out["items"][0]["shortId"], "own");
     }
 
     #[test]
     fn crlf_and_lone_cr_give_the_lf_lines_and_ids() {
-        let lf = parse(&review_items_json("d.md", "a\nb\n{?? @me x ??}\n", None).unwrap());
+        let lf = parse(
+            &review_items_json("d.md", "a\nb\n{?? @me x ??}\n", None, "payload", 80).unwrap(),
+        );
         for eol in ["\r\n", "\r"] {
             let text = format!("a{eol}b{eol}{{?? @me x ??}}{eol}");
-            let out = parse(&review_items_json("d.md", &text, None).unwrap());
+            let out = parse(&review_items_json("d.md", &text, None, "payload", 80).unwrap());
             assert_eq!(out["items"][0]["lineStart"], 3);
             assert_eq!(out["items"][0]["id"], lf["items"][0]["id"]);
             let start = out["items"][0]["start"].as_u64().unwrap() as usize;
@@ -270,7 +318,52 @@ mod tests {
     }
 
     #[test]
+    fn summaries_follow_the_given_options() {
+        let summaries = |source, width| {
+            let out = parse(&review_items_json("doc.md", TEXT, None, source, width).unwrap());
+            out["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|i| i["summary"].as_str().unwrap().to_string())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            summaries("payload", 80),
+            [
+                "@agent%1VB66I0Y question @me answer",
+                "add",
+                "note",
+                "plain",
+                "a -> b"
+            ]
+        );
+        assert_eq!(summaries("display", 10)[1], "{++%202...");
+    }
+
+    #[test]
+    fn an_unknown_summary_source_is_an_error() {
+        assert!(review_items_json("doc.md", TEXT, None, "raw", 80).is_err());
+    }
+
+    #[test]
+    fn ids_already_in_the_map_are_kept() {
+        // Earlier extension builds minted plain `{?? ??}` ids as conversations,
+        // so they differ from what the core mints today.
+        let first = parse(&review_items_json("doc.md", TEXT, None, "payload", 80).unwrap());
+        let minted = first["items"][3]["id"].as_str().unwrap();
+        let map = first["map"]
+            .as_str()
+            .unwrap()
+            .replace(minted, "rvw_fromOldPanel");
+        let out = parse(&review_items_json("doc.md", TEXT, Some(&map), "payload", 80).unwrap());
+        assert_eq!(out["items"][3]["kind"], "discussion");
+        assert_eq!(out["items"][3]["id"], "rvw_fromOldPanel");
+        assert!(out["map"].is_null());
+    }
+
+    #[test]
     fn an_invalid_map_is_an_error() {
-        assert!(review_items_json("doc.md", TEXT, Some("{not json")).is_err());
+        assert!(review_items_json("doc.md", TEXT, Some("{not json"), "payload", 80).is_err());
     }
 }

@@ -239,7 +239,7 @@ fn list_items(
                         &l.item.ann,
                         Some(&display_id(&l.id, &all))
                     ),
-                    review::summarize(&l.item.ann)
+                    review::summarize(&l.item.ann, &format::SUMMARY)
                 )
             })
             .collect()
