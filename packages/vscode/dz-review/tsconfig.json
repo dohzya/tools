@@ -13,22 +13,7 @@
     "sourceMap": true,
     "rootDir": "../../",
     "strict": true,
-    "allowImportingTsExtensions": true,
-    // packages/tools resolves these through its Deno import map. tsc checks
-    // those sources from here, where node resolution never reaches this
-    // package's node_modules, so they are mapped by hand. commonmark points
-    // at its @types package because only declarations matter under --noEmit.
-    // The `compile` script gives esbuild the same mapping with --alias, as
-    // aliased paths resolve from this package rather than from the importer.
-    "paths": {
-      "@zod/zod/mini": [
-        "./node_modules/zod/mini"
-      ],
-      "commonmark": [
-        "./node_modules/@types/commonmark"
-      ]
-    },
-    "baseUrl": "."
+    "allowImportingTsExtensions": true
   },
   "exclude": [
     "node_modules",

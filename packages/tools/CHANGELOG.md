@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **vscode:** A `{?? ??}` block without `@agent`/`@me` markers is shown as a discussion, as in the CLI, instead of a conversation.
 - **vscode:** Short item ids are unique across every file of the project's reference map, not only within the open file.
 - **vscode:** Annotations nested inside a conversation or an HTML comment are no longer listed as separate items, as in the CLI.
+- **vscode:** The review panel stores its reference map in the `critique` CLI's state directory: the new `dzMdReview.stateDir` setting, else `CRITIQUE_STATE_DIR`, else `.critique/` at the Git root. A legacy `.dz-review/` is no longer read.
 
 ## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16
 

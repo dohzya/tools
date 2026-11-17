@@ -16,4 +16,5 @@ declare module "*/critique_wasm.js" {
     summarySource: string,
     summaryWidth: number,
   ): string;
+  export function stateDir(base: string | null, configured: string[]): string;
 }

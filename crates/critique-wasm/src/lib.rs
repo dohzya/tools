@@ -8,6 +8,7 @@ use critique_core::agent::{self, AgentMessage};
 use critique_core::refmap::{self, ReferenceMap};
 use critique_core::review::{self, Filter, SummaryOptions, SummarySource};
 use critique_core::scan::Kind;
+use critique_core::state;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -136,6 +137,15 @@ pub fn review_items(
         summary_width,
     )
     .map_err(|e| JsError::new(&e))
+}
+
+/// State directory: the first non-blank `configured` value by priority, else
+/// `.critique` under `base` (the Git root, else the cwd), as the CLI does.
+/// Blank stands for unset (no optional strings in a JS array).
+#[wasm_bindgen(js_name = stateDir)]
+pub fn state_dir(base: Option<String>, configured: Vec<String>) -> String {
+    let configured: Vec<_> = configured.iter().map(|v| Some(v.as_str())).collect();
+    state::locate(state::STATE_DIR, &configured, base.as_deref())
 }
 
 #[cfg(test)]
@@ -365,5 +375,17 @@ mod tests {
     #[test]
     fn an_invalid_map_is_an_error() {
         assert!(review_items_json("doc.md", TEXT, Some("{not json"), "payload", 80).is_err());
+    }
+
+    #[test]
+    fn state_dir_is_the_first_non_blank_configured_value_else_the_default() {
+        let dir = |configured: &[&str]| {
+            let configured = configured.iter().map(ToString::to_string).collect();
+            state_dir(Some("/repo".to_string()), configured)
+        };
+        assert_eq!(dir(&[]), "/repo/.critique");
+        assert_eq!(dir(&["", " "]), "/repo/.critique");
+        assert_eq!(dir(&["", "env/", "x"]), "env/");
+        assert_eq!(state_dir(None, Vec::new()), ".critique");
     }
 }

@@ -11,17 +11,13 @@ import {
   type TimestampFormat,
 } from "./timestamp";
 import {
-  configureDzReviewRuntime,
-  getDzReviewReferenceMapFile,
-} from "../../../tools/dz-review/runtime-config";
-import {
   collectReviewReferences,
   formatReferenceTarget,
   type ReferenceTarget,
   type ReviewReference,
 } from "../../../tools/dz-review/ref-core";
 import * as critique from "./critique";
-import { createVscodeDzReviewEnvironment } from "./dz-review-environment";
+import { referenceMapFile } from "./state-dir";
 
 declare const TextDecoder: {
   new (): { decode(input: Uint8Array): string };
@@ -249,11 +245,6 @@ class ReviewPanelProvider implements vscode.WebviewViewProvider {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Must run before the review panel locates the reference map: the state
-  // directory lookup needs a non-Deno environment port (there is no `Deno`
-  // global in the extension host).
-  configureDzReviewRuntime({ environment: createVscodeDzReviewEnvironment() });
-
   openConversationDecorationType = vscode.window.createTextEditorDecorationType(
     {
       backgroundColor: "rgba(30, 102, 245, 0.07)",
@@ -582,7 +573,7 @@ async function collectReviewPanelItems(
 }
 
 function readReviewItems(document: vscode.TextDocument): critique.ReviewItem[] {
-  const mapFile = getDzReviewReferenceMapFile();
+  const mapFile = referenceMapFile();
   const map = fs.existsSync(mapFile) ? fs.readFileSync(mapFile, "utf8") : null;
   const result = critique.reviewItems(
     getReviewPanelDocumentPath(document),
@@ -3368,7 +3359,6 @@ export const __test = {
   cancelCriticMarkupAnnotation,
   collectConversations,
   collectReviewPanelItems,
-  configureDzReviewRuntime,
   convertTimestampsInActiveEditor,
   createCompactCriticMarkupReviewNote,
   createCompactReviewNote,

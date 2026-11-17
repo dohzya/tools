@@ -2,6 +2,7 @@ import { z } from "zod/mini";
 import {
   initSync,
   reviewItems as reviewItemsJson,
+  stateDir as stateDirWasm,
 } from "../wasm/critique_wasm.js";
 import wasmBytes from "../wasm/critique_wasm_bg.wasm";
 
@@ -82,4 +83,13 @@ export function reviewItems(
       reviewItemsJson(file, text, mapJson, summary.source, summary.width),
     ),
   );
+}
+
+/**
+ * State directory: the first non-blank `configured` value by priority, else
+ * `.critique` under `base` (the Git root, else the cwd), as the CLI does.
+ */
+export function stateDir(base: string, configured: string[]): string {
+  ensureInitialized();
+  return stateDirWasm(base, configured);
 }
