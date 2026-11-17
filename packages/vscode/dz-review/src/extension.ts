@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as vscode from "vscode";
 import {
   encodeCompactTimestamp,
@@ -8,9 +10,10 @@ import {
   type ReviewTimestamp,
   type TimestampFormat,
 } from "./timestamp";
-import { getShortStableReviewItemId } from "../../../tools/dz-review/stable-review-id";
-import { assignPersistentReviewItemIds } from "../../../tools/dz-review/reference-map";
-import { configureDzReviewRuntime } from "../../../tools/dz-review/runtime-config";
+import {
+  configureDzReviewRuntime,
+  getDzReviewReferenceMapFile,
+} from "../../../tools/dz-review/runtime-config";
 import {
   collectReviewReferences,
   formatReferenceTarget,
@@ -62,13 +65,7 @@ interface ReviewBlock {
   end: number;
 }
 
-type ReviewPanelItemKind =
-  | "conversation"
-  | "addition"
-  | "deletion"
-  | "substitution"
-  | "highlight"
-  | "comment";
+type ReviewPanelItemKind = critique.ReviewItem["kind"];
 type ReviewPanelFilter = "all" | "unresolved" | "pending" | ConversationStatus;
 
 interface ReviewPanelItem {
@@ -82,11 +79,6 @@ interface ReviewPanelItem {
   line: number;
   summary: string;
   messages?: ReviewPanelMessage[];
-}
-
-interface ReviewPanelItemCandidate {
-  item: Omit<ReviewPanelItem, "id" | "displayId">;
-  raw: string;
 }
 
 interface ReviewPanelMessage {
@@ -257,9 +249,9 @@ class ReviewPanelProvider implements vscode.WebviewViewProvider {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Must run before anything reaches reference-map.ts, which mints/looks up
-  // persistent review item ids and needs a non-Deno environment port
-  // (there is no `Deno` global in the extension host).
+  // Must run before the review panel locates the reference map: the state
+  // directory lookup needs a non-Deno environment port (there is no `Deno`
+  // global in the extension host).
   configureDzReviewRuntime({ environment: createVscodeDzReviewEnvironment() });
 
   openConversationDecorationType = vscode.window.createTextEditorDecorationType(
@@ -569,111 +561,64 @@ function updateReviewModeStatus(mode: ReviewMode): void {
   reviewModeStatusBarItem.show();
 }
 
+const REVIEW_PANEL_SUMMARY: critique.SummaryOptions = {
+  source: "payload",
+  width: 80,
+};
+
 async function collectReviewPanelItems(
   document: vscode.TextDocument,
   filter: ReviewPanelFilter = "all",
 ): Promise<ReviewPanelItem[]> {
-  const items = await assignReviewPanelItemIds(
-    document,
-    collectReviewPanelItemCandidates(document, filter),
-  );
-
-  return items.sort((left, right) =>
-    left.start - right.start || left.end - right.end
-  );
+  // Ids are assigned over every item before filtering, like the CLI: an id
+  // must not depend on what the panel shows.
+  return readReviewItems(document).flatMap((item) => {
+    const panelItem = toReviewPanelItem(item);
+    const matches = panelItem.status
+      ? reviewPanelConversationMatchesFilter(panelItem.status, filter)
+      : reviewPanelAnnotationMatchesFilter(filter);
+    return matches ? [panelItem] : [];
+  });
 }
 
-function collectReviewPanelItemCandidates(
-  document: vscode.TextDocument,
-  filter: ReviewPanelFilter = "all",
-): ReviewPanelItemCandidate[] {
-  const text = document.getText();
-  const candidates: ReviewPanelItemCandidate[] = [];
-  const conversationSpans = new Set<string>();
-
-  for (const conversation of collectConversations(text)) {
-    conversationSpans.add(`${conversation.start}:${conversation.end}`);
-    const status = getConversationStatus(conversation);
-    if (!reviewPanelConversationMatchesFilter(status, filter)) {
-      continue;
-    }
-
-    candidates.push({
-      raw: conversation.raw,
-      item: {
-        start: conversation.start,
-        end: conversation.end,
-        kind: "conversation",
-        status,
-        label: formatReviewPanelConversationLabel(status),
-        line: document.positionAt(conversation.start).line + 1,
-        summary: summarizeReviewPanelText(
-          getConversationContent(conversation.raw),
-        ),
-        messages: getReviewPanelConversationMessages(conversation.raw),
-      },
-    });
+function readReviewItems(document: vscode.TextDocument): critique.ReviewItem[] {
+  const mapFile = getDzReviewReferenceMapFile();
+  const map = fs.existsSync(mapFile) ? fs.readFileSync(mapFile, "utf8") : null;
+  const result = critique.reviewItems(
+    getReviewPanelDocumentPath(document),
+    document.getText(),
+    map,
+    REVIEW_PANEL_SUMMARY,
+  );
+  if (result.map !== null) {
+    fs.mkdirSync(path.dirname(mapFile), { recursive: true });
+    fs.writeFileSync(mapFile, result.map, "utf8");
   }
-
-  for (const match of text.matchAll(CRITICMARKUP_ANNOTATION_RE)) {
-    const raw = match[0];
-    const start = match.index ?? 0;
-    const end = start + raw.length;
-    if (conversationSpans.has(`${start}:${end}`)) {
-      continue;
-    }
-
-    const kind = getReviewPanelAnnotationKind(raw);
-    if (!reviewPanelAnnotationMatchesFilter(filter)) {
-      continue;
-    }
-
-    candidates.push({
-      raw,
-      item: {
-        start,
-        end,
-        kind,
-        label: formatReviewPanelAnnotationLabel(kind),
-        line: document.positionAt(start).line + 1,
-        summary: summarizeReviewPanelText(
-          getReviewPanelAnnotationPayload(raw, kind),
-        ),
-      },
-    });
-  }
-
-  return candidates;
+  return result.items;
 }
 
-async function assignReviewPanelItemIds(
-  document: vscode.TextDocument,
-  candidates: readonly ReviewPanelItemCandidate[],
-): Promise<ReviewPanelItem[]> {
-  const file = getReviewPanelDocumentPath(document);
-  const content = document.getText();
-  // Line-based, per assignPersistentReviewItemIds's PersistentReviewItemInput
-  // shape -- mirrors review-core.ts's offsetToLine convention (endLine from
-  // `Math.max(start, end - 1)` avoids an off-by-one when `end` lands exactly
-  // on a newline).
-  const persistentItems = candidates.map(({ item, raw }) => ({
+function toReviewPanelItem(item: critique.ReviewItem): ReviewPanelItem {
+  const base = {
+    id: item.id,
+    displayId: item.shortId,
+    start: item.start,
+    end: item.end,
     kind: item.kind,
-    raw,
-    lineStart: document.positionAt(item.start).line + 1,
-    lineEnd: document.positionAt(Math.max(item.start, item.end - 1)).line + 1,
-  }));
-
-  const assigned = await assignPersistentReviewItemIds(
-    file,
-    content,
-    persistentItems,
-  );
-  const allIds = assigned.map(({ id }) => id);
-  return candidates.map(({ item }, index) => ({
-    ...item,
-    id: assigned[index].id,
-    displayId: getShortStableReviewItemId(assigned[index].id, allIds),
-  }));
+    line: item.lineStart,
+    summary: item.summary,
+  };
+  switch (item.state) {
+    case "annotation":
+    case "discussion":
+      return { ...base, label: formatReviewPanelAnnotationLabel(item.kind) };
+    default:
+      return {
+        ...base,
+        status: item.state,
+        label: formatReviewPanelConversationLabel(item.state),
+        messages: getReviewPanelConversationMessages(item.messages ?? []),
+      };
+  }
 }
 
 async function resolveReviewPanelItem(
@@ -986,17 +931,19 @@ function formatReviewPanelConversationLabel(
   }
 }
 
-function getReviewPanelConversationMessages(raw: string): ReviewPanelMessage[] {
-  return getReviewLines(raw).map((line) => {
-    const timestamp = line.timestamp
-      ? formatReviewPanelTimestamp(line.timestamp)
+function getReviewPanelConversationMessages(
+  messages: NonNullable<critique.ReviewItem["messages"]>,
+): ReviewPanelMessage[] {
+  return messages.map((message) => {
+    const timestamp = message.timestamp
+      ? formatReviewPanelTimestamp(message.timestamp)
       : undefined;
     return {
-      role: line.marker === "@agent" ? "Agent" : "You",
+      role: message.author === "@agent" ? "Agent" : "You",
       ...(timestamp
         ? { timestamp: timestamp.label, timestampTitle: timestamp.title }
         : {}),
-      body: line.body,
+      body: message.body,
     };
   });
 }
@@ -1038,30 +985,6 @@ function formatShortReviewPanelTimestamp(timestamp: ReviewTimestamp): string {
   }-${String(localDate.getDate()).padStart(2, "0")} ${time}`;
 }
 
-function getReviewPanelAnnotationKind(raw: string): ReviewPanelItemKind {
-  if (raw.startsWith("{++")) {
-    return "addition";
-  }
-
-  if (raw.startsWith("{--")) {
-    return "deletion";
-  }
-
-  if (raw.startsWith("{~~")) {
-    return "substitution";
-  }
-
-  if (raw.startsWith("{==")) {
-    return "highlight";
-  }
-
-  if (raw.startsWith("{>>")) {
-    return "comment";
-  }
-
-  return "conversation";
-}
-
 function formatReviewPanelAnnotationLabel(kind: ReviewPanelItemKind): string {
   switch (kind) {
     case "addition":
@@ -1074,39 +997,11 @@ function formatReviewPanelAnnotationLabel(kind: ReviewPanelItemKind): string {
       return "Highlight";
     case "comment":
       return "Comment";
+    case "discussion":
+      return "Discussion";
     case "conversation":
       return "Conversation";
   }
-}
-
-function getReviewPanelAnnotationPayload(
-  raw: string,
-  kind: ReviewPanelItemKind,
-): string {
-  switch (kind) {
-    case "addition":
-    case "deletion":
-    case "highlight":
-      return getReviewAnnotationPayload(raw, 3, -3);
-    case "comment":
-      return getReviewAnnotationPayload(raw, 3, -3);
-    case "substitution": {
-      const contentStart = getReviewAnnotationPayloadStart(raw, 3);
-      const separator = raw.indexOf("~>", contentStart);
-      return separator >= 0
-        ? `${raw.slice(contentStart, separator)} -> ${
-          raw.slice(separator + 2, -3)
-        }`
-        : raw;
-    }
-    case "conversation":
-      return getConversationContent(raw);
-  }
-}
-
-function summarizeReviewPanelText(text: string): string {
-  const summary = text.replace(/\s+/g, " ").trim();
-  return summary.length <= 80 ? summary : `${summary.slice(0, 77)}...`;
 }
 
 function getReviewPanelHtml(
@@ -3470,7 +3365,6 @@ export const __test = {
   addTimestampToCurrentReviewElement,
   applyCriticMarkupAnnotation,
   approveAgentMessage,
-  assignPersistentReviewItemIds,
   cancelCriticMarkupAnnotation,
   collectConversations,
   collectReviewPanelItems,

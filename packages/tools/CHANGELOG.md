@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+### Changed
+
+- **vscode:** The review panel lists items through the same core as the `critique` CLI. Newly assigned item ids now match the CLI's and no longer depend on the panel filter; ids already stored in the reference map are kept.
+- **vscode:** A `{?? ??}` block without `@agent`/`@me` markers is shown as a discussion, as in the CLI, instead of a conversation.
+- **vscode:** Short item ids are unique across every file of the project's reference map, not only within the open file.
+- **vscode:** Annotations nested inside a conversation or an HTML comment are no longer listed as separate items, as in the CLI.
+
 ## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16
 
 ### Fixed

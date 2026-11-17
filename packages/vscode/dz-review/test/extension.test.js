@@ -33,7 +33,7 @@ function positionAt(text, offset) {
   return { line: lines.length - 1, character: lines.at(-1).length };
 }
 
-// assignPersistentReviewItemIds (wired in via activate()) persists
+// The review panel (configured via activate()) persists
 // .dz-review/reference-map.json through runtime-config.ts's
 // getDzReviewStateDir(). That function only returns an absolute,
 // environment-anchored path when it can resolve a git root for the
@@ -286,12 +286,9 @@ function createHarness() {
     module,
     exports: module.exports,
     TextDecoder,
-    // reference-map.ts's Blake3HashService (via ParseDocumentUseCase) uses
-    // these as globals, not through `require` -- a fresh vm context has
-    // neither by default, unlike the real extension host (Node 22+
-    // provides both on globalThis).
+    // The wasm-bindgen glue uses it as a global, not through `require` -- a
+    // fresh vm context lacks it, unlike the real extension host.
     TextEncoder,
-    crypto,
     process,
     // esbuild decodes the inlined wasm with Buffer, a global of the real
     // extension host.
@@ -548,6 +545,21 @@ test("review panel webview lists review items from the active Markdown editor", 
   );
   assert.match(conversation.id, /^rvw_[0-9A-Za-z]{1,11}$/);
   assert.equal(conversation.displayId, conversation.id.slice(4, 10));
+});
+
+test("review panel lists a {?? ??} without roles as a discussion, like the CLI", async () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    "{?? plain\n  discussion ??}",
+    { line: 0, character: 0 },
+  );
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+  assert.equal(item.kind, "discussion");
+  assert.equal(item.label, "Discussion");
+  assert.equal(item.summary, "plain discussion");
 });
 
 test("review panel webview lists items with hangul timestamps", async () => {
@@ -867,35 +879,37 @@ test("review panel webview keeps the same id when an annotation's own text is ed
   assert.equal(after.id, before.id);
 });
 
-test("assignPersistentReviewItemIds and the review panel agree on the same file's id", async () => {
+test("review panel ids are the CLI's, whatever the panel filter", async () => {
   const harness = createHarness();
   const editor = harness.createEditor(
-    "{++one line addition++}",
+    [
+      "# Draft",
+      "<!-- @me ok -->",
+      "{?? plain discussion ??}",
+      "{++new text++}",
+    ].join("\n"),
     { line: 0, character: 0 },
   );
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
-  const [panelItem] = await harness.api.collectReviewPanelItems(
+  // The default filter hides the resolved conversation: ids are minted first
+  // with that view, and must not depend on it.
+  const pending = await harness.api.collectReviewPanelItems(
     editor.document,
+    "pending",
   );
+  const all = await harness.api.collectReviewPanelItems(editor.document);
 
-  // Simulate what the CLI would do for the exact same real file: if the
-  // panel's file-path normalization (getReviewPanelDocumentPath) ever
-  // diverged from what a direct assignPersistentReviewItemIds caller would
-  // use, this would mint a *new* id instead of recognizing panelItem's.
-  const file = harness.api.getReviewPanelDocumentPath(editor.document);
-  const [cliAssigned] = await harness.api.assignPersistentReviewItemIds(
-    file,
-    editor.document.text,
-    [{
-      kind: "addition",
-      raw: "{++one line addition++}",
-      lineStart: 1,
-      lineEnd: 1,
-    }],
+  // From `critique list --json doc.md` on the same text in a fresh repository.
+  assert.deepEqual(Array.from(all, ({ id }) => id), [
+    "rvw_5D6Lg2o7oGL",
+    "rvw_JLYsTn3SeRo",
+    "rvw_I6B6YzzFIHD",
+  ]);
+  assert.deepEqual(
+    Array.from(pending, ({ id }) => id),
+    ["rvw_JLYsTn3SeRo", "rvw_I6B6YzzFIHD"],
   );
-
-  assert.equal(cliAssigned.id, panelItem.id);
 });
 
 test("review panel webview can mark a conversation ok", async () => {
@@ -1006,7 +1020,7 @@ test("review panel reveal command moves the active editor to the selected item",
     { line: 0, character: 0 },
   );
 
-  // assignPersistentReviewItemIds (wired in via activate()'s
+  // The panel's reference map path (from activate()'s
   // configureDzReviewRuntime call) needs the injected environment; without
   // activate() this falls back to the Deno-based default, which doesn't
   // exist in this Node vm sandbox.
