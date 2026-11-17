@@ -212,9 +212,37 @@ pub fn command() -> Command {
         .about("Inspect and validate Markdown passage references")
         .subcommand_required(true)
         .subcommand(files(json(Command::new("check").about("Validate refs"))))
-        .subcommand(files(json(pager(Command::new("list").about("List refs and referenced passages")))))
-        .subcommand(files(json(Command::new("show").about("Print documents with referenced passages expanded").arg(value("snapshot-lines", "count", "Maximum source lines in generated snapshots. Defaults to 10; 0 means unlimited.")))))
-        .subcommand(files(json(Command::new("snapshots").about("Print only reference snapshots").arg(value("snapshot-lines", "count", "Maximum source lines in generated snapshots.")).arg(value("ref", "selector", "Filter snapshots by source location, target, or snapshot label. Repeatable.").action(ArgAction::Append)))));
+        .subcommand(files(json(pager(
+            Command::new("list").about("List refs and referenced passages"),
+        ))))
+        .subcommand(files(json(
+            Command::new("show")
+                .about("Print documents with referenced passages expanded")
+                .arg(value(
+                    "snapshot-lines",
+                    "count",
+                    "Maximum source lines in generated snapshots. Defaults to 10; 0 means \
+                        unlimited.",
+                )),
+        )))
+        .subcommand(files(json(
+            Command::new("snapshots")
+                .about("Print only reference snapshots")
+                .arg(value(
+                    "snapshot-lines",
+                    "count",
+                    "Maximum source lines in generated snapshots.",
+                ))
+                .arg(
+                    value(
+                        "ref",
+                        "selector",
+                        "Filter snapshots by source location, target, or snapshot label. \
+                            Repeatable.",
+                    )
+                    .action(ArgAction::Append),
+                ),
+        )));
     let me = Command::new("me")
         .about("Run human-oriented review commands")
         .subcommand_required(true)
@@ -271,39 +299,185 @@ pub fn command() -> Command {
     Command::new("critique")
         .version(env!("CARGO_PKG_VERSION"))
         .about("Markdown review syntax helper")
-        .arg(Arg::new("cwd").short('C').long("cwd").value_name("dir").global(true).help("Change directory before running the command."))
-        .arg(Arg::new("state-dir").long("state-dir").value_name("dir").global(true).help("Agent state directory. Defaults to CRITIQUE_STATE_DIR (or DZ_REVIEW_STATE_DIR) or Git-root .critique; a legacy .dz-review is read when .critique is absent."))
-        .arg(Arg::new("ignore-file").long("ignore-file").value_name("file").global(true).help("Review ignore file. Defaults to CRITIQUE_IGNORE_FILE (or DZ_REVIEW_IGNORE_FILE) or .critique-ignore."))
-        .subcommand(files(context(pager(selection(Command::new("review").visible_alias("r").about("Review annotations and conversations interactively").arg(flag("list", "List matching review items without editing files.")).arg(flag("git", "Review only items on lines added in git diff HEAD.")))))))
-        .subcommand(files(selection(Command::new("status").visible_alias("st").about("Print review status").arg(flag("oneline", "Print one aggregate summary.")).arg(flag("short", "Print compact per-file stats.")).arg(flag("recap", "Print file and compact status separated by a tab.")).arg(Arg::new("quiet").short('q').long("quiet").action(ArgAction::SetTrue).help("Print nothing when status is empty and no review session is active.")).arg(value("template", "template", "Format --recap status with %(status).")).arg(flag("git", "Restrict status to lines added in git diff HEAD.")))))
-        .subcommand(files(json(context(pager(selection(Command::new("list").visible_aliases(["l", "ls"]).about("List matching review items without editing files")))))))
-        .subcommand(items("diff", "List review items on lines added in the current Git diff").visible_alias("d"))
-        .subcommand(files(Command::new("timestamp").visible_aliases(["ts", "timestamps"]).about("Add or convert review timestamps").args([
-            Arg::new("inline").short('i').long("inline").action(ArgAction::SetTrue).help("Rewrite source files in place."),
-            Arg::new("output").short('o').long("output").value_name("file").help("Write transformed output to a file."),
-            Arg::new("stdout").short('s').long("stdout").action(ArgAction::SetTrue).help("Write transformed output to stdout."),
-            flag("stdin", "Read Markdown from stdin."),
-            flag("compact", "Use compact timestamps."),
-            Arg::new("short").short('S').long("short").action(ArgAction::SetTrue).help("Use compact timestamps."),
-            Arg::new("hangul").short('H').long("hangul").action(ArgAction::SetTrue).help("Use 4-character Hangul timestamps."),
-            Arg::new("iso").short('I').long("iso").action(ArgAction::SetTrue).help("Use ISO timestamps."),
-            flag("format-info", "Print detected timestamp format information."),
-            value("timestamp-format", "format", "Compatibility alias for short, hangul, or iso."),
-        ])))
-        .subcommand(Command::new("now").about("Print a review timestamp for now or for --date").args([
-            flag("compact", "Use compact timestamps."),
-            Arg::new("short").short('S').long("short").action(ArgAction::SetTrue).help("Use compact timestamps."),
-            Arg::new("hangul").short('H').long("hangul").action(ArgAction::SetTrue).help("Use 4-character Hangul timestamps."),
-            Arg::new("iso").short('I').long("iso").action(ArgAction::SetTrue).help("Use ISO timestamps."),
-            value("timestamp-format", "format", "Compatibility alias for short, hangul, or iso."),
-            Arg::new("date").short('d').long("date").value_name("date").help("Date to convert instead of now."),
-        ]))
+        .arg(
+            Arg::new("cwd")
+                .short('C')
+                .long("cwd")
+                .value_name("dir")
+                .global(true)
+                .help("Change directory before running the command."),
+        )
+        .arg(
+            Arg::new("state-dir")
+                .long("state-dir")
+                .value_name("dir")
+                .global(true)
+                .help(
+                    "Agent state directory. Defaults to CRITIQUE_STATE_DIR (or \
+                        DZ_REVIEW_STATE_DIR) or Git-root .critique; a legacy .dz-review is read \
+                        when .critique is absent.",
+                ),
+        )
+        .arg(
+            Arg::new("ignore-file")
+                .long("ignore-file")
+                .value_name("file")
+                .global(true)
+                .help(
+                    "Review ignore file. Defaults to CRITIQUE_IGNORE_FILE (or \
+                        DZ_REVIEW_IGNORE_FILE) or .critique-ignore.",
+                ),
+        )
+        .subcommand(files(context(pager(selection(
+            Command::new("review")
+                .visible_alias("r")
+                .about("Review annotations and conversations interactively")
+                .arg(flag(
+                    "list",
+                    "List matching review items without editing files.",
+                ))
+                .arg(flag(
+                    "git",
+                    "Review only items on lines added in git diff HEAD.",
+                )),
+        )))))
+        .subcommand(files(selection(
+            Command::new("status")
+                .visible_alias("st")
+                .about("Print review status")
+                .arg(flag("oneline", "Print one aggregate summary."))
+                .arg(flag("short", "Print compact per-file stats."))
+                .arg(flag(
+                    "recap",
+                    "Print file and compact status separated by a tab.",
+                ))
+                .arg(
+                    Arg::new("quiet")
+                        .short('q')
+                        .long("quiet")
+                        .action(ArgAction::SetTrue)
+                        .help(
+                            "Print nothing when status is empty and no review session is active.",
+                        ),
+                )
+                .arg(value(
+                    "template",
+                    "template",
+                    "Format --recap status with %(status).",
+                ))
+                .arg(flag(
+                    "git",
+                    "Restrict status to lines added in git diff HEAD.",
+                )),
+        )))
+        .subcommand(files(json(context(pager(selection(
+            Command::new("list")
+                .visible_aliases(["l", "ls"])
+                .about("List matching review items without editing files"),
+        ))))))
+        .subcommand(
+            items(
+                "diff",
+                "List review items on lines added in the current Git diff",
+            )
+            .visible_alias("d"),
+        )
+        .subcommand(files(
+            Command::new("timestamp")
+                .visible_aliases(["ts", "timestamps"])
+                .about("Add or convert review timestamps")
+                .args([
+                    Arg::new("inline")
+                        .short('i')
+                        .long("inline")
+                        .action(ArgAction::SetTrue)
+                        .help("Rewrite source files in place."),
+                    Arg::new("output")
+                        .short('o')
+                        .long("output")
+                        .value_name("file")
+                        .help("Write transformed output to a file."),
+                    Arg::new("stdout")
+                        .short('s')
+                        .long("stdout")
+                        .action(ArgAction::SetTrue)
+                        .help("Write transformed output to stdout."),
+                    flag("stdin", "Read Markdown from stdin."),
+                    flag("compact", "Use compact timestamps."),
+                    Arg::new("short")
+                        .short('S')
+                        .long("short")
+                        .action(ArgAction::SetTrue)
+                        .help("Use compact timestamps."),
+                    Arg::new("hangul")
+                        .short('H')
+                        .long("hangul")
+                        .action(ArgAction::SetTrue)
+                        .help("Use 4-character Hangul timestamps."),
+                    Arg::new("iso")
+                        .short('I')
+                        .long("iso")
+                        .action(ArgAction::SetTrue)
+                        .help("Use ISO timestamps."),
+                    flag(
+                        "format-info",
+                        "Print detected timestamp format information.",
+                    ),
+                    value(
+                        "timestamp-format",
+                        "format",
+                        "Compatibility alias for short, hangul, or iso.",
+                    ),
+                ]),
+        ))
+        .subcommand(
+            Command::new("now")
+                .about("Print a review timestamp for now or for --date")
+                .args([
+                    flag("compact", "Use compact timestamps."),
+                    Arg::new("short")
+                        .short('S')
+                        .long("short")
+                        .action(ArgAction::SetTrue)
+                        .help("Use compact timestamps."),
+                    Arg::new("hangul")
+                        .short('H')
+                        .long("hangul")
+                        .action(ArgAction::SetTrue)
+                        .help("Use 4-character Hangul timestamps."),
+                    Arg::new("iso")
+                        .short('I')
+                        .long("iso")
+                        .action(ArgAction::SetTrue)
+                        .help("Use ISO timestamps."),
+                    value(
+                        "timestamp-format",
+                        "format",
+                        "Compatibility alias for short, hangul, or iso.",
+                    ),
+                    Arg::new("date")
+                        .short('d')
+                        .long("date")
+                        .value_name("date")
+                        .help("Date to convert instead of now."),
+                ]),
+        )
         .subcommand(reference)
         .subcommand(session)
         .subcommand(agent)
         .subcommand(me)
-        .subcommand(Command::new("agent-instructions").about("Print AGENTS.md guidance for critique"))
-        .subcommand(Command::new("completions").about("Generate shell completions").arg(Arg::new("shell").required(true).value_parser(clap::value_parser!(clap_complete::Shell))))
+        .subcommand(
+            Command::new("agent-instructions").about("Print AGENTS.md guidance for critique"),
+        )
+        .subcommand(
+            Command::new("completions")
+                .about("Generate shell completions")
+                .arg(
+                    Arg::new("shell")
+                        .required(true)
+                        .value_parser(clap::value_parser!(clap_complete::Shell)),
+                ),
+        )
 }
 
 /// Help text of `path` (`["agent", "show"]`), or of the root for `[]`.
