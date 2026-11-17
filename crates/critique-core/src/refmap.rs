@@ -16,7 +16,7 @@
 //! "invalid" and the stored order stayed: a wiring bug, fixed here
 //! (`docs/specs/critique.md`).
 
-use crate::ids::assign_stable_ids_avoiding;
+use crate::ids::{self, assign_stable_ids_avoiding};
 use crate::scan::Annotation;
 use md_manipulator::mrfi::{
     Format, GenerateOptions, MrfiDoc, Profile, ResolveOptions, SourceRange, Status, Target,
@@ -320,6 +320,14 @@ pub fn assign_persistent_ids(
     }
 }
 
+/// Display ids of `ids`, unique among every id of the project: those of
+/// `map` (all files) and `ids` themselves (not persisted yet, or no map).
+pub fn display_ids(map: &ReferenceMap, ids: &[String]) -> Vec<String> {
+    let mut all: Vec<String> = map.entries.0.iter().map(|(id, _)| id.clone()).collect();
+    all.extend_from_slice(ids);
+    ids.iter().map(|id| ids::display_id(id, &all)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -399,6 +407,23 @@ mod tests {
             entries: Entries(vec![("rvw_coarse".into(), coarse), ("rvw_own".into(), own)]),
         };
         assert_eq!(assign(content, &map).ids, ["rvw_own"]);
+    }
+
+    #[test]
+    fn display_ids_are_unique_across_every_file_of_the_map() {
+        let minted = assign(DOC, &ReferenceMap::default()).ids;
+        let alone = display_ids(&ReferenceMap::default(), &minted);
+        assert_eq!(alone[0].len(), 6);
+        // Another file holds an id sharing the 6 first characters of minted[0].
+        let other = format!("{}{}", &minted[0][..ids::PREFIX.len() + 6], "zzzzzz");
+        let map = ReferenceMap {
+            version: VERSION.into(),
+            entries: Entries(vec![(other, stale_entry("other.md", String::new()))]),
+        };
+        let shown = display_ids(&map, &minted);
+        assert!(shown[0].len() > 6);
+        assert!(minted[0][ids::PREFIX.len()..].starts_with(&shown[0]));
+        assert_eq!(shown[1], alone[1]);
     }
 
     #[test]

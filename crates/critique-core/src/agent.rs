@@ -78,7 +78,8 @@ fn suggested_action(item: &ReviewItem) -> &'static str {
     }
 }
 
-fn message(m: review::Message) -> AgentMessage {
+/// Agent view of a message.
+pub fn message(m: review::Message) -> AgentMessage {
     AgentMessage {
         author: m.marker.as_str().to_string(),
         body: m.body,

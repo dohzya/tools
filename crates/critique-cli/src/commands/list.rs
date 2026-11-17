@@ -5,7 +5,7 @@ use crate::ctx::Ctx;
 use crate::files::{self, AddedLines};
 use crate::format::{self, Style};
 use critique_core::agent::{self, AgentItem};
-use critique_core::ids;
+pub use critique_core::ids::display_id;
 use critique_core::review::{self, Filter, ReviewItem};
 use serde::Serialize;
 
@@ -62,15 +62,6 @@ pub fn collect_located(
         }
     }
     Ok(located)
-}
-
-/// Short display ids for the whole listing.
-pub fn display_id(id: &str, all: &[String]) -> String {
-    if id.starts_with(ids::PREFIX) {
-        ids::short_id(id, all)
-    } else {
-        id.to_string()
-    }
 }
 
 #[derive(Serialize)]

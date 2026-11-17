@@ -27,16 +27,75 @@ function loadCritique() {
   return module.exports.__test.critique;
 }
 
-test("critique wasm scans items with UTF-16 offsets", () => {
-  const items = loadCritique().scanReviewItems("a.md", "😀 {>> é <<}");
+test("critique wasm reviews items with UTF-16 offsets and short ids", () => {
+  const { items, map } = loadCritique().reviewItems(
+    "a.md",
+    "😀 {>> é <<}",
+    null,
+  );
 
   assert.equal(items.length, 1);
   assert.equal(items[0].start, 3);
+  assert.equal(items[0].end, 12);
+  assert.match(items[0].id, /^rvw_/);
+  assert.ok(items[0].id.slice(4).startsWith(items[0].shortId));
+  assert.equal(typeof map, "string");
+});
+
+test("critique wasm returns no map once it is up to date", () => {
+  const critique = loadCritique();
+  const text = "a\n{>> x <<}\n<!-- @agent q\n@me a -->\n";
+  const first = critique.reviewItems("a.md", text, null);
+  const again = critique.reviewItems("a.md", text, first.map);
+
+  assert.deepEqual(
+    again.items.map(({ id }) => id),
+    first.items.map(({ id }) => id),
+  );
+  assert.equal(again.map, null);
+  // Array.from: arrays built inside the vm context fail strict deepEqual.
+  assert.deepEqual(
+    Array.from(first.items[1].messages, ({ author }) => author),
+    [
+      "@agent",
+      "@me",
+    ],
+  );
+});
+
+test("critique wasm short ids are unique across the reference map", () => {
+  const critique = loadCritique();
+  const first = critique.reviewItems("a.md", "{>> x <<}", null);
+  const id = first.items[0].id;
+  const map = JSON.parse(first.map);
+  // Another file holds an id sharing the 6 first characters of this one.
+  map.entries[`${id.slice(0, 10)}zzzzzz`] = {
+    file: "b.md",
+    range: { startLine: 1, endLine: 1 },
+    mrfi: "",
+  };
+  const { items } = critique.reviewItems(
+    "a.md",
+    "{>> x <<}",
+    JSON.stringify(map),
+  );
+
+  assert.equal(first.items[0].shortId.length, 6);
+  assert.ok(items[0].shortId.length > 6);
+  assert.ok(id.slice(4).startsWith(items[0].shortId));
+});
+
+test("critique wasm rejects an invalid reference map", () => {
+  assert.throws(() => loadCritique().reviewItems("a.md", "{>> x <<}", "{"));
 });
 
 test("critique wasm accepts a lone surrogate without shifting offsets", () => {
   // wasm-bindgen replaces it with U+FFFD, which is one UTF-16 unit as well.
-  const items = loadCritique().scanReviewItems("a.md", "\uD800 {>> x <<}");
+  const { items } = loadCritique().reviewItems(
+    "a.md",
+    "\uD800 {>> x <<}",
+    null,
+  );
 
   assert.equal(items.length, 1);
   assert.equal(items[0].start, 2);

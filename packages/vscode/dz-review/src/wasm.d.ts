@@ -9,5 +9,9 @@ declare module "*.wasm" {
 // declarations: they require DOM types and shadow the bytes import above.
 declare module "*/critique_wasm.js" {
   export function initSync(options: { module: Uint8Array }): unknown;
-  export function scanReviewItems(file: string, text: string): string;
+  export function reviewItems(
+    file: string,
+    text: string,
+    mapJson: string | null,
+  ): string;
 }

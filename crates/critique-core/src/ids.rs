@@ -187,6 +187,15 @@ pub fn short_id(id: &str, all_ids: &[String]) -> String {
     me
 }
 
+/// Id as displayed: [`short_id`] for minted ids, ids from elsewhere in full.
+pub fn display_id(id: &str, all_ids: &[String]) -> String {
+    if id.starts_with(PREFIX) {
+        short_id(id, all_ids)
+    } else {
+        id.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -210,6 +219,13 @@ mod tests {
         ];
         assert_eq!(short_id(&all[0], &all), "abcdeXY");
         assert_eq!(short_id(&all[2], &all), "zzzzzz");
+    }
+
+    #[test]
+    fn display_ids_shorten_only_minted_ids() {
+        let all = vec!["rvw_abcdeXY".to_string(), "custom".to_string()];
+        assert_eq!(display_id(&all[0], &all), short_id(&all[0], &all));
+        assert_eq!(display_id("custom", &all), "custom");
     }
 
     #[test]
