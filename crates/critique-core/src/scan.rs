@@ -749,6 +749,19 @@ mod tests {
     }
 
     #[test]
+    fn format_stats_count_reference_prefixes() {
+        // The `ref%` of a comment without target is not a reference.
+        assert_eq!(
+            timestamp_format_stats(REFS),
+            FormatStats {
+                compact: 1,
+                hangul: 1,
+                iso: 0
+            }
+        );
+    }
+
+    #[test]
     fn transform_rewrites_reference_prefixes_without_stamping_bare_ones() {
         let (count, out) = transform_timestamps(REFS, "STAMPED0", Format::Compact).unwrap();
         assert_eq!(count, 1);
@@ -817,13 +830,11 @@ pub struct FormatStats {
     pub iso: usize,
 }
 
-/// Counts the timestamps of each encoding.
+/// Counts the timestamps of each encoding: the ones [`timestamp_spans`]
+/// locates, `ref%ts:` prefixes included.
 pub fn timestamp_format_stats(text: &str) -> FormatStats {
     let mut stats = FormatStats::default();
-    let values = conversation_ts_matches(text)
-        .into_iter()
-        .chain(find_annotation_timestamps(text).into_iter().map(|m| m.ts));
-    for (a, e) in values {
+    for (a, e) in timestamp_spans(text) {
         let v = &text[a..e];
         if v.len() == 8 && v.bytes().all(|b| b.is_ascii_alphanumeric()) {
             stats.compact += 1;

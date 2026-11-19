@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-ref-timestamps",
+  "args": [
+    "timestamp",
+    "refs.md",
+    "--format-info"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): the ref%ts: prefixes of reference blocks count in the format detection (one compact, one hangul: mixed; the TS ignores them: none); a ref% comment without target is not a reference."
+}
