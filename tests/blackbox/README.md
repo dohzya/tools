@@ -74,7 +74,7 @@ Fresh temp dir per case: `work/` (fixture copy, cwd) and `home/` (`HOME`). `TZ=U
 | ----------- | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | `md`        | 264 parity + 78 new-spec | includes `ref` / `resolve` / `compare` / `rank` (MRFI; the last two are new-spec only, hand-written)          |
 | `recap`     | 43 parity + 8 new-spec   | new-spec: dotenv, relative section cwd, ref scope, alias-only lists ([`recap.md`](../../docs/specs/recap.md)) |
-| `dz-review` | 553 parity + 46 new-spec | ids, reference map, drift, sessions, git state dir, CR/CRLF edits, `agent apply --remove`                     |
+| `dz-review` | 553 parity + 48 new-spec | ids, reference map, drift, sessions, git state dir, CR/CRLF edits, `agent apply --remove`                     |
 | `wl`        | 488 parity + 36 new-spec | every command; scopes use real `git init` / `git worktree`; `claude`/`codex` are stubbed                      |
 
 Details and known Deno defects pinned as `parity` (grep `note` in `case.json`): [COVERAGE.md](COVERAGE.md). The full `wl` suite takes ~15 min sequentially (one Deno boot per case): run groups in parallel with `--only 'wl/<group>/*'`.
