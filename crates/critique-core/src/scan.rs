@@ -672,17 +672,66 @@ mod tests {
         assert_eq!(lines("a\r\n"), ["a", ""]);
         assert_eq!(lines(""), [""]);
     }
+
+    use crate::timestamp::Format;
+
+    const MIXED: &str = "<!-- @agent%1VB66I0Y q\n@me%갚뚭씀갼 a\n@me: bare -->\n{++%2026-01-01T01:00:00+01:00|add++} {--del--}\n";
+
+    #[test]
+    fn convert_rewrites_every_existing_timestamp() {
+        let iso = "2026-01-01T01:00:00+01:00";
+        assert_eq!(
+            convert_timestamps(MIXED, Format::Iso).unwrap(),
+            (
+                2,
+                format!(
+                    "<!-- @agent%{iso} q\n@me%{iso} a\n@me: bare -->\n{{++%{iso}|add++}} {{--del--}}\n"
+                )
+            )
+        );
+        assert_eq!(
+            convert_timestamps(MIXED, Format::Compact).unwrap(),
+            (
+                2,
+                "<!-- @agent%1VB66I0Y q\n@me%1VB66I0Y a\n@me: bare -->\n{++%1VB66I0Y|add++} {--del--}\n"
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn convert_leaves_what_the_parser_does_not_read_as_a_timestamp() {
+        let text = "100%discount a%20bcdefgh x @me%1VB66I0Yx {++%1VB66I0Y add++}\n";
+        assert_eq!(
+            convert_timestamps(text, Format::Iso).unwrap(),
+            (0, text.to_string())
+        );
+    }
+
+    #[test]
+    fn convert_is_transform_without_stamping() {
+        let text =
+            "<!-- @agent%1VB66I0Y q\n@me%갚뚭씀갼 a -->\n{++%2026-01-01T01:00:00+01:00|add++}\n";
+        for format in [Format::Compact, Format::Hangul, Format::Iso] {
+            assert_eq!(
+                convert_timestamps(text, format).unwrap(),
+                transform_timestamps(text, "unused", format).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn convert_reports_values_out_of_the_target_range() {
+        // Year 9999 is past the 6 base62 digits of the compact epoch.
+        let text = "@me%9999-01-01T00:00:00Z x";
+        assert!(convert_timestamps(text, Format::Compact).is_err());
+    }
 }
 
 /// `(@agent|@me|@)%TS` followed by whitespace or the end, anywhere in the
-/// text (TS `DISPLAY_CONVERSATION_TIMESTAMP_RE`, no delimiter required).
-struct TsMatch {
-    start: usize,
-    marker_end: usize,
-    ts: (usize, usize),
-}
-
-fn conversation_ts_matches(text: &str) -> Vec<TsMatch> {
+/// text (TS `DISPLAY_CONVERSATION_TIMESTAMP_RE`, no delimiter required);
+/// returns the byte ranges of the values.
+fn conversation_ts_matches(text: &str) -> Vec<(usize, usize)> {
     let b = text.as_bytes();
     let mut out = Vec::new();
     let mut i = 0;
@@ -700,16 +749,12 @@ fn conversation_ts_matches(text: &str) -> Vec<TsMatch> {
                 return None;
             }
             let e = timestamp_value(text, after + 1, |e| e == b.len() || is_ws(b[e]))?;
-            Some(TsMatch {
-                start: i,
-                marker_end: after,
-                ts: (after + 1, e),
-            })
+            Some((after + 1, e))
         });
         match found {
-            Some(m) => {
-                i = m.ts.1;
-                out.push(m);
+            Some(ts) => {
+                i = ts.1;
+                out.push(ts);
             }
             None => i += 1,
         }
@@ -733,7 +778,6 @@ pub fn timestamp_format_stats(text: &str) -> FormatStats {
     let mut stats = FormatStats::default();
     let values = conversation_ts_matches(text)
         .into_iter()
-        .map(|m| m.ts)
         .chain(find_annotation_timestamps(text).into_iter().map(|m| m.ts));
     for (a, e) in values {
         let v = &text[a..e];
@@ -757,6 +801,65 @@ fn render_value(value: &str, format: crate::timestamp::Format) -> Result<Option<
         .map_err(|e| e.0)
 }
 
+/// Rewrites the value ranges `spans` of `text` in `format`, skipping the
+/// unparsable and unchanged ones; adds the rewrites to `count`.
+fn convert_spans(
+    text: &str,
+    spans: impl IntoIterator<Item = (usize, usize)>,
+    format: crate::timestamp::Format,
+    count: &mut usize,
+) -> Result<String, String> {
+    let mut out = String::with_capacity(text.len());
+    let mut cursor = 0;
+    for (a, e) in spans {
+        let value = &text[a..e];
+        match render_value(value, format)? {
+            Some(rendered) if rendered != value => {
+                out.push_str(&text[cursor..a]);
+                out.push_str(&rendered);
+                cursor = e;
+                *count += 1;
+            }
+            _ => {}
+        }
+    }
+    out.push_str(&text[cursor..]);
+    Ok(out)
+}
+
+/// Converts `@marker%ts`.
+fn convert_marker_timestamps(
+    text: &str,
+    format: crate::timestamp::Format,
+    count: &mut usize,
+) -> Result<String, String> {
+    convert_spans(text, conversation_ts_matches(text), format, count)
+}
+
+/// Converts `{++%ts|`.
+fn convert_annotation_timestamps(
+    text: &str,
+    format: crate::timestamp::Format,
+    count: &mut usize,
+) -> Result<String, String> {
+    let spans = find_annotation_timestamps(text).into_iter().map(|m| m.ts);
+    convert_spans(text, spans, format, count)
+}
+
+/// Rewrites the existing review timestamps in `format`, without stamping
+/// anything: the ones [`transform_timestamps`] converts, nothing else (a `%`
+/// followed by 8 alphanumerics elsewhere is prose or a URL escape).
+/// Returns the number of changes and the new text.
+pub fn convert_timestamps(
+    text: &str,
+    format: crate::timestamp::Format,
+) -> Result<(usize, String), String> {
+    let mut count = 0;
+    let markers = convert_marker_timestamps(text, format, &mut count)?;
+    let out = convert_annotation_timestamps(&markers, format, &mut count)?;
+    Ok((count, out))
+}
+
 /// Rewrites every review timestamp in `format` and stamps the untimestamped
 /// markers and annotations with `fallback` (an already encoded value).
 /// Returns the number of changes and the new text.
@@ -768,23 +871,7 @@ pub fn transform_timestamps(
     let mut count = 0;
 
     // 1. Convert `@marker%ts`.
-    let mut step1 = String::with_capacity(text.len());
-    let mut cursor = 0;
-    for m in conversation_ts_matches(text) {
-        let value = &text[m.ts.0..m.ts.1];
-        match render_value(value, format)? {
-            Some(rendered) if rendered != value => {
-                step1.push_str(&text[cursor..m.marker_end]);
-                step1.push('%');
-                step1.push_str(&rendered);
-                cursor = m.ts.1;
-                count += 1;
-            }
-            _ => {}
-        }
-        let _ = m.start;
-    }
-    step1.push_str(&text[cursor..]);
+    let step1 = convert_marker_timestamps(text, format, &mut count)?;
 
     // 2. Stamp bare markers.
     let b = step1.as_bytes();
@@ -832,21 +919,7 @@ pub fn transform_timestamps(
     step2.push_str(&step1[cursor..]);
 
     // 3. Convert `{++%ts|`.
-    let mut step3 = String::with_capacity(step2.len());
-    let mut cursor = 0;
-    for m in find_annotation_timestamps(&step2) {
-        let value = &step2[m.ts.0..m.ts.1];
-        match render_value(value, format)? {
-            Some(rendered) if rendered != value => {
-                step3.push_str(&step2[cursor..m.ts.0]);
-                step3.push_str(&rendered);
-                cursor = m.ts.1;
-                count += 1;
-            }
-            _ => {}
-        }
-    }
-    step3.push_str(&step2[cursor..]);
+    let step3 = convert_annotation_timestamps(&step2, format, &mut count)?;
 
     // 4. Stamp bare `{++`.
     let b = step3.as_bytes();

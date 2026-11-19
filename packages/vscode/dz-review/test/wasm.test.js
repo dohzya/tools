@@ -121,3 +121,41 @@ test("critique wasm accepts a lone surrogate without shifting offsets", () => {
   assert.equal(items.length, 1);
   assert.equal(items[0].start, 2);
 });
+
+const T = { unixSeconds: 1767225600, offsetMinutes: 60 };
+
+test("critique wasm parses timestamps in every format", () => {
+  const critique = loadCritique();
+  for (
+    const value of ["1VB66I0Y", "%갚뚭씀갼", "2026-01-01T01:00:00+01:00"]
+  ) {
+    assert.deepEqual({ ...critique.parseTimestamp(value) }, T, value);
+  }
+  assert.equal(critique.parseTimestamp("nope"), undefined);
+});
+
+test("critique wasm encodes timestamps in every format", () => {
+  const critique = loadCritique();
+  assert.equal(critique.encodeTimestamp(T, "compact"), "1VB66I0Y");
+  assert.equal(critique.encodeTimestamp(T, "hangul"), "갚뚭씀갼");
+  assert.equal(
+    critique.encodeTimestamp(T, "iso"),
+    "2026-01-01T01:00:00+01:00",
+  );
+  assert.throws(() =>
+    critique.encodeTimestamp({ unixSeconds: 0.5, offsetMinutes: 0 }, "iso")
+  );
+});
+
+test("critique wasm converts existing timestamps only", () => {
+  const iso = "2026-01-01T01:00:00+01:00";
+  assert.equal(
+    loadCritique().convertTimestamps(
+      "<!-- @agent%1VB66I0Y q\n@me%갚뚭씀갼 a\n@me b -->\n" +
+        `{++%${iso}|x++} {--y--} 50%discount`,
+      "compact",
+    ),
+    "<!-- @agent%1VB66I0Y q\n@me%1VB66I0Y a\n@me b -->\n" +
+      "{++%1VB66I0Y|x++} {--y--} 50%discount",
+  );
+});

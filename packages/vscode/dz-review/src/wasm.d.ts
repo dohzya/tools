@@ -17,4 +17,11 @@ declare module "*/critique_wasm.js" {
     summaryWidth: number,
   ): string;
   export function stateDir(base: string | null, configured: string[]): string;
+  export function parseTimestamp(value: string): string | undefined;
+  export function encodeTimestamp(
+    unixSeconds: number,
+    offsetMinutes: number,
+    format: string,
+  ): string;
+  export function convertTimestamps(text: string, format: string): string;
 }

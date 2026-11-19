@@ -7,8 +7,9 @@
 use critique_core::agent::{self, AgentMessage};
 use critique_core::refmap::{self, ReferenceMap};
 use critique_core::review::{self, Filter, SummaryOptions, SummarySource};
-use critique_core::scan::Kind;
+use critique_core::scan::{self, Kind};
 use critique_core::state;
+use critique_core::timestamp::{self, Format, ReviewTimestamp};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -146,6 +147,84 @@ pub fn review_items(
 pub fn state_dir(base: Option<String>, configured: Vec<String>) -> String {
     let configured: Vec<_> = configured.iter().map(|v| Some(v.as_str())).collect();
     state::locate(state::STATE_DIR, &configured, base.as_deref())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Timestamp {
+    unix_seconds: u64,
+    offset_minutes: i32,
+}
+
+/// `{ unixSeconds, offsetMinutes }` of a review timestamp in any of the three
+/// formats (optional leading `%`), as JSON; `undefined` when unreadable.
+#[wasm_bindgen(js_name = parseTimestamp)]
+pub fn parse_timestamp(value: &str) -> Option<String> {
+    let t = timestamp::parse_review_timestamp(value)?;
+    serde_json::to_string(&Timestamp {
+        unix_seconds: t.unix_seconds,
+        offset_minutes: t.offset_minutes,
+    })
+    .ok()
+}
+
+fn format(name: &str) -> Result<Format, String> {
+    match name {
+        "compact" => Ok(Format::Compact),
+        "hangul" => Ok(Format::Hangul),
+        "iso" => Ok(Format::Iso),
+        other => Err(format!("unknown timestamp format: {other}")),
+    }
+}
+
+/// The instant `unix_seconds` (offset `offset_minutes`) rendered in `format`
+/// (`compact`, `hangul` or `iso`).
+///
+/// Seconds come as a JS number rather than a `u64`, which wasm-bindgen maps
+/// to a `BigInt`; anything but a safe non-negative integer is an error.
+pub fn encode_timestamp_value(
+    unix_seconds: f64,
+    offset_minutes: i32,
+    format_name: &str,
+) -> Result<String, String> {
+    const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
+    if !(0.0..=MAX_SAFE_INTEGER).contains(&unix_seconds) || unix_seconds.fract() != 0.0 {
+        return Err(format!(
+            "unixSeconds is not a valid instant: {unix_seconds}"
+        ));
+    }
+    // Exact: checked above to be an integer in 0..=2^53-1.
+    let unix_seconds = unix_seconds as u64;
+    timestamp::encode(
+        ReviewTimestamp {
+            unix_seconds,
+            offset_minutes,
+        },
+        format(format_name)?,
+    )
+    .map_err(|e| e.0)
+}
+
+/// JS entry point of [`encode_timestamp_value`].
+#[wasm_bindgen(js_name = encodeTimestamp)]
+pub fn encode_timestamp(
+    unix_seconds: f64,
+    offset_minutes: i32,
+    format_name: &str,
+) -> Result<String, JsError> {
+    encode_timestamp_value(unix_seconds, offset_minutes, format_name).map_err(|e| JsError::new(&e))
+}
+
+/// `text` with its existing review timestamps rewritten in `format`, nothing
+/// stamped (see [`scan::convert_timestamps`]).
+pub fn convert_timestamps_text(text: &str, format_name: &str) -> Result<String, String> {
+    scan::convert_timestamps(text, format(format_name)?).map(|(_, out)| out)
+}
+
+/// JS entry point of [`convert_timestamps_text`].
+#[wasm_bindgen(js_name = convertTimestamps)]
+pub fn convert_timestamps(text: &str, format_name: &str) -> Result<String, JsError> {
+    convert_timestamps_text(text, format_name).map_err(|e| JsError::new(&e))
 }
 
 #[cfg(test)]
@@ -387,5 +466,66 @@ mod tests {
         assert_eq!(dir(&["", " "]), "/repo/.critique");
         assert_eq!(dir(&["", "env/", "x"]), "env/");
         assert_eq!(state_dir(None, Vec::new()), ".critique");
+    }
+
+    const T: f64 = 1_767_225_600.0; // 2026-01-01T00:00:00Z
+
+    #[test]
+    fn timestamps_parse_from_any_format_with_an_optional_percent() {
+        let expected = Some(r#"{"unixSeconds":1767225600,"offsetMinutes":60}"#.to_string());
+        for value in [
+            "1VB66I0Y",
+            "%갚뚭씀갼",
+            "2026-01-01T01:00:00+01:00",
+            "%2026-01-01T01:00:00+0100",
+        ] {
+            assert_eq!(parse_timestamp(value), expected, "{value}");
+        }
+        assert_eq!(parse_timestamp("nope"), None);
+        assert_eq!(parse_timestamp("2026-02-30T00:00:00Z"), None);
+    }
+
+    #[test]
+    fn timestamps_encode_in_each_format() {
+        let encode = |format| encode_timestamp_value(T, 60, format);
+        assert_eq!(encode("compact").unwrap(), "1VB66I0Y");
+        assert_eq!(encode("hangul").unwrap(), "갚뚭씀갼");
+        assert_eq!(encode("iso").unwrap(), "2026-01-01T01:00:00+01:00");
+        assert!(encode("none").is_err());
+    }
+
+    #[test]
+    fn timestamps_reject_seconds_that_are_not_a_valid_instant() {
+        for seconds in [-1.0, 0.5, f64::NAN, f64::INFINITY, 1e300] {
+            assert!(
+                encode_timestamp_value(seconds, 0, "iso").is_err(),
+                "{seconds}"
+            );
+        }
+        // Past the 6 base62 digits of the compact epoch.
+        assert!(encode_timestamp_value(253_370_764_800.0, 0, "compact").is_err());
+    }
+
+    #[test]
+    fn timestamp_conversion_is_the_core_one() {
+        let text = "<!-- @agent%1VB66I0Y q\n@me a -->\n{++%갚뚭씀갼|x++} 50%discount\n";
+        for format in ["compact", "hangul", "iso"] {
+            let core_format = match format {
+                "compact" => critique_core::timestamp::Format::Compact,
+                "hangul" => critique_core::timestamp::Format::Hangul,
+                _ => critique_core::timestamp::Format::Iso,
+            };
+            assert_eq!(
+                convert_timestamps_text(text, format).unwrap(),
+                critique_core::scan::convert_timestamps(text, core_format)
+                    .unwrap()
+                    .1
+            );
+        }
+        assert_eq!(
+            convert_timestamps_text(text, "iso").unwrap(),
+            "<!-- @agent%2026-01-01T01:00:00+01:00 q\n@me a -->\n{++%2026-01-01T01:00:00+01:00|x++} 50%discount\n"
+        );
+        assert!(convert_timestamps_text(text, "none").is_err());
     }
 }

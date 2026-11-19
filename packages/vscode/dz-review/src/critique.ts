@@ -1,6 +1,9 @@
 import { z } from "zod/mini";
 import {
+  convertTimestamps as convertTimestampsWasm,
+  encodeTimestamp as encodeTimestampWasm,
   initSync,
+  parseTimestamp as parseTimestampJson,
   reviewItems as reviewItemsJson,
   stateDir as stateDirWasm,
 } from "../wasm/critique_wasm.js";
@@ -92,4 +95,55 @@ export function reviewItems(
 export function stateDir(base: string, configured: string[]): string {
   ensureInitialized();
   return stateDirWasm(base, configured);
+}
+
+const reviewTimestampSchema = z.object({
+  unixSeconds: z.number(),
+  offsetMinutes: z.number(),
+});
+
+/** An instant with the UTC offset (minutes east) it was written in. */
+export type ReviewTimestamp = z.infer<typeof reviewTimestampSchema>;
+
+export type TimestampFormat = "compact" | "hangul" | "iso";
+
+/**
+ * Instant of a review timestamp in any format (optional leading `%`),
+ * `undefined` when unreadable.
+ */
+export function parseTimestamp(value: string): ReviewTimestamp | undefined {
+  ensureInitialized();
+  const json = parseTimestampJson(value);
+  return json === undefined
+    ? undefined
+    : reviewTimestampSchema.parse(JSON.parse(json));
+}
+
+/**
+ * `timestamp` rendered in `format` (`iso` is the display form). Throws when
+ * the value is out of the format's range.
+ */
+export function encodeTimestamp(
+  timestamp: ReviewTimestamp,
+  format: TimestampFormat,
+): string {
+  ensureInitialized();
+  return encodeTimestampWasm(
+    timestamp.unixSeconds,
+    timestamp.offsetMinutes,
+    format,
+  );
+}
+
+/**
+ * `text` with its existing review timestamps (`@marker%ts`, `{++%ts|`)
+ * rewritten in `format`; nothing is stamped. Throws when a value is out of the
+ * format's range.
+ */
+export function convertTimestamps(
+  text: string,
+  format: TimestampFormat,
+): string {
+  ensureInitialized();
+  return convertTimestampsWasm(text, format);
 }
