@@ -721,6 +721,25 @@ mod tests {
     }
 
     #[test]
+    fn timestamp_spans_are_the_values_convert_rewrites_plus_ref_prefixes() {
+        let text = "<!-- ref%1VB66I0Y: a.md:1 -->\n50%discount a%20bcdefgh x@me%1VB66I0Y\n{++%갚뚭씀갼|add++}\n";
+        let values: Vec<_> = timestamp_spans(text)
+            .into_iter()
+            .map(|(a, e)| &text[a..e])
+            .collect();
+        assert_eq!(values, ["1VB66I0Y", "1VB66I0Y", "갚뚭씀갼"]);
+        // Outside `ref%`, the spans are exactly what the conversion rewrites.
+        let (count, _) = convert_timestamps(&text[30..], Format::Iso).unwrap();
+        assert_eq!(timestamp_spans(&text[30..]).len(), count);
+    }
+
+    #[test]
+    fn timestamp_spans_keep_unparsable_values_of_a_valid_shape() {
+        let text = "@me%2026-02-30T00:00:00Z x";
+        assert_eq!(timestamp_spans(text), [(4, 24)]);
+    }
+
+    #[test]
     fn convert_reports_values_out_of_the_target_range() {
         // Year 9999 is past the 6 base62 digits of the compact epoch.
         let text = "@me%9999-01-01T00:00:00Z x";
@@ -844,6 +863,21 @@ fn convert_annotation_timestamps(
 ) -> Result<String, String> {
     let spans = find_annotation_timestamps(text).into_iter().map(|m| m.ts);
     convert_spans(text, spans, format, count)
+}
+
+/// Byte ranges (without the `%`) of the timestamp values of `text`, in order:
+/// the ones [`convert_timestamps`] rewrites, plus the `ref%ts:` prefixes of
+/// references, which the conversion leaves alone. A value is located by its
+/// shape; whether it is a real instant is for the caller to parse.
+pub fn timestamp_spans(text: &str) -> Vec<(usize, usize)> {
+    let mut spans: Vec<_> = conversation_ts_matches(text)
+        .into_iter()
+        .chain(find_annotation_timestamps(text).into_iter().map(|m| m.ts))
+        .chain(crate::refs::reference_timestamp_spans(text))
+        .collect();
+    spans.sort_unstable();
+    spans.dedup();
+    spans
 }
 
 /// Rewrites the existing review timestamps in `format`, without stamping

@@ -24,4 +24,6 @@ declare module "*/critique_wasm.js" {
     format: string,
   ): string;
   export function convertTimestamps(text: string, format: string): string;
+  export function timestampSpans(text: string): string;
+  export function referenceTargets(text: string): string;
 }

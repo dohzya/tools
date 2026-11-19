@@ -6,6 +6,7 @@
 
 use critique_core::agent::{self, AgentMessage};
 use critique_core::refmap::{self, ReferenceMap};
+use critique_core::refs;
 use critique_core::review::{self, Filter, SummaryOptions, SummarySource};
 use critique_core::scan::{self, Kind};
 use critique_core::state;
@@ -225,6 +226,68 @@ pub fn convert_timestamps_text(text: &str, format_name: &str) -> Result<String, 
 #[wasm_bindgen(js_name = convertTimestamps)]
 pub fn convert_timestamps(text: &str, format_name: &str) -> Result<String, JsError> {
     convert_timestamps_text(text, format_name).map_err(|e| JsError::new(&e))
+}
+
+#[derive(Serialize)]
+struct TimestampSpan<'a> {
+    start: usize,
+    end: usize,
+    value: &'a str,
+}
+
+/// `[{ start, end, value }]` of the timestamp values the core recognizes (see
+/// [`scan::timestamp_spans`]), UTF-16 offsets without the `%`, as JSON.
+#[wasm_bindgen(js_name = timestampSpans)]
+pub fn timestamp_spans(text: &str) -> String {
+    let spans: Vec<_> = scan::timestamp_spans(text)
+        .into_iter()
+        .map(|(a, e)| TimestampSpan {
+            start: utf16(text, a),
+            end: utf16(text, e),
+            value: &text[a..e],
+        })
+        .collect();
+    serde_json::to_string(&spans).unwrap_or_else(|_| "[]".into())
+}
+
+#[derive(Serialize)]
+struct LineRangeView {
+    start: u64,
+    end: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReferenceTarget {
+    start: usize,
+    end: usize,
+    path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    line_range: Option<LineRangeView>,
+    canonical: String,
+}
+
+/// `[{ start, end, path, lineRange?, canonical }]` of every reference target
+/// of `text`, in order, as JSON: UTF-16 range of the target, its file as
+/// written, its lines (absent when invalid) and its canonical form.
+#[wasm_bindgen(js_name = referenceTargets)]
+pub fn reference_targets(text: &str) -> String {
+    let references = refs::collect_references(text);
+    let targets: Vec<_> = references
+        .iter()
+        .flat_map(refs::target_spans)
+        .map(|(a, e, target)| ReferenceTarget {
+            start: utf16(text, a),
+            end: utf16(text, e),
+            path: target.path.clone(),
+            line_range: target.line_range.map(|r| LineRangeView {
+                start: r.start,
+                end: r.end,
+            }),
+            canonical: refs::format_target(target).0,
+        })
+        .collect();
+    serde_json::to_string(&targets).unwrap_or_else(|_| "[]".into())
 }
 
 #[cfg(test)]
@@ -527,5 +590,44 @@ mod tests {
             "<!-- @agent%2026-01-01T01:00:00+01:00 q\n@me a -->\n{++%2026-01-01T01:00:00+01:00|x++} 50%discount\n"
         );
         assert!(convert_timestamps_text(text, "none").is_err());
+    }
+}
+
+#[cfg(test)]
+mod spans_tests {
+    use super::*;
+
+    fn parse(json: &str) -> serde_json::Value {
+        serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn timestamp_spans_are_utf16_with_their_value() {
+        let text = "😀 <!-- @me%1VB66I0Y x --> 50%discount {++%갚뚭씀갼|y++}";
+        assert_eq!(
+            parse(&timestamp_spans(text)),
+            serde_json::json!([
+                {"start": 12, "end": 20, "value": "1VB66I0Y"},
+                {"start": 43, "end": 47, "value": "갚뚭씀갼"},
+            ])
+        );
+    }
+
+    #[test]
+    fn reference_targets_are_utf16_with_their_canonical_form() {
+        let text = "😀 <!-- ref: é.md:L2-3~abc; b.md -->";
+        assert_eq!(
+            parse(&reference_targets(text)),
+            serde_json::json!([
+                {
+                    "start": 13,
+                    "end": 26,
+                    "path": "é.md",
+                    "lineRange": {"start": 2, "end": 3},
+                    "canonical": "é.md:2-3~abc",
+                },
+                {"start": 28, "end": 32, "path": "b.md", "canonical": "b.md"},
+            ])
+        );
     }
 }

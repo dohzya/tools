@@ -4,8 +4,10 @@ import {
   encodeTimestamp as encodeTimestampWasm,
   initSync,
   parseTimestamp as parseTimestampJson,
+  referenceTargets as referenceTargetsJson,
   reviewItems as reviewItemsJson,
   stateDir as stateDirWasm,
+  timestampSpans as timestampSpansJson,
 } from "../wasm/critique_wasm.js";
 import wasmBytes from "../wasm/critique_wasm_bg.wasm";
 
@@ -146,4 +148,42 @@ export function convertTimestamps(
 ): string {
   ensureInitialized();
   return convertTimestampsWasm(text, format);
+}
+
+const timestampSpansSchema = z.array(z.object({
+  start: z.number(),
+  end: z.number(),
+  value: z.string(),
+}));
+
+/** A timestamp value of a document, UTF-16 range without the `%`. */
+export type TimestampSpan = z.infer<typeof timestampSpansSchema>[number];
+
+/**
+ * Timestamp values the core recognizes in `text` (`@marker%ts`, `{++%ts|`,
+ * `ref%ts:`), in order; a value may still be unparsable.
+ */
+export function timestampSpans(text: string): TimestampSpan[] {
+  ensureInitialized();
+  return timestampSpansSchema.parse(JSON.parse(timestampSpansJson(text)));
+}
+
+const referenceTargetsSchema = z.array(z.object({
+  start: z.number(),
+  end: z.number(),
+  path: z.string(),
+  lineRange: z.optional(z.object({ start: z.number(), end: z.number() })),
+  canonical: z.string(),
+}));
+
+/**
+ * A target of a `ref` statement: UTF-16 range in the document, file as
+ * written, 1-based lines (absent when invalid), canonical form.
+ */
+export type ReferenceTarget = z.infer<typeof referenceTargetsSchema>[number];
+
+/** Every reference target of `text`, in order. */
+export function referenceTargets(text: string): ReferenceTarget[] {
+  ensureInitialized();
+  return referenceTargetsSchema.parse(JSON.parse(referenceTargetsJson(text)));
 }

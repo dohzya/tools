@@ -633,6 +633,43 @@ pub fn collect_references(text: &str) -> Vec<Reference> {
     refs.into_iter().filter(|r| !r.targets.is_empty()).collect()
 }
 
+/// Byte range of each target of `reference` in the document, with the target.
+/// A target is searched in the statement after the previous one found, so a
+/// repeated target gets its own span; one not found is left out.
+pub fn target_spans(reference: &Reference) -> Vec<(usize, usize, &Target)> {
+    let mut out = Vec::new();
+    let mut from = 0;
+    for target in &reference.targets {
+        let Some(k) = reference.raw[from..].find(&target.raw) else {
+            continue;
+        };
+        let start = reference.start + from + k;
+        out.push((start, start + target.raw.len(), target));
+        from += k + target.raw.len();
+    }
+    out
+}
+
+/// Byte ranges of the `ref%ts:` timestamp values, one per reference block
+/// that has one.
+pub fn reference_timestamp_spans(text: &str) -> Vec<(usize, usize)> {
+    html_comments(text)
+        .into_iter()
+        .filter_map(|(start, end)| {
+            let content = &text[start + 4..end - 3];
+            let trimmed = content.trim_start_matches(is_js_whitespace);
+            let (timestamp, len) = block_prefix(trimmed)?;
+            let timestamp = timestamp?;
+            if parse_targets(&trimmed[len..]).is_empty() {
+                return None;
+            }
+            // After `<!--`, the leading whitespace and `ref%`.
+            let at = end - 3 - trimmed.len() + 4;
+            Some((at, at + timestamp.len()))
+        })
+        .collect()
+}
+
 /// `^id` anchors defined by `<!-- ref-id: ^id -->` comments.
 pub fn collect_reference_ids(text: &str) -> Vec<String> {
     html_comments(text)
@@ -690,6 +727,24 @@ mod tests {
         );
         assert_eq!(parse_line_range("8-L10"), None);
         assert_eq!(parse_line_range("9-3"), None);
+    }
+
+    #[test]
+    fn target_spans_locate_each_target_in_the_document() {
+        let text = "é <!-- ref: a.md:1; a.md:1 -->\n<!-- @me ref: b.md:2 @agent x -->";
+        let refs = collect_references(text);
+        let spans: Vec<_> = refs
+            .iter()
+            .flat_map(target_spans)
+            .map(|(a, e, t)| (&text[a..e], t.path.as_str()))
+            .collect();
+        // The repeated target is found after the first one, not on it.
+        assert_eq!(
+            spans,
+            [("a.md:1", "a.md"), ("a.md:1", "a.md"), ("b.md:2", "b.md")]
+        );
+        let starts: Vec<_> = target_spans(&refs[0]).iter().map(|s| s.0).collect();
+        assert_eq!(starts, [13, 21]);
     }
 
     #[test]

@@ -159,3 +159,38 @@ test("critique wasm converts existing timestamps only", () => {
       "{++%1VB66I0Y|x++} {--y--} 50%discount",
   );
 });
+
+test("critique wasm locates the timestamps the core recognizes", () => {
+  const spans = loadCritique().timestampSpans(
+    "😀 <!-- ref%1VB66I0Y: a.md:1 --> @me%갚뚭씀갼 50%discount {++%1VB66I0Y|x++}",
+  );
+
+  assert.deepEqual(Array.from(spans, (span) => ({ ...span })), [
+    { start: 12, end: 20, value: "1VB66I0Y" },
+    { start: 37, end: 41, value: "갚뚭씀갼" },
+    { start: 58, end: 66, value: "1VB66I0Y" },
+  ]);
+});
+
+test("critique wasm locates reference targets in UTF-16 units", () => {
+  const targets = loadCritique().referenceTargets(
+    "😀 <!-- ref: é.md:L2-3^id; b.md -->",
+  );
+
+  assert.deepEqual(
+    Array.from(targets, ({ lineRange, ...target }) => ({
+      ...target,
+      ...(lineRange ? { lineRange: { ...lineRange } } : {}),
+    })),
+    [
+      {
+        start: 13,
+        end: 25,
+        path: "é.md",
+        lineRange: { start: 2, end: 3 },
+        canonical: "é.md:2-3^id",
+      },
+      { start: 27, end: 31, path: "b.md", canonical: "b.md" },
+    ],
+  );
+});
