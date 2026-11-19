@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **vscode:** The review panel stores its reference map in the `critique` CLI's state directory: the new `dzMdReview.stateDir` setting, else `CRITIQUE_STATE_DIR`, else `.critique/` at the Git root. A legacy `.dz-review/` is no longer read.
 - **vscode:** "Convert Review Timestamps" only rewrites the timestamps of `@agent`/`@me`/`@` markers (followed by a space or the end of the text) and of `{++%ts|` style annotation prefixes, as `critique timestamp` does. It no longer rewrites any other `%` followed by 8 letters or digits, such as `50%discount` or a URL escape like `%20bcdefgh`.
 - **vscode:** The timestamp hover follows the same rule: it shows a date on marker, annotation-prefix and `ref%ts:` timestamps only, no longer on `50%discount` or `%20bcdefgh`.
+- **critique:** `critique timestamp` and the timestamp normalization of `session start` / restoration of `session done` also convert the `ref%ts:` prefix of reference blocks (`<!-- ref%ts: file.md:3 -->`), which they used to leave in its original encoding. A bare `ref:` is still not stamped.
+- **vscode:** "Convert Review Timestamps" converts the `ref%ts:` prefix of reference blocks too, like `critique timestamp`.
 
 ## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16
 

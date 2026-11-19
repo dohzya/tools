@@ -1,0 +1,14 @@
+# Refs
+
+One. <!-- ref%2026-01-01T01:00:00+01:00: source.md:1 -->
+
+Block.
+<!--
+  ref%2026-01-01T01:00:00+01:00:
+  source.md:1;
+  source.md:2
+-->
+
+Bare. <!-- ref: source.md:1 -->
+
+No target. <!-- ref%1VB66I0Y: -->

@@ -50,7 +50,7 @@ Not covered: `--help`/`--version`/`completions`; error message text beyond the f
 ## Additions of 2026-11-09 (all `new-spec`, expected output hand-written from the specs)
 
 - `md compare` (14 cases) and `md rank` (9, including `--stdin`): `cases/md/compare|rank/`, spec row 24 of `docs/specs/markdown-sections.md` and `docs/specs/mrfi.md`. No TS command exists, so there is no Deno counterpart.
-- `dz-review`: `drift/pass-two-closest-stored-reference` (reference-map pass 2 ranked by MRFI `rank`), `syntax/cr-only`, `syntax/cr-only-context`, `ids/cr-only-json` (a lone CR ends a line), `agent/apply-remove-*` (7, `agent apply --remove`), `eol/*` (11: replies, remove, clean and review replies on CRLF and CR files, `rawHash` independent of the EOL), `agent/show-longer-id` (any prefix of the id resolves). `md misc/agent-instructions` became `new-spec` (it describes `compare`/`rank`). See `docs/specs/critique.md`.
+- `dz-review`: `drift/pass-two-closest-stored-reference` (reference-map pass 2 ranked by MRFI `rank`), `syntax/cr-only`, `syntax/cr-only-context`, `ids/cr-only-json` (a lone CR ends a line), `agent/apply-remove-*` (7, `agent apply --remove`), `eol/*` (11: replies, remove, clean and review replies on CRLF and CR files, `rawHash` independent of the EOL), `agent/show-longer-id` (any prefix of the id resolves), `timestamp/new-ref-prefix-to-iso` (the `ref%ts:` prefix of a reference block is converted, fixture `dz-review-ref-timestamps`). `md misc/agent-instructions` became `new-spec` (it describes `compare`/`rank`). See `docs/specs/critique.md`.
 
 ## wl
 

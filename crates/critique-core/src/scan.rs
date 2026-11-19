@@ -721,16 +721,41 @@ mod tests {
     }
 
     #[test]
-    fn timestamp_spans_are_the_values_convert_rewrites_plus_ref_prefixes() {
+    fn timestamp_spans_are_the_values_convert_rewrites() {
         let text = "<!-- ref%1VB66I0Y: a.md:1 -->\n50%discount a%20bcdefgh x@me%1VB66I0Y\n{++%갚뚭씀갼|add++}\n";
         let values: Vec<_> = timestamp_spans(text)
             .into_iter()
             .map(|(a, e)| &text[a..e])
             .collect();
         assert_eq!(values, ["1VB66I0Y", "1VB66I0Y", "갚뚭씀갼"]);
-        // Outside `ref%`, the spans are exactly what the conversion rewrites.
-        let (count, _) = convert_timestamps(&text[30..], Format::Iso).unwrap();
-        assert_eq!(timestamp_spans(&text[30..]).len(), count);
+        let (count, _) = convert_timestamps(text, Format::Iso).unwrap();
+        assert_eq!(timestamp_spans(text).len(), count);
+    }
+
+    const REFS: &str = "<!-- ref%1VB66I0Y: a.md:1 -->\n<!--\n  ref%갚뚭씀갼:\n  a.md:2;\n  b.md\n-->\n<!-- ref: a.md:3 --> <!-- ref%1VB66I0Y: -->\n";
+
+    #[test]
+    fn convert_rewrites_reference_prefixes() {
+        let iso = "2026-01-01T01:00:00+01:00";
+        assert_eq!(
+            convert_timestamps(REFS, Format::Iso).unwrap(),
+            (
+                2,
+                format!(
+                    "<!-- ref%{iso}: a.md:1 -->\n<!--\n  ref%{iso}:\n  a.md:2;\n  b.md\n-->\n<!-- ref: a.md:3 --> <!-- ref%1VB66I0Y: -->\n"
+                )
+            )
+        );
+    }
+
+    #[test]
+    fn transform_rewrites_reference_prefixes_without_stamping_bare_ones() {
+        let (count, out) = transform_timestamps(REFS, "STAMPED0", Format::Compact).unwrap();
+        assert_eq!(count, 1);
+        assert_eq!(
+            out,
+            "<!-- ref%1VB66I0Y: a.md:1 -->\n<!--\n  ref%1VB66I0Y:\n  a.md:2;\n  b.md\n-->\n<!-- ref: a.md:3 --> <!-- ref%1VB66I0Y: -->\n"
+        );
     }
 
     #[test]
@@ -846,13 +871,18 @@ fn convert_spans(
     Ok(out)
 }
 
-/// Converts `@marker%ts`.
+/// Converts `@marker%ts` and the `ref%ts:` prefixes of references.
 fn convert_marker_timestamps(
     text: &str,
     format: crate::timestamp::Format,
     count: &mut usize,
 ) -> Result<String, String> {
-    convert_spans(text, conversation_ts_matches(text), format, count)
+    let mut spans: Vec<_> = conversation_ts_matches(text)
+        .into_iter()
+        .chain(crate::refs::reference_timestamp_spans(text))
+        .collect();
+    spans.sort_unstable();
+    convert_spans(text, spans, format, count)
 }
 
 /// Converts `{++%ts|`.
@@ -866,9 +896,9 @@ fn convert_annotation_timestamps(
 }
 
 /// Byte ranges (without the `%`) of the timestamp values of `text`, in order:
-/// the ones [`convert_timestamps`] rewrites, plus the `ref%ts:` prefixes of
-/// references, which the conversion leaves alone. A value is located by its
-/// shape; whether it is a real instant is for the caller to parse.
+/// the ones [`convert_timestamps`] rewrites (markers, annotations and the
+/// `ref%ts:` prefixes of references). A value is located by its shape;
+/// whether it is a real instant is for the caller to parse.
 pub fn timestamp_spans(text: &str) -> Vec<(usize, usize)> {
     let mut spans: Vec<_> = conversation_ts_matches(text)
         .into_iter()
@@ -895,7 +925,8 @@ pub fn convert_timestamps(
 }
 
 /// Rewrites every review timestamp in `format` and stamps the untimestamped
-/// markers and annotations with `fallback` (an already encoded value).
+/// markers and annotations with `fallback` (an already encoded value), not
+/// the untimestamped `ref:` blocks.
 /// Returns the number of changes and the new text.
 pub fn transform_timestamps(
     text: &str,
@@ -904,7 +935,7 @@ pub fn transform_timestamps(
 ) -> Result<(usize, String), String> {
     let mut count = 0;
 
-    // 1. Convert `@marker%ts`.
+    // 1. Convert `@marker%ts` and `ref%ts:`.
     let step1 = convert_marker_timestamps(text, format, &mut count)?;
 
     // 2. Stamp bare markers.

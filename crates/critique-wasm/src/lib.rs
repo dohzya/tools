@@ -427,6 +427,20 @@ mod tests {
     }
 
     #[test]
+    fn converting_an_embedded_reference_keeps_the_mapped_id() {
+        // An untimestamped annotation is anchored on its text, so the hashed id
+        // moves when the `ref%` value it embeds is rewritten; the map keeps it.
+        let text = "x {>> see <!-- ref%1VB66I0Y: a.md:1 --> <<}\n";
+        let first = parse(&review_items_json("doc.md", text, None, "payload", 80).unwrap());
+        let map = first["map"].as_str().unwrap().to_string();
+        let converted = convert_timestamps_text(text, "iso").unwrap();
+        assert_ne!(converted, text);
+        let again =
+            parse(&review_items_json("doc.md", &converted, Some(&map), "payload", 80).unwrap());
+        assert_eq!(ids(&again), ids(&first));
+    }
+
+    #[test]
     fn a_blank_map_is_no_map() {
         assert_eq!(
             review_items_json("doc.md", TEXT, Some("  "), "payload", 80),

@@ -152,11 +152,13 @@ test("critique wasm converts existing timestamps only", () => {
   assert.equal(
     loadCritique().convertTimestamps(
       "<!-- @agent%1VB66I0Y q\n@me%갚뚭씀갼 a\n@me b -->\n" +
-        `{++%${iso}|x++} {--y--} 50%discount`,
+        `{++%${iso}|x++} {--y--} 50%discount\n` +
+        "<!-- ref%갚뚭씀갼: a.md:1 --> <!-- ref: a.md:2 -->",
       "compact",
     ),
     "<!-- @agent%1VB66I0Y q\n@me%1VB66I0Y a\n@me b -->\n" +
-      "{++%1VB66I0Y|x++} {--y--} 50%discount",
+      "{++%1VB66I0Y|x++} {--y--} 50%discount\n" +
+      "<!-- ref%1VB66I0Y: a.md:1 --> <!-- ref: a.md:2 -->",
   );
 });
 
