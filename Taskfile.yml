@@ -81,8 +81,6 @@ tasks:
       - .vscodeignore
       - LICENSE
       - assets/**
-      - ../../tools/dz-review/*.ts
-      - "!../../tools/dz-review/*.test.ts"
       - src/**/*.ts
       - syntaxes/**/*.json
       - ../../../crates/*/Cargo.toml
