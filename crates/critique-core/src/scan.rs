@@ -316,7 +316,9 @@ pub fn metadata_prefix_end(s: &str, at: usize) -> Option<usize> {
     timestamp_value(s, at + 1, |e| s.as_bytes().get(e) == Some(&b'|')).map(|e| e + 1)
 }
 
-/// Removes `%timestamp` parts (TS `stripReviewTimestamps`).
+/// Removes `%timestamp` parts (TS `stripReviewTimestamps`), plus the
+/// `%timestamp` of `ref%timestamp:` prefixes, which the TS kept: the text
+/// anchors of ids and the fingerprints then ignore the timestamp format.
 pub(crate) fn strip_timestamps(text: &str) -> String {
     let mut first = String::with_capacity(text.len());
     let mut cursor = 0;
@@ -332,7 +334,15 @@ pub(crate) fn strip_timestamps(text: &str) -> String {
         cursor = m.end;
     }
     out.push_str(&first[cursor..]);
-    out
+    let mut stripped = String::with_capacity(out.len());
+    let mut cursor = 0;
+    for (a, e) in crate::refs::reference_timestamp_spans(&out) {
+        // `a - 1` is the `%`.
+        stripped.push_str(&out[cursor..a - 1]);
+        cursor = e;
+    }
+    stripped.push_str(&out[cursor..]);
+    stripped
 }
 
 pub(crate) fn is_escaped_at(text: &str, offset: usize) -> bool {

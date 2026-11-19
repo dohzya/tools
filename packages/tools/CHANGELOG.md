@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - **vscode:** "Convert Review Timestamps" only rewrites the timestamps of `@agent`/`@me`/`@` markers (followed by a space or the end of the text) of `{++%ts|` style annotation prefixes and of `ref%ts:` reference prefixes, as `critique timestamp` does. It no longer rewrites any other `%` followed by 8 letters or digits, such as `50%discount` or a URL escape like `%20bcdefgh`.
 - **vscode:** The timestamp hover follows the same rule: it shows a date on marker, annotation-prefix and `ref%ts:` timestamps only, no longer on `50%discount` or `%20bcdefgh`.
 - **critique:** `critique timestamp` and the timestamp normalization of `session start` / restoration of `session done` also convert the `ref%ts:` prefix of reference blocks (`<!-- ref%ts: file.md:3 -->`), which they used to leave in its original encoding. These prefixes also count in the detected format (`critique timestamp --format-info`, the format `session done` restores). A bare `ref:` is still not stamped.
+- **critique:** Item ids and `rawHash` no longer depend on the format of an embedded `ref%ts:` reference prefix: its value is ignored like the other review timestamps. The id of an item without its own timestamp that embeds such a prefix changes once unless the reference map already holds it; the VS Code panel follows.
 
 ## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16
 

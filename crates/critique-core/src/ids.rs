@@ -1,6 +1,8 @@
 //! Stable review item ids: `rvw_` + base62(FNV-1a 64 over the UTF-16 code
 //! units of `file\0kind\0anchor`). Kept bit-identical to the TS tool because
-//! ids are persisted in user documents and shared with the VS Code extension.
+//! ids are persisted in user documents and shared with the VS Code extension,
+//! except that the value of a `ref%ts:` prefix is left out of the anchor and
+//! of fingerprints (the TS hashed it), so they ignore the timestamp format.
 
 use crate::scan::{self, Annotation, Kind};
 use crate::timestamp::parse_review_timestamp;
@@ -226,6 +228,20 @@ mod tests {
         let all = vec!["rvw_abcdeXY".to_string(), "custom".to_string()];
         assert_eq!(display_id(&all[0], &all), short_id(&all[0], &all));
         assert_eq!(display_id("custom", &all), "custom");
+    }
+
+    #[test]
+    fn ref_prefixes_do_not_change_text_anchored_ids_nor_fingerprints() {
+        let doc = |ts: &str| format!("x {{>> see <!-- ref%{ts}: a.md:1 --> <<}}\n");
+        let (compact, iso) = (doc("1VB66I0Y"), doc("2026-01-01T01:00:00+01:00"));
+        assert_eq!(
+            assign_stable_ids("doc.md", &collect_annotations(&compact)),
+            assign_stable_ids("doc.md", &collect_annotations(&iso))
+        );
+        assert_eq!(
+            fingerprint(&collect_annotations(&compact)[0].raw),
+            fingerprint(&collect_annotations(&iso)[0].raw)
+        );
     }
 
     #[test]
