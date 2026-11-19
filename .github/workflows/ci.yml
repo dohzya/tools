@@ -44,3 +44,6 @@ jobs:
       - name: Check the VS Code extension bundle
         working-directory: packages/vscode/dz-review
         run: npm run check
+
+      - name: Compare the VS Code extension core with the critique CLI
+        run: task vscode:dz-review:parity

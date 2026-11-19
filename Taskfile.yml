@@ -71,6 +71,15 @@ tasks:
     deps: [vscode:dz-review:install-deps]
     cmds:
       - npm test
+  vscode:dz-review:parity:
+    desc: "Compare the extension's critique-wasm results with the critique CLI over the repo's Markdown"
+    dir: packages/vscode/dz-review
+    deps: [vscode:dz-review:install-deps]
+    cmds:
+      - cargo build --locked --quiet -p critique-cli
+      - npm run compile
+      # cargo metadata honors CARGO_TARGET_DIR and build.target-dir.
+      - CRITIQUE_BIN="$(cargo metadata --format-version 1 --no-deps | jq -r .target_directory)/debug/critique" node test/cli-parity.js {{.CLI_ARGS}}
   vscode:dz-review:vsix:
     desc: "Build the VS Code dz-review VSIX"
     dir: packages/vscode/dz-review
