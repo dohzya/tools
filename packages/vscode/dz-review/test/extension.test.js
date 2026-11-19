@@ -1267,6 +1267,40 @@ test("shows readable hover text for compact timestamps", () => {
   assert.equal(hover.contents.value, "2026-06-16T17:35:35+02:00");
 });
 
+test("shows timestamp hover on annotation and ref prefixes", () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    "{++%1WzvP91W|x++} <!-- ref%1WzvP91W: a.md:1 -->",
+    { line: 0, character: 0 },
+  );
+
+  for (const character of [6, 30]) {
+    const hover = harness.api.provideTimestampHover(editor.document, {
+      line: 0,
+      character,
+    });
+    assert.equal(hover.contents.value, "2026-06-16T17:35:35+02:00");
+  }
+});
+
+test("shows no timestamp hover where the core sees no timestamp", () => {
+  const harness = createHarness();
+  const editor = harness.createEditor("50%discount a%20bcdefgh", {
+    line: 0,
+    character: 0,
+  });
+
+  for (const character of [5, 16]) {
+    assert.equal(
+      harness.api.provideTimestampHover(editor.document, {
+        line: 0,
+        character,
+      }),
+      undefined,
+    );
+  }
+});
+
 test("shows referenced passage on ref hover", async () => {
   const harness = createHarness();
   const dir = fs.mkdtempSync(path.join(__dirname, "ref-hover-"));

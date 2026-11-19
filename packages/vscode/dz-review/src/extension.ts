@@ -2,12 +2,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { encodeDate } from "./timestamp";
-import {
-  collectReviewReferences,
-  formatReferenceTarget,
-  type ReferenceTarget,
-  type ReviewReference,
-} from "../../../tools/dz-review/ref-core";
 import * as critique from "./critique";
 import { referenceMapFile } from "./state-dir";
 
@@ -135,10 +129,6 @@ const TIMESTAMP_VALUE_PATTERN = String
 const REVIEW_MARKER_RE = new RegExp(
   String
     .raw`(^|[ \t\r\n])(@agent|@me|@)(?:%(${TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)|(?=[ \t]*:|[ \t\r\n]|$))`,
-  "g",
-);
-const REVIEW_TIMESTAMP_RE = new RegExp(
-  String.raw`%(${TIMESTAMP_VALUE_PATTERN})`,
   "g",
 );
 const REVIEW_METADATA_PREFIX_RE = new RegExp(
@@ -2610,34 +2600,22 @@ function provideTimestampHover(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): vscode.Hover | undefined {
-  const text = document.getText();
   const offset = document.offsetAt(position);
-
-  for (const match of text.matchAll(REVIEW_TIMESTAMP_RE)) {
-    const timestamp = match[1];
-    const markerStart = match.index ?? 0;
-    const timestampStart = markerStart + 1;
-    const timestampEnd = timestampStart + timestamp.length;
-    if (offset < timestampStart || offset > timestampEnd) {
-      continue;
-    }
-
-    const parsed = critique.parseTimestamp(timestamp);
-    if (!parsed) {
-      return undefined;
-    }
-    const rendered = critique.encodeTimestamp(parsed, "iso");
-
-    return new vscode.Hover(
-      new vscode.MarkdownString(rendered),
-      new vscode.Range(
-        document.positionAt(timestampStart),
-        document.positionAt(timestampEnd),
-      ),
-    );
+  const span = critique.timestampSpans(document.getText()).find((
+    candidate,
+  ) => candidate.start <= offset && offset <= candidate.end);
+  const parsed = span && critique.parseTimestamp(span.value);
+  if (!span || !parsed) {
+    return undefined;
   }
 
-  return undefined;
+  return new vscode.Hover(
+    new vscode.MarkdownString(critique.encodeTimestamp(parsed, "iso")),
+    new vscode.Range(
+      document.positionAt(span.start),
+      document.positionAt(span.end),
+    ),
+  );
 }
 
 async function provideReviewHover(
@@ -2652,36 +2630,32 @@ async function provideReferenceHover(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): Promise<vscode.Hover | undefined> {
-  const located = findReferenceTargetAt(document, position);
-  if (!located.target.lineRange) {
+  const target = findReferenceTargetAt(document, position);
+  if (!target?.lineRange) {
     return undefined;
   }
 
-  const targetFile = resolveReferenceTargetFile(document, located.target);
+  const targetFile = resolveReferenceTargetFile(document, target);
   const targetText = await readReferenceTargetText(targetFile);
   if (targetText === undefined) {
     return undefined;
   }
 
-  const excerpt = extractReferenceExcerpt(
-    targetText,
-    located.target,
-  );
+  const excerpt = extractReferenceExcerpt(targetText, target);
   const limitedExcerpt = limitReferenceHoverExcerpt(
     excerpt,
     getReferenceSnapshotLines(),
   );
-  const formatted = formatReferenceTarget(located.target);
   const markdown = new vscode.MarkdownString(
-    [`**${formatted.canonical}**`, "", formatHoverExcerpt(limitedExcerpt)]
+    [`**${target.canonical}**`, "", formatHoverExcerpt(limitedExcerpt)]
       .join("\n"),
   );
 
   return new vscode.Hover(
     markdown,
     new vscode.Range(
-      document.positionAt(located.start),
-      document.positionAt(located.end),
+      document.positionAt(target.start),
+      document.positionAt(target.end),
     ),
   );
 }
@@ -2690,13 +2664,13 @@ function provideReferenceDefinition(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): vscode.Location | undefined {
-  const located = findReferenceTargetAt(document, position);
-  if (!located.target.lineRange) {
+  const target = findReferenceTargetAt(document, position);
+  if (!target?.lineRange) {
     return undefined;
   }
 
-  const targetFile = resolveReferenceTargetFile(document, located.target);
-  const line = Math.max(0, located.target.lineRange.start - 1);
+  const targetFile = resolveReferenceTargetFile(document, target);
+  const line = Math.max(0, target.lineRange.start - 1);
   const targetPosition = new vscode.Position(line, 0);
 
   return new vscode.Location(
@@ -2708,50 +2682,16 @@ function provideReferenceDefinition(
 function findReferenceTargetAt(
   document: vscode.TextDocument,
   position: vscode.Position,
-): {
-  end: number;
-  reference: ReviewReference;
-  start: number;
-  target: ReferenceTarget;
-} {
+): critique.ReferenceTarget | undefined {
   const offset = document.offsetAt(position);
-  for (const reference of collectReviewReferences(document.getText())) {
-    let searchStart = 0;
-    for (const target of reference.targets) {
-      const relativeStart = reference.raw.indexOf(target.raw, searchStart);
-      if (relativeStart < 0) {
-        continue;
-      }
-
-      const start = reference.start + relativeStart;
-      const end = start + target.raw.length;
-      if (start <= offset && offset <= end) {
-        return { end, reference, start, target };
-      }
-
-      searchStart = relativeStart + target.raw.length;
-    }
-  }
-
-  return {
-    end: 0,
-    reference: {
-      end: 0,
-      index: 0,
-      lineEnd: 0,
-      lineStart: 0,
-      raw: "",
-      start: 0,
-      targets: [],
-    },
-    start: 0,
-    target: { path: "", raw: "" },
-  };
+  return critique.referenceTargets(document.getText()).find((target) =>
+    target.start <= offset && offset <= target.end
+  );
 }
 
 function resolveReferenceTargetFile(
   document: vscode.TextDocument,
-  target: ReferenceTarget,
+  target: critique.ReferenceTarget,
 ): string {
   if (isAbsoluteReferencePath(target.path)) {
     return target.path;
@@ -2812,7 +2752,7 @@ function normalizeReferencePath(value: string): string {
 
 function extractReferenceExcerpt(
   text: string,
-  target: ReferenceTarget,
+  target: critique.ReferenceTarget,
 ): string {
   if (!target.lineRange) {
     return "";
