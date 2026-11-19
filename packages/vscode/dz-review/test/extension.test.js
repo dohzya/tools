@@ -1983,6 +1983,30 @@ test("converts all timestamps in the active editor to the configured format", as
   );
 });
 
+test("converts only the timestamps the core reads, as the core does", async () => {
+  const harness = createHarness();
+  harness.setTimestampFormat("iso");
+  const text =
+    "<!-- @agent%1VB66I0Y q\n@me%\uac1a\ub6ad\uc500\uac3c a\n@me b -->\n" +
+    "{++%2026-01-01T03:00:00+03:00|x++} {--y--}\n" +
+    "50%discount, see https://example.com/a%20bcdefgh\n";
+  const editor = harness.createEditor(text, { line: 0, character: 0 });
+
+  await harness.api.convertTimestampsInActiveEditor();
+
+  const iso = "2026-01-01T01:00:00+01:00";
+  assert.equal(
+    editor.document.text,
+    `<!-- @agent%${iso} q\n@me%${iso} a\n@me b -->\n` +
+      "{++%2026-01-01T03:00:00+03:00|x++} {--y--}\n" +
+      "50%discount, see https://example.com/a%20bcdefgh\n",
+  );
+  assert.equal(
+    editor.document.text,
+    harness.api.critique.convertTimestamps(text, "iso"),
+  );
+});
+
 test("wraps empty selections with custom review annotations and places the cursor inside", async () => {
   const cases = [
     ["addition", "{++++}", { line: 0, character: 3 }],

@@ -1,15 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
-import {
-  encodeCompactTimestamp,
-  encodeHangulTimestamp,
-  encodeTimestamp,
-  formatTimestampForDisplay,
-  parseReviewTimestamp,
-  type ReviewTimestamp,
-  type TimestampFormat,
-} from "./timestamp";
+import { encodeDate } from "./timestamp";
 import {
   collectReviewReferences,
   formatReferenceTarget,
@@ -32,7 +24,7 @@ type CriticMarkupAnnotationKind =
   | "highlight"
   | "comment";
 type CriticMarkupResolution = "cancel" | "apply";
-type ExtensionTimestampFormat = TimestampFormat | "none";
+type ExtensionTimestampFormat = critique.TimestampFormat | "none";
 
 interface Conversation {
   start: number;
@@ -942,20 +934,21 @@ function getReviewPanelConversationMessages(
 function formatReviewPanelTimestamp(
   timestamp: string,
 ): { label: string; title: string } | undefined {
-  const parsed = parseReviewTimestamp(timestamp);
-  const title = formatTimestampForDisplay(parsed);
-  if (!parsed || !title) {
+  const parsed = critique.parseTimestamp(timestamp);
+  if (!parsed) {
     return undefined;
   }
 
   return {
     label: formatShortReviewPanelTimestamp(parsed),
-    title,
+    title: critique.encodeTimestamp(parsed, "iso"),
   };
 }
 
-function formatShortReviewPanelTimestamp(timestamp: ReviewTimestamp): string {
-  const localDate = new Date(Number(timestamp.unixSeconds) * 1000);
+function formatShortReviewPanelTimestamp(
+  timestamp: critique.ReviewTimestamp,
+): string {
+  const localDate = new Date(timestamp.unixSeconds * 1000);
   const now = new Date();
   const time = [
     localDate.getHours(),
@@ -1532,7 +1525,7 @@ async function convertTimestampsInActiveEditor(): Promise<void> {
   const format = getTimestampFormat();
   const targetFormat = format === "none" ? "compact" : format;
   const text = editor.document.getText();
-  const updated = convertReviewTimestamps(text, targetFormat);
+  const updated = critique.convertTimestamps(text, targetFormat);
 
   if (updated === text) {
     void vscode.window.showInformationMessage(
@@ -1549,33 +1542,6 @@ async function convertTimestampsInActiveEditor(): Promise<void> {
       ),
       updated,
     );
-  });
-}
-
-function convertReviewTimestamps(
-  text: string,
-  format: TimestampFormat,
-): string {
-  return text.replace(REVIEW_TIMESTAMP_RE, (match: string, value: string) => {
-    const timestamp = parseReviewTimestamp(value);
-    if (!timestamp) {
-      return match;
-    }
-
-    if (format === "iso") {
-      const rendered = formatTimestampForDisplay(timestamp);
-      return rendered ? `%${rendered}` : match;
-    }
-
-    if (format === "hangul") {
-      return `%${
-        encodeHangulTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes)
-      }`;
-    }
-
-    return `%${
-      encodeCompactTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes)
-    }`;
   });
 }
 
@@ -2656,10 +2622,11 @@ function provideTimestampHover(
       continue;
     }
 
-    const rendered = formatTimestampForDisplay(parseReviewTimestamp(timestamp));
-    if (!rendered) {
+    const parsed = critique.parseTimestamp(timestamp);
+    if (!parsed) {
       return undefined;
     }
+    const rendered = critique.encodeTimestamp(parsed, "iso");
 
     return new vscode.Hover(
       new vscode.MarkdownString(rendered),
@@ -3292,14 +3259,12 @@ function buildReviewMessage(
 
 function getTimestampSuffix(): string {
   const format = getTimestampFormat();
-  return format === "none" ? "" : `%${encodeTimestamp(new Date(), format)}`;
+  return format === "none" ? "" : `%${encodeDate(new Date(), format)}`;
 }
 
 function getExplicitTimestampSuffix(): string {
   const format = getTimestampFormat();
-  return `%${
-    encodeTimestamp(new Date(), format === "none" ? "compact" : format)
-  }`;
+  return `%${encodeDate(new Date(), format === "none" ? "compact" : format)}`;
 }
 
 function getTimestampFormat(): ExtensionTimestampFormat {
