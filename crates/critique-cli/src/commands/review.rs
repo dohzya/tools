@@ -126,7 +126,12 @@ fn process_file(
     if selected.is_empty() {
         return Ok(false);
     }
-    let all_ids: Vec<String> = selected.iter().map(|(id, _)| id.clone()).collect();
+    let all_ids = ctx.project_ids(
+        &selected
+            .iter()
+            .map(|(id, _)| id.clone())
+            .collect::<Vec<_>>(),
+    )?;
     let items: Vec<ReviewItem> = selected.iter().map(|(_, i)| i.clone()).collect();
     let mut text = initial;
     let mut delta: isize = 0;
@@ -224,7 +229,7 @@ fn list_items(
     let text = if located.is_empty() {
         "No review annotations found.\n".to_string()
     } else {
-        let all: Vec<String> = located.iter().map(|l| l.id.clone()).collect();
+        let all = ctx.project_ids(&located.iter().map(|l| l.id.clone()).collect::<Vec<_>>())?;
         located
             .iter()
             .enumerate()

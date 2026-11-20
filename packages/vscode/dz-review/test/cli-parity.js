@@ -297,8 +297,8 @@ function main() {
         report.skipped.push(`${rel} (not UTF-8)`);
         continue;
       }
-      // One work dir per file: a reference map shared across files makes
-      // the extension's short ids legitimately longer than the CLI's.
+      // One work dir per file: the wasm side gets no map, so the CLI must
+      // not see other files' ids either (both shorten over the whole map).
       const cwd = fs.mkdtempSync(path.join(tmp, "f-"));
       const file = "doc.md";
       fs.writeFileSync(path.join(cwd, file), text);

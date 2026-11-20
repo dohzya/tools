@@ -320,11 +320,17 @@ pub fn assign_persistent_ids(
     }
 }
 
-/// Display ids of `ids`, unique among every id of the project: those of
-/// `map` (all files) and `ids` themselves (not persisted yet, or no map).
-pub fn display_ids(map: &ReferenceMap, ids: &[String]) -> Vec<String> {
+/// Every id of the project, the set display ids are shortened over: those
+/// of `map` (all files) and `ids` themselves (not persisted yet, or no map).
+pub fn project_ids(map: &ReferenceMap, ids: &[String]) -> Vec<String> {
     let mut all: Vec<String> = map.entries.0.iter().map(|(id, _)| id.clone()).collect();
     all.extend_from_slice(ids);
+    all
+}
+
+/// Display ids of `ids`, unique among every id of the project ([`project_ids`]).
+pub fn display_ids(map: &ReferenceMap, ids: &[String]) -> Vec<String> {
+    let all = project_ids(map, ids);
     ids.iter().map(|id| ids::display_id(id, &all)).collect()
 }
 

@@ -256,8 +256,7 @@ fn last_message_line(item: &AgentItem) -> String {
     }
 }
 
-fn inbox(ctx: &Ctx<'_>, items: &[AgentItem], dry_run: bool, path: &str) -> String {
-    let _ = ctx;
+fn inbox(ctx: &Ctx<'_>, items: &[AgentItem], dry_run: bool, path: &str) -> Result<String> {
     let mut lines = vec![
         "Agent inbox".to_string(),
         format!(
@@ -268,9 +267,9 @@ fn inbox(ctx: &Ctx<'_>, items: &[AgentItem], dry_run: bool, path: &str) -> Strin
     ];
     if items.is_empty() {
         lines.push("No review annotations found.".into());
-        return format!("{}\n", lines.join("\n"));
+        return Ok(format!("{}\n", lines.join("\n")));
     }
-    let all: Vec<String> = items.iter().map(|i| i.id.clone()).collect();
+    let all = ctx.project_ids(&items.iter().map(|i| i.id.clone()).collect::<Vec<_>>())?;
     for item in items {
         lines.extend([
             format!("id: {}", display_id(&item.id, &all)),
@@ -282,7 +281,7 @@ fn inbox(ctx: &Ctx<'_>, items: &[AgentItem], dry_run: bool, path: &str) -> Strin
             String::new(),
         ]);
     }
-    lines.join("\n")
+    Ok(lines.join("\n"))
 }
 
 #[derive(Serialize)]
@@ -331,7 +330,7 @@ fn start(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             dry_run,
         })
     } else {
-        inbox(ctx, &snapshot.items, dry_run, &ctx.session_path())
+        inbox(ctx, &snapshot.items, dry_run, &ctx.session_path())?
     };
     ctx.print(&text);
     Ok(())
@@ -366,7 +365,7 @@ fn add_file(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
     let text = if parsed.flag("json") {
         json_text(&merged)
     } else {
-        inbox(ctx, &merged.items, false, &ctx.session_path())
+        inbox(ctx, &merged.items, false, &ctx.session_path())?
     };
     ctx.print(&text);
     Ok(())
@@ -607,9 +606,9 @@ pub(crate) fn resolve_prefix(input: &str, all: &[String]) -> Option<String> {
 }
 
 /// `wanted` (lowercase) is a prefix of `id`, with or without `rvw_`. Display
-/// ids are such prefixes, whatever set they were shortened over: the VS Code
-/// panel shortens over the whole reference map, so it may show more
-/// characters than the command's own display id.
+/// ids are such prefixes, whatever set they were shortened over: the
+/// reference map changes, so an id shown earlier (by the CLI or the VS Code
+/// panel) may have more characters than the current display id.
 fn matches_id(id: &str, wanted: &str) -> bool {
     let canonical = id.to_lowercase();
     canonical.starts_with(wanted)
@@ -669,7 +668,10 @@ fn done(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
         lines.extend(counters(&result, true));
         if !result.guardrail_failures.is_empty() {
             lines.push(String::new());
-            lines.extend(failure_lines(&result, &handoff_ids(&result)));
+            lines.extend(failure_lines(
+                &result,
+                &ctx.project_ids(&handoff_ids(&result))?,
+            ));
         }
         format!("{}\n", lines.join("\n"))
     };
@@ -694,7 +696,13 @@ fn status_cmd(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
         ];
         lines.extend(counters(&status.handoff, true));
         if !status.items.is_empty() {
-            let all: Vec<String> = status.items.iter().map(|i| i.id.clone()).collect();
+            let all = ctx.project_ids(
+                &status
+                    .items
+                    .iter()
+                    .map(|i| i.id.clone())
+                    .collect::<Vec<_>>(),
+            )?;
             lines.push(String::new());
             for i in &status.items {
                 lines.push(format!(
@@ -711,7 +719,7 @@ fn status_cmd(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             lines.push(String::new());
             lines.extend(failure_lines(
                 &status.handoff,
-                &handoff_ids(&status.handoff),
+                &ctx.project_ids(&handoff_ids(&status.handoff))?,
             ));
         }
         format!("{}\n", lines.join("\n"))
@@ -730,7 +738,13 @@ pub fn me_status(ctx: &mut Ctx<'_>, files: &[String], json: bool) -> Result<()> 
         ctx.print(&json_text(&status));
         return Ok(());
     }
-    let all: Vec<String> = status.items.iter().map(|i| i.id.clone()).collect();
+    let all = ctx.project_ids(
+        &status
+            .items
+            .iter()
+            .map(|i| i.id.clone())
+            .collect::<Vec<_>>(),
+    )?;
     let issues: Vec<&Guardrail> = status
         .handoff
         .guardrail_failures
@@ -823,7 +837,7 @@ fn list_cmd(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             items: &items,
         })
     } else {
-        inbox(ctx, &items, false, &ctx.session_path())
+        inbox(ctx, &items, false, &ctx.session_path())?
     };
     ctx.print(&text);
     Ok(())
@@ -892,7 +906,10 @@ fn show(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             total: 1,
             item: &located.item,
             text: &located.text,
-            id: &display_id(&located.id, std::slice::from_ref(&located.id)),
+            id: &display_id(
+                &located.id,
+                &ctx.project_ids(std::slice::from_ref(&located.id))?,
+            ),
         },
         context,
     );
@@ -1020,7 +1037,7 @@ fn clean(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
             targets.push(resolve_located(ctx, &snapshot, &[], id)?);
         }
     }
-    let all_ids: Vec<String> = all_items.iter().map(|l| l.id.clone()).collect();
+    let all_ids = ctx.project_ids(&all_items.iter().map(|l| l.id.clone()).collect::<Vec<_>>())?;
     for t in &targets {
         if t.item.ann.kind != Kind::Conversation
             || scan::conversation_status(&t.item.ann.raw) != ConvStatus::Resolved
@@ -1139,7 +1156,13 @@ fn diff(ctx: &mut Ctx<'_>, parsed: &Parsed) -> Result<()> {
         let mut lines = vec!["Agent action diff".to_string()];
         lines.extend(counters(&status.handoff, false));
         if !status.items.is_empty() {
-            let all: Vec<String> = status.items.iter().map(|i| i.id.clone()).collect();
+            let all = ctx.project_ids(
+                &status
+                    .items
+                    .iter()
+                    .map(|i| i.id.clone())
+                    .collect::<Vec<_>>(),
+            )?;
             lines.push(String::new());
             for i in &status.items {
                 lines.push(format!(

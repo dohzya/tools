@@ -104,4 +104,11 @@ impl Ctx<'_> {
         }
         Ok(assigned.ids)
     }
+
+    /// Ids that the display ids of `ids` are shortened over: every id of the
+    /// project ([`refmap::project_ids`]), as the VS Code panel does, so both
+    /// show the same short id. Read-only; call it after [`Self::assign_ids`].
+    pub fn project_ids(&self, ids: &[String]) -> Result<Vec<String>> {
+        Ok(refmap::project_ids(&self.read_map()?, ids))
+    }
 }

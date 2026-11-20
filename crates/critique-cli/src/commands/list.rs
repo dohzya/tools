@@ -127,7 +127,7 @@ pub fn run(ctx: &mut Ctx<'_>, options: &Options) -> Result<()> {
     let text = if located.is_empty() {
         "No review annotations found.\n".to_string()
     } else {
-        let all: Vec<String> = located.iter().map(|l| l.id.clone()).collect();
+        let all = ctx.project_ids(&located.iter().map(|l| l.id.clone()).collect::<Vec<_>>())?;
         located
             .iter()
             .enumerate()
