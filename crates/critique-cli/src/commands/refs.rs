@@ -244,7 +244,9 @@ fn snapshot_matches_excerpt(snapshot: &str, excerpt: &str) -> bool {
 
 fn review_id_exists(ctx: &Ctx<'_>, file: &str, text: &str, review_id: &str) -> Result<bool> {
     let items = review::collect_review_items(text, false, review::Filter::All);
-    let assigned = ctx.assign_ids(&slash(file), text, &items)?;
+    // Keyed like `list`, by the cwd-relative path: ids hash the path, and an
+    // absolute one would mint other ids (and a second map entry).
+    let assigned = ctx.assign_ids(&ctx.rel(file), text, &items)?;
     Ok(assigned
         .iter()
         .any(|id| id == review_id || crate::commands::list::display_id(id, &assigned) == review_id))
