@@ -31,7 +31,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - **critique:** An emoji (or any character outside the BMP) on an item's line no longer makes the command fail with `Range column is outside the document line`.
 - **critique:** `critique review` accepts `-c` / `--context` like `critique list`.
-- **critique:** `ref check` accepts any unique prefix of a review item id in a `file~~<id>` target (case-insensitive, with or without `rvw_`), as `agent show` does, instead of only the full id or the exact short id it computed itself: a longer short id, such as the one shown by the VS Code panel, is no longer reported as `missing review id`.
 - **critique:** Edits (`agent respond`, `agent apply`, `agent clean`, `review` replies) work on CRLF and CR files: a multi-line conversation is no longer treated as inline, deleting an item no longer leaves a stray `\r`, and inserted lines use the line ending of the edited block.
 
 ## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16

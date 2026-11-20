@@ -10,5 +10,5 @@
     ".dz-review/reference-map.json"
   ],
   "behavior": "parity",
-  "note": "the review id after ~~ (a bare ~id is an MRFI) is looked up among the ids list assigns: the map keys the target by its cwd-relative path"
+  "note": "Parser quirk, not a supported syntax: a review id is only read after a second ~ (file~~<id>; a bare ~id is an MRFI). It is looked up among the ids list assigns: the map keys the target by its cwd-relative path."
 }
