@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "outline",
+    "crlf.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1"
+}

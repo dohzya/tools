@@ -1,0 +1,13 @@
+{
+  "tool": "recap",
+  "fixture": "recap-spec",
+  "args": [
+    "-C",
+    "proj",
+    "show",
+    "bad"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "recap:1",
+  "note": "missing section cwd is a section error (Deno: uncaught crash)"
+}

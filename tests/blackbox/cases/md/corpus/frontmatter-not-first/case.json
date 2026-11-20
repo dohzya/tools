@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "frontmatter-not-first.md",
+    "--json"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "3,8"
+}

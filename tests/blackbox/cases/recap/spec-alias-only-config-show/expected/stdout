@@ -1,0 +1,13 @@
+sections:
+  - id: g1
+    value: global one
+  - id: git-status
+    alias: status
+    deprecated: true
+  - id: old
+    alias: g1
+    deprecated: true
+status_enrichers:
+  - id: git-stats
+    format: tsv
+    builtin: git-stats

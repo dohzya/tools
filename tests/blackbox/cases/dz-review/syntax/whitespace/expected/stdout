@@ -1,0 +1,38 @@
+
+────────────────────────────────────────────────
+1/4 handled conversation KC3RZL whitespace.md:3-5
+ 1 │ # Whitespace
+ 2 │ 
+>3 │ {??   @me    lots     of
+>4 │    spaces   and
+>5 │ newlines   ??}
+{??
+@me lots     of
+   spaces   and
+newlines
+??}
+
+────────────────────────────────────────────────
+2/4 discussion EdKQvy whitespace.md:7-7
+ 5 │ newlines   ??}
+ 6 │ 
+>7 │ {??@me tight ??}
+{??@me tight ??}
+
+────────────────────────────────────────────────
+3/4 handled conversation KwMN3h whitespace.md:9-9
+ 7 │ {??@me tight ??}
+ 8 │ 
+>9 │ {?? @me tight??}
+{??
+@me tight
+??}
+
+────────────────────────────────────────────────
+4/4 handled conversation BpQYKx whitespace.md:11-11
+  9 │ {?? @me tight??}
+ 10 │ 
+>11 │ 	{?? @me tab-indented ??}
+{??
+@me tab-indented
+??}

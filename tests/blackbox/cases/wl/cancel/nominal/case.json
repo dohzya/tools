@@ -1,0 +1,18 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "cancel",
+    "cq3984"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

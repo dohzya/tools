@@ -1,0 +1,9 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "cancel",
+    "zzzzzz"
+  ],
+  "behavior": "parity"
+}

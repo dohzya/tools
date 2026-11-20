@@ -1,0 +1,13 @@
+# header comment
+name: demo # trailing
+
+# between
+status: open
+tags: [a, b, c]
+meta:
+  # nested comment
+  owner: "bob \"x\""
+  n: 3
+list:
+  - one # c1
+  - two

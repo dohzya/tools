@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "tasks": {
+    "4gsf0bco0o68h9xspa2ux4v52": {
+      "name": "Write documentation",
+      "desc": [
+        "Part one of the description",
+        "Part two"
+      ],
+      "status": "ready",
+      "created": "2020-01-11T10:00:00+01:00",
+      "status_updated_at": "2020-01-11T10:00:00+01:00",
+      "done_at": null,
+      "tags": [
+        "docs"
+      ]
+    }
+  }
+}

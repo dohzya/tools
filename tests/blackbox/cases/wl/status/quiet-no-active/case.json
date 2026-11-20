@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "status",
+    "-q"
+  ],
+  "ignore_changes": [
+    ".worklog/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity"
+}

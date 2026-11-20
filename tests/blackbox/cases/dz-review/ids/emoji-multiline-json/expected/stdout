@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_KQF4adSMjXf",
+      "file": "emoji-multiline.md",
+      "lineStart": 3,
+      "lineEnd": 6,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Looks good 🎉 and 👍🏽"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "ok é"
+      },
+      "context": "@me Looks good 🎉 and 👍🏽 @agent ok é",
+      "suggestedAction": "answer",
+      "rawHash": "1965e96682beae04"
+    },
+    {
+      "id": "rvw_4qvhNrj6tHK",
+      "file": "emoji-multiline.md",
+      "lineStart": 8,
+      "lineEnd": 10,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "😀😀😀 repeated"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "😀😀😀 repeated"
+      },
+      "context": "@me 😀😀😀 repeated",
+      "suggestedAction": "reply",
+      "rawHash": "4e576c20513f6193"
+    }
+  ]
+}

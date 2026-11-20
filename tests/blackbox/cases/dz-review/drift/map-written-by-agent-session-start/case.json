@@ -1,0 +1,18 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "session",
+    "start",
+    "doc.md",
+    "--dry-run"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "ignore_changes": [
+    "doc.md",
+    ".dz-review/agent-session.json"
+  ],
+  "behavior": "parity"
+}

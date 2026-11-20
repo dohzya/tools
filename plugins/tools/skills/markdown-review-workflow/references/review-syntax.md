@@ -62,14 +62,20 @@ Use `ref:` comments to point at a source passage without copying it:
 
 ```markdown
 <!-- ref: source.md:82; ../other.md:80-82^stable-id -->
-<!-- ref%궩거깇걸: 02_trame_commentee.md:82~GdwjSq -->
+<!-- ref%궩거깇걸: 02_trame_commentee.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407} -->
 ```
 
 The timestamped form is `ref%...:`. Separate multiple targets with `;`. Canonical line syntax is `:82` for one line and `:80-82` for a range. The parser also accepts `:L82`, `:L80-L82`, and `:L80-82`, but rejects `:80-L82`.
 
+Target paths resolve like this (every `ref` command; `ref list --json` shows the result as `targetFile`):
+
+- an absolute path is used as is;
+- a path starting with `./` or `../` is relative to the folder of the document holding the reference;
+- any other path is relative to the Git root, or to the document's folder outside a Git repo. In `notes/review.md`, `source.md:82` means `<git root>/source.md`, while `./source.md:82` means `notes/source.md`.
+
 Targets may combine hints:
 
-- `~GdwjSq` is a generated dz-review item id, without a `rvw_` prefix.
+- `~<mrfi>` is an MRFI (Markdown Robust Fragment Identifier): durable evidence about the passage that lets tools find it again after the target document changed. Generate it with `md ref <file> <startLine:startColumn-endLine:endColumn>`; it comes in the compact forms (`~떪딙낀...` Hangul by default, or base62 with `--format base62`) or the readable debug form (`--format debug`), e.g. `~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407}` (`--profile min`). Copy it verbatim after the line range. Anything after `~` that is not a valid MRFI (for example a bare id like `~GdwjSq`, the old dz-review syntax, or the `rvw_...` id of a review item, which is a different thing) is rejected by `ref check` like any invalid reference.
 - `^stable-id` is a stable passage id defined in the target document with `<!-- ^stable-id -->`.
 
 References can be embedded in a conversation message:
@@ -77,7 +83,7 @@ References can be embedded in a conversation message:
 ```markdown
 <!--
 @me%궩거깇걸 Pourquoi parler du SAS ici ?
-@agent%궩거깇걸 ref: 02_trame_commentee.md:82~GdwjSq
+@agent%궩거깇걸 ref: 02_trame_commentee.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407}
 @me Je vois, on reformule.
 -->
 ```
@@ -86,13 +92,13 @@ Refs may carry source snapshots using labelled delimiters:
 
 ```markdown
 <!-- ref%궩거깇걸:
-  02_trame_commentee.md:82~GdwjSq {&&rFZEOtB
+  02_trame_commentee.md:82~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407} {&&rFZEOtB
   SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
   rFZEOtB&&};
 -->
 ```
 
-Nested snapshots are valid when labels differ. `dz-review ref check` rejects duplicate nested labels, missing files, invalid targets, missing `~` or `^` ids, and stale snapshots. Snapshot comparison ignores delimiter-label changes. Generated snapshots are limited to 10 source lines by default; use `dz-review ref show --snapshot-lines <count>` to change the limit, or `--snapshot-lines 0` for unlimited snapshots.
+Nested snapshots are valid when labels differ. `dz-review ref check` rejects duplicate nested labels, missing files, invalid targets, missing `^` ids, invalid `~` MRFIs, and stale snapshots. Snapshot comparison ignores delimiter-label changes. Generated snapshots are limited to 10 source lines by default; use `dz-review ref show --snapshot-lines <count>` to change the limit, or `--snapshot-lines 0` for unlimited snapshots.
 
 Use `dz-review ref snapshots [file...]` to print only snapshot blocks with a short provenance header. Add repeated `--ref <selector>` filters to keep only specific refs; selectors match the source location (`doc.md:12`), target location (`source.md:82`), or snapshot label (`rFZEOtB`). `ref snapshots` also accepts `--snapshot-lines <count>`.
 

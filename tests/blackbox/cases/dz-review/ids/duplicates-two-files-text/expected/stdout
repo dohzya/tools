@@ -1,0 +1,144 @@
+
+────────────────────────────────────────────────
+1/16 handled conversation JORvlA duplicates.md:3-3
+ 1 │ # Duplicates
+ 2 │ 
+>3 │ {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+2/16 handled conversation JORvRn duplicates.md:5-5
+ 3 │ {?? @me Same ??}
+ 4 │ 
+>5 │ {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+3/16 handled conversation JORwNs duplicates.md:7-7
+ 5 │ {?? @me Same ??}
+ 6 │ 
+>7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+4/16 handled conversation JORw4W duplicates.md:7-7
+ 5 │ {?? @me Same ??}
+ 6 │ 
+>7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+5/16 addition 5jIJLy duplicates.md:9-9
+ 7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+ 8 │ 
+>9 │ {++same++} and {++same++}
+{++same++}
+
+────────────────────────────────────────────────
+6/16 addition 5jIJfK duplicates.md:9-9
+ 7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+ 8 │ 
+>9 │ {++same++} and {++same++}
+{++same++}
+
+────────────────────────────────────────────────
+7/16 handled conversation 8eKEfN duplicates.md:11-13
+  9 │ {++same++} and {++same++}
+ 10 │ 
+>11 │ <!--
+>12 │ @me Same comment
+>13 │ -->
+<!--
+@me Same comment
+-->
+
+────────────────────────────────────────────────
+8/16 handled conversation 8eKEyk duplicates.md:15-17
+ 13 │ -->
+ 14 │ 
+>15 │ <!--
+>16 │ @me Same comment
+>17 │ -->
+<!--
+@me Same comment
+-->
+
+────────────────────────────────────────────────
+9/16 handled conversation 59pBlx dup-copy.md:3-3
+ 1 │ # Duplicates
+ 2 │ 
+>3 │ {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+10/16 handled conversation 59pC5J dup-copy.md:5-5
+ 3 │ {?? @me Same ??}
+ 4 │ 
+>5 │ {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+11/16 handled conversation 59pB9F dup-copy.md:7-7
+ 5 │ {?? @me Same ??}
+ 6 │ 
+>7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+12/16 handled conversation 59pBSb dup-copy.md:7-7
+ 5 │ {?? @me Same ??}
+ 6 │ 
+>7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+13/16 addition GfdY8Y dup-copy.md:9-9
+ 7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+ 8 │ 
+>9 │ {++same++} and {++same++}
+{++same++}
+
+────────────────────────────────────────────────
+14/16 addition GfdXpB dup-copy.md:9-9
+ 7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+ 8 │ 
+>9 │ {++same++} and {++same++}
+{++same++}
+
+────────────────────────────────────────────────
+15/16 handled conversation BMDrQF dup-copy.md:11-13
+  9 │ {++same++} and {++same++}
+ 10 │ 
+>11 │ <!--
+>12 │ @me Same comment
+>13 │ -->
+<!--
+@me Same comment
+-->
+
+────────────────────────────────────────────────
+16/16 handled conversation BMDr6t dup-copy.md:15-17
+ 13 │ -->
+ 14 │ 
+>15 │ <!--
+>16 │ @me Same comment
+>17 │ -->
+<!--
+@me Same comment
+-->

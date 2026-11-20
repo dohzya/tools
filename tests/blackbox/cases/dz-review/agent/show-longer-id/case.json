@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "show",
+    "5SUMpHB"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): any prefix of the id without rvw_ resolves, even longer than the id displayed by this command (the VS Code panel shortens over every id of the reference map, so it can show more characters)."
+}

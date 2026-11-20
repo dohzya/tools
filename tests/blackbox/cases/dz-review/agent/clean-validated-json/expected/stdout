@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dryRun": false,
+  "cleaned": 1,
+  "cleanable": [
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Fixed.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> Fixed. @me%<TS> ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "a5ef8e06fc8d56b4"
+    }
+  ]
+}

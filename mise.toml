@@ -1,7 +1,10 @@
 [tools]
 act = "latest"
 bun = "latest"
+"cargo:wasm-bindgen-cli" = "0.2.129"
 deno = "latest"
+dprint = "latest"
 gh = "latest"
 node = "22"
+rust = { version = "1.99.1", components = "clippy,rustfmt", targets = "wasm32-unknown-unknown" }
 task = "latest"

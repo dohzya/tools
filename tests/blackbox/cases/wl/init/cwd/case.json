@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "-C",
+    "sub",
+    "init"
+  ],
+  "behavior": "parity",
+  "files": [
+    "sub/.worklog/index.json"
+  ]
+}

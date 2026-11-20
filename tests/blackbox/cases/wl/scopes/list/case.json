@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "new-spec",
+  "note": "Rust sorts scopes by name (docs/specs/worklog.md D8); Deno used the directory order of the file system.",
+  "spec_row": "worklog.md D8"
+}

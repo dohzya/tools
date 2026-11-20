@@ -1,0 +1,6 @@
+stub-claude argc=4
+ARG: --append-system-prompt
+ARG: # Current Worktask Context
+ARG: -p
+ARG: You are the dedicated synthesis agent creating a checkpoint.
+TASK=9n3ksypyyujvxajl4o1djfk67

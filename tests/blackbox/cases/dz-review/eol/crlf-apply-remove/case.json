@@ -1,0 +1,19 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": [
+    "agent",
+    "apply",
+    "Dkcson",
+    "--remove",
+    "d.md"
+  ],
+  "files": [
+    "d.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): edits (replies, remove, clean) treat LF, CRLF and a lone CR alike: multi-line conversations are recognised, inserted lines use the block's own line ending and the rest of the file is untouched. The Deno tool only knew LF."
+}

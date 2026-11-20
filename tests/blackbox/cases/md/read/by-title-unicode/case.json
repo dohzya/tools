@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "unicode.md",
+    "## 日本語の見出し"
+  ],
+  "behavior": "parity"
+}

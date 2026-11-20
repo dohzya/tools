@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "show",
+    "5SUMpHB"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec: agent show shortens the displayed id over every id of the project (reference map of all files plus the shown id), as list and the VS Code panel do; the Deno tool shortened it over the shown id alone (always 6 characters). The map holds another file's id sharing 8 characters with the item."
+}

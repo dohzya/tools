@@ -1,0 +1,37 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Everything",
+    "--ready",
+    "--tag",
+    "t1",
+    "--todo",
+    "td",
+    "--meta",
+    "a=b",
+    "--desc",
+    "dd",
+    "--parent",
+    "9n3ksy",
+    "--related",
+    "4gsf0b",
+    "-t",
+    "2030-01-02T03:04",
+    "--json"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/4gsf0bco0o68h9xspa2ux4v52.md"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

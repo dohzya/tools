@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_KC3RZLx1pks",
+      "file": "whitespace.md",
+      "lineStart": 3,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "lots     of\n   spaces   and\nnewlines"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "lots     of\n   spaces   and\nnewlines"
+      },
+      "context": "@me lots of spaces and newlines",
+      "suggestedAction": "reply",
+      "rawHash": "f5b190870f69fbc3"
+    },
+    {
+      "id": "rvw_EdKQvy1AnT7",
+      "file": "whitespace.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "discussion",
+      "state": "discussion",
+      "context": "{??@me tight ??}",
+      "suggestedAction": "review annotation",
+      "rawHash": "37424a3d50b4be87"
+    },
+    {
+      "id": "rvw_KwMN3h6mbE",
+      "file": "whitespace.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "tight"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "tight"
+      },
+      "context": "@me tight",
+      "suggestedAction": "reply",
+      "rawHash": "32df240d63a1573b"
+    },
+    {
+      "id": "rvw_BpQYKxWkn6L",
+      "file": "whitespace.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "tab-indented"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "tab-indented"
+      },
+      "context": "@me tab-indented",
+      "suggestedAction": "reply",
+      "rawHash": "48e1cef9a7745a8e"
+    }
+  ]
+}

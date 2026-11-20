@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "list",
+    "--depends-on",
+    "sch002",
+    "--blocks",
+    "api001"
+  ],
+  "behavior": "parity"
+}

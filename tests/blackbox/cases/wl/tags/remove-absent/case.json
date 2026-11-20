@@ -1,0 +1,16 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "tags",
+    "remove",
+    "nope",
+    "cq3984"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity"
+}

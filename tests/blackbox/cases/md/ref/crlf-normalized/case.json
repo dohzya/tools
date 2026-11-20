@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "crlf.md",
+    "3:1-3:17",
+    "--format",
+    "debug",
+    "--profile",
+    "full"
+  ],
+  "behavior": "new-spec",
+  "note": "CRLF is read like LF: headings are found, offsets and hashes address the normalized text (Deno found no headings and mixed raw offsets with normalized hashes)",
+  "spec_row": "23"
+}

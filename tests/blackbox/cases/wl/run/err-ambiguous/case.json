@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "4",
+    "echo",
+    "hi"
+  ],
+  "behavior": "parity"
+}

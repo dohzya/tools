@@ -1,0 +1,21 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "trace",
+    "4q2r74",
+    "-k",
+    "info",
+    "late",
+    "-f"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/4q2r74ayb7kmimtll2kc4kxsv.md"
+  ]
+}

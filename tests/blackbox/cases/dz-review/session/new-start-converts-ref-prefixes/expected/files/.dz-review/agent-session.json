@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "refs.md",
+      "timestampFormat": "hangul",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_88PZECQR0d0"
+      ],
+      "originalContent": "# Refs\n\nA {?? @me%갚붋륇걸 Question? ??} and <!-- ref%갚붋륇걸: source.md:1 -->.\n"
+    },
+    {
+      "path": "only-refs.md",
+      "timestampFormat": "compact",
+      "contentHash": "<H>",
+      "itemIds": [
+        "rvw_51bsuFU9vja"
+      ],
+      "originalContent": "# Only refs\n\nSee {>> why <<} and <!-- ref%1VB66I0Y: source.md:1 -->.\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_88PZECQR0d0",
+      "file": "refs.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Question?",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Question?",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Question?",
+      "suggestedAction": "reply",
+      "rawHash": "9b2e53656724e122"
+    },
+    {
+      "id": "rvw_51bsuFU9vja",
+      "file": "only-refs.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>>%<TS>| why <<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "a1322577dc81842b"
+    }
+  ]
+}

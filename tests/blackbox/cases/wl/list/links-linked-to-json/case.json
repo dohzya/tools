@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "list",
+    "--linked-to",
+    "api001",
+    "--include-blocked",
+    "--json"
+  ],
+  "behavior": "parity"
+}

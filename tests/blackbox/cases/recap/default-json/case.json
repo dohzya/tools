@@ -1,0 +1,13 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "args": [
+    "--json"
+  ],
+  "env": {
+    "NAME": "Ada"
+  },
+  "behavior": "new-spec",
+  "spec_row": "recap:2",
+  "note": "system env NAME is interpolated into ${NAME} (Deno froze the uninterpolated text)"
+}

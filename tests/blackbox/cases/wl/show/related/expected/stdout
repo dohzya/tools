@@ -1,0 +1,13 @@
+id: doc003
+full id: doc003xxxxxxxxxxxxxxxxxxx
+name: Write docs
+status: ready
+tags: #docs
+links:
+  related: rel004  "Release notes"  (created)
+history:
+  created: 2020-03-03 09:00
+  ready: 2020-03-03 09:00
+
+desc:
+  Public docs

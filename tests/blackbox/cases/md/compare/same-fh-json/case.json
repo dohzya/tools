@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "compare",
+    "~{v0;fh=xxh64:aabbccdd}",
+    "~{v0;fh=xxh64:aabbccdd}",
+    "--json"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "24",
+  "note": "New command (no TS equivalent): md compare, per docs/specs/mrfi.md 'Comparing References Without Resolving'; expected output hand-written from the spec."
+}

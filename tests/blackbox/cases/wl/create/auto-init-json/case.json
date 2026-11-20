@@ -1,0 +1,21 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "create",
+    "x",
+    "--json"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

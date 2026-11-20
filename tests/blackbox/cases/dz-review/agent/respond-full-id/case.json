@@ -1,0 +1,18 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "respond",
+    "rvw_5SUMpHBf6V2",
+    "-m",
+    "Full id."
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "behavior": "parity"
+}

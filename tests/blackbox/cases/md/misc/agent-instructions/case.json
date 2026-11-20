@@ -1,0 +1,9 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "agent-instructions"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec: md agent-instructions also describes md compare and md rank (docs/specs/markdown-sections.md row 24); the Deno text predates both commands."
+}

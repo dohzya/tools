@@ -1,0 +1,25 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "--create",
+    "New",
+    "echo",
+    "hi"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "new-spec",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D4): wl run --create creates the task, then runs the command with WORKLOG_TASK_ID set.",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ],
+  "spec_row": "worklog.md D4"
+}

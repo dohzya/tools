@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+export NO_COLOR=1
+unset WORKLOG_TASK_ID
+exec deno -A /home/dohzya/.local/share/tuios/worktrees/dz-tools/bun/packages/tools/markdown-surgeon/cli.ts "$@"

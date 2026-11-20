@@ -1,0 +1,12 @@
+{
+  "children": [
+    {
+      "path": "services/api",
+      "id": "web"
+    },
+    {
+      "path": "services/web",
+      "id": "web"
+    }
+  ]
+}

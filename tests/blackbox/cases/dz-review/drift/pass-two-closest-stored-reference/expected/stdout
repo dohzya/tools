@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_own",
+      "file": "doc.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>> b <<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "e93dfc190eba893f"
+    }
+  ]
+}

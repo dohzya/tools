@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "meta",
+    "7natz8",
+    "--parent",
+    "cq3984"
+  ],
+  "behavior": "parity"
+}

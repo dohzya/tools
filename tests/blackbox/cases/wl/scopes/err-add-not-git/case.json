@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "scopes",
+    "add",
+    "docs",
+    "docs-site"
+  ],
+  "behavior": "parity"
+}

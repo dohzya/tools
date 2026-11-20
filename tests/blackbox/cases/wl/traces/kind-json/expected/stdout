@@ -1,0 +1,1 @@
+{"task":"9n3ksypyyujvxajl4o1djfk67","desc":"Users can't log in with **SSO**.\nSecond paragraph with unicode: café ☕","desc_parts":["Users can't log in with **SSO**.\nSecond paragraph with unicode: café ☕"],"entries":[{"id":"932e09bc","ts":"2020-01-10 09:30","msg":"Token expiry is off by one hour (timezone?)","kind":"hypothesis","added_at":"2020-01-20 10:00"}]}

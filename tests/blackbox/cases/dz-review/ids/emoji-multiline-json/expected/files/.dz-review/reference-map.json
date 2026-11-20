@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_KQF4adSMjXf": {
+      "file": "emoji-multiline.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 6
+      },
+      "mrfi": "~{v0;r=3:1-6:4;p=h1[1];fh=xxh64:A0u9t0N7;hh=smh64:63ccde726977d772;ctx=pre:h5qHZAot,suf:lglyN7K3;doc=smh64:63ccde726977d772}"
+    },
+    "rvw_4qvhNrj6tHK": {
+      "file": "emoji-multiline.md",
+      "range": {
+        "startLine": 8,
+        "endLine": 10
+      },
+      "mrfi": "~{v0;r=8:1-10:4;p=h1[1];fh=xxh64:1mCVWqs2;hh=smh64:63ccde726977d772;ctx=pre:D9o4NddL,suf:U0urDpgC;doc=smh64:63ccde726977d772}"
+    }
+  }
+}

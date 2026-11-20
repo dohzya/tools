@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Unreleased
 
+### Added
+
+- **critique:** `critique agent apply <id> --remove` deletes an annotation and the blank space around it, without applying or cancelling it. `--remove` cannot be combined with `--replace`; `--replace ""` is still refused.
+
+### Changed
+
+- **vscode:** The review panel lists items through the same core as the `critique` CLI. Newly assigned item ids now match the CLI's and no longer depend on the panel filter; ids already stored in the reference map are kept.
+- **vscode:** A `{?? ??}` block without `@agent`/`@me` markers is shown as a discussion, as in the CLI, instead of a conversation.
+- **vscode:** Short item ids are unique across every file of the project's reference map, not only within the open file.
+- **vscode:** Annotations nested inside a conversation or an HTML comment are no longer listed as separate items, as in the CLI.
+- **vscode:** The review panel stores its reference map in the `critique` CLI's state directory: the new `dzMdReview.stateDir` setting, else `CRITIQUE_STATE_DIR`, else `.critique/` at the Git root. A legacy `.dz-review/` is no longer read.
+- **vscode:** "Convert Review Timestamps" only rewrites the timestamps of `@agent`/`@me`/`@` markers (followed by a space or the end of the text) of `{++%ts|` style annotation prefixes and of `ref%ts:` reference prefixes, as `critique timestamp` does. It no longer rewrites any other `%` followed by 8 letters or digits, such as `50%discount` or a URL escape like `%20bcdefgh`.
+- **vscode:** The timestamp hover follows the same rule: it shows a date on marker, annotation-prefix and `ref%ts:` timestamps only, no longer on `50%discount` or `%20bcdefgh`.
+- **critique:** `dz-review` is ported to Rust and renamed `critique`: the binary is `critique`, with the same commands. Breaking: its state directory is `.critique/` (at the Git root, else the current directory; `--state-dir` or `CRITIQUE_STATE_DIR`) and its ignore file `.critique-ignore` (`--ignore-file` or `CRITIQUE_IGNORE_FILE`). Nothing named `dz-review` is read any more: an existing `.dz-review/` directory or `.dz-review-ignore` file is ignored even when the new one is absent, and so are `DZ_REVIEW_STATE_DIR` and `DZ_REVIEW_IGNORE_FILE`; rename them to keep a session and the reference map (item ids). For scripts that still expect `dz-review`, `CRITIQUE_COMPAT_DZ_REVIEW=1` restores the legacy identity (name in messages and `agent-instructions`, `.dz-review` defaults, `DZ_REVIEW_*` variables read after their `CRITIQUE_*` counterparts).
+- **critique:** `critique timestamp` and the timestamp normalization of `session start` / restoration of `session done` also convert the `ref%ts:` prefix of reference blocks (`<!-- ref%ts: file.md:3 -->`), which they used to leave in its original encoding. These prefixes also count in the detected format (`critique timestamp --format-info`, the format `session done` restores). A bare `ref:` is still not stamped.
+- **critique:** Item ids and `rawHash` no longer depend on the format of an embedded `ref%ts:` reference prefix: its value is ignored like the other review timestamps. The id of an item without its own timestamp that embeds such a prefix (in its text, or in the first message of a conversation) changes once unless the reference map already holds it; the VS Code panel follows.
+- **critique:** Item ids follow their item when lines are inserted or deleted above it: a reference-map entry whose locator still points elsewhere is no longer given to another item at the same lines, so two items no longer swap ids. A duplicated block gets its own id instead of its original's, and when several stored locators match one item the closest is tried first. The VS Code panel follows.
+- **critique:** A lone CR ends a line like LF and CRLF: a CR-only file is no longer read as a single line, which moves line numbers, context and ids. Locators of items in CRLF or CR files are computed on normalized line endings, as `md ref` does, and `rawHash` ignores line endings, so converting a file between CRLF and LF no longer makes its multi-line items look modified (a session started before reads them as modified once). The VS Code panel follows.
+- **critique:** Short item ids are unique across every id of the project's reference map (all files) plus the ids shown, as in the VS Code panel, instead of only across the items a command shows: the CLI and the panel show the same short id, which may be longer than before when another file holds a close id.
+- **critique:** Any prefix of an item id, with or without `rvw_`, selects it in `agent show`, `agent respond`, `agent apply` and acknowledgements, so the longer short ids the VS Code panel may show are no longer "not found".
+
+### Fixed
+
+- **critique:** An emoji (or any character outside the BMP) on an item's line no longer makes the command fail with `Range column is outside the document line`.
+- **critique:** `critique review` accepts `-c` / `--context` like `critique list`.
+- **critique:** Edits (`agent respond`, `agent apply`, `agent clean`, `review` replies) work on CRLF and CR files: a multi-line conversation is no longer treated as inline, deleting an item no longer leaves a stray `\r`, and inserted lines use the line ending of the edited block.
+
 ## [wl-v0.21.1 / dz-review-v0.4.2] — 2026-10-16
 
 ### Fixed

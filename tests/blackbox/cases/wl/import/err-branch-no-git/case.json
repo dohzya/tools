@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-import",
+  "args": [
+    "import",
+    "-b",
+    "nobranch"
+  ],
+  "cwd": "dst",
+  "behavior": "parity"
+}

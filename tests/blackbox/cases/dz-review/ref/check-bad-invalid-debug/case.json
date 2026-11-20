@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "bad-invalid-debug.md"
+  ],
+  "behavior": "parity",
+  "note": "A malformed debug MRFI (~{v0;r=oops}) is accepted: validation only checks the envelope, not the fields."
+}

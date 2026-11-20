@@ -1,0 +1,12 @@
+{
+  "tool": "recap",
+  "fixture": "recap-git",
+  "args": [
+    "show",
+    "git-log"
+  ],
+  "normalize": [
+    "git-hash"
+  ],
+  "behavior": "parity"
+}

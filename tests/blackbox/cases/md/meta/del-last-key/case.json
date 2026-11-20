@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "meta-a.md",
+    "--del",
+    "author"
+  ],
+  "files": [
+    "meta-a.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "10",
+  "note": "Deno re-serialized the remaining flow list [x, y] as a block list with 'y' quoted; the untouched entry now stays byte-identical"
+}

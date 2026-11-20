@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_5NnPkn6KlQh",
+      "file": "unicode.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Pourquoi parler du SAS ici ? Été, garçon, naïve."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Pourquoi parler du SAS ici ? Été, garçon, naïve."
+      },
+      "context": "@me Pourquoi parler du SAS ici ? Été, garçon, naïve.",
+      "suggestedAction": "reply",
+      "rawHash": "0e39ccf82876a1c8"
+    },
+    {
+      "id": "rvw_3SMqv9IoIq6",
+      "file": "unicode.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "日本語のコメント"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "日本語のコメント"
+      },
+      "context": "@me 日本語のコメント",
+      "suggestedAction": "reply",
+      "rawHash": "a182db1abc4043d9"
+    },
+    {
+      "id": "rvw_5K6DYy2e4rE",
+      "file": "unicode.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "é café (NFD) vs café (NFC)"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "é café (NFD) vs café (NFC)"
+      },
+      "context": "@me é café (NFD) vs café (NFC)",
+      "suggestedAction": "reply",
+      "rawHash": "3a7f666f3d551d97"
+    },
+    {
+      "id": "rvw_80oMTpWQ0Ww",
+      "file": "unicode.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "— and “quotes”"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "— and “quotes”"
+      },
+      "context": "@agent — and “quotes”",
+      "suggestedAction": "answer",
+      "rawHash": "a7f9c484205fd05d"
+    },
+    {
+      "id": "rvw_2XP0ErRDKNv",
+      "file": "unicode.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++★ added ✓++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "657e0cbe60fa9e0d"
+    },
+    {
+      "id": "rvw_E0Wrpd0FDYK",
+      "file": "unicode.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "deletion",
+      "state": "annotation",
+      "context": "{--☆ removed ✗--}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9c4c8c58c6ed1b20"
+    }
+  ]
+}

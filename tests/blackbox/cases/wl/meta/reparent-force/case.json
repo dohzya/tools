@@ -1,0 +1,21 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "meta",
+    "7natz8",
+    "--parent",
+    "cq3984",
+    "-f"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/7natz8duzlrdundln184ylct7.md"
+  ]
+}

@@ -1,0 +1,24 @@
+id: 9n3ksy
+full id: 9n3ksypyyujvxajl4o1djfk67
+name: Fix login bug
+status: started
+tags: #backend
+history:
+  created: 2020-01-10 09:00
+  started: 2020-01-20 10:00
+
+desc:
+  Users can't log in with **SSO**.
+  Second paragraph with unicode: café ☕
+
+last checkpoint: 2020-01-20 10:00
+  CHANGES
+    Root cause: UTC vs local time. Fix: compare in UTC.
+  LEARNINGS
+    Always store timestamps in UTC.
+
+entries since checkpoint: 2
+  2020-02-01 09:00  learning
+    Post-checkpoint: add regression test
+  2020-02-01 09:30
+    Untyped trace default kind?

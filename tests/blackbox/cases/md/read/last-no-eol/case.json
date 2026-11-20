@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "no-eol.md",
+    "2903ba27"
+  ],
+  "behavior": "parity"
+}

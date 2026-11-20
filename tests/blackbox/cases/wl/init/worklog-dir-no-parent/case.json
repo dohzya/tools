@@ -1,0 +1,15 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "--worklog-dir",
+    "a/b/wl",
+    "init"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "worklog.md D7",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D7): a --worklog-dir whose parent does not exist no longer ends in an uncaught exception; init creates the missing directories.",
+  "files": [
+    "a/b/wl/index.json"
+  ]
+}

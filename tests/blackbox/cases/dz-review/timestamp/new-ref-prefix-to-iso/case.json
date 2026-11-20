@@ -1,0 +1,12 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-ref-timestamps",
+  "args": [
+    "timestamp",
+    "refs.md",
+    "-s",
+    "-I"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): the ref%ts: prefix of a reference block is converted like the other review timestamps; a bare ref: is not stamped and a ref% comment without target is not a reference."
+}

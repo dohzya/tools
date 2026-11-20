@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-purge",
+  "args": [
+    "list",
+    "--all"
+  ],
+  "env": {
+    "WORKLOG_PURGE_TTL_DAYS": "100000"
+  },
+  "behavior": "parity"
+}

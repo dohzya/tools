@@ -1,0 +1,27 @@
+sections:
+  - id: hello
+    value: 'Hello ${NAME}'
+    title: Greeting
+  - id: shell
+    sh: printf 'a\nb\nc\nd\n'
+    title: Shell
+    max_lines: 2
+    separator: line
+  - id: nothing
+    sh: 'true'
+  - id: with-env
+    sh: echo "$FOO-$BAR"
+    separator: none
+    env:
+      FOO: foo
+      BAR: bar
+  - id: in-sub
+    sh: 'pwd | sed ''s#.*/##'''
+    cwd: sub
+  - id: git-status
+    alias: status
+    deprecated: true
+status_enrichers:
+  - id: git-stats
+    format: tsv
+    builtin: git-stats

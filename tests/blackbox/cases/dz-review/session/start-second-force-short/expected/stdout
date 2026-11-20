@@ -1,0 +1,9 @@
+Agent inbox
+Snapshot: .dz-review/agent-session.json
+
+id: 4N8lYs
+location: other.md:3
+state: handled
+last: @me hi
+context: @me%<TS> hi
+suggested action: reply

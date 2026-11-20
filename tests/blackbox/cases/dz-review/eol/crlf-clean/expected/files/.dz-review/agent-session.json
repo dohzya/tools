@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "startedAt": "<TS>",
+  "cwd": "<WORK>",
+  "files": [
+    {
+      "path": "d.md",
+      "timestampFormat": "iso",
+      "contentHash": "3f40f1e508421528bd7299fb5e82c2ed1e3793c4",
+      "itemIds": [
+        "rvw_B8GPKHpmcV0",
+        "rvw_Dkcsontoyn1",
+        "rvw_B8GPde05MQX",
+        "rvw_B8GOhZVB8dw",
+        "rvw_5MKWOXgoqJA"
+      ],
+      "originalContent": "# T\r\n\r\n<!--\r\n@agent%<TS> Q one?\r\n@me%<TS> A.\r\n-->\r\n\r\nText {++%<TS>|new++} end.\r\n\r\nDone. {?? @agent%<TS> Fixed. @me%<TS> ok ??}\r\n\r\n<!--\r\n@agent%<TS> Done too.\r\n@me%<TS> ok\r\n-->\r\n\r\n- item {>>%<TS>|n<<}\r\n"
+    }
+  ],
+  "items": [
+    {
+      "id": "rvw_B8GPKHpmcV0",
+      "file": "d.md",
+      "lineStart": 3,
+      "lineEnd": 6,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Q one?",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "A.",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> Q one? @me%<TS> A.",
+      "suggestedAction": "reply",
+      "rawHash": "12a636132a65f5ea"
+    },
+    {
+      "id": "rvw_Dkcsontoyn1",
+      "file": "d.md",
+      "lineStart": 8,
+      "lineEnd": 8,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%<TS>|new++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "98bf432927b0305b"
+    },
+    {
+      "id": "rvw_B8GPde05MQX",
+      "file": "d.md",
+      "lineStart": 10,
+      "lineEnd": 10,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Fixed.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> Fixed. @me%<TS> ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "a5ef8e06fc8d56b4"
+    },
+    {
+      "id": "rvw_B8GOhZVB8dw",
+      "file": "d.md",
+      "lineStart": 12,
+      "lineEnd": 15,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done too.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> Done too. @me%<TS> ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "61d1e027e465eb91"
+    },
+    {
+      "id": "rvw_5MKWOXgoqJA",
+      "file": "d.md",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>>%<TS>|n<<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "7d9f038da28a1d07"
+    }
+  ],
+  "dismissedItemIds": [
+    "rvw_B8GPde05MQX",
+    "rvw_B8GOhZVB8dw"
+  ]
+}

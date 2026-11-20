@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "link",
+    "zzzzzz",
+    "related",
+    "4gsf0b"
+  ],
+  "behavior": "parity"
+}

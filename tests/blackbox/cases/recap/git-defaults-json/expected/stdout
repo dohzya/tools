@@ -1,0 +1,40 @@
+[
+  {
+    "id": "git-branch-track",
+    "lines": [
+      "main"
+    ],
+    "separator": "blank_line"
+  },
+  {
+    "id": "git-subdir",
+    "lines": [],
+    "separator": "none"
+  },
+  {
+    "id": "git-ops",
+    "lines": [],
+    "separator": "blank_line"
+  },
+  {
+    "id": "git-log",
+    "lines": [
+      "<HASH> (HEAD -> main) second commit",
+      "<HASH> first commit"
+    ],
+    "separator": "blank_line"
+  },
+  {
+    "id": "git-stash",
+    "lines": [],
+    "separator": "blank_line"
+  },
+  {
+    "id": "status",
+    "lines": [
+      " M a.txt (1+ 0-)",
+      "?? untracked.txt (1+ 0-)"
+    ],
+    "separator": "blank_line"
+  }
+]

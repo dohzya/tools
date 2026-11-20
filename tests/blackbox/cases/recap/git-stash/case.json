@@ -1,0 +1,9 @@
+{
+  "tool": "recap",
+  "fixture": "recap-git",
+  "args": [
+    "show",
+    "git-stash"
+  ],
+  "behavior": "parity"
+}

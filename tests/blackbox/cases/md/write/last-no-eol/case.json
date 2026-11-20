@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "write",
+    "no-eol.md",
+    "2903ba27",
+    "tail"
+  ],
+  "files": [
+    "no-eol.md"
+  ],
+  "behavior": "parity"
+}

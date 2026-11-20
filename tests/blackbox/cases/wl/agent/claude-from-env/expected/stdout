@@ -1,0 +1,4 @@
+stub-claude argc=2
+ARG: --append-system-prompt
+ARG: # Current Worktask Context
+TASK=cq3984ojmyg5s21oujzleuats

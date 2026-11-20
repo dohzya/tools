@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-import",
+  "args": [
+    "import",
+    "-p",
+    "../nope/.worklog",
+    "--json"
+  ],
+  "cwd": "dst",
+  "behavior": "parity"
+}

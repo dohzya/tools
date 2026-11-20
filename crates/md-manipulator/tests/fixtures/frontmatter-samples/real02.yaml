@@ -1,0 +1,9 @@
+category: functional
+themes:
+  - review-workflow
+  - markdown
+  - cli
+  - agents
+verified_at: 2026-07-03
+source_ref: "packages/tools/dz-review/*.ts; imported dz-md-review-syntax docs and skill snapshot on 2026-06-18"
+language: en-US

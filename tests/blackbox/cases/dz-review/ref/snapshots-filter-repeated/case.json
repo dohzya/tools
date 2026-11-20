@@ -1,0 +1,15 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "snapshots",
+    "snap-fresh.md",
+    "snap-stale.md",
+    "--ref",
+    "rAAA",
+    "--ref",
+    "rBBB"
+  ],
+  "behavior": "parity"
+}

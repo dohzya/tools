@@ -1,0 +1,17 @@
+{
+  "tool": "md",
+  "fixture": "md-fm",
+  "args": [
+    "meta",
+    "broken.md",
+    "--set",
+    "a",
+    "b"
+  ],
+  "files": [
+    "broken.md"
+  ],
+  "check_stderr": false,
+  "behavior": "new-spec",
+  "spec_row": "10"
+}

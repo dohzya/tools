@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Name",
+    "--scope",
+    "foo"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "--scope is silently ignored outside git",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

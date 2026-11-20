@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_Kzt6n9VD512",
+      "file": "comment-blocks.md",
+      "lineStart": 3,
+      "lineEnd": 6,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "I chose this wording because it matches the glossary."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Can we make this less categorical?"
+      },
+      "context": "@agent I chose this wording because it matches the glossary. @me Can we make this less categorical?",
+      "suggestedAction": "reply",
+      "rawHash": "f1836ccfa09894d7"
+    },
+    {
+      "id": "rvw_1Ua8w0hUF03",
+      "file": "comment-blocks.md",
+      "lineStart": 8,
+      "lineEnd": 8,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "short note"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "short note"
+      },
+      "context": "@me short note",
+      "suggestedAction": "reply",
+      "rawHash": "4a132b5ce3aa06d4"
+    },
+    {
+      "id": "rvw_COFlrQ0AW1G",
+      "file": "comment-blocks.md",
+      "lineStart": 10,
+      "lineEnd": 15,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Multi\nline body\ncontinues here."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Reply."
+      },
+      "context": "@me Multi line body continues here. @agent Reply.",
+      "suggestedAction": "answer",
+      "rawHash": "9dc3ce2de5e86dbc"
+    },
+    {
+      "id": "rvw_3JvlIkmS88k",
+      "file": "comment-blocks.md",
+      "lineStart": 23,
+      "lineEnd": 27,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "First (iso no colon).",
+        "timestamp": "2026-06-16T17:35:35+0200"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Third (hangul).",
+        "timestamp": "갚붋륇걸"
+      },
+      "context": "@agent%2026-06-16T17:35:35+0200 First (iso no colon). @me%1WzvP91W Second (compact). @agent%갚붋륇걸 Third (hangul).",
+      "suggestedAction": "answer",
+      "rawHash": "81f694279d2beccf"
+    }
+  ]
+}

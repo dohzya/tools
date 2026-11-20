@@ -1,0 +1,54 @@
+
+────────────────────────────────────────────────
+1/4 handled conversation Kzt6n9 comment-blocks.md:3-6
+ 1 │ # HTML comments
+ 2 │ 
+>3 │ <!--
+>4 │ @agent I chose this wording because it matches the glossary.
+>5 │ @me Can we make this less categorical?
+>6 │ -->
+<!--
+@agent I chose this wording because it matches the glossary.
+@me Can we make this less categorical?
+-->
+
+────────────────────────────────────────────────
+2/4 handled conversation 1Ua8w0 comment-blocks.md:8-8
+ 6 │ -->
+ 7 │ 
+>8 │ Inline html: <!-- @me short note --> done.
+<!--
+@me short note
+-->
+
+────────────────────────────────────────────────
+3/4 open conversation COFlrQ comment-blocks.md:10-15
+  8 │ Inline html: <!-- @me short note --> done.
+  9 │ 
+>10 │ <!--
+>11 │ @me Multi
+>12 │ line body
+>13 │ continues here.
+>14 │ @agent Reply.
+>15 │ -->
+<!--
+@me Multi
+line body
+continues here.
+@agent Reply.
+-->
+
+────────────────────────────────────────────────
+4/4 open conversation 3JvlIk comment-blocks.md:23-27
+ 21 │ %% Obsidian durable comment %%
+ 22 │ 
+>23 │ <!--
+>24 │ @agent%2026-06-16T17:35:35+0200 First (iso no colon).
+>25 │ @me%1WzvP91W Second (compact).
+>26 │ @agent%갚붋륇걸 Third (hangul).
+>27 │ -->
+<!--
+@agent 2026-06-16T17:35:35+02:00 First (iso no colon).
+@me 2026-06-16T17:35:35+02:00 Second (compact).
+@agent 2026-06-16T17:35:35+02:00 Third (hangul).
+-->

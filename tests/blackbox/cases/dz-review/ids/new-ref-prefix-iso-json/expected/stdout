@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_6qyVKGEmoWg",
+      "file": "d.md",
+      "lineStart": 1,
+      "lineEnd": 1,
+      "kind": "comment",
+      "state": "annotation",
+      "context": "{>> why <!-- ref%2026-01-01T01:00:00+01:00: a.md:1 --> <<}",
+      "suggestedAction": "review annotation",
+      "rawHash": "a40b2cbe3f16a7a2"
+    }
+  ]
+}

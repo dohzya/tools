@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "missing-file",
+      "message": "missing file ../missing.md",
+      "reference": {
+        "end": 102,
+        "index": 3,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: ../missing.md:1 -->",
+        "start": 73,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 1,
+              "start": 1
+            },
+            "path": "../missing.md",
+            "raw": "../missing.md:1"
+          }
+        ]
+      },
+      "sourceFile": "sub/doc-in-sub.md",
+      "target": {
+        "lineRange": {
+          "end": 1,
+          "start": 1
+        },
+        "path": "../missing.md",
+        "raw": "../missing.md:1"
+      }
+    }
+  ]
+}

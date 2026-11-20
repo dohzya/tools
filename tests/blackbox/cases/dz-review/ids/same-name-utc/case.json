@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-formats",
+  "args": [
+    "list",
+    "iso.md",
+    "--json"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity",
+  "note": "Same instant as iso.md but written in UTC (Z): the id DIFFERS from ids/formats-iso because the id key contains unixSeconds AND offsetMinutes. ISO +02:00, ISO +0200, compact and hangul (all +02:00) give equal ids. Key vector for Rust/VS Code."
+}

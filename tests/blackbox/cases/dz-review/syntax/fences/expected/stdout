@@ -1,0 +1,81 @@
+
+────────────────────────────────────────────────
+1/9 handled conversation K9bn7w fences.md:4-4
+ 2 │ 
+ 3 │ ```md
+>4 │ {?? @me inside backtick fence ??}
+{??
+@me inside backtick fence
+??}
+
+────────────────────────────────────────────────
+2/9 addition KNCOfR fences.md:5-5
+ 3 │ ```md
+ 4 │ {?? @me inside backtick fence ??}
+>5 │ {++fenced addition++}
+{++fenced addition++}
+
+────────────────────────────────────────────────
+3/9 handled conversation 10ug2o fences.md:9-9
+ 7 │ 
+ 8 │ ~~~
+>9 │ {?? @me inside tilde fence ??}
+{??
+@me inside tilde fence
+??}
+
+────────────────────────────────────────────────
+4/9 handled conversation JcYYEN fences.md:12-12
+ 10 │ ~~~
+ 11 │ 
+>12 │ Inline code `{?? @me inside inline code ??}` here.
+{??
+@me inside inline code
+??}
+
+────────────────────────────────────────────────
+5/9 handled conversation D9X97D fences.md:14-14
+ 12 │ Inline code `{?? @me inside inline code ??}` here.
+ 13 │ 
+>14 │     {?? @me indented code ??}
+{??
+@me indented code
+??}
+
+────────────────────────────────────────────────
+6/9 handled conversation 7OTqiX fences.md:16-16
+ 14 │     {?? @me indented code ??}
+ 15 │ 
+>16 │ > {?? @me in blockquote ??}
+{??
+@me in blockquote
+??}
+
+────────────────────────────────────────────────
+7/9 handled conversation AisxCI fences.md:18-18
+ 16 │ > {?? @me in blockquote ??}
+ 17 │ 
+>18 │ - list {?? @me in list ??}
+{??
+@me in list
+??}
+
+────────────────────────────────────────────────
+8/9 handled conversation EhN9pV fences.md:20-20
+ 18 │ - list {?? @me in list ??}
+ 19 │ 
+>20 │ Real one {?? @me outside ??}
+{??
+@me outside
+??}
+
+────────────────────────────────────────────────
+9/9 handled conversation 59GtGz fences.md:23-25
+ 21 │ 
+ 22 │ ```
+>23 │ <!--
+>24 │ @me unterminated fence comment
+>25 │ -->
+<!--
+@me unterminated fence comment
+-->

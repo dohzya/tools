@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-fm",
+  "args": [
+    "meta",
+    "dots.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "8",
+  "note": "Deno only closes frontmatter with ---; a ...-closed block was plain Markdown so nothing was printed"
+}

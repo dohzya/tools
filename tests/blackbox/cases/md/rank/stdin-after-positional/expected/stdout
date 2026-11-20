@@ -1,0 +1,8 @@
+#1 same similarity=1.00 comparability=0.19 ~{v0;a=intro}
+    match: a=1.00, x
+    absent: fh, hh, ph, ctx, p, doc, r, o, q
+
+#2 unrelated similarity=0.00 comparability=0.19 ~{v0;a=other}
+    match: x
+    conflict: a=0.00
+    absent: fh, hh, ph, ctx, p, doc, r, o, q

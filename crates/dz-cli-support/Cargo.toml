@@ -1,0 +1,12 @@
+[package]
+name = "dz-cli-support"
+description = "Shared CLI helpers: pager, agent instructions, colors and JSON output."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

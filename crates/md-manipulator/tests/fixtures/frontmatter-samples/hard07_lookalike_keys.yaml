@@ -1,0 +1,9 @@
+status: open
+status_note: x
+status2: y
+meta:
+  status: nested
+list:
+- a
+- b
+z: 1

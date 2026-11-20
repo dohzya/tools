@@ -1,0 +1,24 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "session",
+    "start",
+    "doc.md"
+  ],
+  "files": [
+    "doc.md",
+    ".dz-review/agent-session.json"
+  ],
+  "ignore_changes": [
+    ".dz-review/reference-map.json"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "sed": [
+    "s/\"contentHash\": \"[0-9a-f]+\"/\"contentHash\": \"<H>\"/"
+  ],
+  "behavior": "parity",
+  "note": "unstamped items get a now-timestamp; ids printed are those of the unstamped text"
+}

@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "fence-tilde.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

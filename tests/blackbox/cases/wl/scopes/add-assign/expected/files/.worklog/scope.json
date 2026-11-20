@@ -1,0 +1,8 @@
+{
+  "children": [
+    {
+      "path": "docs-site",
+      "id": "docs"
+    }
+  ]
+}

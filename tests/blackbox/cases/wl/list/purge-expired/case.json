@@ -1,0 +1,20 @@
+{
+  "tool": "wl",
+  "fixture": "wl-purge",
+  "args": [
+    "list",
+    "--all"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "any command (even read-only) purges expired done tasks: index entries and task files are deleted",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/4q2r74ayb7kmimtll2kc4kxsv.md",
+    ".worklog/tasks/6jevipvi6toy2zccnok82aeue.md"
+  ]
+}

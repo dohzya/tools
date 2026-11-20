@@ -1,0 +1,6 @@
+{
+  "tool": "recap",
+  "fixture": "empty",
+  "args": [],
+  "behavior": "parity"
+}

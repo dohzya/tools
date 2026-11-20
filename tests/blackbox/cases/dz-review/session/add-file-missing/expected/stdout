@@ -1,0 +1,65 @@
+Agent inbox
+Snapshot: .dz-review/agent-session.json
+
+id: 5SUMpH
+location: doc.md:3
+state: handled
+last: @me Please say whether sources are stored too.
+context: @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too.
+suggested action: reply
+
+id: A3vwnq
+location: doc.md:5
+state: annotation
+last: -
+context: {++%2026-06-16T17:35:35+02:00|added++}
+suggested action: review annotation
+
+id: E96pi6
+location: doc.md:5
+state: annotation
+last: -
+context: {--%2026-06-16T17:35:35+02:00|removed--}
+suggested action: review annotation
+
+id: CWUZeY
+location: doc.md:5
+state: annotation
+last: -
+context: {~~%2026-06-16T17:35:35+02:00|old~>new~~}
+suggested action: review annotation
+
+id: 5g7itt
+location: doc.md:5
+state: annotation
+last: -
+context: {==%2026-06-16T17:35:35+02:00|highlighted==}
+suggested action: review annotation
+
+id: CFi8Jd
+location: doc.md:5
+state: annotation
+last: -
+context: {>>%2026-06-16T17:35:35+02:00|a note<<}
+suggested action: review annotation
+
+id: 5SUN8d
+location: doc.md:7
+state: handled
+last: @me Can we soften it?
+context: @agent%2026-06-16T17:35:35+02:00 I chose this wording. @me%2026-06-16T17:36:35+02:00 Can we soften it?
+suggested action: reply
+
+id: 5SUNRz
+location: doc.md:12
+state: resolved
+last: @me ok
+context: @agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok
+suggested action: clean after validation
+
+id: 5SUNlL
+location: doc.md:14
+state: open
+last: @agent Answer.
+context: @me%2026-06-16T17:35:35+02:00 Q. @agent%2026-06-16T17:38:35+02:00 Answer.
+suggested action: answer

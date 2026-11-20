@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "summary",
+    "--since",
+    "garbage"
+  ],
+  "behavior": "parity",
+  "note": "--since with an invalid date is silently accepted (no validation)"
+}

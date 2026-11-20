@@ -1,0 +1,20 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "meta",
+    "4q2r74",
+    "status",
+    "started"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/4q2r74ayb7kmimtll2kc4kxsv.md"
+  ]
+}

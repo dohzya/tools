@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-syntax",
+  "args": [
+    "list",
+    "crlf.md"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): line endings (CRLF, LF, CR) are normalized before MRFI generation, as in md; the Deno tool kept the CR in line lengths and produced different reference-map locators."
+}

@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-purge",
+  "args": [
+    "--purge-ttl",
+    "0",
+    "list"
+  ],
+  "behavior": "new-spec",
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D7): --purge-ttl 0 is reported as error: invalid_args instead of an uncaught exception.",
+  "spec_row": "worklog.md D7"
+}

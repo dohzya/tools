@@ -2,10 +2,8 @@ node_modules/**
 src/**
 test/**
 tsconfig.json
-out/timestamp.js
-out/timestamp.js.map
-out/tools/**
-out/vscode/**
+out/*.map
 *.vsix
 .gitignore
 .vscodeignore
+wasm/**

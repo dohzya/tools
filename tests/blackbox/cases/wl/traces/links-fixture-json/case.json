@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "traces",
+    "api001",
+    "--json"
+  ],
+  "behavior": "parity"
+}

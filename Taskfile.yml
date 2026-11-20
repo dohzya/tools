@@ -47,12 +47,39 @@ tasks:
       - node_modules/.package-lock.json
     cmds:
       - npm ci --silent
+  vscode:dz-review:wasm:
+    desc: "Build the critique-wasm glue the VS Code dz-review extension inlines"
+    sources:
+      - Cargo.toml
+      - Cargo.lock
+      # critique-core pulls in other workspace crates.
+      - crates/*/Cargo.toml
+      - crates/*/src/**/*.rs
+    generates:
+      - packages/vscode/dz-review/wasm/critique_wasm.js
+      - packages/vscode/dz-review/wasm/critique_wasm_bg.wasm
+    cmds:
+      - rm -rf packages/vscode/dz-review/wasm
+      - cargo build --release --locked --target wasm32-unknown-unknown -p critique-wasm
+      # --target web exposes initSync, which takes the bytes esbuild inlines.
+      # Its .d.ts files would need DOM types: src/wasm.d.ts declares the glue.
+      # cargo metadata honors CARGO_TARGET_DIR and build.target-dir.
+      - wasm-bindgen --target web --no-typescript --out-dir packages/vscode/dz-review/wasm "$(cargo metadata --format-version 1 --no-deps | jq -r .target_directory)/wasm32-unknown-unknown/release/critique_wasm.wasm"
   vscode:dz-review:test:
     desc: "Run VS Code dz-review extension tests"
     dir: packages/vscode/dz-review
     deps: [vscode:dz-review:install-deps]
     cmds:
       - npm test
+  vscode:dz-review:parity:
+    desc: "Compare the extension's critique-wasm results with the critique CLI over the repo's Markdown"
+    dir: packages/vscode/dz-review
+    deps: [vscode:dz-review:install-deps]
+    cmds:
+      - cargo build --locked --quiet -p critique-cli
+      - npm run compile
+      # cargo metadata honors CARGO_TARGET_DIR and build.target-dir.
+      - CRITIQUE_BIN="$(cargo metadata --format-version 1 --no-deps | jq -r .target_directory)/debug/critique" node test/cli-parity.js {{.CLI_ARGS}}
   vscode:dz-review:vsix:
     desc: "Build the VS Code dz-review VSIX"
     dir: packages/vscode/dz-review
@@ -64,10 +91,10 @@ tasks:
       - .vscodeignore
       - LICENSE
       - assets/**
-      - ../../tools/dz-review/*.ts
-      - "!../../tools/dz-review/*.test.ts"
       - src/**/*.ts
       - syntaxes/**/*.json
+      - ../../../crates/*/Cargo.toml
+      - ../../../crates/*/src/**/*.rs
     generates:
       - dz-review-vscode-0.0.1.vsix
     cmds:
@@ -211,3 +238,38 @@ tasks:
       - echo "   ./dist/{{.TOOL}}-darwin-arm64 --version"
       - echo "   git push origin main && git tag {{.TOOL}}-v{{.VERSION}} && git push origin {{.TOOL}}-v{{.VERSION}}"
       - echo "   task update-tap TOOL={{.TOOL}} VERSION={{.VERSION}}"
+
+  rust:fmt:
+    desc: "Format the Rust code"
+    cmds:
+      - cargo fmt --all
+
+  rust:check:
+    desc: "Type-check the Rust workspace"
+    cmds:
+      - cargo check --locked --workspace --all-targets
+
+  rust:lint:
+    desc: "Run clippy with warnings denied"
+    cmds:
+      - cargo clippy --locked --workspace --all-targets -- -D warnings
+
+  rust:test:
+    desc: "Run the Rust tests"
+    cmds:
+      - cargo test --locked --workspace {{.CLI_ARGS}}
+
+  rust:validate:
+    desc: "Rust fmt check, lint, test and wasm build"
+    cmds:
+      - cargo fmt --all --check
+      - task: rust:lint
+      - task: rust:test
+      - task: rust:wasm
+
+  rust:wasm:
+    desc: "Build the pure crates for wasm32 (requires: rustup target add wasm32-unknown-unknown)"
+    cmds:
+      - cargo build --locked -p critique-wasm --target wasm32-unknown-unknown
+      - cargo build --locked -p md-manipulator --target wasm32-unknown-unknown
+      - cargo build --locked -p worklog-core --target wasm32-unknown-unknown

@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "real-docs_plans_2026-02-13-hexagonal-architecture-design.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

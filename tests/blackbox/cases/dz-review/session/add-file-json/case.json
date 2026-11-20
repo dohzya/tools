@@ -1,0 +1,21 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "session",
+    "add-file",
+    "other.md",
+    "--json"
+  ],
+  "files": [
+    ".dz-review/agent-session.json",
+    ".dz-review/reference-map.json"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "sed": [
+    "s/\"contentHash\": \"[0-9a-f]+\"/\"contentHash\": \"<H>\"/"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,20 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "done",
+    "run006",
+    "sub changes",
+    "sub learnings"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/run006xxxxxxxxxxxxxxxxxxx.md"
+  ]
+}

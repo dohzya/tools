@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_BKBdusTVDAU",
+      "file": "states.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Answer."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Thanks but please change X."
+      },
+      "context": "@agent Answer. @me Thanks but please change X.",
+      "suggestedAction": "reply",
+      "rawHash": "bbc870dece1e3bb4"
+    },
+    {
+      "id": "rvw_IdALFDCkOwH",
+      "file": "states.md",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok but not really"
+      },
+      "context": "@agent Done. @me ok but not really",
+      "suggestedAction": "reply",
+      "rawHash": "0474ebe0cdaeb6fb"
+    },
+    {
+      "id": "rvw_EDalOd0vAf3",
+      "file": "states.md",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@",
+        "body": "This seems too strong."
+      },
+      "lastMessage": {
+        "author": "@",
+        "body": "This seems too strong."
+      },
+      "context": "@ This seems too strong.",
+      "suggestedAction": "reply",
+      "rawHash": "149d639e849252ef"
+    },
+    {
+      "id": "rvw_LqATo8Qz4Xs",
+      "file": "states.md",
+      "lineStart": 23,
+      "lineEnd": 23,
+      "kind": "discussion",
+      "state": "discussion",
+      "context": "{?? ??}",
+      "suggestedAction": "review annotation",
+      "rawHash": "930c8eeb969a53d1"
+    },
+    {
+      "id": "rvw_E8x6VmGnj48",
+      "file": "states.md",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "kind": "discussion",
+      "state": "discussion",
+      "context": "{?? just text without a role ??}",
+      "suggestedAction": "review annotation",
+      "rawHash": "3a68d9b13bbcc58f"
+    }
+  ]
+}

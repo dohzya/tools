@@ -1,0 +1,30 @@
+{
+  "tool": "wl",
+  "fixture": "wl-import",
+  "args": [
+    "import",
+    "-p",
+    "../src/.worklog",
+    "--scope-to-tag"
+  ],
+  "cwd": "dst",
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "new-spec",
+  "files": [
+    "dst/.worklog/index.json",
+    "dst/.worklog/tasks/api001xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/doc003xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/epc005xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/fin008xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/rel004xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/run006xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/sch002xxxxxxxxxxxxxxxxxxx.md",
+    "dst/.worklog/tasks/wai007xxxxxxxxxxxxxxxxxxx.md"
+  ],
+  "spec_row": "worklog.md D10",
+  "note": "import and scopes assign copy the whole index entry of the source (tags, links, parent, timestamps); the Deno version kept only name, desc, status and dates."
+}

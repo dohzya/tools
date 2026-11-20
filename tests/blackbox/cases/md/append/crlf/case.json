@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "crlf.md",
+    "0bca11de",
+    "ajout",
+    "--deep"
+  ],
+  "files": [
+    "crlf.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1"
+}

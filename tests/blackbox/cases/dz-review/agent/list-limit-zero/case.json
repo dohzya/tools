@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "list",
+    "--limit",
+    "0"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "show",
+    "bad-missing-file.md"
+  ],
+  "behavior": "parity",
+  "note": "A missing target file yields an empty snapshot instead of an error (ref show exits 0)."
+}

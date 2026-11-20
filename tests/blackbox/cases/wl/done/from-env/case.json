@@ -1,0 +1,22 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "done",
+    "c",
+    "l"
+  ],
+  "env": {
+    "WORKLOG_TASK_ID": "9n3ksy"
+  },
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md"
+  ]
+}

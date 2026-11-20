@@ -1,0 +1,10 @@
+
+[2m────────────────────────────────────────────────[0m
+[1m1/9[0m [2mhandled conversation[0m [36m5SUMpH[0m [2mdoc.md:3-3[0m
+[2m 1 │ # Title[0m
+[2m 2 │ [0m
+[1m>3 │ Question for the agent. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}[0m
+[2m{??[0m
+[32m@me[0m [2m2026-06-16T17:35:35+02:00[0m Please say whether sources are stored too.
+[2m??}[0m
+[1mAction[0m [36m[n][0mext [31m[d][0melete [32m[o][0mk [33m[r][0meply next-[[36mf[0m]ile [31m[q][0muit [?]: 

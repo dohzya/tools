@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "list",
+    "9n3ksy"
+  ],
+  "behavior": "parity"
+}

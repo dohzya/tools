@@ -1,0 +1,9 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "~notvalid!!"
+  ],
+  "behavior": "parity"
+}

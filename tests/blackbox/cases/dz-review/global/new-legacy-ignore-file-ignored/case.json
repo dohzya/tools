@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "status",
+    "--oneline"
+  ],
+  "env": {
+    "CRITIQUE_COMPAT_DZ_REVIEW": "",
+    "DZ_REVIEW_IGNORE_FILE": ".dz-review-ignore"
+  },
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): nothing named dz-review is read outside the legacy identity switch. A `.dz-review-ignore` excluding other.md is applied neither as a fallback of the default `.critique-ignore` nor through DZ_REVIEW_IGNORE_FILE: other.md (1 open conversation) is counted."
+}

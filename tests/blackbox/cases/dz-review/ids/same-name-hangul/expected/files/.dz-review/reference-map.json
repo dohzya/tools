@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_8AE7GLfkDf3": {
+      "file": "iso.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:30;p=h1[1]/p[1];fh=xxh64:1A8p5AQN;hh=smh64:8db7582b87cefba0;ctx=pre:BtIqXAYW,suf:Gpo1C9uA;doc=smh64:8db7582b87cefba0}"
+    },
+    "rvw_E5SYcz5AlRE": {
+      "file": "iso.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:20;p=h1[1]/p[2];fh=xxh64:92u77jmD;hh=smh64:8db7582b87cefba0;ctx=pre:oRpKJstw,suf:rzWtdMwJ;doc=smh64:8db7582b87cefba0}"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "-C",
+    "other",
+    "add-parent",
+    "../nowhere"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "parity"
+}

@@ -20,3 +20,30 @@ jobs:
 
       - name: Run CI checks
         run: task validate:ci
+
+  rust:
+    name: Rust and VS Code extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Installs rust (with the wasm32 target) and wasm-bindgen-cli from mise.toml.
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+
+      - name: Run Rust checks
+        run: task rust:validate
+
+      - name: Test the VS Code extension
+        env:
+          TZ: UTC
+        run: task vscode:dz-review:test
+
+      - name: Check the VS Code extension bundle
+        working-directory: packages/vscode/dz-review
+        run: npm run check
+
+      - name: Compare the VS Code extension core with the critique CLI
+        run: task vscode:dz-review:parity

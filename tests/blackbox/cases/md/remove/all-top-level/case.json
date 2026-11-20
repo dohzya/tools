@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "remove",
+    "small.md",
+    "ffec1a58"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

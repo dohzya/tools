@@ -1,0 +1,24 @@
+
+────────────────────────────────────────────────
+1/2 open conversation KQF4ad emoji-multiline.md:3-6
+ 1 │ # Emoji in multi-line comments
+ 2 │ 
+>3 │ <!--
+>4 │ @me Looks good 🎉 and 👍🏽
+>5 │ @agent ok é
+>6 │ -->
+<!--
+@me Looks good 🎉 and 👍🏽
+@agent ok é
+-->
+
+────────────────────────────────────────────────
+2/2 handled conversation 4qvhNr emoji-multiline.md:8-10
+  6 │ -->
+  7 │ 
+> 8 │ <!--
+> 9 │ @me 😀😀😀 repeated
+>10 │ -->
+<!--
+@me 😀😀😀 repeated
+-->

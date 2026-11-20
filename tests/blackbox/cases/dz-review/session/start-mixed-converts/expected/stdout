@@ -1,0 +1,16 @@
+Agent inbox
+Snapshot: .dz-review/agent-session.json
+
+id: BVWLbL
+location: mixed.md:3
+state: handled
+last: @me Hangul.
+context: @me%<TS> Compact. @agent%<TS> Iso. @me%<TS> Hangul.
+suggested action: reply
+
+id: LTr46W
+location: mixed.md:3
+state: annotation
+last: -
+context: {++%<TS>|added++}
+suggested action: review annotation

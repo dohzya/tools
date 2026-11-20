@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "link",
+    "api001",
+    "depends_on",
+    "sch002"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "re-linking an existing pair"
+}

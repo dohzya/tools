@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "list",
+    "--depends-on",
+    "sch002"
+  ],
+  "env": {
+    "WORKLOG_TASK_ID": "sch002"
+  },
+  "behavior": "parity"
+}

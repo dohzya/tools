@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "trace",
+    "derbkv",
+    "-k",
+    "info",
+    "on cancelled"
+  ],
+  "behavior": "parity"
+}

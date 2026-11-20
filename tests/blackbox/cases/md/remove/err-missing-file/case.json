@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "remove",
+    "nofile.md",
+    "aaaaaaaa"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,22 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "checkpoint",
+    "9n3ksy",
+    "c",
+    "l",
+    "-t",
+    "2020-05-01T10:00"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "-t is documented as ignored by checkpoint",
+  "files": [
+    ".worklog/tasks/9n3ksypyyujvxajl4o1djfk67.md"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "list",
+    "doc.md",
+    "--json"
+  ],
+  "ignore_changes": [
+    ".dz-review/reference-map.json",
+    ".dz-review/agent-session.json",
+    "doc.md"
+  ],
+  "normalize": [
+    "iso-ts"
+  ],
+  "sed": [
+    "s/\"contentHash\": \"[0-9a-f]+\"/\"contentHash\": \"<H>\"/"
+  ],
+  "behavior": "parity",
+  "note": "ids after stamping equal ids before stamping (persisted via reference-map)"
+}

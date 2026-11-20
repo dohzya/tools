@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_KNYOZLSp5iq",
+      "file": "d.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "cr body"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "cr body"
+      },
+      "context": "@me cr body",
+      "suggestedAction": "reply",
+      "rawHash": "deec054b793a3c3c"
+    },
+    {
+      "id": "rvw_9Thdw1feKYg",
+      "file": "d.md",
+      "lineStart": 5,
+      "lineEnd": 8,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "cr comment"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok"
+      },
+      "context": "@agent cr comment @me ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "626cc2969b6f785f"
+    }
+  ]
+}

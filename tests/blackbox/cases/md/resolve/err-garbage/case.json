@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "resolve",
+    "source.md",
+    "~garbage!!"
+  ],
+  "behavior": "parity"
+}

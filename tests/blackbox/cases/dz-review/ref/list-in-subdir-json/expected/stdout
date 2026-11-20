@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "refs": [
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 47,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: ../source.md:6 -->",
+        "start": 19,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "../source.md",
+            "raw": "../source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "sub/doc-in-sub.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "../source.md",
+        "raw": "../source.md:6"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "up {?? @me hi ??}",
+      "reference": {
+        "end": 72,
+        "index": 2,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: inner.md:3 -->",
+        "start": 48,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "inner.md",
+            "raw": "inner.md:3"
+          }
+        ]
+      },
+      "sourceFile": "sub/doc-in-sub.md",
+      "target": {
+        "lineRange": {
+          "end": 3,
+          "start": 3
+        },
+        "path": "inner.md",
+        "raw": "inner.md:3"
+      },
+      "targetFile": "<WORK>/sub/inner.md"
+    },
+    {
+      "reference": {
+        "end": 102,
+        "index": 3,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: ../missing.md:1 -->",
+        "start": 73,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 1,
+              "start": 1
+            },
+            "path": "../missing.md",
+            "raw": "../missing.md:1"
+          }
+        ]
+      },
+      "sourceFile": "sub/doc-in-sub.md",
+      "target": {
+        "lineRange": {
+          "end": 1,
+          "start": 1
+        },
+        "path": "../missing.md",
+        "raw": "../missing.md:1"
+      },
+      "targetFile": "<WORK>/missing.md"
+    }
+  ]
+}

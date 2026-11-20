@@ -1,0 +1,78 @@
+{
+  "version": 2,
+  "tasks": {
+    "9n3ksypyyujvxajl4o1djfk67": {
+      "name": "Fix login bug",
+      "desc": [
+        "Users can't log in with **SSO**.\nSecond paragraph with unicode: café ☕"
+      ],
+      "status": "started",
+      "created": "2020-01-10T09:00:00+01:00",
+      "status_updated_at": "2020-01-20T10:00:00+01:00",
+      "done_at": null,
+      "tags": [
+        "backend"
+      ]
+    },
+    "4gsf0bco0o68h9xspa2ux4v52": {
+      "name": "Write documentation",
+      "desc": [
+        "Part one of the description",
+        "Part two"
+      ],
+      "status": "ready",
+      "created": "2020-01-11T10:00:00+01:00",
+      "status_updated_at": "2020-01-11T10:00:00+01:00",
+      "done_at": null,
+      "tags": [
+        "docs"
+      ]
+    },
+    "cq3984ojmyg5s21oujzleuats": {
+      "name": "Refactor auth module",
+      "desc": [],
+      "status": "created",
+      "created": "2020-01-12T08:30:00+01:00",
+      "status_updated_at": "2020-01-12T08:30:00+01:00",
+      "done_at": null,
+      "tags": [
+        "backend",
+        "urgent"
+      ]
+    },
+    "7natz8duzlrdundln184ylct7": {
+      "name": "Investigate SSO provider",
+      "desc": [],
+      "status": "started",
+      "created": "2020-01-05T08:00:00+01:00",
+      "status_updated_at": "2020-01-20T10:00:00+01:00",
+      "done_at": null
+    },
+    "4q2r74ayb7kmimtll2kc4kxsv": {
+      "name": "Old finished task",
+      "desc": [],
+      "status": "done",
+      "created": "2020-01-13T12:00:00+01:00",
+      "status_updated_at": "2099-01-01T12:00:00+01:00",
+      "done_at": "2099-01-01T12:00:00+01:00"
+    },
+    "derbkvh9va8oh421qd5i6duom": {
+      "name": "Abandoned idea",
+      "desc": [],
+      "status": "cancelled",
+      "created": "2020-01-14T12:00:00+01:00",
+      "status_updated_at": "2020-01-14T12:00:00+01:00",
+      "done_at": null,
+      "cancelled_at": "2020-01-20T10:00:00+01:00"
+    },
+    "6jevipvi6toy2zccnok82aeue": {
+      "name": "Write regression test",
+      "desc": [],
+      "status": "done",
+      "created": "2020-01-21T09:00:00+01:00",
+      "status_updated_at": "2099-01-01T13:00:00+01:00",
+      "done_at": "2099-01-01T13:00:00+01:00",
+      "parent": "9n3ksypyyujvxajl4o1djfk67"
+    }
+  }
+}

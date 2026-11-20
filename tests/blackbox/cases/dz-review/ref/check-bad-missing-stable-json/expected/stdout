@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "issues": [
+    {
+      "kind": "missing-stable-id",
+      "message": "missing stable ref id ^nope",
+      "reference": {
+        "end": 49,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6^nope -->",
+        "start": 19,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6^nope",
+            "stableId": "nope"
+          }
+        ]
+      },
+      "sourceFile": "bad-missing-stable.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6^nope",
+        "stableId": "nope"
+      }
+    }
+  ]
+}

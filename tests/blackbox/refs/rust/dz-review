@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Runs the Rust `critique` binary under the legacy tool identity: the legacy
+# cases expect the name `dz-review` and the `.dz-review/` state directory.
+# A case can opt out by setting CRITIQUE_COMPAT_DZ_REVIEW to an empty string
+# in its `env` (that is how `new-spec` cases exercise the real defaults).
+HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+ROOT="$(cd "$HERE/../../../.." && pwd)"
+export CRITIQUE_COMPAT_DZ_REVIEW="${CRITIQUE_COMPAT_DZ_REVIEW-1}"
+exec "${BB_CRITIQUE_BIN:-${CARGO_TARGET_DIR:-$ROOT/target}/${BB_RUST_PROFILE:-debug}/critique}" "$@"

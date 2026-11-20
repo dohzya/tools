@@ -1,0 +1,72 @@
+
+────────────────────────────────────────────────
+1/8 handled conversation JORvlA duplicates.md:3-3
+ 1 │ # Duplicates
+ 2 │ 
+>3 │ {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+2/8 handled conversation JORvRn duplicates.md:5-5
+ 3 │ {?? @me Same ??}
+ 4 │ 
+>5 │ {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+3/8 handled conversation JORwNs duplicates.md:7-7
+ 5 │ {?? @me Same ??}
+ 6 │ 
+>7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+4/8 handled conversation JORw4W duplicates.md:7-7
+ 5 │ {?? @me Same ??}
+ 6 │ 
+>7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+{??
+@me Same
+??}
+
+────────────────────────────────────────────────
+5/8 addition 5jIJLy duplicates.md:9-9
+ 7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+ 8 │ 
+>9 │ {++same++} and {++same++}
+{++same++}
+
+────────────────────────────────────────────────
+6/8 addition 5jIJfK duplicates.md:9-9
+ 7 │ Two on one line: {?? @me Same ??} {?? @me Same ??}
+ 8 │ 
+>9 │ {++same++} and {++same++}
+{++same++}
+
+────────────────────────────────────────────────
+7/8 handled conversation 8eKEfN duplicates.md:11-13
+  9 │ {++same++} and {++same++}
+ 10 │ 
+>11 │ <!--
+>12 │ @me Same comment
+>13 │ -->
+<!--
+@me Same comment
+-->
+
+────────────────────────────────────────────────
+8/8 handled conversation 8eKEyk duplicates.md:15-17
+ 13 │ -->
+ 14 │ 
+>15 │ <!--
+>16 │ @me Same comment
+>17 │ -->
+<!--
+@me Same comment
+-->

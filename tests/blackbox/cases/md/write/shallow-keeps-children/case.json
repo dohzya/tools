@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "write",
+    "small.md",
+    "ffec1a58",
+    "only own body"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

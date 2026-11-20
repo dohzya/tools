@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "-C",
+    "nowhere",
+    "list"
+  ],
+  "behavior": "parity",
+  "check_stderr": false,
+  "check_stdout": false
+}

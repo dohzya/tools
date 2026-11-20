@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-fm",
+  "args": [
+    "meta",
+    "crlf.md",
+    "title"
+  ],
+  "behavior": "parity"
+}

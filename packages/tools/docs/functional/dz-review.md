@@ -176,7 +176,7 @@ The shared filter options are `--pending`, `--open`, `--wip`, `--handled`, `--re
 
 The CLI reads the configured ignore file from the current directory. Matching paths are skipped in all modes, and negated patterns such as `!docs/` can re-include paths that are otherwise ignored by Git. The active agent state directory and the default `.dz-review/` directory are ignored by default even when no ignore file exists. Explicit file arguments for `dz-review session start` and `dz-review session add-file` bypass project ignore rules, but still respect the builtin state-directory protections.
 
-The DZ Review VS Code extension recognizes passage refs in Markdown. Hovering a ref shows the referenced passage, including refs to HTML conversation comments, and go-to-definition opens the target file at the referenced line. The `dzMdReview.refSnapshotLines` setting limits hover previews with the same default of 10 lines; `0` means unlimited.
+The DZ Review VS Code extension recognizes passage refs in Markdown. Hovering a ref shows the referenced passage, including refs to HTML conversation comments, and go-to-definition opens the target file at the referenced line. The `dzMdReview.refSnapshotLines` setting limits hover previews with the same default of 10 lines; `0` means unlimited. Its review panel shares the reference map of the `critique` CLI, not of `dz-review`: in the `dzMdReview.stateDir` setting, else `CRITIQUE_STATE_DIR` (as VS Code was launched with it), else `.critique/` at the Git root; a relative setting is resolved against the workspace folder.
 
 ## Review Item Ids
 

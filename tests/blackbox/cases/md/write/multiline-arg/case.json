@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "write",
+    "small.md",
+    "18bfa7d1",
+    "line one\n\nline three"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

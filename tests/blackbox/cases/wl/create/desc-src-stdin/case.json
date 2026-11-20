@@ -1,0 +1,24 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Desc stdin",
+    "--desc-src",
+    "-",
+    "-t",
+    "2030-01-02T03:04"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

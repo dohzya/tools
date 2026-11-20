@@ -1,0 +1,1 @@
+mkdir -p .dz-review && echo "{\"version\":1,\"entries\":{\"rvw_FAKE000000\":{\"file\":\"doc.md\",\"range\":{\"startLine\":3,\"endLine\":3},\"mrfi\":\"~{v0;r=3:1-3:85}\"}}}" > .dz-review/reference-map.json

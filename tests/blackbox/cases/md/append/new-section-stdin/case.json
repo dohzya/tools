@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "small.md"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "13",
+  "note": "Deno: reported L9-L12 (+4) because of the stdin trailing newline and the phantom last line; same bytes"
+}

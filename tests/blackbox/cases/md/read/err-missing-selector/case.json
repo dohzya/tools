@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "doc.md"
+  ],
+  "check_stderr": false,
+  "behavior": "parity",
+  "check_stdout": false
+}

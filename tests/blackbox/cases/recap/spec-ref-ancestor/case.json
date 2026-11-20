@@ -1,0 +1,13 @@
+{
+  "tool": "recap",
+  "fixture": "recap-spec",
+  "args": [
+    "show",
+    "foo",
+    "bar"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "recap:3a",
+  "note": "ref: reaches sections of any ancestor level, even ones an intermediate level did not list (Deno: ref_not_found)",
+  "cwd": "rule-a"
+}

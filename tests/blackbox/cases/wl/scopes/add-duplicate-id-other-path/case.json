@@ -1,0 +1,26 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "add",
+    "api",
+    "services/other"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "new-spec",
+  "files": [
+    ".worklog/scope.json",
+    "services/other/.worklog/index.json",
+    "services/other/.worklog/scope.json"
+  ],
+  "note": "Rust fixes the Deno defect (docs/specs/worklog.md D1): scopes created by 'scopes add' get a version 2 index, so the next read does not run the v1 migration.",
+  "spec_row": "worklog.md D1"
+}

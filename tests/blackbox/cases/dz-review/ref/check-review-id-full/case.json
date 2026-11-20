@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-ref-review-id",
+  "args": [
+    "ref",
+    "check",
+    "full.md"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity",
+  "note": "Parser quirk, not a supported syntax: a review id is only read after a second ~ (file~~<id>; a bare ~id is an MRFI). It is looked up among the ids list assigns: the map keys the target by its cwd-relative path."
+}

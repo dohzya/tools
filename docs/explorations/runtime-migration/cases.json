@@ -1,0 +1,499 @@
+[
+  {
+    "id": "md-read-id-shallow",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "074ff574"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-id-shallow.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-id-deep",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "074ff574",
+      "--deep"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-id-deep.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-json-deep",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "074ff574",
+      "--deep",
+      "--json"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-json-deep.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-heading-codefence",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "## Usage"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-heading-codefence.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-top-level-deep",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "# Introduction",
+      "--deep"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-top-level-deep.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-empty-section",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-nofm.md",
+      "## Empty Section"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-empty-section.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-unicode-deep-json",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-nofm.md",
+      "## Café ☕ Crème brûlée",
+      "--deep",
+      "--json"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-unicode-deep-json.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-last-section-trailing-blanks",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-nofm.md",
+      "# Second Top"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-last-section-trailing-blanks.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-repeated-by-id",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-nofm.md",
+      "daac9e3b"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-repeated-by-id.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-edge-json",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-edge.md",
+      "# Header with trailing spaces",
+      "--deep",
+      "--json"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-edge-json.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-unterminated-frontmatter",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-unterminated-fm.md",
+      "# Heading inside"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-unterminated-frontmatter.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "md-read-err-ambiguous-heading",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-nofm.md",
+      "## Repeated"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-err-ambiguous-heading.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: ambiguous_section"
+  },
+  {
+    "id": "md-read-err-unknown-id",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "deadbeef"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-err-unknown-id.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: section_not_found"
+  },
+  {
+    "id": "md-read-err-invalid-id",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "nothex"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-err-invalid-id.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: invalid_id"
+  },
+  {
+    "id": "md-read-err-heading-not-found",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "## Missing"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-err-heading-not-found.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: section_not_found"
+  },
+  {
+    "id": "md-read-err-wrong-level",
+    "tool": "md",
+    "args": [
+      "read",
+      "doc-basic.md",
+      "# Background"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-err-wrong-level.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: section_not_found"
+  },
+  {
+    "id": "md-read-err-file-missing",
+    "tool": "md",
+    "args": [
+      "read",
+      "nope.md",
+      "074ff574"
+    ],
+    "cwd": "md",
+    "expected_stdout_file": "expected/md-read-err-file-missing.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: file_not_found"
+  },
+  {
+    "id": "wl-list-default",
+    "tool": "wl",
+    "args": [
+      "list"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-default.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-all",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--all"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-all.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-started",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--started"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-started.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-ready-and-started",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--ready",
+      "--started"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-ready-and-started.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-subtasks",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--subtasks"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-subtasks.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-json",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--json"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-json.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-all-subtasks-json",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--all",
+      "--subtasks",
+      "--json"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-all-subtasks-json.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-cancelled",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--cancelled"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-list-cancelled.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-list-err-not-initialized",
+    "tool": "wl",
+    "args": [
+      "list"
+    ],
+    "cwd": "wl-empty",
+    "expected_stdout_file": "expected/wl-list-err-not-initialized.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: not_initialized"
+  },
+  {
+    "id": "wl-list-err-not-initialized-json",
+    "tool": "wl",
+    "args": [
+      "list",
+      "--json"
+    ],
+    "cwd": "wl-empty",
+    "expected_stdout_file": "expected/wl-list-err-not-initialized-json.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "{\"error\":\"not_initialized\",\"code\":\"not_initialized\",\"message\":\"Worklog not initialized. Run 'wl init' first.\"}"
+  },
+  {
+    "id": "wl-show-checkpoint-entries-subtasks",
+    "tool": "wl",
+    "args": [
+      "show",
+      "9n3ksy"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-checkpoint-entries-subtasks.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-json-checkpoint-entries",
+    "tool": "wl",
+    "args": [
+      "show",
+      "9n3ksy",
+      "--json"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-json-checkpoint-entries.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-todos",
+    "tool": "wl",
+    "args": [
+      "show",
+      "cq3984"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-todos.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-todos-active-json",
+    "tool": "wl",
+    "args": [
+      "show",
+      "cq3984",
+      "--active",
+      "--json"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-todos-active-json.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-subtask-parent",
+    "tool": "wl",
+    "args": [
+      "show",
+      "7natz8"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-subtask-parent.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-multipart-desc",
+    "tool": "wl",
+    "args": [
+      "show",
+      "4gsf0b"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-multipart-desc.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-done-prefix-case-insensitive",
+    "tool": "wl",
+    "args": [
+      "show",
+      "4Q2R"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-done-prefix-case-insensitive.out",
+    "expected_exit_code": 0,
+    "expected_stderr_first_line": ""
+  },
+  {
+    "id": "wl-show-err-unknown",
+    "tool": "wl",
+    "args": [
+      "show",
+      "zzzzzz"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-err-unknown.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: task_not_found"
+  },
+  {
+    "id": "wl-show-err-unknown-json",
+    "tool": "wl",
+    "args": [
+      "show",
+      "zzzzzz",
+      "--json"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-err-unknown-json.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "{\"error\":\"task_not_found\",\"code\":\"task_not_found\",\"message\":\"No task found matching prefix: zzzzzz\"}"
+  },
+  {
+    "id": "wl-show-err-ambiguous",
+    "tool": "wl",
+    "args": [
+      "show",
+      "4"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-err-ambiguous.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: invalid_args"
+  },
+  {
+    "id": "wl-show-err-no-id",
+    "tool": "wl",
+    "args": [
+      "show"
+    ],
+    "cwd": "wl-project",
+    "expected_stdout_file": "expected/wl-show-err-no-id.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: invalid_args"
+  },
+  {
+    "id": "wl-show-err-not-initialized",
+    "tool": "wl",
+    "args": [
+      "show",
+      "abc"
+    ],
+    "cwd": "wl-empty",
+    "expected_stdout_file": "expected/wl-show-err-not-initialized.out",
+    "expected_exit_code": 1,
+    "expected_stderr_first_line": "error: not_initialized"
+  }
+]

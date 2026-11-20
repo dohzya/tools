@@ -1,0 +1,7 @@
+sections:
+  - id: before
+    value: local before
+  - ref: g2
+    title: Overridden title
+  - id: after
+    value: local after

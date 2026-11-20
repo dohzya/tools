@@ -1,0 +1,14 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "ready",
+    "4gsf0b"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,10 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "apply",
+    "A3vwnq"
+  ],
+  "behavior": "parity"
+}

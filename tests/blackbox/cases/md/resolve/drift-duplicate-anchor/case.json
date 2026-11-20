@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "resolve",
+    "source.md",
+    "~{v0;a=stable-id}",
+    "--json"
+  ],
+  "behavior": "parity"
+}

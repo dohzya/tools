@@ -215,6 +215,39 @@ test("reference snapshot line limit is configurable", () => {
   assert.equal(setting.minimum, 0);
 });
 
+test("review state directory is configurable like the CLI", () => {
+  const pkg = readPackage();
+  const setting =
+    pkg.contributes.configuration.properties["dzMdReview.stateDir"];
+
+  assert.equal(setting.type, "string");
+  assert.equal(setting.default, "");
+  assert.match(setting.description, /CRITIQUE_STATE_DIR/);
+});
+
+test("extension is bundled by a pinned esbuild for the VS Code Node runtime", () => {
+  const pkg = readPackage();
+  const compile = pkg.scripts.compile;
+
+  assert.doesNotMatch(compile, /\bdeno\b/);
+  assert.match(compile, /\besbuild src\/extension\.ts\b/);
+  for (
+    const flag of [
+      "--bundle",
+      "--platform=node",
+      "--format=cjs",
+      "--target=node20",
+      "--external:vscode",
+      "--sourcemap=external",
+      "--outfile=out/extension.js",
+    ]
+  ) {
+    assert(compile.split(" ").includes(flag), `Missing ${flag} in compile`);
+  }
+  assert.match(pkg.devDependencies.esbuild, /^\d+\.\d+\.\d+$/);
+  assert.equal(pkg.engines.vscode, "^1.90.0");
+});
+
 function assertRuleAfter(rules, laterScope, earlierScope) {
   const laterIndex = rules.findIndex((rule) =>
     scopeIncludes(rule.scope, laterScope)

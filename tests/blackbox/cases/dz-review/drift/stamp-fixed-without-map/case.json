@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": [
+    "list",
+    "doc.md",
+    "--json"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity",
+  "note": "control: without a map, adding a (fixed) timestamp to the first conversation changes its content-derived id (timestamp anchor); the other ids are unchanged. Deterministic stand-in for stamping."
+}

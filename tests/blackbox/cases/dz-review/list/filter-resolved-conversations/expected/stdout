@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_IdAKJ8hqB9g",
+      "file": "states.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok"
+      },
+      "context": "@agent Done. @me ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "975a69fe351de034"
+    },
+    {
+      "id": "rvw_IdAKcUs8v5D",
+      "file": "states.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "OK"
+      },
+      "context": "@agent Done. @me OK",
+      "suggestedAction": "clean after validation",
+      "rawHash": "6eb17e50ccf7ccb4"
+    },
+    {
+      "id": "rvw_IdAKvr2Rf0k",
+      "file": "states.md",
+      "lineStart": 13,
+      "lineEnd": 13,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Ok"
+      },
+      "context": "@agent Done. @me Ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "aef196ea5ae27a54"
+    }
+  ]
+}

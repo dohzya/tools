@@ -1,0 +1,12 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-syntax",
+  "args": [
+    "list",
+    "unicode-nfd.md"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

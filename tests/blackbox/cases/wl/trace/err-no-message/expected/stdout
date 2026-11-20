@@ -1,0 +1,21 @@
+
+[1mUsage:[22m   [95mwl trace [33m<[95m[95mtaskId[95m[33m>[95m [33m<[95m[95mmessage[95m[33m>[95m[39m
+[1mVersion:[22m [33m0.21.1[39m                     
+
+[1mDescription:[22m
+
+  Log a typed entry: action, info, state, hypothesis, finding, or learning
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m                [31m[1m-[22m[39m Show this help.                                                                  
+  [94m-C[39m, [94m--cwd[39m        [33m<[39m[95mdir[39m[33m>[39m    [31m[1m-[22m[39m Change to directory before doing anything                                        
+  [94m--worklog-dir[39m    [33m<[39m[95mpath[39m[33m>[39m   [31m[1m-[22m[39m Path to .worklog directory (relative to -C if set)                               
+  [94m--purge-ttl[39m      [33m<[39m[95mdays[39m[33m>[39m   [31m[1m-[22m[39m Days before done tasks are purged (default 30; overrides WORKLOG_PURGE_TTL_DAYS  
+                              and config.json 'purgeTtlDays')                                                  
+  [94m--json[39m                    [31m[1m-[22m[39m Output as JSON                                                                   
+  [94m--scope[39m          [33m<[39m[95mscope[39m[33m>[39m  [31m[1m-[22m[39m Target specific scope                                                            
+  [94m-t[39m, [94m--timestamp[39m  [33m<[39m[95mts[39m[33m>[39m     [31m[1m-[22m[39m Flexible timestamp (T11:15, 2024-12-15T11:15, etc.)                              
+  [94m-k[39m, [94m--kind[39m       [33m<[39m[95mkind[39m[33m>[39m   [31m[1m-[22m[39m Trace kind (action, info, state, hypothesis, finding, learning)                  
+  [94m-f[39m, [94m--force[39m               [31m[1m-[22m[39m Force trace on completed tasks                                                   
+

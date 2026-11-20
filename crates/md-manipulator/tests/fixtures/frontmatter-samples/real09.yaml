@@ -1,0 +1,2 @@
+name: docs-maintainer
+description: Maintain and review project documentation under docs/. Use when creating, updating, organizing, or reviewing project docs, documentation taxonomy, AGENTS.md docs recaps, runbooks, technical docs, functional docs, exploration notes, postmortems, references, or durable review reports. Generated documentation is English by default unless the user explicitly requests another language.

@@ -1,0 +1,16 @@
+Agent inbox
+Snapshot: .dz-review/agent-session.json
+
+id: 88PZEC
+location: refs.md:3
+state: handled
+last: @me Question?
+context: @me%<TS> Question?
+suggested action: reply
+
+id: 51bsuF
+location: only-refs.md:3
+state: annotation
+last: -
+context: {>>%<TS>| why <<}
+suggested action: review annotation

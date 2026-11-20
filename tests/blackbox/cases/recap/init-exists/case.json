@@ -1,0 +1,11 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "args": [
+    "init"
+  ],
+  "files": [
+    ".config/recap.yaml"
+  ],
+  "behavior": "parity"
+}

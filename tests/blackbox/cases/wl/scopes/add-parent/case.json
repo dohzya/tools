@@ -1,0 +1,24 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "-C",
+    "other",
+    "scopes",
+    "add-parent",
+    ".."
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/scope.json",
+    "other/.worklog/scope.json"
+  ]
+}

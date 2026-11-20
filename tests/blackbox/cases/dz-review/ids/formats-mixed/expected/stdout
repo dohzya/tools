@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_B3KYK919EYp",
+      "file": "mixed.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Compact.",
+        "timestamp": "1WzvP91W"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Hangul.",
+        "timestamp": "갚붋륇걸"
+      },
+      "context": "@me%1WzvP91W Compact. @agent%2026-06-16T17:36:35+02:00 Iso. @me%갚붋륇걸 Hangul.",
+      "suggestedAction": "reply",
+      "rawHash": "5ab9c95078e3d837"
+    },
+    {
+      "id": "rvw_B3KY0mqqUdI",
+      "file": "mixed.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Iso one.",
+        "timestamp": "2026-06-16T17:35:35+02:00"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Iso two.",
+        "timestamp": "2026-06-16T17:36:35+02:00"
+      },
+      "context": "@me%2026-06-16T17:35:35+02:00 Iso one. @agent%2026-06-16T17:36:35+02:00 Iso two.",
+      "suggestedAction": "answer",
+      "rawHash": "7e5bc76eb752f96a"
+    }
+  ]
+}

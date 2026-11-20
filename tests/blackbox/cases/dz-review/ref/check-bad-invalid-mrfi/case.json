@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "check",
+    "bad-invalid-mrfi.md"
+  ],
+  "behavior": "parity",
+  "note": "SPEC MISMATCH: parseMrfiTarget captures any ~xxx as an MRFI, so reviewId is never set and the missing-review-id check is unreachable. review-syntax.md documents ~GdwjSq as a dz-review item id, but ref check rejects it as 'invalid MRFI reference'. Legacy bare ids are rejected (also pinned by cli.test.ts)."
+}

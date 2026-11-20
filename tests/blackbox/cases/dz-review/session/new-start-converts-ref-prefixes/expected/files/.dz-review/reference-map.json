@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_88PZECQR0d0": {
+      "file": "refs.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:65;p=h1[1]/p[1];fh=xxh64:6MClRNMR;hh=smh64:52e541e7bfc24e0c;ctx=pre:oMID5dx7,suf:rzWtdMwJ;doc=smh64:52e541e7bfc24e0c}"
+    },
+    "rvw_51bsuFU9vja": {
+      "file": "only-refs.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:56;p=h1[1]/p[1];fh=xxh64:nzHJvXPs;hh=smh64:5e10cbf5bf564bf5;ctx=pre:7uGSDnxr,suf:rzWtdMwJ;doc=smh64:5e10cbf5bf564bf5}"
+    }
+  }
+}

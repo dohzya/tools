@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "source.md",
+    "6:1-6:99"
+  ],
+  "behavior": "parity"
+}

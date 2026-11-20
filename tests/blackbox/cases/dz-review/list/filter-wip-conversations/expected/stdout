@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_7MryuNO3bk7",
+      "file": "states.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "wip",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Question?"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": ""
+      },
+      "context": "@agent Question? @me",
+      "suggestedAction": "wait for human input",
+      "rawHash": "abe237daeff9f177"
+    }
+  ]
+}

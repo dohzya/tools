@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_DbczAQblPmu",
+      "file": "iso-nocolon.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same body.",
+        "timestamp": "2026-06-16T17:35:35+0200"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same body.",
+        "timestamp": "2026-06-16T17:35:35+0200"
+      },
+      "context": "@me%2026-06-16T17:35:35+0200 Same body.",
+      "suggestedAction": "reply",
+      "rawHash": "3f5f0faba721d3ab"
+    },
+    {
+      "id": "rvw_6mHaqilyO3N",
+      "file": "iso-nocolon.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%2026-06-16T17:35:35+02:00|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    }
+  ]
+}

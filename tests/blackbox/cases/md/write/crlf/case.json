@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "write",
+    "crlf.md",
+    "0bca11de",
+    "nouveau corps"
+  ],
+  "files": [
+    "crlf.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "1"
+}

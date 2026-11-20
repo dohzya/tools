@@ -1,0 +1,12 @@
+{
+  "tool": "recap",
+  "fixture": "recap-spec",
+  "args": [
+    "config",
+    "show"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "recap:3b",
+  "note": "same rule seen through config show",
+  "cwd": "rule-b"
+}

@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-purge",
+  "args": [
+    "--purge-ttl",
+    "abc",
+    "list"
+  ],
+  "behavior": "parity",
+  "check_stderr": false,
+  "check_stdout": false
+}

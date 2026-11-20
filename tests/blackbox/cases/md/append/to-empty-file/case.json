@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "empty.md",
+    "# First"
+  ],
+  "files": [
+    "empty.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "12",
+  "note": "Deno: leading blank line, no final newline"
+}

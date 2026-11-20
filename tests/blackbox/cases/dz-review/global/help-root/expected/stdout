@@ -1,0 +1,31 @@
+
+[1mUsage:[22m   [95mdz-review[39m
+[1mVersion:[22m [33m0.4.2[39m    
+
+[1mDescription:[22m
+
+  Markdown review syntax helper
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m             [31m[1m-[22m[39m Show this help.                                                                 
+  [94m-V[39m, [94m--version[39m          [31m[1m-[22m[39m Show the version number for this program.                                       
+  [94m-C[39m, [94m--cwd[39m      [33m<[39m[95mdir[39m[33m>[39m   [31m[1m-[22m[39m Change directory before running the command.                                    
+  [94m--state-dir[39m    [33m<[39m[95mdir[39m[33m>[39m   [31m[1m-[22m[39m Agent state directory. Defaults to DZ_REVIEW_STATE_DIR or Git-root .dz-review.  
+  [94m--ignore-file[39m  [33m<[39m[95mfile[39m[33m>[39m  [31m[1m-[22m[39m Review ignore file. Defaults to DZ_REVIEW_IGNORE_FILE or .dz-review-ignore.     
+
+[1mCommands:[22m
+
+  [94mreview[39m, [94mr[39m                  [33m[[39m[95mfiles...[39m[33m][39m  [31m[1m-[22m[39m Review annotations and conversations interactively      
+  [94mstatus[39m, [94mst[39m                 [33m[[39m[95mfiles...[39m[33m][39m  [31m[1m-[22m[39m Print review status                                     
+  [94mlist[39m, [94ml[39m, [94mls[39m                [33m[[39m[95mfiles...[39m[33m][39m  [31m[1m-[22m[39m List matching review items without editing files        
+  [94mdiff[39m, [94md[39m                    [33m[[39m[95mfiles...[39m[33m][39m  [31m[1m-[22m[39m List review items on lines added in the current Git diff
+  [94mtimestamp[39m, [94mts[39m, [94mtimestamps[39m  [33m[[39m[95mfiles...[39m[33m][39m  [31m[1m-[22m[39m Add or convert review timestamps                        
+  [94mnow[39m                                    [31m[1m-[22m[39m Print a review timestamp for now or for --date          
+  [94mref[39m                                    [31m[1m-[22m[39m Inspect and validate Markdown passage references        
+  [94msession[39m                                [31m[1m-[22m[39m Run review session lifecycle commands                   
+  [94magent[39m                                  [31m[1m-[22m[39m Run agent-oriented review actions                       
+  [94mme[39m                                     [31m[1m-[22m[39m Run human-oriented review commands                      
+  [94magent-instructions[39m                     [31m[1m-[22m[39m Print AGENTS.md guidance for dz-review                  
+  [94mcompletions[39m                            [31m[1m-[22m[39m Generate shell completions.                             
+

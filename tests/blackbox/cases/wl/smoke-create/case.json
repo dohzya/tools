@@ -1,0 +1,15 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "create",
+    "First task"
+  ],
+  "normalize": [
+    "wl-id"
+  ],
+  "behavior": "parity",
+  "ignore_changes": [
+    ".worklog/*"
+  ]
+}

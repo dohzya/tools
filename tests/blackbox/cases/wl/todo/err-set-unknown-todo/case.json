@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "set",
+    "cq3984",
+    "zzzzzz",
+    "status=done"
+  ],
+  "behavior": "parity"
+}

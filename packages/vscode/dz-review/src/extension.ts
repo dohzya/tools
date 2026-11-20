@@ -1,23 +1,9 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as vscode from "vscode";
-import {
-  encodeCompactTimestamp,
-  encodeHangulTimestamp,
-  encodeTimestamp,
-  formatTimestampForDisplay,
-  parseReviewTimestamp,
-  type ReviewTimestamp,
-  type TimestampFormat,
-} from "./timestamp";
-import { getShortStableReviewItemId } from "../../../tools/dz-review/stable-review-id";
-import { assignPersistentReviewItemIds } from "../../../tools/dz-review/reference-map";
-import { configureDzReviewRuntime } from "../../../tools/dz-review/runtime-config";
-import {
-  collectReviewReferences,
-  formatReferenceTarget,
-  type ReferenceTarget,
-  type ReviewReference,
-} from "../../../tools/dz-review/ref-core";
-import { createVscodeDzReviewEnvironment } from "./dz-review-environment";
+import { encodeDate } from "./timestamp";
+import * as critique from "./critique";
+import { referenceMapFile } from "./state-dir";
 
 declare const TextDecoder: {
   new (): { decode(input: Uint8Array): string };
@@ -32,7 +18,7 @@ type CriticMarkupAnnotationKind =
   | "highlight"
   | "comment";
 type CriticMarkupResolution = "cancel" | "apply";
-type ExtensionTimestampFormat = TimestampFormat | "none";
+type ExtensionTimestampFormat = critique.TimestampFormat | "none";
 
 interface Conversation {
   start: number;
@@ -61,13 +47,7 @@ interface ReviewBlock {
   end: number;
 }
 
-type ReviewPanelItemKind =
-  | "conversation"
-  | "addition"
-  | "deletion"
-  | "substitution"
-  | "highlight"
-  | "comment";
+type ReviewPanelItemKind = critique.ReviewItem["kind"];
 type ReviewPanelFilter = "all" | "unresolved" | "pending" | ConversationStatus;
 
 interface ReviewPanelItem {
@@ -81,11 +61,6 @@ interface ReviewPanelItem {
   line: number;
   summary: string;
   messages?: ReviewPanelMessage[];
-}
-
-interface ReviewPanelItemCandidate {
-  item: Omit<ReviewPanelItem, "id" | "displayId">;
-  raw: string;
 }
 
 interface ReviewPanelMessage {
@@ -154,10 +129,6 @@ const TIMESTAMP_VALUE_PATTERN = String
 const REVIEW_MARKER_RE = new RegExp(
   String
     .raw`(^|[ \t\r\n])(@agent|@me|@)(?:%(${TIMESTAMP_VALUE_PATTERN})(?=[ \t\r\n]|$)|(?=[ \t]*:|[ \t\r\n]|$))`,
-  "g",
-);
-const REVIEW_TIMESTAMP_RE = new RegExp(
-  String.raw`%(${TIMESTAMP_VALUE_PATTERN})`,
   "g",
 );
 const REVIEW_METADATA_PREFIX_RE = new RegExp(
@@ -256,11 +227,6 @@ class ReviewPanelProvider implements vscode.WebviewViewProvider {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Must run before anything reaches reference-map.ts, which mints/looks up
-  // persistent review item ids and needs a non-Deno environment port
-  // (there is no `Deno` global in the extension host).
-  configureDzReviewRuntime({ environment: createVscodeDzReviewEnvironment() });
-
   openConversationDecorationType = vscode.window.createTextEditorDecorationType(
     {
       backgroundColor: "rgba(30, 102, 245, 0.07)",
@@ -568,111 +534,64 @@ function updateReviewModeStatus(mode: ReviewMode): void {
   reviewModeStatusBarItem.show();
 }
 
+const REVIEW_PANEL_SUMMARY: critique.SummaryOptions = {
+  source: "payload",
+  width: 80,
+};
+
 async function collectReviewPanelItems(
   document: vscode.TextDocument,
   filter: ReviewPanelFilter = "all",
 ): Promise<ReviewPanelItem[]> {
-  const items = await assignReviewPanelItemIds(
-    document,
-    collectReviewPanelItemCandidates(document, filter),
-  );
-
-  return items.sort((left, right) =>
-    left.start - right.start || left.end - right.end
-  );
+  // Ids are assigned over every item before filtering, like the CLI: an id
+  // must not depend on what the panel shows.
+  return readReviewItems(document).flatMap((item) => {
+    const panelItem = toReviewPanelItem(item);
+    const matches = panelItem.status
+      ? reviewPanelConversationMatchesFilter(panelItem.status, filter)
+      : reviewPanelAnnotationMatchesFilter(filter);
+    return matches ? [panelItem] : [];
+  });
 }
 
-function collectReviewPanelItemCandidates(
-  document: vscode.TextDocument,
-  filter: ReviewPanelFilter = "all",
-): ReviewPanelItemCandidate[] {
-  const text = document.getText();
-  const candidates: ReviewPanelItemCandidate[] = [];
-  const conversationSpans = new Set<string>();
-
-  for (const conversation of collectConversations(text)) {
-    conversationSpans.add(`${conversation.start}:${conversation.end}`);
-    const status = getConversationStatus(conversation);
-    if (!reviewPanelConversationMatchesFilter(status, filter)) {
-      continue;
-    }
-
-    candidates.push({
-      raw: conversation.raw,
-      item: {
-        start: conversation.start,
-        end: conversation.end,
-        kind: "conversation",
-        status,
-        label: formatReviewPanelConversationLabel(status),
-        line: document.positionAt(conversation.start).line + 1,
-        summary: summarizeReviewPanelText(
-          getConversationContent(conversation.raw),
-        ),
-        messages: getReviewPanelConversationMessages(conversation.raw),
-      },
-    });
+function readReviewItems(document: vscode.TextDocument): critique.ReviewItem[] {
+  const mapFile = referenceMapFile();
+  const map = fs.existsSync(mapFile) ? fs.readFileSync(mapFile, "utf8") : null;
+  const result = critique.reviewItems(
+    getReviewPanelDocumentPath(document),
+    document.getText(),
+    map,
+    REVIEW_PANEL_SUMMARY,
+  );
+  if (result.map !== null) {
+    fs.mkdirSync(path.dirname(mapFile), { recursive: true });
+    fs.writeFileSync(mapFile, result.map, "utf8");
   }
-
-  for (const match of text.matchAll(CRITICMARKUP_ANNOTATION_RE)) {
-    const raw = match[0];
-    const start = match.index ?? 0;
-    const end = start + raw.length;
-    if (conversationSpans.has(`${start}:${end}`)) {
-      continue;
-    }
-
-    const kind = getReviewPanelAnnotationKind(raw);
-    if (!reviewPanelAnnotationMatchesFilter(filter)) {
-      continue;
-    }
-
-    candidates.push({
-      raw,
-      item: {
-        start,
-        end,
-        kind,
-        label: formatReviewPanelAnnotationLabel(kind),
-        line: document.positionAt(start).line + 1,
-        summary: summarizeReviewPanelText(
-          getReviewPanelAnnotationPayload(raw, kind),
-        ),
-      },
-    });
-  }
-
-  return candidates;
+  return result.items;
 }
 
-async function assignReviewPanelItemIds(
-  document: vscode.TextDocument,
-  candidates: readonly ReviewPanelItemCandidate[],
-): Promise<ReviewPanelItem[]> {
-  const file = getReviewPanelDocumentPath(document);
-  const content = document.getText();
-  // Line-based, per assignPersistentReviewItemIds's PersistentReviewItemInput
-  // shape -- mirrors review-core.ts's offsetToLine convention (endLine from
-  // `Math.max(start, end - 1)` avoids an off-by-one when `end` lands exactly
-  // on a newline).
-  const persistentItems = candidates.map(({ item, raw }) => ({
+function toReviewPanelItem(item: critique.ReviewItem): ReviewPanelItem {
+  const base = {
+    id: item.id,
+    displayId: item.shortId,
+    start: item.start,
+    end: item.end,
     kind: item.kind,
-    raw,
-    lineStart: document.positionAt(item.start).line + 1,
-    lineEnd: document.positionAt(Math.max(item.start, item.end - 1)).line + 1,
-  }));
-
-  const assigned = await assignPersistentReviewItemIds(
-    file,
-    content,
-    persistentItems,
-  );
-  const allIds = assigned.map(({ id }) => id);
-  return candidates.map(({ item }, index) => ({
-    ...item,
-    id: assigned[index].id,
-    displayId: getShortStableReviewItemId(assigned[index].id, allIds),
-  }));
+    line: item.lineStart,
+    summary: item.summary,
+  };
+  switch (item.state) {
+    case "annotation":
+    case "discussion":
+      return { ...base, label: formatReviewPanelAnnotationLabel(item.kind) };
+    default:
+      return {
+        ...base,
+        status: item.state,
+        label: formatReviewPanelConversationLabel(item.state),
+        messages: getReviewPanelConversationMessages(item.messages ?? []),
+      };
+  }
 }
 
 async function resolveReviewPanelItem(
@@ -985,17 +904,19 @@ function formatReviewPanelConversationLabel(
   }
 }
 
-function getReviewPanelConversationMessages(raw: string): ReviewPanelMessage[] {
-  return getReviewLines(raw).map((line) => {
-    const timestamp = line.timestamp
-      ? formatReviewPanelTimestamp(line.timestamp)
+function getReviewPanelConversationMessages(
+  messages: NonNullable<critique.ReviewItem["messages"]>,
+): ReviewPanelMessage[] {
+  return messages.map((message) => {
+    const timestamp = message.timestamp
+      ? formatReviewPanelTimestamp(message.timestamp)
       : undefined;
     return {
-      role: line.marker === "@agent" ? "Agent" : "You",
+      role: message.author === "@agent" ? "Agent" : "You",
       ...(timestamp
         ? { timestamp: timestamp.label, timestampTitle: timestamp.title }
         : {}),
-      body: line.body,
+      body: message.body,
     };
   });
 }
@@ -1003,20 +924,21 @@ function getReviewPanelConversationMessages(raw: string): ReviewPanelMessage[] {
 function formatReviewPanelTimestamp(
   timestamp: string,
 ): { label: string; title: string } | undefined {
-  const parsed = parseReviewTimestamp(timestamp);
-  const title = formatTimestampForDisplay(parsed);
-  if (!parsed || !title) {
+  const parsed = critique.parseTimestamp(timestamp);
+  if (!parsed) {
     return undefined;
   }
 
   return {
     label: formatShortReviewPanelTimestamp(parsed),
-    title,
+    title: critique.encodeTimestamp(parsed, "iso"),
   };
 }
 
-function formatShortReviewPanelTimestamp(timestamp: ReviewTimestamp): string {
-  const localDate = new Date(Number(timestamp.unixSeconds) * 1000);
+function formatShortReviewPanelTimestamp(
+  timestamp: critique.ReviewTimestamp,
+): string {
+  const localDate = new Date(timestamp.unixSeconds * 1000);
   const now = new Date();
   const time = [
     localDate.getHours(),
@@ -1037,30 +959,6 @@ function formatShortReviewPanelTimestamp(timestamp: ReviewTimestamp): string {
   }-${String(localDate.getDate()).padStart(2, "0")} ${time}`;
 }
 
-function getReviewPanelAnnotationKind(raw: string): ReviewPanelItemKind {
-  if (raw.startsWith("{++")) {
-    return "addition";
-  }
-
-  if (raw.startsWith("{--")) {
-    return "deletion";
-  }
-
-  if (raw.startsWith("{~~")) {
-    return "substitution";
-  }
-
-  if (raw.startsWith("{==")) {
-    return "highlight";
-  }
-
-  if (raw.startsWith("{>>")) {
-    return "comment";
-  }
-
-  return "conversation";
-}
-
 function formatReviewPanelAnnotationLabel(kind: ReviewPanelItemKind): string {
   switch (kind) {
     case "addition":
@@ -1073,39 +971,11 @@ function formatReviewPanelAnnotationLabel(kind: ReviewPanelItemKind): string {
       return "Highlight";
     case "comment":
       return "Comment";
+    case "discussion":
+      return "Discussion";
     case "conversation":
       return "Conversation";
   }
-}
-
-function getReviewPanelAnnotationPayload(
-  raw: string,
-  kind: ReviewPanelItemKind,
-): string {
-  switch (kind) {
-    case "addition":
-    case "deletion":
-    case "highlight":
-      return getReviewAnnotationPayload(raw, 3, -3);
-    case "comment":
-      return getReviewAnnotationPayload(raw, 3, -3);
-    case "substitution": {
-      const contentStart = getReviewAnnotationPayloadStart(raw, 3);
-      const separator = raw.indexOf("~>", contentStart);
-      return separator >= 0
-        ? `${raw.slice(contentStart, separator)} -> ${
-          raw.slice(separator + 2, -3)
-        }`
-        : raw;
-    }
-    case "conversation":
-      return getConversationContent(raw);
-  }
-}
-
-function summarizeReviewPanelText(text: string): string {
-  const summary = text.replace(/\s+/g, " ").trim();
-  return summary.length <= 80 ? summary : `${summary.slice(0, 77)}...`;
 }
 
 function getReviewPanelHtml(
@@ -1645,7 +1515,7 @@ async function convertTimestampsInActiveEditor(): Promise<void> {
   const format = getTimestampFormat();
   const targetFormat = format === "none" ? "compact" : format;
   const text = editor.document.getText();
-  const updated = convertReviewTimestamps(text, targetFormat);
+  const updated = critique.convertTimestamps(text, targetFormat);
 
   if (updated === text) {
     void vscode.window.showInformationMessage(
@@ -1662,33 +1532,6 @@ async function convertTimestampsInActiveEditor(): Promise<void> {
       ),
       updated,
     );
-  });
-}
-
-function convertReviewTimestamps(
-  text: string,
-  format: TimestampFormat,
-): string {
-  return text.replace(REVIEW_TIMESTAMP_RE, (match: string, value: string) => {
-    const timestamp = parseReviewTimestamp(value);
-    if (!timestamp) {
-      return match;
-    }
-
-    if (format === "iso") {
-      const rendered = formatTimestampForDisplay(timestamp);
-      return rendered ? `%${rendered}` : match;
-    }
-
-    if (format === "hangul") {
-      return `%${
-        encodeHangulTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes)
-      }`;
-    }
-
-    return `%${
-      encodeCompactTimestamp(timestamp.unixSeconds, timestamp.offsetMinutes)
-    }`;
   });
 }
 
@@ -2757,33 +2600,22 @@ function provideTimestampHover(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): vscode.Hover | undefined {
-  const text = document.getText();
   const offset = document.offsetAt(position);
-
-  for (const match of text.matchAll(REVIEW_TIMESTAMP_RE)) {
-    const timestamp = match[1];
-    const markerStart = match.index ?? 0;
-    const timestampStart = markerStart + 1;
-    const timestampEnd = timestampStart + timestamp.length;
-    if (offset < timestampStart || offset > timestampEnd) {
-      continue;
-    }
-
-    const rendered = formatTimestampForDisplay(parseReviewTimestamp(timestamp));
-    if (!rendered) {
-      return undefined;
-    }
-
-    return new vscode.Hover(
-      new vscode.MarkdownString(rendered),
-      new vscode.Range(
-        document.positionAt(timestampStart),
-        document.positionAt(timestampEnd),
-      ),
-    );
+  const span = critique.timestampSpans(document.getText()).find((
+    candidate,
+  ) => candidate.start <= offset && offset <= candidate.end);
+  const parsed = span && critique.parseTimestamp(span.value);
+  if (!span || !parsed) {
+    return undefined;
   }
 
-  return undefined;
+  return new vscode.Hover(
+    new vscode.MarkdownString(critique.encodeTimestamp(parsed, "iso")),
+    new vscode.Range(
+      document.positionAt(span.start),
+      document.positionAt(span.end),
+    ),
+  );
 }
 
 async function provideReviewHover(
@@ -2798,36 +2630,32 @@ async function provideReferenceHover(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): Promise<vscode.Hover | undefined> {
-  const located = findReferenceTargetAt(document, position);
-  if (!located.target.lineRange) {
+  const target = findReferenceTargetAt(document, position);
+  if (!target?.lineRange) {
     return undefined;
   }
 
-  const targetFile = resolveReferenceTargetFile(document, located.target);
+  const targetFile = resolveReferenceTargetFile(document, target);
   const targetText = await readReferenceTargetText(targetFile);
   if (targetText === undefined) {
     return undefined;
   }
 
-  const excerpt = extractReferenceExcerpt(
-    targetText,
-    located.target,
-  );
+  const excerpt = extractReferenceExcerpt(targetText, target);
   const limitedExcerpt = limitReferenceHoverExcerpt(
     excerpt,
     getReferenceSnapshotLines(),
   );
-  const formatted = formatReferenceTarget(located.target);
   const markdown = new vscode.MarkdownString(
-    [`**${formatted.canonical}**`, "", formatHoverExcerpt(limitedExcerpt)]
+    [`**${target.canonical}**`, "", formatHoverExcerpt(limitedExcerpt)]
       .join("\n"),
   );
 
   return new vscode.Hover(
     markdown,
     new vscode.Range(
-      document.positionAt(located.start),
-      document.positionAt(located.end),
+      document.positionAt(target.start),
+      document.positionAt(target.end),
     ),
   );
 }
@@ -2836,13 +2664,13 @@ function provideReferenceDefinition(
   document: vscode.TextDocument,
   position: vscode.Position,
 ): vscode.Location | undefined {
-  const located = findReferenceTargetAt(document, position);
-  if (!located.target.lineRange) {
+  const target = findReferenceTargetAt(document, position);
+  if (!target?.lineRange) {
     return undefined;
   }
 
-  const targetFile = resolveReferenceTargetFile(document, located.target);
-  const line = Math.max(0, located.target.lineRange.start - 1);
+  const targetFile = resolveReferenceTargetFile(document, target);
+  const line = Math.max(0, target.lineRange.start - 1);
   const targetPosition = new vscode.Position(line, 0);
 
   return new vscode.Location(
@@ -2854,50 +2682,16 @@ function provideReferenceDefinition(
 function findReferenceTargetAt(
   document: vscode.TextDocument,
   position: vscode.Position,
-): {
-  end: number;
-  reference: ReviewReference;
-  start: number;
-  target: ReferenceTarget;
-} {
+): critique.ReferenceTarget | undefined {
   const offset = document.offsetAt(position);
-  for (const reference of collectReviewReferences(document.getText())) {
-    let searchStart = 0;
-    for (const target of reference.targets) {
-      const relativeStart = reference.raw.indexOf(target.raw, searchStart);
-      if (relativeStart < 0) {
-        continue;
-      }
-
-      const start = reference.start + relativeStart;
-      const end = start + target.raw.length;
-      if (start <= offset && offset <= end) {
-        return { end, reference, start, target };
-      }
-
-      searchStart = relativeStart + target.raw.length;
-    }
-  }
-
-  return {
-    end: 0,
-    reference: {
-      end: 0,
-      index: 0,
-      lineEnd: 0,
-      lineStart: 0,
-      raw: "",
-      start: 0,
-      targets: [],
-    },
-    start: 0,
-    target: { path: "", raw: "" },
-  };
+  return critique.referenceTargets(document.getText()).find((target) =>
+    target.start <= offset && offset <= target.end
+  );
 }
 
 function resolveReferenceTargetFile(
   document: vscode.TextDocument,
-  target: ReferenceTarget,
+  target: critique.ReferenceTarget,
 ): string {
   if (isAbsoluteReferencePath(target.path)) {
     return target.path;
@@ -2958,7 +2752,7 @@ function normalizeReferencePath(value: string): string {
 
 function extractReferenceExcerpt(
   text: string,
-  target: ReferenceTarget,
+  target: critique.ReferenceTarget,
 ): string {
   if (!target.lineRange) {
     return "";
@@ -3405,14 +3199,12 @@ function buildReviewMessage(
 
 function getTimestampSuffix(): string {
   const format = getTimestampFormat();
-  return format === "none" ? "" : `%${encodeTimestamp(new Date(), format)}`;
+  return format === "none" ? "" : `%${encodeDate(new Date(), format)}`;
 }
 
 function getExplicitTimestampSuffix(): string {
   const format = getTimestampFormat();
-  return `%${
-    encodeTimestamp(new Date(), format === "none" ? "compact" : format)
-  }`;
+  return `%${encodeDate(new Date(), format === "none" ? "compact" : format)}`;
 }
 
 function getTimestampFormat(): ExtensionTimestampFormat {
@@ -3469,15 +3261,14 @@ export const __test = {
   addTimestampToCurrentReviewElement,
   applyCriticMarkupAnnotation,
   approveAgentMessage,
-  assignPersistentReviewItemIds,
   cancelCriticMarkupAnnotation,
   collectConversations,
   collectReviewPanelItems,
-  configureDzReviewRuntime,
   convertTimestampsInActiveEditor,
   createCompactCriticMarkupReviewNote,
   createCompactReviewNote,
   createReviewConversation,
+  critique,
   cycleReviewMode,
   enterBatchMode,
   enterEditMode,

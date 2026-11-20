@@ -1,0 +1,15 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "list"
+  ],
+  "normalize": [
+    "wl-id",
+    "short-ts"
+  ],
+  "behavior": "parity",
+  "ignore_changes": [
+    ".worklog/*"
+  ]
+}

@@ -1,0 +1,792 @@
+[
+  {
+    "input": "",
+    "map": "k: ''\n",
+    "list": "k:\n  - ''\n  - z\n",
+    "key": "'': 1\n"
+  },
+  {
+    "input": " ",
+    "map": "k: ' '\n",
+    "list": "k:\n  - ' '\n  - z\n",
+    "key": "' ': 1\n"
+  },
+  {
+    "input": "a",
+    "map": "k: a\n",
+    "list": "k:\n  - a\n  - z\n",
+    "key": "a: 1\n"
+  },
+  {
+    "input": "A b",
+    "map": "k: A b\n",
+    "list": "k:\n  - A b\n  - z\n",
+    "key": "A b: 1\n"
+  },
+  {
+    "input": "hello world",
+    "map": "k: hello world\n",
+    "list": "k:\n  - hello world\n  - z\n",
+    "key": "hello world: 1\n"
+  },
+  {
+    "input": "x: y",
+    "map": "k: 'x: y'\n",
+    "list": "k:\n  - 'x: y'\n  - z\n",
+    "key": "'x: y': 1\n"
+  },
+  {
+    "input": "x:y",
+    "map": "k: 'x:y'\n",
+    "list": "k:\n  - 'x:y'\n  - z\n",
+    "key": "'x:y': 1\n"
+  },
+  {
+    "input": "x #y",
+    "map": "k: 'x #y'\n",
+    "list": "k:\n  - 'x #y'\n  - z\n",
+    "key": "'x #y': 1\n"
+  },
+  {
+    "input": "#x",
+    "map": "k: '#x'\n",
+    "list": "k:\n  - '#x'\n  - z\n",
+    "key": "'#x': 1\n"
+  },
+  {
+    "input": "- x",
+    "map": "k: '- x'\n",
+    "list": "k:\n  - '- x'\n  - z\n",
+    "key": "'- x': 1\n"
+  },
+  {
+    "input": "-",
+    "map": "k: '-'\n",
+    "list": "k:\n  - '-'\n  - z\n",
+    "key": "'-': 1\n"
+  },
+  {
+    "input": "-1",
+    "map": "k: '-1'\n",
+    "list": "k:\n  - '-1'\n  - z\n",
+    "key": "'-1': 1\n"
+  },
+  {
+    "input": "1",
+    "map": "k: '1'\n",
+    "list": "k:\n  - '1'\n  - z\n",
+    "key": "'1': 1\n"
+  },
+  {
+    "input": "1.5",
+    "map": "k: '1.5'\n",
+    "list": "k:\n  - '1.5'\n  - z\n",
+    "key": "'1.5': 1\n"
+  },
+  {
+    "input": "1e3",
+    "map": "k: '1e3'\n",
+    "list": "k:\n  - '1e3'\n  - z\n",
+    "key": "'1e3': 1\n"
+  },
+  {
+    "input": "0x1F",
+    "map": "k: '0x1F'\n",
+    "list": "k:\n  - '0x1F'\n  - z\n",
+    "key": "'0x1F': 1\n"
+  },
+  {
+    "input": "0o7",
+    "map": "k: 0o7\n",
+    "list": "k:\n  - 0o7\n  - z\n",
+    "key": "0o7: 1\n"
+  },
+  {
+    "input": "0b1",
+    "map": "k: '0b1'\n",
+    "list": "k:\n  - '0b1'\n  - z\n",
+    "key": "'0b1': 1\n"
+  },
+  {
+    "input": "007",
+    "map": "k: '007'\n",
+    "list": "k:\n  - '007'\n  - z\n",
+    "key": "'007': 1\n"
+  },
+  {
+    "input": "1_000",
+    "map": "k: '1_000'\n",
+    "list": "k:\n  - '1_000'\n  - z\n",
+    "key": "'1_000': 1\n"
+  },
+  {
+    "input": "+1",
+    "map": "k: '+1'\n",
+    "list": "k:\n  - '+1'\n  - z\n",
+    "key": "'+1': 1\n"
+  },
+  {
+    "input": ".5",
+    "map": "k: '.5'\n",
+    "list": "k:\n  - '.5'\n  - z\n",
+    "key": "'.5': 1\n"
+  },
+  {
+    "input": ".inf",
+    "map": "k: '.inf'\n",
+    "list": "k:\n  - '.inf'\n  - z\n",
+    "key": "'.inf': 1\n"
+  },
+  {
+    "input": "-.inf",
+    "map": "k: '-.inf'\n",
+    "list": "k:\n  - '-.inf'\n  - z\n",
+    "key": "'-.inf': 1\n"
+  },
+  {
+    "input": ".NaN",
+    "map": "k: '.NaN'\n",
+    "list": "k:\n  - '.NaN'\n  - z\n",
+    "key": "'.NaN': 1\n"
+  },
+  {
+    "input": "null",
+    "map": "k: 'null'\n",
+    "list": "k:\n  - 'null'\n  - z\n",
+    "key": "'null': 1\n"
+  },
+  {
+    "input": "Null",
+    "map": "k: 'Null'\n",
+    "list": "k:\n  - 'Null'\n  - z\n",
+    "key": "'Null': 1\n"
+  },
+  {
+    "input": "~",
+    "map": "k: '~'\n",
+    "list": "k:\n  - '~'\n  - z\n",
+    "key": "'~': 1\n"
+  },
+  {
+    "input": "true",
+    "map": "k: 'true'\n",
+    "list": "k:\n  - 'true'\n  - z\n",
+    "key": "'true': 1\n"
+  },
+  {
+    "input": "True",
+    "map": "k: 'True'\n",
+    "list": "k:\n  - 'True'\n  - z\n",
+    "key": "'True': 1\n"
+  },
+  {
+    "input": "TRUE",
+    "map": "k: 'TRUE'\n",
+    "list": "k:\n  - 'TRUE'\n  - z\n",
+    "key": "'TRUE': 1\n"
+  },
+  {
+    "input": "false",
+    "map": "k: 'false'\n",
+    "list": "k:\n  - 'false'\n  - z\n",
+    "key": "'false': 1\n"
+  },
+  {
+    "input": "yes",
+    "map": "k: 'yes'\n",
+    "list": "k:\n  - 'yes'\n  - z\n",
+    "key": "'yes': 1\n"
+  },
+  {
+    "input": "No",
+    "map": "k: 'No'\n",
+    "list": "k:\n  - 'No'\n  - z\n",
+    "key": "'No': 1\n"
+  },
+  {
+    "input": "on",
+    "map": "k: 'on'\n",
+    "list": "k:\n  - 'on'\n  - z\n",
+    "key": "'on': 1\n"
+  },
+  {
+    "input": "OFF",
+    "map": "k: 'OFF'\n",
+    "list": "k:\n  - 'OFF'\n  - z\n",
+    "key": "'OFF': 1\n"
+  },
+  {
+    "input": "y",
+    "map": "k: 'y'\n",
+    "list": "k:\n  - 'y'\n  - z\n",
+    "key": "'y': 1\n"
+  },
+  {
+    "input": "N",
+    "map": "k: 'N'\n",
+    "list": "k:\n  - 'N'\n  - z\n",
+    "key": "'N': 1\n"
+  },
+  {
+    "input": "<<",
+    "map": "k: '<<'\n",
+    "list": "k:\n  - '<<'\n  - z\n",
+    "key": "'<<': 1\n"
+  },
+  {
+    "input": "2020-01-01",
+    "map": "k: '2020-01-01'\n",
+    "list": "k:\n  - '2020-01-01'\n  - z\n",
+    "key": "'2020-01-01': 1\n"
+  },
+  {
+    "input": "2020-01-21T09:00:00+01:00",
+    "map": "k: '2020-01-21T09:00:00+01:00'\n",
+    "list": "k:\n  - '2020-01-21T09:00:00+01:00'\n  - z\n",
+    "key": "'2020-01-21T09:00:00+01:00': 1\n"
+  },
+  {
+    "input": "2020-1-2 3:04:05",
+    "map": "k: '2020-1-2 3:04:05'\n",
+    "list": "k:\n  - '2020-1-2 3:04:05'\n  - z\n",
+    "key": "'2020-1-2 3:04:05': 1\n"
+  },
+  {
+    "input": "2020-01-01 10:00",
+    "map": "k: '2020-01-01 10:00'\n",
+    "list": "k:\n  - '2020-01-01 10:00'\n  - z\n",
+    "key": "'2020-01-01 10:00': 1\n"
+  },
+  {
+    "input": "12:30",
+    "map": "k: '12:30'\n",
+    "list": "k:\n  - '12:30'\n  - z\n",
+    "key": "'12:30': 1\n"
+  },
+  {
+    "input": "1:20:30",
+    "map": "k: '1:20:30'\n",
+    "list": "k:\n  - '1:20:30'\n  - z\n",
+    "key": "'1:20:30': 1\n"
+  },
+  {
+    "input": "it's",
+    "map": "k: it's\n",
+    "list": "k:\n  - it's\n  - z\n",
+    "key": "it's: 1\n"
+  },
+  {
+    "input": "say \"hi\"",
+    "map": "k: say \"hi\"\n",
+    "list": "k:\n  - say \"hi\"\n  - z\n",
+    "key": "say \"hi\": 1\n"
+  },
+  {
+    "input": "back\\slash",
+    "map": "k: back\\slash\n",
+    "list": "k:\n  - back\\slash\n  - z\n",
+    "key": "back\\slash: 1\n"
+  },
+  {
+    "input": "tab\there",
+    "map": "k: \"tab\\there\"\n",
+    "list": "k:\n  - \"tab\\there\"\n  - z\n",
+    "key": "\"tab\\there\": 1\n"
+  },
+  {
+    "input": "line1\nline2",
+    "map": "k: |-\n  line1\n  line2\n",
+    "list": "k:\n  - |-\n    line1\n    line2\n  - z\n",
+    "key": "\"line1\\nline2\": 1\n"
+  },
+  {
+    "input": "line1\nline2\n",
+    "map": "k: |\n  line1\n  line2\n",
+    "list": "k:\n  - |\n    line1\n    line2\n  - z\n",
+    "key": "\"line1\\nline2\\n\": 1\n"
+  },
+  {
+    "input": "line1\n\nline2",
+    "map": "k: |-\n  line1\n\n  line2\n",
+    "list": "k:\n  - |-\n    line1\n\n    line2\n  - z\n",
+    "key": "\"line1\\n\\nline2\": 1\n"
+  },
+  {
+    "input": "\nlead",
+    "map": "k: |-\n\n  lead\n",
+    "list": "k:\n  - |-\n\n    lead\n  - z\n",
+    "key": "\"\\nlead\": 1\n"
+  },
+  {
+    "input": " lead space",
+    "map": "k: ' lead space'\n",
+    "list": "k:\n  - ' lead space'\n  - z\n",
+    "key": "' lead space': 1\n"
+  },
+  {
+    "input": "trail space ",
+    "map": "k: 'trail space '\n",
+    "list": "k:\n  - 'trail space '\n  - z\n",
+    "key": "'trail space ': 1\n"
+  },
+  {
+    "input": "multi\n  indented",
+    "map": "k: |-\n  multi\n    indented\n",
+    "list": "k:\n  - |-\n    multi\n      indented\n  - z\n",
+    "key": "\"multi\\n  indented\": 1\n"
+  },
+  {
+    "input": "  indented\nsecond",
+    "map": "k: |2-\n    indented\n  second\n",
+    "list": "k:\n  - |2-\n      indented\n    second\n  - z\n",
+    "key": "\"  indented\\nsecond\": 1\n"
+  },
+  {
+    "input": "a\r\nb",
+    "map": "k: \"a\\r\\nb\"\n",
+    "list": "k:\n  - \"a\\r\\nb\"\n  - z\n",
+    "key": "\"a\\r\\nb\": 1\n"
+  },
+  {
+    "input": "café ☕",
+    "map": "k: café ☕\n",
+    "list": "k:\n  - café ☕\n  - z\n",
+    "key": "café ☕: 1\n"
+  },
+  {
+    "input": "naïve",
+    "map": "k: naïve\n",
+    "list": "k:\n  - naïve\n  - z\n",
+    "key": "naïve: 1\n"
+  },
+  {
+    "input": "日本語",
+    "map": "k: 日本語\n",
+    "list": "k:\n  - 日本語\n  - z\n",
+    "key": "日本語: 1\n"
+  },
+  {
+    "input": "emoji 🚀",
+    "map": "k: \"emoji \\U0001F680\"\n",
+    "list": "k:\n  - \"emoji \\U0001F680\"\n  - z\n",
+    "key": "\"emoji \\U0001F680\": 1\n"
+  },
+  {
+    "input": "🚀",
+    "map": "k: \"\\U0001F680\"\n",
+    "list": "k:\n  - \"\\U0001F680\"\n  - z\n",
+    "key": "\"\\U0001F680\": 1\n"
+  },
+  {
+    "input": "nbsp here",
+    "map": "k: \"nbsp\\_here\"\n",
+    "list": "k:\n  - \"nbsp\\_here\"\n  - z\n",
+    "key": "\"nbsp\\_here\": 1\n"
+  },
+  {
+    "input": " ",
+    "map": "k: \"\\_\"\n",
+    "list": "k:\n  - \"\\_\"\n  - z\n",
+    "key": "\"\\_\": 1\n"
+  },
+  {
+    "input": "zero​width",
+    "map": "k: zero​width\n",
+    "list": "k:\n  - zero​width\n  - z\n",
+    "key": "zero​width: 1\n"
+  },
+  {
+    "input": "",
+    "map": "k: \"\\N\"\n",
+    "list": "k:\n  - \"\\N\"\n  - z\n",
+    "key": "\"\\N\": 1\n"
+  },
+  {
+    "input": " ",
+    "map": "k: \"\\L\"\n",
+    "list": "k:\n  - \"\\L\"\n  - z\n",
+    "key": "\"\\L\": 1\n"
+  },
+  {
+    "input": "bell\u0007",
+    "map": "k: \"bell\\a\"\n",
+    "list": "k:\n  - \"bell\\a\"\n  - z\n",
+    "key": "\"bell\\a\": 1\n"
+  },
+  {
+    "input": "del",
+    "map": "k: \"del\\x7F\"\n",
+    "list": "k:\n  - \"del\\x7F\"\n  - z\n",
+    "key": "\"del\\x7F\": 1\n"
+  },
+  {
+    "input": "\u0000",
+    "map": "k: \"\\0\"\n",
+    "list": "k:\n  - \"\\0\"\n  - z\n",
+    "key": "\"\\0\": 1\n"
+  },
+  {
+    "input": "[a]",
+    "map": "k: '[a]'\n",
+    "list": "k:\n  - '[a]'\n  - z\n",
+    "key": "'[a]': 1\n"
+  },
+  {
+    "input": "{a}",
+    "map": "k: '{a}'\n",
+    "list": "k:\n  - '{a}'\n  - z\n",
+    "key": "'{a}': 1\n"
+  },
+  {
+    "input": "a,b",
+    "map": "k: 'a,b'\n",
+    "list": "k:\n  - 'a,b'\n  - z\n",
+    "key": "'a,b': 1\n"
+  },
+  {
+    "input": "a[b]",
+    "map": "k: 'a[b]'\n",
+    "list": "k:\n  - 'a[b]'\n  - z\n",
+    "key": "'a[b]': 1\n"
+  },
+  {
+    "input": "a, b",
+    "map": "k: 'a, b'\n",
+    "list": "k:\n  - 'a, b'\n  - z\n",
+    "key": "'a, b': 1\n"
+  },
+  {
+    "input": "@at",
+    "map": "k: '@at'\n",
+    "list": "k:\n  - '@at'\n  - z\n",
+    "key": "'@at': 1\n"
+  },
+  {
+    "input": "`tick",
+    "map": "k: '`tick'\n",
+    "list": "k:\n  - '`tick'\n  - z\n",
+    "key": "'`tick': 1\n"
+  },
+  {
+    "input": "!bang",
+    "map": "k: '!bang'\n",
+    "list": "k:\n  - '!bang'\n  - z\n",
+    "key": "'!bang': 1\n"
+  },
+  {
+    "input": "&amp",
+    "map": "k: '&amp'\n",
+    "list": "k:\n  - '&amp'\n  - z\n",
+    "key": "'&amp': 1\n"
+  },
+  {
+    "input": "*star",
+    "map": "k: '*star'\n",
+    "list": "k:\n  - '*star'\n  - z\n",
+    "key": "'*star': 1\n"
+  },
+  {
+    "input": "?q",
+    "map": "k: '?q'\n",
+    "list": "k:\n  - '?q'\n  - z\n",
+    "key": "'?q': 1\n"
+  },
+  {
+    "input": "|pipe",
+    "map": "k: '|pipe'\n",
+    "list": "k:\n  - '|pipe'\n  - z\n",
+    "key": "'|pipe': 1\n"
+  },
+  {
+    "input": ">gt",
+    "map": "k: '>gt'\n",
+    "list": "k:\n  - '>gt'\n  - z\n",
+    "key": "'>gt': 1\n"
+  },
+  {
+    "input": "%pct",
+    "map": "k: '%pct'\n",
+    "list": "k:\n  - '%pct'\n  - z\n",
+    "key": "'%pct': 1\n"
+  },
+  {
+    "input": "'q'",
+    "map": "k: '''q'''\n",
+    "list": "k:\n  - '''q'''\n  - z\n",
+    "key": "'''q''': 1\n"
+  },
+  {
+    "input": "\"dq\"",
+    "map": "k: '\"dq\"'\n",
+    "list": "k:\n  - '\"dq\"'\n  - z\n",
+    "key": "'\"dq\"': 1\n"
+  },
+  {
+    "input": "a: b: c",
+    "map": "k: 'a: b: c'\n",
+    "list": "k:\n  - 'a: b: c'\n  - z\n",
+    "key": "'a: b: c': 1\n"
+  },
+  {
+    "input": "key: value\nother: x",
+    "map": "k: |-\n  key: value\n  other: x\n",
+    "list": "k:\n  - |-\n    key: value\n    other: x\n  - z\n",
+    "key": "\"key: value\\nother: x\": 1\n"
+  },
+  {
+    "input": "***",
+    "map": "k: '***'\n",
+    "list": "k:\n  - '***'\n  - z\n",
+    "key": "'***': 1\n"
+  },
+  {
+    "input": "---",
+    "map": "k: '---'\n",
+    "list": "k:\n  - '---'\n  - z\n",
+    "key": "'---': 1\n"
+  },
+  {
+    "input": "...",
+    "map": "k: ...\n",
+    "list": "k:\n  - ...\n  - z\n",
+    "key": "...: 1\n"
+  },
+  {
+    "input": "= x",
+    "map": "k: = x\n",
+    "list": "k:\n  - = x\n  - z\n",
+    "key": "= x: 1\n"
+  },
+  {
+    "input": "~x",
+    "map": "k: ~x\n",
+    "list": "k:\n  - ~x\n  - z\n",
+    "key": "~x: 1\n"
+  },
+  {
+    "input": "x~",
+    "map": "k: x~\n",
+    "list": "k:\n  - x~\n  - z\n",
+    "key": "x~: 1\n"
+  },
+  {
+    "input": "NULL",
+    "map": "k: 'NULL'\n",
+    "list": "k:\n  - 'NULL'\n  - z\n",
+    "key": "'NULL': 1\n"
+  },
+  {
+    "input": "nUll",
+    "map": "k: nUll\n",
+    "list": "k:\n  - nUll\n  - z\n",
+    "key": "nUll: 1\n"
+  },
+  {
+    "input": "Yes",
+    "map": "k: 'Yes'\n",
+    "list": "k:\n  - 'Yes'\n  - z\n",
+    "key": "'Yes': 1\n"
+  },
+  {
+    "input": "yes ",
+    "map": "k: 'yes '\n",
+    "list": "k:\n  - 'yes '\n  - z\n",
+    "key": "'yes ': 1\n"
+  },
+  {
+    "input": "0",
+    "map": "k: '0'\n",
+    "list": "k:\n  - '0'\n  - z\n",
+    "key": "'0': 1\n"
+  },
+  {
+    "input": "-0",
+    "map": "k: '-0'\n",
+    "list": "k:\n  - '-0'\n  - z\n",
+    "key": "'-0': 1\n"
+  },
+  {
+    "input": "0.0",
+    "map": "k: '0.0'\n",
+    "list": "k:\n  - '0.0'\n  - z\n",
+    "key": "'0.0': 1\n"
+  },
+  {
+    "input": "1.",
+    "map": "k: '1.'\n",
+    "list": "k:\n  - '1.'\n  - z\n",
+    "key": "'1.': 1\n"
+  },
+  {
+    "input": "1.e5",
+    "map": "k: '1.e5'\n",
+    "list": "k:\n  - '1.e5'\n  - z\n",
+    "key": "'1.e5': 1\n"
+  },
+  {
+    "input": "1,5",
+    "map": "k: '1,5'\n",
+    "list": "k:\n  - '1,5'\n  - z\n",
+    "key": "'1,5': 1\n"
+  },
+  {
+    "input": "0123",
+    "map": "k: '0123'\n",
+    "list": "k:\n  - '0123'\n  - z\n",
+    "key": "'0123': 1\n"
+  },
+  {
+    "input": "0.1e-5",
+    "map": "k: '0.1e-5'\n",
+    "list": "k:\n  - '0.1e-5'\n  - z\n",
+    "key": "'0.1e-5': 1\n"
+  },
+  {
+    "input": "1e",
+    "map": "k: 1e\n",
+    "list": "k:\n  - 1e\n  - z\n",
+    "key": "1e: 1\n"
+  },
+  {
+    "input": "e1",
+    "map": "k: e1\n",
+    "list": "k:\n  - e1\n  - z\n",
+    "key": "e1: 1\n"
+  },
+  {
+    "input": "99999999999999999999",
+    "map": "k: '99999999999999999999'\n",
+    "list": "k:\n  - '99999999999999999999'\n  - z\n",
+    "key": "'99999999999999999999': 1\n"
+  },
+  {
+    "input": "1_0",
+    "map": "k: '1_0'\n",
+    "list": "k:\n  - '1_0'\n  - z\n",
+    "key": "'1_0': 1\n"
+  },
+  {
+    "input": "_1",
+    "map": "k: _1\n",
+    "list": "k:\n  - _1\n  - z\n",
+    "key": "_1: 1\n"
+  },
+  {
+    "input": "1__0",
+    "map": "k: '1__0'\n",
+    "list": "k:\n  - '1__0'\n  - z\n",
+    "key": "'1__0': 1\n"
+  },
+  {
+    "input": "100%",
+    "map": "k: 100%\n",
+    "list": "k:\n  - 100%\n  - z\n",
+    "key": "100%: 1\n"
+  },
+  {
+    "input": "$1",
+    "map": "k: $1\n",
+    "list": "k:\n  - $1\n  - z\n",
+    "key": "$1: 1\n"
+  },
+  {
+    "input": "a/b",
+    "map": "k: a/b\n",
+    "list": "k:\n  - a/b\n  - z\n",
+    "key": "a/b: 1\n"
+  },
+  {
+    "input": "a/b/c",
+    "map": "k: a/b/c\n",
+    "list": "k:\n  - a/b/c\n  - z\n",
+    "key": "a/b/c: 1\n"
+  },
+  {
+    "input": "v1.2.3",
+    "map": "k: v1.2.3\n",
+    "list": "k:\n  - v1.2.3\n  - z\n",
+    "key": "v1.2.3: 1\n"
+  },
+  {
+    "input": "http://x.y/z?a=b#c",
+    "map": "k: 'http://x.y/z?a=b#c'\n",
+    "list": "k:\n  - 'http://x.y/z?a=b#c'\n  - z\n",
+    "key": "'http://x.y/z?a=b#c': 1\n"
+  },
+  {
+    "input": "C:\\path",
+    "map": "k: 'C:\\path'\n",
+    "list": "k:\n  - 'C:\\path'\n  - z\n",
+    "key": "'C:\\path': 1\n"
+  },
+  {
+    "input": "a=b",
+    "map": "k: a=b\n",
+    "list": "k:\n  - a=b\n  - z\n",
+    "key": "a=b: 1\n"
+  },
+  {
+    "input": "a;b",
+    "map": "k: a;b\n",
+    "list": "k:\n  - a;b\n  - z\n",
+    "key": "a;b: 1\n"
+  },
+  {
+    "input": "a|b",
+    "map": "k: a|b\n",
+    "list": "k:\n  - a|b\n  - z\n",
+    "key": "a|b: 1\n"
+  },
+  {
+    "input": "a>b",
+    "map": "k: a>b\n",
+    "list": "k:\n  - a>b\n  - z\n",
+    "key": "a>b: 1\n"
+  },
+  {
+    "input": "a<b",
+    "map": "k: a<b\n",
+    "list": "k:\n  - a<b\n  - z\n",
+    "key": "a<b: 1\n"
+  },
+  {
+    "input": "<tag>",
+    "map": "k: <tag>\n",
+    "list": "k:\n  - <tag>\n  - z\n",
+    "key": "<tag>: 1\n"
+  },
+  {
+    "input": "a b",
+    "map": "k: \"a\\Pb\"\n",
+    "list": "k:\n  - \"a\\Pb\"\n  - z\n",
+    "key": "\"a\\Pb\": 1\n"
+  },
+  {
+    "input": "x﻿y",
+    "map": "k: \"x\\uFEFFy\"\n",
+    "list": "k:\n  - \"x\\uFEFFy\"\n  - z\n",
+    "key": "\"x\\uFEFFy\": 1\n"
+  },
+  {
+    "input": "﻿text",
+    "map": "k: \"\\uFEFFtext\"\n",
+    "list": "k:\n  - \"\\uFEFFtext\"\n  - z\n",
+    "key": "\"\\uFEFFtext\": 1\n"
+  },
+  {
+    "input": "long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ",
+    "map": "k: 'long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long '\n",
+    "list": "k:\n  - 'long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long '\n  - z\n",
+    "key": "'long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long long ': 1\n"
+  },
+  {
+    "input": "multi\nline multi\nline multi\nline multi\nline multi\nline multi\nline multi\nline multi\nline multi\nline multi\nline ",
+    "map": "k: |-\n  multi\n  line multi\n  line multi\n  line multi\n  line multi\n  line multi\n  line multi\n  line multi\n  line multi\n  line multi\n  line \n",
+    "list": "k:\n  - |-\n    multi\n    line multi\n    line multi\n    line multi\n    line multi\n    line multi\n    line multi\n    line multi\n    line multi\n    line multi\n    line \n  - z\n",
+    "key": "\"multi\\nline multi\\nline multi\\nline multi\\nline multi\\nline multi\\nline multi\\nline multi\\nline multi\\nline multi\\nline \": 1\n"
+  },
+  {
+    "input": "__fm__",
+    "map": "id: abc\nuid: u\nname: 'N: x'\ndesc:\n  - a\n  - |-\n    b\n    c\nstatus: done\ncreated_at: '2020-01-01T00:00:00+01:00'\nready_at: null\nflag: true\ncount: 3\nratio: 1.5\nmetadata:\n  a: b\n  c d: 'e: f'\ntags:\n  - x\n  - y/z\nlinks:\n  - type: related\n    task: t1\nempty: []\nemptyMap: {}\n"
+  }
+]

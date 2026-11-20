@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "ignore_changes": [
+    ".git/*",
+    ".worklog/*",
+    "services/*"
+  ],
+  "behavior": "new-spec",
+  "args": [
+    "list",
+    "team",
+    "--all"
+  ],
+  "spec_row": "worklog.md D13",
+  "note": "The scope entry of api carries the tag team in the root scope.json, and a root task carries #team: list team shows the task and the tasks of the scope."
+}

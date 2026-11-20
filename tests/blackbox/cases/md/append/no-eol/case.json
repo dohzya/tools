@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "no-eol.md",
+    "2903ba27",
+    "appended to tail"
+  ],
+  "files": [
+    "no-eol.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "12",
+  "note": "Deno kept the missing final newline; appended content at EOF now always ends with a line ending"
+}

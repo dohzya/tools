@@ -1,0 +1,5 @@
+# Unicode NFD
+
+NFD {?? @me café ??}
+
+NFC {?? @me café ??}

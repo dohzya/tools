@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "atx-3sp.md",
+    "--json"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "4"
+}

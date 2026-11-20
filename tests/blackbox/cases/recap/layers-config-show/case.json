@@ -1,0 +1,10 @@
+{
+  "tool": "recap",
+  "fixture": "recap-layers",
+  "cwd": "proj",
+  "args": [
+    "config",
+    "show"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "filesAnnotated": 1,
+  "filesModified": 1,
+  "conversationsAnswered": 1,
+  "cleanableConversations": [
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Fixed.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "<TS>"
+      },
+      "context": "@agent%<TS> Fixed. @me%<TS> ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "a5ef8e06fc8d56b4"
+    }
+  ],
+  "remainingOpenItems": [
+    {
+      "id": "rvw_5SUMpHBf6V2",
+      "file": "doc.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Please say whether sources are stored too.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Added.",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Please say whether sources are stored too. @agent%<TS> Added.",
+      "suggestedAction": "answer",
+      "rawHash": "666e79a65a7d2599"
+    },
+    {
+      "id": "rvw_5SUNlLgZKHd",
+      "file": "doc.md",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Q.",
+        "timestamp": "<TS>"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Answer.",
+        "timestamp": "<TS>"
+      },
+      "context": "@me%<TS> Q. @agent%<TS> Answer.",
+      "suggestedAction": "answer",
+      "rawHash": "edb03af1fee8307f"
+    }
+  ],
+  "guardrailFailures": [
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "line": 12,
+      "message": "validated conversation remains cleanable"
+    }
+  ]
+}

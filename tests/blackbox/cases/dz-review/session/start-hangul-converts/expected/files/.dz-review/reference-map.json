@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_JndmU058FD": {
+      "file": "hangul.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:52;p=h1[1]/p[1];fh=xxh64:DdCXiMKA;hh=smh64:7b67c8e3d7caff8c;ctx=pre:s2XnHTUH,suf:rzWtdMwJ;doc=smh64:7b67c8e3d7caff8c}"
+    },
+    "rvw_AWP1UZ0pGAg": {
+      "file": "hangul.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:52;p=h1[1]/p[1];fh=xxh64:DdCXiMKA;hh=smh64:7b67c8e3d7caff8c;ctx=pre:s2XnHTUH,suf:rzWtdMwJ;doc=smh64:7b67c8e3d7caff8c}"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "claude",
+    "9n3ksy"
+  ],
+  "env": {
+    "PATH": "/usr/bin:/bin"
+  },
+  "behavior": "parity",
+  "check_stderr": false
+}

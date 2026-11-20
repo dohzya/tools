@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "filesAnnotated": 1,
+  "filesModified": 0,
+  "conversationsAnswered": 0,
+  "cleanableConversations": [
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "lineStart": 12,
+      "lineEnd": 12,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Fixed.",
+        "timestamp": "2026-06-16T17:35:35+02:00"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok",
+        "timestamp": "2026-06-16T17:37:35+02:00"
+      },
+      "context": "@agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "a5ef8e06fc8d56b4"
+    }
+  ],
+  "remainingOpenItems": [
+    {
+      "id": "rvw_5SUNlLgZKHd",
+      "file": "doc.md",
+      "lineStart": 14,
+      "lineEnd": 14,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Q.",
+        "timestamp": "2026-06-16T17:35:35+02:00"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Answer.",
+        "timestamp": "2026-06-16T17:38:35+02:00"
+      },
+      "context": "@me%2026-06-16T17:35:35+02:00 Q. @agent%2026-06-16T17:38:35+02:00 Answer.",
+      "suggestedAction": "answer",
+      "rawHash": "edb03af1fee8307f"
+    }
+  ],
+  "guardrailFailures": [
+    {
+      "id": "rvw_5SUNRzWGaM6",
+      "file": "doc.md",
+      "line": 12,
+      "message": "validated conversation remains cleanable"
+    }
+  ]
+}

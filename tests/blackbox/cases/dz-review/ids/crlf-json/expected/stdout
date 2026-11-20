@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_59EQcZmDf5r",
+      "file": "crlf.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "crlf body"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "crlf body"
+      },
+      "context": "@me crlf body",
+      "suggestedAction": "reply",
+      "rawHash": "b78f15ba525acab6"
+    },
+    {
+      "id": "rvw_4dMZqLGjwID",
+      "file": "crlf.md",
+      "lineStart": 5,
+      "lineEnd": 8,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "crlf comment"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok"
+      },
+      "context": "@agent crlf comment @me ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "7ff7c06364ed6c51"
+    }
+  ]
+}

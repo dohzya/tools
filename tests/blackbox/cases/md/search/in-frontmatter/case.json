@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "search",
+    "doc.md",
+    "alpha"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "meta",
+    "9n3ksy",
+    "owner"
+  ],
+  "behavior": "parity"
+}

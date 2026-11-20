@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "no-trailing-newline.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

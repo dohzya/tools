@@ -1,0 +1,12 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "concat",
+    "small.md",
+    "other.md",
+    "-s",
+    "2"
+  ],
+  "behavior": "parity"
+}

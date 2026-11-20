@@ -1,0 +1,19 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "set",
+    "cq3984",
+    "2j7wFc",
+    "status=bogus"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "new-spec",
+  "note": "An unknown todo status is an error and changes nothing (the Deno version printed todo updated).",
+  "spec_row": "worklog.md D12"
+}

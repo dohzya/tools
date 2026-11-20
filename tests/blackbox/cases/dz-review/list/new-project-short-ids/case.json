@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": [
+    "list",
+    "doc.md"
+  ],
+  "ignore_changes": [
+    ".dz-review/*"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec: display ids are shortened over every id of the project, the reference map (all files) plus the ids the command shows, as the VS Code panel does, so the CLI and the panel show the same short id. The Deno tool shortened over the items of each command only. The map holds an id of another file sharing 8 characters with the first item."
+}

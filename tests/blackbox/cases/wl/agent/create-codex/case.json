@@ -1,0 +1,26 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "--codex",
+    "Launched task",
+    "-t",
+    "2030-01-02T03:04"
+  ],
+  "env": {
+    "PATH": "./bin:/usr/bin:/bin"
+  },
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

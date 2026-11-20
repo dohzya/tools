@@ -1,0 +1,22 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "trace",
+    "-k",
+    "info",
+    "via env id"
+  ],
+  "env": {
+    "WORKLOG_TASK_ID": "cq3984"
+  },
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

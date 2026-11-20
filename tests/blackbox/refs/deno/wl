@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Reference adapter: runs the current Deno implementation of `wl`.
+# The installed `wl` comes from JSR, not from this checkout, so we call the source.
+HERE="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+ROOT="$(cd "$HERE/../../../.." && pwd)"
+# The runner overrides HOME; Deno's cache must stay reachable.
+: "${DENO_DIR:=${BB_REAL_HOME:-$HOME}/.cache/deno}"
+export DENO_DIR
+DENO="${BB_DENO:-$(command -v deno)}"
+exec "$DENO" run -A "$ROOT/packages/tools/worklog/cli.ts" "$@"

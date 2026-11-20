@@ -1,20 +1,17 @@
-/**
- * Re-export rather than a copy: this file used to duplicate the whole
- * timestamp codec, and the duplicate silently kept the base-2048 Hangul layout
- * when the CLI moved to 8192 — a hover would have rendered a year-2876 date.
- * The extension already imports other modules from ../../../tools, so there is
- * no packaging reason to fork this one.
- */
+import { encodeTimestamp, type TimestampFormat } from "./critique";
 
-export {
-  decodeCompactTimestamp,
-  decodeHangulTimestamp,
-  encodeCompactTimestamp,
-  encodeHangulTimestamp,
-  encodeTimestamp,
-  formatTimestampForDisplay,
-  getLocalOffsetMinutes,
-  parseReviewTimestamp,
-  type ReviewTimestamp,
-  type TimestampFormat,
-} from "../../../tools/dz-review/timestamp";
+/**
+ * Offset of the host time zone at `date`, in minutes east of UTC. It stays in
+ * JS: the core has no clock nor time zone database.
+ */
+export function getLocalOffsetMinutes(date: Date = new Date()): number {
+  return -date.getTimezoneOffset();
+}
+
+/** `date` in the host's local offset, rendered in `format`. */
+export function encodeDate(date: Date, format: TimestampFormat): string {
+  return encodeTimestamp({
+    unixSeconds: Math.floor(date.getTime() / 1000),
+    offsetMinutes: getLocalOffsetMinutes(date),
+  }, format);
+}

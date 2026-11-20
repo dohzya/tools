@@ -1,0 +1,12 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "show",
+    "snap-fresh.md",
+    "snap-stale.md",
+    "snap-nested-ok.md"
+  ],
+  "behavior": "parity"
+}

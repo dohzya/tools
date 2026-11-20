@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_d3Cdq0qx9z": {
+      "file": "emoji-annotation.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:31;p=h1[1]/p[1];fh=xxh64:LFKTqQGo;hh=smh64:d7ead12cf726bcd5;ctx=pre:K4XffYCB,suf:rzWtdMwJ;doc=smh64:d7ead12cf726bcd5}"
+    }
+  }
+}

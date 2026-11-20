@@ -1,0 +1,14 @@
+ok.md:3 -> source.md:3 r311
+{&&r311
+Intro line.
+r311&&}
+
+ok.md:21 -> source.md:3 rlc1
+{&&rlc1
+Intro line.
+rlc1&&}
+
+ok.md:23 -> source.md:3 rnd1
+{&&rnd1
+Intro line.
+rnd1&&}

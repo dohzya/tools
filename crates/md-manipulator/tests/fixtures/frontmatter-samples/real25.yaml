@@ -1,0 +1,14 @@
+id: bp3rbglw82wn11yqk7au66fak
+uid: 78cccd1d-c574-42cf-adfb-8816823e2313
+name: Comparaison des 3 worktrees
+desc: []
+status: created
+created_at: '2026-10-27T15:01:07+01:00'
+ready_at: null
+started_at: null
+done_at: null
+last_checkpoint: null
+has_uncheckpointed_entries: true
+tags:
+  - docs
+parent: c2gku6fiem4zdi2f8imo624s8

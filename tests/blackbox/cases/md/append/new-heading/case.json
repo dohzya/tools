@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "small.md",
+    "# New top"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "13",
+  "note": "Deno: final newline lost, reported L9-L9 (+1)"
+}

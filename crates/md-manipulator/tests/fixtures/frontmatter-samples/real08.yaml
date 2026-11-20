@@ -1,0 +1,2 @@
+name: agent-context-writing
+description: Write or review durable content intended for AI agents to consume, including AGENTS.md, CLAUDE.md, skills, reusable agent prompts, handoff notes, memory notes, and other agent-facing guidance. Use when the task is to add, refine, compress, or audit instructions or context for a future agent reader; do not use for one-off prompt drafting unless the prompt will become reusable agent guidance.

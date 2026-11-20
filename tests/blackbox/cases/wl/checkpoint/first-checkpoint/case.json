@@ -1,0 +1,19 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "checkpoint",
+    "api001",
+    "first",
+    "none"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/tasks/api001xxxxxxxxxxxxxxxxxxx.md"
+  ]
+}

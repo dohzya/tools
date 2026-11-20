@@ -1,0 +1,21 @@
+{
+  "tool": "wl",
+  "fixture": "wl-links",
+  "args": [
+    "done",
+    "epc005",
+    "c",
+    "l"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "done on a parent with unfinished subtasks is accepted",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/epc005xxxxxxxxxxxxxxxxxxx.md"
+  ]
+}

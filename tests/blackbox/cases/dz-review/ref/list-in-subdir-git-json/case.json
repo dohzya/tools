@@ -1,0 +1,12 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "list",
+    "sub/git-paths.md",
+    "--json"
+  ],
+  "behavior": "parity",
+  "note": "Inside a Git repo, from a document in sub/: a bare path is relative to the Git root (source.md, not sub/source.md), ./ and ../ to the document's folder. Outside Git, see list-in-subdir-json."
+}

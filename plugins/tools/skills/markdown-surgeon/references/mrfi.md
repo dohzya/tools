@@ -48,6 +48,15 @@ md resolve <file> '<ref>' ['<ref2>' ...]
 md resolve <file> '<ref>' --json
 ```
 
+### Comparing and ranking (no document needed)
+
+```bash
+md compare '<refA>' '<refB>' [--json]
+md rank '<target>' '<ref1>' ['<ref2>' ...] [--stdin] [--json]
+```
+
+`compare` prints a verdict (`same`, `likely`, `possible`, `incomparable`, `unrelated`, `invalid`), `similarity` and `comparability` scores, and the fields that match, conflict or are absent. `rank` orders candidates best first (`same > likely > possible > incomparable > unrelated`, `invalid` last; ties share a rank). Use `rank` to pick the order of `md resolve` attempts for stored references. Both are prefilters: even `same` does not prove the same passage when content is duplicated, so resolve before editing. `--stdin` reads extra candidates, one per line.
+
 ### Using MRFI refs as selectors
 
 MRFI references (`~...`) and anchors (`^...`) work as selectors in mutation commands:

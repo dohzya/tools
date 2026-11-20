@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "done",
+    "zzzzzz",
+    "c",
+    "l"
+  ],
+  "behavior": "parity"
+}

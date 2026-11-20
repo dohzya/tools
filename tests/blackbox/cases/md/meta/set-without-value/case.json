@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "doc.md",
+    "--set",
+    "title"
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "check_stderr": false,
+  "behavior": "parity"
+}

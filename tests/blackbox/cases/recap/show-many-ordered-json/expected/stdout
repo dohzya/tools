@@ -1,0 +1,20 @@
+[
+  {
+    "id": "shell",
+    "title": "Shell",
+    "lines": [
+      "a",
+      "b",
+      "... (2 more lines)"
+    ],
+    "separator": "line"
+  },
+  {
+    "id": "hello",
+    "title": "Greeting",
+    "lines": [
+      "Hello ${NAME}"
+    ],
+    "separator": "blank_line"
+  }
+]

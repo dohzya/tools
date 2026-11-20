@@ -1,0 +1,9 @@
+Agent handoff
+files annotated: 1
+files modified: 1
+conversations answered: 0
+validated/cleanable conversations: 0
+remaining open items: 1
+guardrail failures: 1
+
+- 5SUNRz doc.md:12 started conversation missing; verify no durable rationale was deleted

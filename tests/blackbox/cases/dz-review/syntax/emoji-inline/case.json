@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-syntax",
+  "args": [
+    "list",
+    "emoji-inline.md"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): an emoji (non-BMP character) on the item line no longer fails the command. Deno passed the UTF-16 line length as end column to the MRFI generator, which counts Unicode scalar values and rejected it (\"Range column is outside the document line\"); columns are scalar values here."
+}

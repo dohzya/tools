@@ -1,0 +1,3 @@
+sections:
+  - id: sub-only
+    value: from sub config

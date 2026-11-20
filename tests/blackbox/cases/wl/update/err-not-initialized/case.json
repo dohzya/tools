@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "update",
+    "abc",
+    "--name",
+    "x"
+  ],
+  "behavior": "parity"
+}

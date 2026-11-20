@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "-C",
+    "sub",
+    "list",
+    "--worklog-dir",
+    "../.worklog"
+  ],
+  "behavior": "parity"
+}

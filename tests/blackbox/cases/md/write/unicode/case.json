@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "write",
+    "unicode.md",
+    "201484b1",
+    "ça marche ☃"
+  ],
+  "files": [
+    "unicode.md"
+  ],
+  "behavior": "parity"
+}

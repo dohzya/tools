@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_d3Cdq0qx9z",
+      "file": "emoji-annotation.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++🎉 added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "635238bdc86b9742"
+    }
+  ]
+}

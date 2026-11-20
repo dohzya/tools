@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "fence-in-blockquote.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

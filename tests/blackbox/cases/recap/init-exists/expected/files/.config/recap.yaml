@@ -1,0 +1,22 @@
+sections:
+  - id: hello
+    value: "Hello ${NAME}"
+    title: Greeting
+  - id: shell
+    sh: printf 'a\nb\nc\nd\n'
+    max_lines: 2
+    title: Shell
+    separator: line
+  - id: nothing
+    sh: "true"
+  - id: with-env
+    sh: echo "$FOO-$BAR"
+    env:
+      FOO: foo
+      BAR: bar
+    separator: none
+  - id: in-sub
+    sh: pwd | sed 's#.*/##'
+    cwd: sub
+dotenv:
+  - .env

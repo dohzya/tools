@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "init"
+  ],
+  "behavior": "parity",
+  "ignore_changes": [
+    ".worklog/*"
+  ]
+}

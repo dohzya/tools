@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "list"
+  ],
+  "env": {
+    "DZ_REVIEW_IGNORE_FILE": "custom-ignore"
+  },
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity"
+}

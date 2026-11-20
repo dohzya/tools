@@ -1,0 +1,112 @@
+
+────────────────────────────────────────────────
+1/12 open conversation 4xJ6VS states.md:3-3
+ 1 │ # States
+ 2 │ 
+>3 │ open (last is agent) {?? @me Question? @agent Answer. ??}
+{??
+@me Question?
+@agent Answer.
+??}
+
+────────────────────────────────────────────────
+2/12 wip conversation 7MryuN states.md:5-5
+ 3 │ open (last is agent) {?? @me Question? @agent Answer. ??}
+ 4 │ 
+>5 │ wip (empty last message) {?? @agent Question? @me ??}
+{??
+@agent Question?
+@me
+??}
+
+────────────────────────────────────────────────
+3/12 handled conversation BKBdus states.md:7-7
+ 5 │ wip (empty last message) {?? @agent Question? @me ??}
+ 6 │ 
+>7 │ handled {?? @agent Answer. @me Thanks but please change X. ??}
+{??
+@agent Answer.
+@me Thanks but please change X.
+??}
+
+────────────────────────────────────────────────
+4/12 resolved conversation IdAKJ8 states.md:9-9
+ 7 │ handled {?? @agent Answer. @me Thanks but please change X. ??}
+ 8 │ 
+>9 │ resolved lower {?? @agent Done. @me ok ??}
+{??
+@agent Done.
+@me ok
+??}
+
+────────────────────────────────────────────────
+5/12 resolved conversation IdAKcU states.md:11-11
+  9 │ resolved lower {?? @agent Done. @me ok ??}
+ 10 │ 
+>11 │ resolved upper {?? @agent Done. @me OK ??}
+{??
+@agent Done.
+@me OK
+??}
+
+────────────────────────────────────────────────
+6/12 resolved conversation IdAKvr states.md:13-13
+ 11 │ resolved upper {?? @agent Done. @me OK ??}
+ 12 │ 
+>13 │ resolved mixed {?? @agent Done. @me Ok ??}
+{??
+@agent Done.
+@me Ok
+??}
+
+────────────────────────────────────────────────
+7/12 handled conversation IdALFD states.md:15-15
+ 13 │ resolved mixed {?? @agent Done. @me Ok ??}
+ 14 │ 
+>15 │ not resolved {?? @agent Done. @me ok but not really ??}
+{??
+@agent Done.
+@me ok but not really
+??}
+
+────────────────────────────────────────────────
+8/12 handled conversation EDalOd states.md:17-17
+ 15 │ not resolved {?? @agent Done. @me ok but not really ??}
+ 16 │ 
+>17 │ bare marker {?? @ This seems too strong. ??}
+{??
+@ This seems too strong.
+??}
+
+────────────────────────────────────────────────
+9/12 open conversation AiGduN states.md:19-19
+ 17 │ bare marker {?? @ This seems too strong. ??}
+ 18 │ 
+>19 │ only agent {?? @agent Please validate this claim. ??}
+{??
+@agent Please validate this claim.
+??}
+
+────────────────────────────────────────────────
+10/12 open conversation 7gfoaZ states.md:21-21
+ 19 │ only agent {?? @agent Please validate this claim. ??}
+ 20 │ 
+>21 │ colon markers {?? @me: Colon form. @agent: Reply. ??}
+{??
+@me Colon form.
+@agent Reply.
+??}
+
+────────────────────────────────────────────────
+11/12 discussion LqATo8 states.md:23-23
+ 21 │ colon markers {?? @me: Colon form. @agent: Reply. ??}
+ 22 │ 
+>23 │ empty {?? ??}
+{?? ??}
+
+────────────────────────────────────────────────
+12/12 discussion E8x6Vm states.md:25-25
+ 23 │ empty {?? ??}
+ 24 │ 
+>25 │ no marker {?? just text without a role ??}
+{?? just text without a role ??}

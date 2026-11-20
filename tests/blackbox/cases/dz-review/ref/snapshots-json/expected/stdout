@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "snapshots": [
+    {
+      "label": "rAAA",
+      "reference": {
+        "end": 111,
+        "index": 1,
+        "lineEnd": 3,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 {&&rAAA\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\nrAAA&&} -->",
+        "start": 7,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6 {&&rAAA\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\nrAAA&&}",
+            "snapshot": {
+              "content": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+              "label": "rAAA",
+              "raw": "{&&rAAA\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\nrAAA&&}"
+            }
+          }
+        ]
+      },
+      "snapshot": "{&&rAAA\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\nrAAA&&}",
+      "sourceFile": "snap-fresh.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6 {&&rAAA\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\nrAAA&&}",
+        "snapshot": {
+          "content": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+          "label": "rAAA",
+          "raw": "{&&rAAA\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\nrAAA&&}"
+        }
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "label": "rEEE",
+      "reference": {
+        "end": 148,
+        "index": 1,
+        "lineEnd": 6,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 {&&rEEE\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}\nrEEE&&} -->",
+        "start": 22,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6 {&&rEEE\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}\nrEEE&&}",
+            "snapshot": {
+              "content": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}",
+              "label": "rEEE",
+              "raw": "{&&rEEE\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}\nrEEE&&}"
+            }
+          }
+        ]
+      },
+      "snapshot": "{&&rEEE\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}\nrEEE&&}",
+      "sourceFile": "snap-nested-ok.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6 {&&rEEE\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}\nrEEE&&}",
+        "snapshot": {
+          "content": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}",
+          "label": "rEEE",
+          "raw": "{&&rEEE\nSAS : permet d'envoyer/récupérer des fichiers depuis le cloud.\n{&&rFFF\ninner\nrFFF&&}\nrEEE&&}"
+        }
+      },
+      "targetFile": "<WORK>/source.md"
+    }
+  ]
+}

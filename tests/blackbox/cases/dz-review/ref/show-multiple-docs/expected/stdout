@@ -1,0 +1,111 @@
+# Refs ok
+
+Single line. <!-- ref:
+  source.md:3 {&&r311
+Intro line.
+r311&&}
+-->
+
+Range. <!-- ref:
+  source.md:8-10 {&&r521
+Second paragraph line one.
+Second paragraph line two.
+Second paragraph line three.
+r521&&}
+-->
+
+L forms. <!-- ref:
+  source.md:8 {&&r731
+Second paragraph line one.
+r731&&}
+--> <!-- ref:
+  source.md:8-10 {&&r741
+Second paragraph line one.
+Second paragraph line two.
+Second paragraph line three.
+r741&&}
+--> <!-- ref:
+  source.md:8-10 {&&r751
+Second paragraph line one.
+Second paragraph line two.
+Second paragraph line three.
+r751&&}
+-->
+
+Anchor. <!-- ref:
+  source.md:6^stable-id {&&r961
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+r961&&}
+-->
+
+Debug mrfi. <!-- ref:
+  source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f} {&&rb71
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+rb71&&}
+-->
+
+Hangul mrfi. <!-- ref:
+  source.md:6~떪딙낀뉚밀가띋뽴렬떱뺖슖됅괁밈눘꿀릩쀘솳꺺럜껙빝겍곑잺냆끪쇚밬군롦놕봲꼳멦씘양밷눬붘꽁늃뢦셌떁빤땭궥뎸셖룖뾜걄군롦놅봲꼳멮씘양쀷눧놘쩤꼰 {&&rd81
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+rd81&&}
+-->
+
+Base62 mrfi. <!-- ref:
+  source.md:6~822pacNAzgtwU8A4cndI7UONUKJQ8STMqJmEUM8MzlcOorxO2R44JzLgMHjPlAa3oAVVTyj7UsqJVXJDEUBc5uEPfYESUtfWuaUOACR4EJNg6woHbHSOZ3wyROKjiO9VurCSRdGdE0hHzmsuhiRH {&&rf91
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+rf91&&}
+-->
+
+Debug mrfi + anchor. <!-- ref:
+  source.md:6~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}^stable-id {&&rha1
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+rha1&&}
+-->
+
+Conversation passage. <!-- ref:
+  source.md:14~{v0;r=14:1-14:20;p=h1[1]/h2[1]/p[1];fh=xxh64:FuimTJCD;hh=smh64:7f2a4e879f377bfd;ctx=pre:lEylNaSY,suf:ml2sXCLe;doc=smh64:c1abd377dc24719f} {&&rjb1
+Para one. {?? @me Why SAS? ??}
+rjb1&&}
+-->
+
+Timestamped. <!-- ref%2026-06-16T17:35:35+02:00:
+  source.md:3 {&&rlc1
+Intro line.
+rlc1&&}
+-->
+
+Multiple. <!-- ref:
+  source.md:3 {&&rnd1
+Intro line.
+rnd1&&};
+  source.md:8-10 {&&rnd2
+Second paragraph line one.
+Second paragraph line two.
+Second paragraph line three.
+rnd2&&};
+  sub/../source.md:6 {&&rnd3
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+rnd3&&}
+-->
+
+Sibling dir. <!-- ref:
+  sub/inner.md:1 {&&rpe1
+# Inner
+rpe1&&}
+-->
+
+In a conversation. {?? @me Why? @agent ref: source.md:6 ??}
+
+<!--
+@me Why SAS here?
+@agent ref: <!-- ref:
+  source.md:6 {&&rvf1
+SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.
+rvf1&&}
+-->
+@me ok
+-->
+
+# Nothing
+
+No references at all.

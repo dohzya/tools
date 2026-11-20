@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "empty",
+  "args": [
+    "link",
+    "a",
+    "related",
+    "b"
+  ],
+  "behavior": "parity"
+}

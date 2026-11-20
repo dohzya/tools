@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-spec",
+  "args": [
+    "read",
+    "html.md",
+    "6c5c785f"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "7"
+}

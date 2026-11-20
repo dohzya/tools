@@ -1,0 +1,16 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-formats",
+  "args": [
+    "timestamp",
+    "iso.md",
+    "compact.md",
+    "-i",
+    "-H"
+  ],
+  "files": [
+    "iso.md",
+    "compact.md"
+  ],
+  "behavior": "parity"
+}

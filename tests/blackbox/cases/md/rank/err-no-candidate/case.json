@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "rank",
+    "~{v0;a=intro}"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "24",
+  "note": "New command (no TS equivalent): md rank, per docs/specs/mrfi.md 'Ranking'; expected output hand-written from the spec.",
+  "check_stdout": false,
+  "check_stderr": false
+}

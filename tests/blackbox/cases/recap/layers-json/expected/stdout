@@ -1,0 +1,31 @@
+[
+  {
+    "id": "before",
+    "lines": [
+      "local before"
+    ],
+    "separator": "blank_line"
+  },
+  {
+    "id": "g2",
+    "title": "Overridden title",
+    "lines": [
+      "global two"
+    ],
+    "separator": "blank_line"
+  },
+  {
+    "id": "after",
+    "lines": [
+      "local after"
+    ],
+    "separator": "blank_line"
+  },
+  {
+    "id": "personal",
+    "lines": [
+      "local personal"
+    ],
+    "separator": "blank_line"
+  }
+]

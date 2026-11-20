@@ -1,0 +1,14 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "traces",
+    "update",
+    "9n3ksy",
+    "ab9175",
+    "--kind",
+    "info"
+  ],
+  "behavior": "parity",
+  "note": "trace ids must be given in full (8 hex), prefixes are not resolved"
+}

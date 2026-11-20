@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "small.md",
+    "ffec1a58",
+    "before it",
+    "--before"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

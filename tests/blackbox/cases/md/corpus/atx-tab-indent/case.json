@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-corpus",
+  "args": [
+    "outline",
+    "atx-tab-indent.md",
+    "--json"
+  ],
+  "behavior": "parity"
+}

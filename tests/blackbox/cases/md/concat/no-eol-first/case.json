@@ -1,0 +1,10 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "concat",
+    "no-eol.md",
+    "small.md"
+  ],
+  "behavior": "parity"
+}

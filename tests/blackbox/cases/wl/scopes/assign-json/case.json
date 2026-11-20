@@ -1,0 +1,26 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "scopes",
+    "assign",
+    "web",
+    "cq3984",
+    "--json"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "files": [
+    "services/api/.worklog/index.json",
+    "services/api/.worklog/tasks/cq3984ojmyg5s21oujzleuats.md",
+    "services/web/.worklog/index.json",
+    "services/web/.worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

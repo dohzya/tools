@@ -1,0 +1,13 @@
+#1 same similarity=1.00 comparability=0.19 ~{v0;fh=xxh64:aabbccdd}
+    match: fh=1.00, x
+    absent: a, hh, ph, ctx, p, doc, r, o, q
+
+#2 incomparable similarity=0.00 comparability=0.00 ~{v0;r=10:1-10:5}
+    match: x
+    absent: fh, a, hh, ph, ctx, p, doc, r, o, q
+    reasons: no shared field of sufficient strength
+
+#3 unrelated similarity=0.00 comparability=0.19 ~{v0;fh=xxh64:11223344;r=1:1-1:5}
+    match: x
+    conflict: fh=0.00
+    absent: a, hh, ph, ctx, p, doc, r, o, q

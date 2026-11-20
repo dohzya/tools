@@ -1,0 +1,9 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-formats",
+  "args": [
+    "timestamp",
+    "-s"
+  ],
+  "behavior": "parity"
+}

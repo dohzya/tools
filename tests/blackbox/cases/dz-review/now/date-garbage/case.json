@@ -1,0 +1,10 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "now",
+    "--date",
+    "garbage"
+  ],
+  "behavior": "parity"
+}

@@ -1,0 +1,18 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "--state-dir",
+    "opt-state",
+    "list",
+    "doc.md",
+    "--json"
+  ],
+  "env": {
+    "DZ_REVIEW_STATE_DIR": "env-state"
+  },
+  "files": [
+    "opt-state/reference-map.json"
+  ],
+  "behavior": "parity"
+}

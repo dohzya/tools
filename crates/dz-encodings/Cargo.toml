@@ -1,0 +1,16 @@
+[package]
+name = "dz-encodings"
+description = "Text codecs without domain knowledge: Hangul (13 bits per syllable) and base62."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+proptest = "1"
+serde_json = "1"

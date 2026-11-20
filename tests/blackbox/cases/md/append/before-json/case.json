@@ -1,0 +1,16 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "small.md",
+    "18bfa7d1",
+    "pre child",
+    "--before",
+    "--json"
+  ],
+  "files": [
+    "small.md"
+  ],
+  "behavior": "parity"
+}

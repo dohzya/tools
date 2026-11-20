@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "rank",
+    "~{v0;a=intro}",
+    "~{v0;a=other}",
+    "--stdin"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "24",
+  "note": "New command option (no TS equivalent): md rank --stdin reads one candidate per line from stdin (blank lines ignored, CRLF tolerated), after the positional candidates; expected output hand-written from the spec."
+}

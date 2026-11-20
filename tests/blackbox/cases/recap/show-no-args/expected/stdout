@@ -1,0 +1,16 @@
+
+[1mUsage:[22m   [95mrecap show [33m<[95m[95msectionIds...[95m[33m>[95m[39m
+[1mVersion:[22m [33m0.5.0[39m                     
+
+[1mDescription:[22m
+
+  Run selected sections by ID
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m            [31m[1m-[22m[39m Show this help.                                                           
+  [94m-C[39m            [33m<[39m[95mdir[39m[33m>[39m   [31m[1m-[22m[39m Run as if started in <dir> (affects config discovery and shell commands)  
+  [94m-c[39m, [94m--config[39m  [33m<[39m[95mpath[39m[33m>[39m  [31m[1m-[22m[39m Explicit config path (skip auto-discovery)                                
+  [94m--no-color[39m            [31m[1m-[22m[39m Disable ANSI color output                                                 
+  [94m--json[39m                [31m[1m-[22m[39m Output as JSON instead of formatted text                                  
+

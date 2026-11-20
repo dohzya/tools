@@ -1,0 +1,15 @@
+{
+  "tool": "md",
+  "fixture": "empty",
+  "args": [
+    "create",
+    "new.md",
+    "hello body",
+    "--title",
+    "My Title"
+  ],
+  "files": [
+    "new.md"
+  ],
+  "behavior": "parity"
+}

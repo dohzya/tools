@@ -1,0 +1,5 @@
+Dup nested labels. <!-- ref: source.md:6 {&&rDDD
+{&&rDDD
+inner
+rDDD&&}
+rDDD&&} -->

@@ -1,0 +1,23 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "create",
+    "Time only",
+    "-t",
+    "T11:15"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid",
+    "today"
+  ],
+  "behavior": "parity",
+  "files": [
+    ".worklog/index.json"
+  ],
+  "ignore_changes": [
+    ".worklog/tasks/*"
+  ]
+}

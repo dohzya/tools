@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "agent",
+    "show",
+    "5SUN"
+  ],
+  "behavior": "parity",
+  "note": "5SUN is a prefix of several ids"
+}

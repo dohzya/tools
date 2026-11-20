@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "refs": [
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 25,
+        "index": 1,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: source.md:6 -->",
+        "start": 0,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "source.md",
+            "raw": "source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "sub/git-paths.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "source.md",
+        "raw": "source.md:6"
+      },
+      "targetFile": "<WORK>/source.md"
+    },
+    {
+      "excerpt": "up {?? @me hi ??}",
+      "reference": {
+        "end": 52,
+        "index": 2,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: ./inner.md:3 -->",
+        "start": 26,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 3,
+              "start": 3
+            },
+            "path": "./inner.md",
+            "raw": "./inner.md:3"
+          }
+        ]
+      },
+      "sourceFile": "sub/git-paths.md",
+      "target": {
+        "lineRange": {
+          "end": 3,
+          "start": 3
+        },
+        "path": "./inner.md",
+        "raw": "./inner.md:3"
+      },
+      "targetFile": "<WORK>/sub/inner.md"
+    },
+    {
+      "excerpt": "SAS : permet d'envoyer/récupérer des fichiers depuis le cloud.",
+      "reference": {
+        "end": 81,
+        "index": 3,
+        "lineEnd": 1,
+        "lineStart": 1,
+        "raw": "<!-- ref: ../source.md:6 -->",
+        "start": 53,
+        "targets": [
+          {
+            "lineRange": {
+              "end": 6,
+              "start": 6
+            },
+            "path": "../source.md",
+            "raw": "../source.md:6"
+          }
+        ]
+      },
+      "sourceFile": "sub/git-paths.md",
+      "target": {
+        "lineRange": {
+          "end": 6,
+          "start": 6
+        },
+        "path": "../source.md",
+        "raw": "../source.md:6"
+      },
+      "targetFile": "<WORK>/source.md"
+    }
+  ]
+}

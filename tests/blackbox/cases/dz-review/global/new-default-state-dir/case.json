@@ -1,0 +1,9 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-plain",
+  "args": ["list", "doc.md", "--json"],
+  "env": {"CRITIQUE_COMPAT_DZ_REVIEW": ""},
+  "files": [".critique/reference-map.json"],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): the tool is `critique` and its default state directory is `.critique` (the legacy suite forces `.dz-review` through CRITIQUE_COMPAT_DZ_REVIEW)."
+}

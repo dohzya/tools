@@ -1,0 +1,17 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "ignore_changes": [
+    ".git/*",
+    ".worklog/*",
+    "services/*"
+  ],
+  "behavior": "new-spec",
+  "args": [
+    "list",
+    "api",
+    "--all"
+  ],
+  "spec_row": "worklog.md D13",
+  "note": "A task tagged #api and a scope whose id is api: list api shows the tagged task and the tasks of the scope (the Deno version stopped at the tagged ones)."
+}

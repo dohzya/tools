@@ -1,0 +1,12 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "read",
+    "crlf.md",
+    "0bca11de",
+    "--deep"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "11"
+}

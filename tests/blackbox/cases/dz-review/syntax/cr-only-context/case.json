@@ -1,0 +1,15 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": [
+    "list",
+    "d.md",
+    "-c",
+    "1"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): a lone CR ends a line like LF and CRLF (as in md). The Deno scanner counted only LF, so a CR-only file was a single line: every item reported line 1 and the context showed one row."
+}

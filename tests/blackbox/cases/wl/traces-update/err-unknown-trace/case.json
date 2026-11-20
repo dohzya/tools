@@ -1,0 +1,13 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "traces",
+    "update",
+    "9n3ksy",
+    "ffffffff",
+    "--kind",
+    "info"
+  ],
+  "behavior": "parity"
+}

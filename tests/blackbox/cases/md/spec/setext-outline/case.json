@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-spec",
+  "args": [
+    "outline",
+    "setext.md",
+    "--json"
+  ],
+  "behavior": "new-spec",
+  "spec_row": "3"
+}

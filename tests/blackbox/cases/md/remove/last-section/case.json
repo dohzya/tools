@@ -1,0 +1,13 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "remove",
+    "doc.md",
+    "f1b1d3d7"
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "behavior": "parity"
+}

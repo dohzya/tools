@@ -1,0 +1,53 @@
+
+[2m────────────────────────────────────────────────[0m
+[1m1/6[0m [2mhandled conversation[0m [36m5SUMpH[0m [2mdoc.md:3-3[0m
+[2m 1 │ # Title[0m
+[2m 2 │ [0m
+[1m>3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}[0m
+[2m{??[0m
+[32m@me[0m [2m2026-06-16T17:35:35+02:00[0m Please say whether sources are stored too.
+[2m??}[0m
+
+[2m────────────────────────────────────────────────[0m
+[1m2/6[0m [35maddition[0m [36mA3vwnq[0m [2mdoc.md:5-5[0m
+[2m 3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}[0m
+[2m 4 │ [0m
+[1m>5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.[0m
+[2m{++[0m[2m%2026-06-16T17:35:35+02:00|[0m[32madded[0m[2m++}[0m
+
+[2m────────────────────────────────────────────────[0m
+[1m3/6[0m [35mdeletion[0m [36mE96pi6[0m [2mdoc.md:5-5[0m
+[2m 3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}[0m
+[2m 4 │ [0m
+[1m>5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.[0m
+[2m{--[0m[2m%2026-06-16T17:35:35+02:00|[0m[31mremoved[0m[2m--}[0m
+
+[2m────────────────────────────────────────────────[0m
+[1m4/6[0m [35msubstitution[0m [36mCWUZeY[0m [2mdoc.md:5-5[0m
+[2m 3 │ The service stores summaries. {?? @me%2026-06-16T17:35:35+02:00 Please say whether sources are stored too. ??}[0m
+[2m 4 │ [0m
+[1m>5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.[0m
+[2m{~~[0m[2m%2026-06-16T17:35:35+02:00|[0m[31mold[0m[2m~>[0m[32mnew[0m[2m~~}[0m
+
+[2m────────────────────────────────────────────────[0m
+[1m5/6[0m [2mhandled conversation[0m [36m5SUN8d[0m [2mdoc.md:7-10[0m
+[2m  5 │ Some {++%2026-06-16T17:35:35+02:00|added++} and {--%2026-06-16T17:35:35+02:00|removed--} and {~~%2026-06-16T17:35:35+02:00|old~>new~~}.[0m
+[2m  6 │ [0m
+[1m> 7 │ <!--[0m
+[1m> 8 │ @agent%2026-06-16T17:35:35+02:00 I chose this wording.[0m
+[1m> 9 │ @me%2026-06-16T17:36:35+02:00 Can we soften it?[0m
+[1m>10 │ -->[0m
+[2m<!--[0m
+[34m@agent[0m [2m2026-06-16T17:35:35+02:00[0m I chose this wording.
+[32m@me[0m [2m2026-06-16T17:36:35+02:00[0m Can we soften it?
+[2m-->[0m
+
+[2m────────────────────────────────────────────────[0m
+[1m6/6[0m [2mresolved conversation[0m [36m5SUNRz[0m [2mdoc.md:12-12[0m
+[2m 10 │ -->[0m
+[2m 11 │ [0m
+[1m>12 │ Done thread. {?? @agent%2026-06-16T17:35:35+02:00 Fixed. @me%2026-06-16T17:37:35+02:00 ok ??}[0m
+[2m{??[0m
+[34m@agent[0m [2m2026-06-16T17:35:35+02:00[0m Fixed.
+[32m@me[0m [2m2026-06-16T17:37:35+02:00[0m ok
+[2m??}[0m

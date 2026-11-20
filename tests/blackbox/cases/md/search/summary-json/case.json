@@ -1,0 +1,12 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "search",
+    "doc.md",
+    "install",
+    "--summary",
+    "--json"
+  ],
+  "behavior": "parity"
+}

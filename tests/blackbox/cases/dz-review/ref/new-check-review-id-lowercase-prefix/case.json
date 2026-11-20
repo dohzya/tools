@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-ref-review-id",
+  "args": [
+    "ref",
+    "check",
+    "lowercase.md"
+  ],
+  "ignore_changes": [
+    ".dz-review/*"
+  ],
+  "behavior": "new-spec",
+  "note": "Parser quirk, not a supported syntax: a bare ~id after a path is an MRFI (refused when invalid); a review id is only read after a second ~ (file~~<id>). New spec: that id matches any unique prefix of an item id of the target file, case-insensitive, with or without rvw_, as in agent show/respond/apply. The Deno tool only accepted the full id or the exact short id computed over the target file, so a longer prefix (such as the project-wide short id of critique list or the VS Code panel) was reported missing."
+}

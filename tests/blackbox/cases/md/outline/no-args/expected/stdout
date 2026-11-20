@@ -1,0 +1,21 @@
+
+[1mUsage:[22m   [95mmd outline [33m<[95m[95mfile[95m[33m>[95m[39m
+[1mVersion:[22m [33m0.10.1[39m           
+
+[1mDescription:[22m
+
+  List sections in a Markdown file
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m               [31m[1m-[22m[39m Show this help.                                                             
+  [94m--after[39m      [33m<[39m[95mselector[39m[33m>[39m  [31m[1m-[22m[39m Show only subsections after this section                                    
+  [94m--last[39m                   [31m[1m-[22m[39m Show only the last subsection                                               
+  [94m--count[39m                  [31m[1m-[22m[39m Show count only                                                             
+  [94m--mrfi[39m                   [31m[1m-[22m[39m Include MRFI references for sections                                        
+  [94m--format[39m     [33m<[39m[95mformat[39m[33m>[39m    [31m[1m-[22m[39m MRFI output format: hangul, debug, or base62            ([1mDefault: [22m[32m"hangul"[39m) 
+  [94m--profile[39m    [33m<[39m[95mprofile[39m[33m>[39m   [31m[1m-[22m[39m MRFI field profile: min, default, or full               ([1mDefault: [22m[32m"default"[39m)
+  [94m--quote[39m                  [31m[1m-[22m[39m Include q= quote evidence in generated MRFI references                      
+  [94m--quote-max[39m  [33m<[39m[95mchars[39m[33m>[39m     [31m[1m-[22m[39m Maximum q= quote length                                 ([1mDefault: [22m[33m80[39m)       
+  [94m--json[39m                   [31m[1m-[22m[39m Output as JSON                                                              
+

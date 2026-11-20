@@ -1,0 +1,16 @@
+Agent action diff
+files modified: 1
+conversations answered: 1
+validated/cleanable conversations: 1
+remaining open items: 2
+guardrail failures: 1
+
+- 5SUMpH doc.md:3 open answer
+- A3vwnq doc.md:5 annotation review annotation
+- E96pi6 doc.md:5 annotation review annotation
+- CWUZeY doc.md:5 annotation review annotation
+- 5g7itt doc.md:5 annotation review annotation
+- CFi8Jd doc.md:5 annotation review annotation
+- 5SUN8d doc.md:7 handled reply
+- 5SUNRz doc.md:12 resolved clean after validation
+- 5SUNlL doc.md:14 open answer

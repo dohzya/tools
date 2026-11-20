@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-scoped",
+  "args": [
+    "list",
+    "--json"
+  ],
+  "ignore_changes": [
+    ".git/*"
+  ],
+  "behavior": "parity"
+}

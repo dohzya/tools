@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": [
+    "list",
+    "d.md",
+    "--json"
+  ],
+  "ignore_changes": [
+    ".dz-review/*"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): the %ts of a ref%ts: prefix is left out of the text anchor of an item without its own timestamp and of rawHash, so the id and rawHash do not depend on the timestamp format (same values in new-ref-prefix-compact-json and new-ref-prefix-iso-json). The Deno tool hashed the ref% value."
+}

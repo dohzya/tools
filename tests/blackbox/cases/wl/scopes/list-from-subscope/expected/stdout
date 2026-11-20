@@ -1,0 +1,4 @@
+Scopes:
+  work            .worklog/
+  api             services/api/.worklog/  [active]
+  web             services/web/.worklog/

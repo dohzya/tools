@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_7MeWA9O8x8q",
+      "file": "long.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit AAA"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit AAA"
+      },
+      "context": "@me Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna...",
+      "suggestedAction": "reply",
+      "rawHash": "36a2f51c8d521414"
+    },
+    {
+      "id": "rvw_6TIXwei9QrX",
+      "file": "long.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit BBB"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit BBB"
+      },
+      "context": "@me Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna...",
+      "suggestedAction": "reply",
+      "rawHash": "c6b86f2cd59524cf"
+    },
+    {
+      "id": "rvw_7ZyUHxlGzQp",
+      "file": "long.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna ...",
+      "suggestedAction": "review annotation",
+      "rawHash": "e4e8ff93f20c85c4"
+    },
+    {
+      "id": "rvw_7ZyTybayFVI",
+      "file": "long.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna ...",
+      "suggestedAction": "review annotation",
+      "rawHash": "f63d9c37da105bd5"
+    }
+  ]
+}

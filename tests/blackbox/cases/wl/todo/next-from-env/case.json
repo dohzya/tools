@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "next"
+  ],
+  "env": {
+    "WORKLOG_TASK_ID": "7natz8"
+  },
+  "behavior": "parity"
+}

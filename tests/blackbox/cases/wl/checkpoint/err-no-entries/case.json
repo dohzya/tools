@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "checkpoint",
+    "cq3984",
+    "x",
+    "y"
+  ],
+  "behavior": "parity"
+}

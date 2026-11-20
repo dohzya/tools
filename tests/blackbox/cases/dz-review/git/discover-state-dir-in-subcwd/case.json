@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "cwd": "sub",
+  "args": [
+    "list",
+    "../doc.md"
+  ],
+  "files": [
+    ".dz-review/reference-map.json"
+  ],
+  "behavior": "parity",
+  "note": "inside a git repo the default state dir is <git root>/.dz-review even from a subdirectory"
+}

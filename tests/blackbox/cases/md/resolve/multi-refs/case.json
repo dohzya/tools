@@ -1,0 +1,12 @@
+{
+  "tool": "md",
+  "fixture": "dz-review-refs",
+  "args": [
+    "resolve",
+    "source.md",
+    "~{v0;r=6:1-6:30;p=h1[1]/p[2];a=stable-id;fh=xxh64:4wtLb5Wj;hh=smh64:c1ebd373dc2071df;ctx=pre:6SU102dK,suf:iOqUfkNp;doc=smh64:c1abd377dc24719f}",
+    "~{v0;r=8:1-10:29;p=h1[1]/p[3];a=stable-id;fh=xxh64:Ec3reL40;hh=smh64:c1ebd373dc2071df;ctx=pre:m9clN0CX,suf:UFc9vcBe;doc=smh64:c1abd377dc24719f}",
+    "~{v0;r=12:1-12:11;p=h1[1]/h2[1];fh=xxh64:3OiG3dh9;hh=smh64:7f2a4e879f377bfd;ctx=pre:YevvUZiY,suf:CWRIKgga;doc=smh64:c1abd377dc24719f}"
+  ],
+  "behavior": "parity"
+}

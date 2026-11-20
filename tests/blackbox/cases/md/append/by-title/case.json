@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "append",
+    "doc.md",
+    "## Usage",
+    "more usage"
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "behavior": "parity"
+}

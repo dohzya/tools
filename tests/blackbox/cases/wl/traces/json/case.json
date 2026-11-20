@@ -1,0 +1,10 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "traces",
+    "9n3ksy",
+    "--json"
+  ],
+  "behavior": "parity"
+}

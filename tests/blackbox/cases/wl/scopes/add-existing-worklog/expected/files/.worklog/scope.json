@@ -1,0 +1,8 @@
+{
+  "children": [
+    {
+      "path": "lib",
+      "id": "lib"
+    }
+  ]
+}

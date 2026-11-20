@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-session",
+  "args": [
+    "session",
+    "rollback"
+  ],
+  "files": [
+    "compact.md",
+    ".dz-review/agent-session.json"
+  ],
+  "behavior": "parity"
+}

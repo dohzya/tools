@@ -1,0 +1,5 @@
+<NEWID6>
+stub-claude argc=2
+ARG: --append-system-prompt
+ARG: # Current Worktask Context
+TASK=<NEWID>

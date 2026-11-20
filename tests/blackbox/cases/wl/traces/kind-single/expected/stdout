@@ -1,0 +1,7 @@
+task: 9n3ksypyyujvxajl4o1djfk67
+desc: Users can't log in with **SSO**.
+Second paragraph with unicode: café ☕
+
+traces: 1
+  ae0e0313  2020-01-10 11:00  action: Patched comparison to use UTC
+multi-line message with `code` and unicode: ✓ ñ

@@ -1,0 +1,14 @@
+
+[1mUsage:[22m   [95mmd read [33m<[95m[95mfile[95m[33m>[95m [33m<[95m[95mselector[95m[33m>[95m[39m
+[1mVersion:[22m [33m0.10.1[39m                   
+
+[1mDescription:[22m
+
+  Read section content
+
+[1mOptions:[22m
+
+  [94m-h[39m, [94m--help[39m  [31m[1m-[22m[39m Show this help.      
+  [94m--deep[39m      [31m[1m-[22m[39m Include subsections  
+  [94m--json[39m      [31m[1m-[22m[39m Output as JSON       
+

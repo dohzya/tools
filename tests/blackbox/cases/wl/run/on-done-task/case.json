@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "run",
+    "4q2r74",
+    "sh",
+    "-c",
+    "echo $WORKLOG_TASK_ID"
+  ],
+  "behavior": "parity"
+}

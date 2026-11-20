@@ -6,6 +6,14 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
+// Panel timestamps render in the host's local zone, and the expectations are
+// written for Paris. Set here rather than in the npm script so it also holds
+// on Windows shells and when this file is run directly with `node --test`.
+process.env.TZ = "Europe/Paris";
+// The bundle shares this `process`: a developer's own value would move the
+// review panel's state directory. Tests that need it set it themselves.
+delete process.env.CRITIQUE_STATE_DIR;
+
 function offsetAt(text, position) {
   const lines = text.split("\n");
   return lines.slice(0, position.line).join("\n").length +
@@ -28,16 +36,10 @@ function positionAt(text, offset) {
   return { line: lines.length - 1, character: lines.at(-1).length };
 }
 
-// assignPersistentReviewItemIds (wired in via activate()) persists
-// .dz-review/reference-map.json through runtime-config.ts's
-// getDzReviewStateDir(). That function only returns an absolute,
-// environment-anchored path when it can resolve a git root for the
-// injected `getCwd()` -- otherwise it falls back to the bare relative
-// string ".dz-review", which Node resolves against the real process cwd
-// (this repo's own checkout), not the injected environment. A real git
-// repo of its own, one per harness, is the only way to make
-// getDzReviewStateDir() resolve to an isolated path instead of silently
-// writing into this actual project's .dz-review/ on every test run.
+// The review panel persists .critique/reference-map.json at the Git root of
+// the workspace (else in the workspace itself). Each harness gets a
+// throwaway repository as its workspace folder, so tests never write into
+// this checkout.
 function createIsolatedDzReviewStateDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dz-review-vscode-test-"));
   childProcess.spawnSync("git", ["init", "--quiet"], { cwd: dir });
@@ -48,6 +50,7 @@ function createHarness() {
   let commentSyntax = "html";
   let timestampFormat = "none";
   let refSnapshotLines = 10;
+  let stateDir;
   let deferSetContext = false;
   let quickPickLabel;
   const quickPickCalls = [];
@@ -59,6 +62,7 @@ function createHarness() {
   const statusBarItems = [];
   const webviewViewProviders = [];
   const statusBarCalls = [];
+  const isolatedStateDir = createIsolatedDzReviewStateDir();
   const mockVscode = {
     window: {
       activeTextEditor: undefined,
@@ -103,6 +107,7 @@ function createHarness() {
       showInformationMessage() {},
     },
     workspace: {
+      workspaceFolders: [{ uri: { fsPath: isolatedStateDir } }],
       fs: {
         readFile(uri) {
           return Promise.resolve(fs.readFileSync(uri.fsPath));
@@ -120,6 +125,10 @@ function createHarness() {
 
             if (key === "refSnapshotLines") {
               return refSnapshotLines;
+            }
+
+            if (key === "stateDir") {
+              return stateDir;
             }
 
             return commentSyntax;
@@ -281,13 +290,13 @@ function createHarness() {
     module,
     exports: module.exports,
     TextDecoder,
-    // reference-map.ts's Blake3HashService (via ParseDocumentUseCase) uses
-    // these as globals, not through `require` -- a fresh vm context has
-    // neither by default, unlike the real extension host (Node 22+
-    // provides both on globalThis).
+    // The wasm-bindgen glue uses it as a global, not through `require` -- a
+    // fresh vm context lacks it, unlike the real extension host.
     TextEncoder,
-    crypto,
     process,
+    // esbuild decodes the inlined wasm with Buffer, a global of the real
+    // extension host.
+    Buffer,
   });
 
   function createEditor(text, start, end = start) {
@@ -381,24 +390,9 @@ function createHarness() {
     };
   }
 
-  const isolatedStateDir = createIsolatedDzReviewStateDir();
-  const realActivate = module.exports.__test.activate;
-  module.exports.__test.activate = (...args) => {
-    const result = realActivate(...args);
-    // Override activate()'s real (VSCode-backed) environment with one
-    // anchored to this harness's own throwaway git repo, so
-    // reference-map.json never touches the real project checkout.
-    module.exports.__test.configureDzReviewRuntime({
-      environment: {
-        getEnv: () => undefined,
-        getCwd: () => isolatedStateDir,
-      },
-    });
-    return result;
-  };
-
   return {
     api: module.exports.__test,
+    stateDir: isolatedStateDir,
     createEditor,
     createWebviewView,
     definitionProviders,
@@ -420,6 +414,9 @@ function createHarness() {
     setRefSnapshotLines(value) {
       refSnapshotLines = value;
     },
+    setStateDir(value) {
+      stateDir = value;
+    },
     setQuickPickLabel(value) {
       quickPickLabel = value;
     },
@@ -430,6 +427,7 @@ function createHarness() {
     statusBarItems,
     webviewViewProviders,
     window: mockVscode.window,
+    workspace: mockVscode.workspace,
   };
 }
 
@@ -540,6 +538,21 @@ test("review panel webview lists review items from the active Markdown editor", 
   );
   assert.match(conversation.id, /^rvw_[0-9A-Za-z]{1,11}$/);
   assert.equal(conversation.displayId, conversation.id.slice(4, 10));
+});
+
+test("review panel lists a {?? ??} without roles as a discussion, like the CLI", async () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    "{?? plain\n  discussion ??}",
+    { line: 0, character: 0 },
+  );
+
+  harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
+  const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+  assert.equal(item.kind, "discussion");
+  assert.equal(item.label, "Discussion");
+  assert.equal(item.summary, "plain discussion");
 });
 
 test("review panel webview lists items with hangul timestamps", async () => {
@@ -859,35 +872,175 @@ test("review panel webview keeps the same id when an annotation's own text is ed
   assert.equal(after.id, before.id);
 });
 
-test("assignPersistentReviewItemIds and the review panel agree on the same file's id", async () => {
+test("review panel ids are the CLI's, whatever the panel filter", async () => {
   const harness = createHarness();
   const editor = harness.createEditor(
-    "{++one line addition++}",
+    [
+      "# Draft",
+      "<!-- @me ok -->",
+      "{?? plain discussion ??}",
+      "{++new text++}",
+    ].join("\n"),
     { line: 0, character: 0 },
   );
 
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
-  const [panelItem] = await harness.api.collectReviewPanelItems(
+  // The default filter hides the resolved conversation: ids are minted first
+  // with that view, and must not depend on it.
+  const pending = await harness.api.collectReviewPanelItems(
     editor.document,
+    "pending",
   );
+  const all = await harness.api.collectReviewPanelItems(editor.document);
 
-  // Simulate what the CLI would do for the exact same real file: if the
-  // panel's file-path normalization (getReviewPanelDocumentPath) ever
-  // diverged from what a direct assignPersistentReviewItemIds caller would
-  // use, this would mint a *new* id instead of recognizing panelItem's.
-  const file = harness.api.getReviewPanelDocumentPath(editor.document);
-  const [cliAssigned] = await harness.api.assignPersistentReviewItemIds(
-    file,
-    editor.document.text,
-    [{
-      kind: "addition",
-      raw: "{++one line addition++}",
-      lineStart: 1,
-      lineEnd: 1,
-    }],
+  // From `critique list --json doc.md` on the same text in a fresh repository.
+  assert.deepEqual(Array.from(all, ({ id }) => id), [
+    "rvw_5D6Lg2o7oGL",
+    "rvw_JLYsTn3SeRo",
+    "rvw_I6B6YzzFIHD",
+  ]);
+  assert.deepEqual(
+    Array.from(pending, ({ id }) => id),
+    ["rvw_JLYsTn3SeRo", "rvw_I6B6YzzFIHD"],
   );
+});
 
-  assert.equal(cliAssigned.id, panelItem.id);
+test("review panel stores its reference map in .critique/", async () => {
+  const harness = createHarness();
+  const editor = harness.createEditor("# Draft\n{++new text++}\n", {
+    line: 0,
+    character: 0,
+  });
+
+  const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+  const map = JSON.parse(
+    fs.readFileSync(
+      path.join(harness.stateDir, ".critique", "reference-map.json"),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(Object.keys(map.entries), [item.id]);
+  assert.equal(fs.existsSync(path.join(harness.stateDir, ".dz-review")), false);
+});
+
+test("review panel ignores a legacy .dz-review/ reference map", async () => {
+  const harness = createHarness();
+  const text = "# Draft\n{++kept++}\n";
+  const { map } = harness.api.critique.reviewItems("doc.md", text, null, {
+    source: "payload",
+    width: 80,
+  });
+  // An id no fresh assignment would mint: finding it would prove the legacy
+  // map was read.
+  const legacy = JSON.stringify({
+    version: 1,
+    entries: { rvw_LegacyDoc: Object.values(JSON.parse(map).entries)[0] },
+  });
+  const legacyFile = path.join(
+    harness.stateDir,
+    ".dz-review",
+    "reference-map.json",
+  );
+  fs.mkdirSync(path.dirname(legacyFile));
+  fs.writeFileSync(legacyFile, legacy);
+  const editor = harness.createEditor(text, { line: 0, character: 0 });
+
+  const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+  assert.notEqual(item.id, "rvw_LegacyDoc");
+  const written = JSON.parse(
+    fs.readFileSync(
+      path.join(harness.stateDir, ".critique", "reference-map.json"),
+      "utf8",
+    ),
+  );
+  assert.deepEqual(Object.keys(written.entries), [item.id]);
+  assert.equal(fs.readFileSync(legacyFile, "utf8"), legacy);
+});
+
+async function withStateDirEnv(value, callback) {
+  process.env.CRITIQUE_STATE_DIR = value;
+  try {
+    await callback();
+  } finally {
+    delete process.env.CRITIQUE_STATE_DIR;
+  }
+}
+
+function writtenMapIds(file) {
+  return Object.keys(JSON.parse(fs.readFileSync(file, "utf8")).entries);
+}
+
+test("review panel state directory setting wins over CRITIQUE_STATE_DIR", async () => {
+  const harness = createHarness();
+  harness.setStateDir("from-setting");
+  const editor = harness.createEditor("{++a++}\n", { line: 0, character: 0 });
+
+  await withStateDirEnv(path.join(harness.stateDir, "from-env"), async () => {
+    const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+    assert.deepEqual(
+      writtenMapIds(
+        path.join(harness.stateDir, "from-setting", "reference-map.json"),
+      ),
+      [item.id],
+    );
+  });
+  assert.equal(fs.existsSync(path.join(harness.stateDir, "from-env")), false);
+  assert.equal(fs.existsSync(path.join(harness.stateDir, ".critique")), false);
+});
+
+test("review panel uses CRITIQUE_STATE_DIR without a setting", async () => {
+  const harness = createHarness();
+  harness.setStateDir("  ");
+  const editor = harness.createEditor("{++a++}\n", { line: 0, character: 0 });
+
+  await withStateDirEnv("from-env", async () => {
+    const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+    assert.deepEqual(
+      writtenMapIds(
+        path.join(harness.stateDir, "from-env", "reference-map.json"),
+      ),
+      [item.id],
+    );
+  });
+  assert.equal(fs.existsSync(path.join(harness.stateDir, ".critique")), false);
+});
+
+test("review panel resolves a relative state directory against the workspace folder", async () => {
+  const harness = createHarness();
+  const workspace = path.join(harness.stateDir, "sub");
+  fs.mkdirSync(workspace);
+  harness.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  harness.setStateDir("state");
+  const editor = harness.createEditor("{++a++}\n", { line: 0, character: 0 });
+
+  const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+  assert.deepEqual(
+    writtenMapIds(path.join(workspace, "state", "reference-map.json")),
+    [item.id],
+  );
+  assert.equal(fs.existsSync(path.join(harness.stateDir, "state")), false);
+});
+
+test("review panel default state directory stays at the Git root", async () => {
+  const harness = createHarness();
+  const workspace = path.join(harness.stateDir, "sub");
+  fs.mkdirSync(workspace);
+  harness.workspace.workspaceFolders = [{ uri: { fsPath: workspace } }];
+  const editor = harness.createEditor("{++a++}\n", { line: 0, character: 0 });
+
+  const [item] = await harness.api.collectReviewPanelItems(editor.document);
+
+  assert.deepEqual(
+    writtenMapIds(
+      path.join(harness.stateDir, ".critique", "reference-map.json"),
+    ),
+    [item.id],
+  );
 });
 
 test("review panel webview can mark a conversation ok", async () => {
@@ -998,10 +1151,6 @@ test("review panel reveal command moves the active editor to the selected item",
     { line: 0, character: 0 },
   );
 
-  // assignPersistentReviewItemIds (wired in via activate()'s
-  // configureDzReviewRuntime call) needs the injected environment; without
-  // activate() this falls back to the Deno-based default, which doesn't
-  // exist in this Node vm sandbox.
   harness.api.activate({ subscriptions: [], extensionUri: "extension-uri" });
   const [conversation] = await harness.api.collectReviewPanelItems(
     editor.document,
@@ -1116,6 +1265,40 @@ test("shows readable hover text for compact timestamps", () => {
   });
 
   assert.equal(hover.contents.value, "2026-06-16T17:35:35+02:00");
+});
+
+test("shows timestamp hover on annotation and ref prefixes", () => {
+  const harness = createHarness();
+  const editor = harness.createEditor(
+    "{++%1WzvP91W|x++} <!-- ref%1WzvP91W: a.md:1 -->",
+    { line: 0, character: 0 },
+  );
+
+  for (const character of [6, 30]) {
+    const hover = harness.api.provideTimestampHover(editor.document, {
+      line: 0,
+      character,
+    });
+    assert.equal(hover.contents.value, "2026-06-16T17:35:35+02:00");
+  }
+});
+
+test("shows no timestamp hover where the core sees no timestamp", () => {
+  const harness = createHarness();
+  const editor = harness.createEditor("50%discount a%20bcdefgh", {
+    line: 0,
+    character: 0,
+  });
+
+  for (const character of [5, 16]) {
+    assert.equal(
+      harness.api.provideTimestampHover(editor.document, {
+        line: 0,
+        character,
+      }),
+      undefined,
+    );
+  }
 });
 
 test("shows referenced passage on ref hover", async () => {
@@ -1831,6 +2014,30 @@ test("converts all timestamps in the active editor to the configured format", as
   assert.equal(
     editor.document.text,
     "{++%2026-06-16T17:35:35+02:00|foo++}\n<!-- @agent%2026-06-16T17:35:35+02:00 note -->",
+  );
+});
+
+test("converts only the timestamps the core reads, as the core does", async () => {
+  const harness = createHarness();
+  harness.setTimestampFormat("iso");
+  const text =
+    "<!-- @agent%1VB66I0Y q\n@me%\uac1a\ub6ad\uc500\uac3c a\n@me b -->\n" +
+    "{++%2026-01-01T03:00:00+03:00|x++} {--y--}\n" +
+    "50%discount, see https://example.com/a%20bcdefgh\n";
+  const editor = harness.createEditor(text, { line: 0, character: 0 });
+
+  await harness.api.convertTimestampsInActiveEditor();
+
+  const iso = "2026-01-01T01:00:00+01:00";
+  assert.equal(
+    editor.document.text,
+    `<!-- @agent%${iso} q\n@me%${iso} a\n@me b -->\n` +
+      "{++%2026-01-01T03:00:00+03:00|x++} {--y--}\n" +
+      "50%discount, see https://example.com/a%20bcdefgh\n",
+  );
+  assert.equal(
+    editor.document.text,
+    harness.api.critique.convertTimestamps(text, "iso"),
   );
 });
 

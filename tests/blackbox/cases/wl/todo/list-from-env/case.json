@@ -1,0 +1,12 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "todo",
+    "list"
+  ],
+  "env": {
+    "WORKLOG_TASK_ID": "cq3984"
+  },
+  "behavior": "parity"
+}

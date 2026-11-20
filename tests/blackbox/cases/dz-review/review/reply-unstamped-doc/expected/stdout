@@ -1,0 +1,23 @@
+
+────────────────────────────────────────────────
+1/4 handled conversation KHxQF0 doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+{??
+@me Please say whether sources are stored too.
+??}
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: Reply: 
+────────────────────────────────────────────────
+2/4 handled conversation 85i8v2 doc.md:7-10
+  5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+  6 │ 
+> 7 │ <!--
+> 8 │ @agent%<TS> I chose this wording.
+> 9 │ @me%<CTS> Can we soften it?
+>10 │ -->
+<!--
+@agent <TS> I chose this wording.
+@me <TS> Can we soften it?
+-->
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: 

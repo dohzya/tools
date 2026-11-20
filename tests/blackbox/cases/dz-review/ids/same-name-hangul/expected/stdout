@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_8AE7GLfkDf3",
+      "file": "iso.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Same body.",
+        "timestamp": "갚붋륇걸"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Same body.",
+        "timestamp": "갚붋륇걸"
+      },
+      "context": "@me%갚붋륇걸 Same body.",
+      "suggestedAction": "reply",
+      "rawHash": "3f5f0faba721d3ab"
+    },
+    {
+      "id": "rvw_E5SYcz5AlRE",
+      "file": "iso.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "addition",
+      "state": "annotation",
+      "context": "{++%2026-06-16T17:35:35+02:00|added++}",
+      "suggestedAction": "review annotation",
+      "rawHash": "9557d86731625d0f"
+    }
+  ]
+}

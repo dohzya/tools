@@ -1,0 +1,1 @@
+{"task":"sch002","fullId":"sch002xxxxxxxxxxxxxxxxxxx","name":"Design schema","desc":"","desc_parts":[],"status":"created","created":"2020-03-02 09:00","ready":null,"started":null,"last_checkpoint":null,"entries_since_checkpoint":[],"todos":[],"tags":["backend"],"links":[{"type":"blocks","task":"api001xxxxxxxxxxxxxxxxxxx","shortId":"api001","name":"Build API","status":"started"}]}

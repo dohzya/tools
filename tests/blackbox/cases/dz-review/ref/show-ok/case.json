@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-refs",
+  "args": [
+    "ref",
+    "show",
+    "ok.md"
+  ],
+  "behavior": "parity",
+  "note": "A ref inside an <!-- --> conversation message is expanded into a nested <!-- ref: ... --> whose inner --> closes the outer comment (output is not re-parsable as the same thread)."
+}

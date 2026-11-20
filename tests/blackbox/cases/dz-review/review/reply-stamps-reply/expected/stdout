@@ -1,0 +1,17 @@
+
+────────────────────────────────────────────────
+1/9 handled conversation KHxQF0 doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+{??
+@me Please say whether sources are stored too.
+??}
+Action [n]ext [d]elete [o]k [r]eply next-[f]ile [q]uit [?]: Reply: 
+────────────────────────────────────────────────
+2/9 addition E1bMT6 doc.md:5-5
+ 3 │ The service stores summaries. {?? @me Please say whether sources are stored too. @me Plain reply ??}
+ 4 │ 
+>5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+{++added++}
+Action [n]ext [a]pply [x]cancel [d]elete next-[f]ile [q]uit [?]: 

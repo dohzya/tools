@@ -1,0 +1,2 @@
+bad-missing-file.md:1 nope.md:1: missing file nope.md
+snap-stale.md:1 source.md:6: stale snapshot

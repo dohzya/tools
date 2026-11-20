@@ -1,0 +1,20 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "cancel",
+    "cq3984",
+    "not needed anymore"
+  ],
+  "normalize": [
+    "now-iso",
+    "now-short",
+    "wl-newid"
+  ],
+  "behavior": "parity",
+  "note": "reason argument is accepted but not persisted in index/task file",
+  "files": [
+    ".worklog/index.json",
+    ".worklog/tasks/cq3984ojmyg5s21oujzleuats.md"
+  ]
+}

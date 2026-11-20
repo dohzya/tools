@@ -1,0 +1,17 @@
+sections:
+  - id: before
+    value: local before
+  - id: g2
+    value: global two
+    title: Overridden title
+  - id: after
+    value: local after
+  - id: personal
+    value: local personal
+  - id: git-status
+    alias: status
+    deprecated: true
+status_enrichers:
+  - id: git-stats
+    format: tsv
+    builtin: git-stats

@@ -1,0 +1,11 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-stamped",
+  "args": [
+    "timestamp",
+    "doc.md",
+    "-s",
+    "-I"
+  ],
+  "behavior": "parity"
+}

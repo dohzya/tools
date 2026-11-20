@@ -1,0 +1,11 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "outline",
+    "doc.md",
+    "--after",
+    "# Sample"
+  ],
+  "behavior": "parity"
+}

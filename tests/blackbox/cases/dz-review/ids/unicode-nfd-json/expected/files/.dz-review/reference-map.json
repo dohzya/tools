@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "entries": {
+    "rvw_Eq3GqMPDlIf": {
+      "file": "unicode-nfd.md",
+      "range": {
+        "startLine": 3,
+        "endLine": 3
+      },
+      "mrfi": "~{v0;r=3:1-3:22;p=h1[1]/p[1];fh=xxh64:6hEeR0Vk;hh=smh64:9fbcd5eedaeafcbf;ctx=pre:8VZJohsq,suf:7BTPeriI;doc=smh64:9fbcd5eedaeafcbf}"
+    },
+    "rvw_K2Nj8fs1G": {
+      "file": "unicode-nfd.md",
+      "range": {
+        "startLine": 5,
+        "endLine": 5
+      },
+      "mrfi": "~{v0;r=5:1-5:21;p=h1[1]/p[2];fh=xxh64:5SQcmKz3;hh=smh64:9fbcd5eedaeafcbf;ctx=pre:umQyExbp,suf:rzWtdMwJ;doc=smh64:9fbcd5eedaeafcbf}"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "tool": "recap",
+  "fixture": "recap-basic",
+  "args": [
+    "show",
+    "hello"
+  ],
+  "behavior": "parity"
+}

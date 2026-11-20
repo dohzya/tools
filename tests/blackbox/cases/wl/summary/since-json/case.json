@@ -1,0 +1,11 @@
+{
+  "tool": "wl",
+  "fixture": "wl-project",
+  "args": [
+    "summary",
+    "--since",
+    "2020-01-15",
+    "--json"
+  ],
+  "behavior": "parity"
+}

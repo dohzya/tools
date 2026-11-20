@@ -1,0 +1,13 @@
+{
+  "tool": "dz-review",
+  "fixture": "dz-review-formats",
+  "args": [
+    "timestamp",
+    "mixed.md",
+    "--short"
+  ],
+  "sed": [
+    "s/%[0-9A-Za-z]{8}([ |])/%<CTS>\\1/g"
+  ],
+  "behavior": "parity"
+}

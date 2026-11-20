@@ -1,0 +1,21 @@
+id: epc005
+full id: epc005xxxxxxxxxxxxxxxxxxx
+name: Epic
+status: started
+history:
+  created: 2020-03-05 09:00
+  started: 2020-03-05 09:00
+
+desc:
+  
+
+subtasks since checkpoint: 3
+  run006  started  "Subtask running"
+  wai007  created  "Subtask waiting"
+    LOj2Q6 [ ] first step
+    4iCbIl [ ] second step
+  fin008  done  "Subtask finished"
+    CHANGES
+      Finished
+    LEARNINGS
+      Nothing

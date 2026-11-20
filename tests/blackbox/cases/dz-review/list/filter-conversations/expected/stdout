@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "rvw_4xJ6VSf98Wk",
+      "file": "states.md",
+      "lineStart": 3,
+      "lineEnd": 3,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Question?"
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Answer."
+      },
+      "context": "@me Question? @agent Answer.",
+      "suggestedAction": "answer",
+      "rawHash": "d94bc658224e4199"
+    },
+    {
+      "id": "rvw_7MryuNO3bk7",
+      "file": "states.md",
+      "lineStart": 5,
+      "lineEnd": 5,
+      "kind": "conversation",
+      "state": "wip",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Question?"
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": ""
+      },
+      "context": "@agent Question? @me",
+      "suggestedAction": "wait for human input",
+      "rawHash": "abe237daeff9f177"
+    },
+    {
+      "id": "rvw_BKBdusTVDAU",
+      "file": "states.md",
+      "lineStart": 7,
+      "lineEnd": 7,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Answer."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Thanks but please change X."
+      },
+      "context": "@agent Answer. @me Thanks but please change X.",
+      "suggestedAction": "reply",
+      "rawHash": "bbc870dece1e3bb4"
+    },
+    {
+      "id": "rvw_IdAKJ8hqB9g",
+      "file": "states.md",
+      "lineStart": 9,
+      "lineEnd": 9,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok"
+      },
+      "context": "@agent Done. @me ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "975a69fe351de034"
+    },
+    {
+      "id": "rvw_IdAKcUs8v5D",
+      "file": "states.md",
+      "lineStart": 11,
+      "lineEnd": 11,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "OK"
+      },
+      "context": "@agent Done. @me OK",
+      "suggestedAction": "clean after validation",
+      "rawHash": "6eb17e50ccf7ccb4"
+    },
+    {
+      "id": "rvw_IdAKvr2Rf0k",
+      "file": "states.md",
+      "lineStart": 13,
+      "lineEnd": 13,
+      "kind": "conversation",
+      "state": "resolved",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "Ok"
+      },
+      "context": "@agent Done. @me Ok",
+      "suggestedAction": "clean after validation",
+      "rawHash": "aef196ea5ae27a54"
+    },
+    {
+      "id": "rvw_IdALFDCkOwH",
+      "file": "states.md",
+      "lineStart": 15,
+      "lineEnd": 15,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Done."
+      },
+      "lastMessage": {
+        "author": "@me",
+        "body": "ok but not really"
+      },
+      "context": "@agent Done. @me ok but not really",
+      "suggestedAction": "reply",
+      "rawHash": "0474ebe0cdaeb6fb"
+    },
+    {
+      "id": "rvw_EDalOd0vAf3",
+      "file": "states.md",
+      "lineStart": 17,
+      "lineEnd": 17,
+      "kind": "conversation",
+      "state": "handled",
+      "firstMessage": {
+        "author": "@",
+        "body": "This seems too strong."
+      },
+      "lastMessage": {
+        "author": "@",
+        "body": "This seems too strong."
+      },
+      "context": "@ This seems too strong.",
+      "suggestedAction": "reply",
+      "rawHash": "149d639e849252ef"
+    },
+    {
+      "id": "rvw_AiGduN2E5hg",
+      "file": "states.md",
+      "lineStart": 19,
+      "lineEnd": 19,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@agent",
+        "body": "Please validate this claim."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Please validate this claim."
+      },
+      "context": "@agent Please validate this claim.",
+      "suggestedAction": "answer",
+      "rawHash": "fb244d2a8dd4b5f2"
+    },
+    {
+      "id": "rvw_7gfoaZcxdE4",
+      "file": "states.md",
+      "lineStart": 21,
+      "lineEnd": 21,
+      "kind": "conversation",
+      "state": "open",
+      "firstMessage": {
+        "author": "@me",
+        "body": "Colon form."
+      },
+      "lastMessage": {
+        "author": "@agent",
+        "body": "Reply."
+      },
+      "context": "@me: Colon form. @agent: Reply.",
+      "suggestedAction": "answer",
+      "rawHash": "e0b2b71aa86d58f9"
+    },
+    {
+      "id": "rvw_LqATo8Qz4Xs",
+      "file": "states.md",
+      "lineStart": 23,
+      "lineEnd": 23,
+      "kind": "discussion",
+      "state": "discussion",
+      "context": "{?? ??}",
+      "suggestedAction": "review annotation",
+      "rawHash": "930c8eeb969a53d1"
+    },
+    {
+      "id": "rvw_E8x6VmGnj48",
+      "file": "states.md",
+      "lineStart": 25,
+      "lineEnd": 25,
+      "kind": "discussion",
+      "state": "discussion",
+      "context": "{?? just text without a role ??}",
+      "suggestedAction": "review annotation",
+      "rawHash": "3a68d9b13bbcc58f"
+    }
+  ]
+}

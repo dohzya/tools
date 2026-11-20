@@ -1,0 +1,15 @@
+{
+  "tool": "recap",
+  "fixture": "recap-git",
+  "args": [
+    "show",
+    "git-log"
+  ],
+  "env": {
+    "MAX_COMMITS": "1"
+  },
+  "normalize": [
+    "git-hash"
+  ],
+  "behavior": "parity"
+}

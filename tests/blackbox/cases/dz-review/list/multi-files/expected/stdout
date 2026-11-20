@@ -1,0 +1,85 @@
+
+────────────────────────────────────────────────
+1/10 handled conversation KHxQF0 doc.md:3-3
+ 1 │ # Title
+ 2 │ 
+>3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+{??
+@me Please say whether sources are stored too.
+??}
+
+────────────────────────────────────────────────
+2/10 addition E1bMT6 doc.md:5-5
+ 3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+{++added++}
+
+────────────────────────────────────────────────
+3/10 deletion 3HE8yh doc.md:5-5
+ 3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+{--removed--}
+
+────────────────────────────────────────────────
+4/10 substitution 5bO2j3 doc.md:5-5
+ 3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+{~~old~>new~~}
+
+────────────────────────────────────────────────
+5/10 highlight LxzcbG doc.md:5-5
+ 3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+{==hl==}
+
+────────────────────────────────────────────────
+6/10 comment 7ok9Yj doc.md:5-5
+ 3 │ The service stores summaries. {?? @me Please say whether sources are stored too. ??}
+ 4 │ 
+>5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+{>>note<<}
+
+────────────────────────────────────────────────
+7/10 handled conversation 85i8v2 doc.md:7-10
+  5 │ Some text {++added++} and {--removed--} and {~~old~>new~~} and {==hl==} and {>>note<<}.
+  6 │ 
+> 7 │ <!--
+> 8 │ @agent%2026-06-16T17:35:35+0200 I chose this wording.
+> 9 │ @me%1WzvP91W Can we soften it?
+>10 │ -->
+<!--
+@agent 2026-06-16T17:35:35+02:00 I chose this wording.
+@me 2026-06-16T17:35:35+02:00 Can we soften it?
+-->
+
+────────────────────────────────────────────────
+8/10 resolved conversation B9XL0Q doc.md:12-12
+ 10 │ -->
+ 11 │ 
+>12 │ Done thread. {?? @agent Fixed. @me ok ??}
+{??
+@agent Fixed.
+@me ok
+??}
+
+────────────────────────────────────────────────
+9/10 handled conversation GmRdXm doc.md:15-15
+ 13 │ 
+ 14 │ ```
+>15 │ {?? @me in fence ??}
+{??
+@me in fence
+??}
+
+────────────────────────────────────────────────
+10/10 open conversation 5ECdWX other.md:3-3
+ 1 │ # Other
+ 2 │ 
+>3 │ Waiting for the human. {?? @agent Is this correct? ??}
+{??
+@agent Is this correct?
+??}

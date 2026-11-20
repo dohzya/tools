@@ -1,0 +1,14 @@
+{
+  "tool": "md",
+  "fixture": "md-basic",
+  "args": [
+    "meta",
+    "doc.md",
+    "--del",
+    "nothing"
+  ],
+  "files": [
+    "doc.md"
+  ],
+  "behavior": "parity"
+}

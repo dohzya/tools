@@ -1,0 +1,7 @@
+{
+  "tool": "recap",
+  "fixture": "recap-badyaml",
+  "args": [],
+  "behavior": "parity",
+  "check_stderr": false
+}
