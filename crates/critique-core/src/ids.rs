@@ -1,8 +1,9 @@
 //! Stable review item ids: `rvw_` + base62(FNV-1a 64 over the UTF-16 code
 //! units of `file\0kind\0anchor`). Kept bit-identical to the TS tool because
 //! ids are persisted in user documents and shared with the VS Code extension,
-//! except that the value of a `ref%ts:` prefix is left out of the anchor and
-//! of fingerprints (the TS hashed it), so they ignore the timestamp format.
+//! except that the value of a `ref%ts:` prefix is left out of the anchors
+//! (first message included) and of fingerprints (the TS hashed it), so they
+//! ignore the timestamp format.
 
 use crate::scan::{self, Annotation, Kind};
 use crate::timestamp::parse_review_timestamp;
@@ -72,8 +73,10 @@ fn first_message(raw: &str) -> Option<String> {
         || scan::conversation_close_start(raw),
         scan::MarkerMatch::marker_start,
     );
+    // Any marker or annotation timestamp would have anchored the id instead,
+    // so this only drops `ref%ts:` values, keeping the id format-independent.
     let body = if next > start {
-        collapse_whitespace(&raw[start..next])
+        collapse_whitespace(&scan::strip_timestamps(&raw[start..next]))
     } else {
         String::new()
     };
@@ -242,6 +245,16 @@ mod tests {
             fingerprint(&collect_annotations(&compact)[0].raw),
             fingerprint(&collect_annotations(&iso)[0].raw)
         );
+    }
+
+    #[test]
+    fn ref_prefixes_do_not_change_first_message_anchored_ids() {
+        let doc = |ts: &str| format!("{{?? @me see <!-- ref%{ts}: a.md:1 --> ??}}\n");
+        let (compact, iso) = (doc("1VB66I0Y"), doc("2026-01-01T01:00:00+01:00"));
+        let ids = |text: &str| assign_stable_ids("doc.md", &collect_annotations(text));
+        assert_eq!(collect_annotations(&compact)[0].kind, Kind::Conversation);
+        assert_eq!(ids(&compact), ids(&iso));
+        assert_eq!(ids(&compact), ids("{?? @me see <!-- ref: a.md:1 --> ??}\n"));
     }
 
     #[test]

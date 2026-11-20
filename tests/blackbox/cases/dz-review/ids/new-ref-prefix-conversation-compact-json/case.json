@@ -1,0 +1,14 @@
+{
+  "tool": "dz-review",
+  "fixture": "empty",
+  "args": [
+    "list",
+    "d.md",
+    "--json"
+  ],
+  "ignore_changes": [
+    ".dz-review/*"
+  ],
+  "behavior": "new-spec",
+  "note": "New spec (docs/specs/critique.md): the %ts of a ref%ts: prefix is left out of the first message an untimestamped conversation is anchored on, so its id and rawHash do not depend on the timestamp format (same values in new-ref-prefix-conversation-compact-json and new-ref-prefix-conversation-iso-json). The Deno tool hashed the message as written."
+}

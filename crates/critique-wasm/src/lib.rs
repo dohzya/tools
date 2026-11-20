@@ -448,6 +448,27 @@ mod tests {
     }
 
     #[test]
+    fn a_conversation_id_assigned_before_ref_prefixes_were_stripped_is_kept() {
+        // Before ref%ts: was stripped from the first message, this
+        // untimestamped conversation hashed to rvw_CH8cOiYo4z7.
+        let text = "{?? @me see <!-- ref%1VB66I0Y: a.md:1 --> ??}\n";
+        let first = parse(&review_items_json("doc.md", text, None, "payload", 80).unwrap());
+        let fresh = ids(&first)[0].clone();
+        assert_ne!(fresh, "rvw_CH8cOiYo4z7");
+        let old_map = first["map"]
+            .as_str()
+            .unwrap()
+            .replace(&fresh, "rvw_CH8cOiYo4z7");
+        let converted = convert_timestamps_text(text, "iso").unwrap();
+        assert_ne!(converted, text);
+        for doc in [text, converted.as_str()] {
+            let out =
+                parse(&review_items_json("doc.md", doc, Some(&old_map), "payload", 80).unwrap());
+            assert_eq!(ids(&out), ["rvw_CH8cOiYo4z7"]);
+        }
+    }
+
+    #[test]
     fn a_blank_map_is_no_map() {
         assert_eq!(
             review_items_json("doc.md", TEXT, Some("  "), "payload", 80),
