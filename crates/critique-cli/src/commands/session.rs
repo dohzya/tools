@@ -600,7 +600,7 @@ fn dismiss(ctx: &Ctx<'_>, snapshot: &mut SessionSnapshot, input: &[String]) -> R
 }
 
 /// Unique id of `all` matching `input` (see [`matches_id`]).
-fn resolve_prefix(input: &str, all: &[String]) -> Option<String> {
+pub(crate) fn resolve_prefix(input: &str, all: &[String]) -> Option<String> {
     let wanted = input.to_lowercase();
     let matches: Vec<&String> = all.iter().filter(|id| matches_id(id, &wanted)).collect();
     (matches.len() == 1).then(|| matches[0].clone())

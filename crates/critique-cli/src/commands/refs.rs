@@ -247,9 +247,7 @@ fn review_id_exists(ctx: &Ctx<'_>, file: &str, text: &str, review_id: &str) -> R
     // Keyed like `list`, by the cwd-relative path: ids hash the path, and an
     // absolute one would mint other ids (and a second map entry).
     let assigned = ctx.assign_ids(&ctx.rel(file), text, &items)?;
-    Ok(assigned
-        .iter()
-        .any(|id| id == review_id || crate::commands::list::display_id(id, &assigned) == review_id))
+    Ok(crate::commands::session::resolve_prefix(review_id, &assigned).is_some())
 }
 
 struct Issue<'a> {
