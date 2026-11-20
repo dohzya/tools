@@ -21,7 +21,7 @@ Needs before starting: normalizers `wl-id`, `short-ts`, `iso-ts` (exist); `claud
 
 ## dz-review
 
-568 `parity` cases under `cases/dz-review/<group>/` recorded from the Deno reference, plus 70 `md ref`/`md resolve` MRFI cases under `cases/md/ref|resolve/` (these use the `dz-review-refs` fixture). Run: `tests/blackbox/run.sh --ref deno --tool dz-review`.
+554 `parity` cases under `cases/dz-review/<group>/` recorded from the Deno reference, plus 70 `md ref`/`md resolve` MRFI cases under `cases/md/ref|resolve/` (these use the `dz-review-refs` fixture). Run: `tests/blackbox/run.sh --ref deno --tool dz-review`.
 
 | Group        | Cases | What it pins                                                                                                                                                                                                        |
 | ------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -33,7 +33,7 @@ Needs before starting: normalizers `wl-id`, `short-ts`, `iso-ts` (exist); `claud
 | `timestamp`  | 40    | `-i/-o/-s/--stdin`, `--format-info`, all target formats, untimestamped input, CRLF, fences                                                                                                                          |
 | `session`    | 59    | `start` (dry-run, force, json, state dir), `status`, `active`, `add-file`, `done` (guardrails, `--acknowledge`, format restore), `rollback`                                                                         |
 | `agent`      | 99    | `list/inbox`, `show`, `respond`, `apply` (each annotation kind, `--replace`), `clean`, `diff`, `status`, error paths                                                                                                |
-| `ref`        | 82    | `ref check/list/show/snapshots` over ok/bad/stale/nested snapshot fixtures, `--json`, `--snapshot-lines`, `--ref`, target drift                                                                                     |
+| `ref`        | 83    | `ref check/list/show/snapshots` over ok/bad/stale/nested snapshot fixtures, `--json`, `--snapshot-lines`, `--ref`, target drift, target paths in a Git repo                                                         |
 | `review`     | 31    | Interactive `review`/`me review` driven through stdin (reply, ok, delete, apply, cancel, next, quit, help), `--list`                                                                                                |
 | `git`        | 40    | `diff`, `--git/--diff`, `--diff-conversations`, implicit file discovery in a git worktree, ignore files, state dir at the git root (repos built in `setup.sh` with fixed dates)                                     |
 | `drift`      | 31    | `reference-map.json` persistence: id adoption after edits (typo, insert above, delete, swap, rename, duplicate), corrupt / foreign map, stamping, state-dir isolation                                               |
