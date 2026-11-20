@@ -2,7 +2,7 @@
 
 Rust port of `dz-review` (`packages/tools/dz-review`), renamed `critique`. Crates: `critique-core` (pure: scanner, ids, reference map, timestamps, agent types, no I/O, builds for wasm32), `critique-cli` (binary `critique`, adapters for file system, git, clock, terminal), `critique-wasm` (JSON facade for the VS Code extension; the only place where positions become UTF-16). Its single entry point `reviewItems(file, text, mapJson | null)` returns `{ items, map }`: every item with its persistent id (assigned over all items before any filtering, like `list`, `session start` and `agent`), display id (shortest unique prefix over every id of the project: the reference map after assignment, all files, plus the file's own ids), kind, state, UTF-16 range, lines, metadata timestamp and conversation messages; `map` is the `reference-map.json` content to write, `null` when unchanged. File I/O stays in the extension, which locates `reference-map.json` with `stateDir(base, configured)` (see below).
 
-Behaviour is pinned by `tests/blackbox/cases/dz-review` (553 `parity` cases recorded from the Deno tool; the 568 once written here was stale before this change) plus 50 `new-spec` cases (the table below). Run: `tests/blackbox/run.sh --ref rust --tool dz-review`. `task vscode:dz-review:parity` (CI) checks that the extension's `critique-wasm` agrees with the CLI over the repo's Markdown files (`packages/vscode/dz-review/test/cli-parity.js`: items, short ids, messages, reference map, references, timestamp conversion).
+Behaviour is pinned by `tests/blackbox/cases/dz-review` (554 `parity` cases recorded from the Deno tool) plus 50 `new-spec` cases (the table below). Run: `tests/blackbox/run.sh --ref rust --tool dz-review`. `task vscode:dz-review:parity` (CI) checks that the extension's `critique-wasm` agrees with the CLI over the repo's Markdown files (`packages/vscode/dz-review/test/cli-parity.js`: items, short ids, messages, reference map, references, timestamp conversion).
 
 ## Rename and state directory
 
@@ -21,6 +21,16 @@ Behaviour is pinned by `tests/blackbox/cases/dz-review` (553 `parity` cases reco
 ## Ids
 
 Unchanged and byte-identical to the TS values (they are persisted in user documents): `rvw_` + base62 (`0-9A-Za-z`) of FNV-1a 64 over the UTF-16 code units of `file\0kind\0anchor` (anchor truncated to 160 UTF-16 units, so a truncation inside a surrogate pair still hashes like the TS). Timestamps use the other base62 alphabet (`0-9a-zA-Z`). `critique-wasm` and the CLI call the same functions; a test pins the historical vectors. One deliberate exception: the value of a `ref%ts:` prefix is stripped, like the other review timestamps, from the text anchor (items without their own timestamp), from the first message an untimestamped conversation is anchored on, and from `rawHash`, so they no longer depend on the timestamp format; such an item gets the id the TS gives to the same text with a bare `ref:` (a reference map keeps an id assigned before).
+
+## References
+
+Every `ref` subcommand (`check`, `list`, `show`, `snapshots`) resolves a target path the same way, in Deno (`packages/tools/dz-review/resolve-target-file.ts`) and in Rust (`target_file` in `crates/critique-cli/src/commands/refs.rs`); `ref list --json` prints the result as `targetFile`:
+
+- an absolute path is kept as is;
+- a path starting with `./` or `../` is relative to the folder of the document holding the reference;
+- any other path is relative to the Git root, or to the document's folder outside a Git repo.
+
+So in `sub/doc.md` of a repo, `ref: source.md:6` points at `source.md` at the root and `ref: ./source.md:6` at `sub/source.md`. Pinned by `ref/list-in-subdir-json` (no Git) and `ref/list-in-subdir-git-json` (Git: bare, `./` and `../` paths).
 
 ## Deliberate differences (`new-spec` cases)
 

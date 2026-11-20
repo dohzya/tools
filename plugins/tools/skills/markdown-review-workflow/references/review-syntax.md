@@ -67,6 +67,12 @@ Use `ref:` comments to point at a source passage without copying it:
 
 The timestamped form is `ref%...:`. Separate multiple targets with `;`. Canonical line syntax is `:82` for one line and `:80-82` for a range. The parser also accepts `:L82`, `:L80-L82`, and `:L80-82`, but rejects `:80-L82`.
 
+Target paths resolve like this (every `ref` command; `ref list --json` shows the result as `targetFile`):
+
+- an absolute path is used as is;
+- a path starting with `./` or `../` is relative to the folder of the document holding the reference;
+- any other path is relative to the Git root, or to the document's folder outside a Git repo. In `notes/review.md`, `source.md:82` means `<git root>/source.md`, while `./source.md:82` means `notes/source.md`.
+
 Targets may combine hints:
 
 - `~<mrfi>` is an MRFI (Markdown Robust Fragment Identifier): durable evidence about the passage that lets tools find it again after the target document changed. Generate it with `md ref <file> <startLine:startColumn-endLine:endColumn>`; it comes in the compact forms (`~떪딙낀...` Hangul by default, or base62 with `--format base62`) or the readable debug form (`--format debug`), e.g. `~{v0;r=82:1-82:63;fh=xxh64:34mytuNs;hh=smh64:4aee9a82fd91f407}` (`--profile min`). Copy it verbatim after the line range. Anything after `~` that is not a valid MRFI (for example a bare id like `~GdwjSq`, the old dz-review syntax, or the `rvw_...` id of a review item, which is a different thing) is rejected by `ref check` like any invalid reference.
